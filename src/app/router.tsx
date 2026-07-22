@@ -1,7 +1,14 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage, ProtectedRoute, PublicRoute } from '@/features/auth'
 import { AskPage } from '@/features/ask'
-import { HealthHomePage, HealthReportDetailPage } from '@/features/health'
+import {
+	HealthComparePage,
+	HealthDashboardPage,
+	HealthLayout,
+	HealthReportDetailPage,
+	HealthReportsPage,
+	HealthTrendsPage,
+} from '@/features/health'
 import { HomePage } from '@/features/home'
 import { MailPage } from '@/features/mail'
 import { MorePage } from '@/features/more'
@@ -29,11 +36,17 @@ export function AppRouter() {
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
 					<Route path={ROUTES.more} element={<MorePage />} />
-					<Route path={ROUTES.health} element={<HealthHomePage />} />
+
+					<Route path={ROUTES.health} element={<HealthLayout />}>
+						<Route index element={<HealthDashboardPage />} />
+						<Route path="reports" element={<HealthReportsPage />} />
+						<Route path="trends" element={<HealthTrendsPage />} />
+					</Route>
 					<Route
 						path={ROUTES.healthReport}
 						element={<HealthReportDetailPage />}
 					/>
+					<Route path={ROUTES.healthCompare} element={<HealthComparePage />} />
 				</Route>
 			</Route>
 

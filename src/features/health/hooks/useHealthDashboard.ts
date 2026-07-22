@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
 import {
-	getHealthCategories,
 	getHealthDashboard,
+	getHealthInsights,
 	getHealthReports,
+	getHealthSnapshots,
+	getHealthUploadTimeline,
 	getLatestHealthReport,
+	getUpcomingActions,
 } from '@/features/health/services/health.service'
 
 export function useHealthDashboard() {
@@ -11,7 +14,10 @@ export function useHealthDashboard() {
 		() => ({
 			dashboard: getHealthDashboard(),
 			latestReport: getLatestHealthReport(),
-			categories: getHealthCategories(),
+			snapshots: getHealthSnapshots(),
+			insights: getHealthInsights(),
+			actions: getUpcomingActions(),
+			uploadTimeline: getHealthUploadTimeline(),
 			reports: getHealthReports(),
 		}),
 		[],

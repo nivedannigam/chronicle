@@ -7,6 +7,9 @@ export const ROUTES = {
 	tasks: '/tasks',
 	more: '/more',
 	health: '/health',
+	healthReports: '/health/reports',
+	healthTrends: '/health/trends',
+	healthCompare: '/health/compare',
 	healthReport: '/health/reports/:reportId',
 } as const
 

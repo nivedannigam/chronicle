@@ -1,13 +1,25 @@
+import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Sparkles } from 'lucide-react'
 import { C, pagePadding } from '@/constants/colors'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import {
 	HOME_GREETING,
 	intelligenceBrief,
 	worldCards,
 } from '@/features/home/constants/mock-data'
-import { homeTimeline } from '@/features/home/constants/timeline'
+import {
+	ChronicleTimeline,
+	getKnowledgeTimeline,
+	knowledgeTimelineQueryKey,
+} from '@/features/knowledge'
 
 export function HomePage() {
+	const { user } = useAuth()
+	const { data: timeline = [] } = useQuery({
+		queryKey: knowledgeTimelineQueryKey(user?.id),
+		queryFn: () => getKnowledgeTimeline(user!.id),
+		enabled: Boolean(user?.id),
+	})
 	return (
 		<div style={{ padding: pagePadding.home, color: C.text }}>
 			<div style={{ marginBottom: 22 }}>
@@ -213,54 +225,7 @@ export function HomePage() {
 			>
 				Today&apos;s Timeline
 			</div>
-			<div style={{ position: 'relative', paddingLeft: 20 }}>
-				<div
-					style={{
-						position: 'absolute',
-						left: 7,
-						top: 8,
-						bottom: 0,
-						width: 1,
-						background: `linear-gradient(to bottom, ${C.accent}80, ${C.accent}00)`,
-					}}
-				/>
-				{homeTimeline.map((item) => (
-					<div
-						key={`${item.time}-${item.event}`}
-						style={{
-							display: 'flex',
-							gap: 14,
-							marginBottom: 16,
-							position: 'relative',
-						}}
-					>
-						<div
-							style={{
-								position: 'absolute',
-								left: -16,
-								top: 6,
-								width: 7,
-								height: 7,
-								borderRadius: '50%',
-								background: item.color,
-								boxShadow: `0 0 7px ${item.color}`,
-							}}
-						/>
-						<div>
-							<div
-								style={{
-									fontSize: 11,
-									color: C.textMuted,
-									marginBottom: 2,
-								}}
-							>
-								{item.time}
-							</div>
-							<div style={{ fontSize: 13, color: C.textSec }}>{item.event}</div>
-						</div>
-					</div>
-				))}
-			</div>
+			<ChronicleTimeline entries={timeline} />
 		</div>
 	)
 }
