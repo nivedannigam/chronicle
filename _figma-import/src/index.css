@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: #050507;
+	min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+	display: none;
+}
+
+* {
+	-webkit-tap-highlight-color: transparent;
+}
+
+input::placeholder {
+	color: rgba(255, 255, 255, 0.35);
+}

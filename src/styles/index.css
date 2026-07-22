@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-background: #09090b;
+	--color-foreground: #fafafa;
+	--color-muted: #27272a;
+	--color-muted-foreground: #a1a1aa;
+	--color-border: #27272a;
+	--color-primary: #fafafa;
+	--color-primary-foreground: #09090b;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: #050507;
+	min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+	display: none;
+}
+
+* {
+	-webkit-tap-highlight-color: transparent;
+}
+
+input::placeholder {
+	color: rgba(255, 255, 255, 0.35);
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply text-foreground antialiased;
+		min-height: 100dvh;
+	}
+
+	#root {
+		@apply min-h-dvh;
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
+}
