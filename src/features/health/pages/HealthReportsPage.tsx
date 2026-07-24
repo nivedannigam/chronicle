@@ -1,149 +1,260 @@
-import { useState } from 'react'
-import { ChevronRight, Loader2, RefreshCw } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChevronRight, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
 import { C } from '@/constants/colors'
 import { healthReportPath, ROUTES } from '@/constants/routes'
-import { OcrReprocessBadge } from '@/features/health/components/OcrStatusBanner'
+import { ReportStatusBadge } from '@/features/health/components/ReportStatusBadge'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
-import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import {
 	getParsedHealthReport,
 	getReportDisplayDate,
 	getReportDisplayTitle,
+	formatReportTypeLabel,
 } from '@/features/health/services/health-parsed-report.service'
-import { reprocessAllHealthReports } from '@/features/health/services/health-processing.service'
-import { queryClient } from '@/lib/query-client'
-import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
+
+const STATUS_FILTERS = [
+	{ value: 'all', label: 'All' },
+	{ value: 'completed', label: 'Imported' },
+	{ value: 'failed', label: 'Failed' },
+	{ value: 'processing', label: 'Processing' },
+] as const
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]['value']
+
+function reportSourceLabel(report: {
+	source?: string
+	external_file_id?: string | null
+}): string {
+	if (report.source === 'google-drive' || report.external_file_id) {
+		return 'Google Drive'
+	}
+
+	return 'Manual upload'
+}
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
-	const { user } = useAuth()
-	const uploadedQuery = useUploadedHealthReports(user?.id)
+	const uploadedQuery = useMemberHealthReports()
 	const reports = uploadedQuery.data ?? []
-	const [isReprocessing, setIsReprocessing] = useState(false)
-	const [reprocessMessage, setReprocessMessage] = useState<string | null>(null)
+	const [query, setQuery] = useState('')
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+	const [categoryFilter, setCategoryFilter] = useState('all')
 
-	const handleReprocessAll = async () => {
-		if (!user?.id) {
-			return
+	const categories = useMemo(() => {
+		const values = new Set<string>()
+
+		for (const report of reports) {
+			const parsed = getParsedHealthReport(report)
+
+			if (parsed?.metadata.reportType) {
+				values.add(parsed.metadata.reportType)
+			}
 		}
 
-		const confirmed = window.confirm(
-			'Reprocess all imported reports?\n\nThis re-runs OCR and metric extraction with the latest parser. Use this after parser fixes without resetting your imports.',
+		return ['all', ...values]
+	}, [reports])
+
+	const filteredReports = useMemo(() => {
+		const normalizedQuery = query.trim().toLowerCase()
+
+		return reports.filter((report) => {
+			const parsed = getParsedHealthReport(report)
+			const title = getReportDisplayTitle(report).toLowerCase()
+			const lab = (parsed?.metadata.laboratory ?? '').toLowerCase()
+			const doctor = (parsed?.metadata.doctorName ?? '').toLowerCase()
+			const fileName = report.file_name.toLowerCase()
+
+			if (statusFilter !== 'all') {
+				if (statusFilter === 'processing') {
+					if (report.status === 'completed' || report.status === 'failed') {
+						return false
+					}
+				} else if (report.status !== statusFilter) {
+					return false
+				}
+			}
+
+			if (
+				categoryFilter !== 'all' &&
+				parsed?.metadata.reportType !== categoryFilter
+			) {
+				return false
+			}
+
+			if (!normalizedQuery) {
+				return true
+			}
+
+			return (
+				title.includes(normalizedQuery) ||
+				lab.includes(normalizedQuery) ||
+				doctor.includes(normalizedQuery) ||
+				fileName.includes(normalizedQuery)
+			)
+		})
+	}, [reports, query, statusFilter, categoryFilter])
+
+	if (uploadedQuery.isLoading) {
+		return (
+			<DashboardEmptyState title="Loading reports…" message="" emoji="📄" />
 		)
+	}
 
-		if (!confirmed) {
-			return
-		}
+	if (uploadedQuery.isError) {
+		return (
+			<DashboardEmptyState
+				title="Reports unavailable"
+				message="We couldn't load your reports. Pull to refresh or try again shortly."
+				emoji="📄"
+				actionLabel="Try again"
+				onAction={() => void uploadedQuery.refetch()}
+			/>
+		)
+	}
 
-		setIsReprocessing(true)
-		setReprocessMessage(null)
-
-		try {
-			const result = await reprocessAllHealthReports(user.id)
-
-			void queryClient.invalidateQueries({
-				queryKey: uploadedHealthReportsQueryKey(user.id),
-			})
-			setReprocessMessage(
-				`Reprocessed ${result.processed} report${result.processed === 1 ? '' : 's'}${result.failed > 0 ? ` (${result.failed} failed)` : ''}.`,
-			)
-		} catch (error) {
-			setReprocessMessage(
-				error instanceof Error ? error.message : 'Reprocess failed',
-			)
-		} finally {
-			setIsReprocessing(false)
-		}
+	if (reports.length === 0) {
+		return (
+			<>
+				<HealthSetupGuide compact />
+				<DashboardEmptyState
+					title="No reports yet"
+					message="Connect Google Drive to bring medical reports into Health."
+					emoji="📄"
+					actionLabel="Open Health settings"
+					onAction={() => navigate(ROUTES.healthSettings)}
+				/>
+			</>
+		)
 	}
 
 	return (
 		<>
 			<div
 				style={{
-					fontSize: 14,
-					color: C.textSec,
-					marginBottom: 14,
-					lineHeight: 1.5,
+					display: 'flex',
+					alignItems: 'center',
+					gap: 10,
+					padding: '10px 14px',
+					borderRadius: 14,
+					border: `1px solid ${C.border}`,
+					background: C.card,
+					marginBottom: 12,
 				}}
 			>
-				All imported health reports and lab results in one place. After parser
-				updates, use Reprocess all to refresh titles and metrics.
+				<Search size={16} color={C.textMuted} />
+				<input
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder="Search reports, hospital, doctor…"
+					style={{
+						flex: 1,
+						background: 'transparent',
+						border: 'none',
+						outline: 'none',
+						color: C.text,
+						fontSize: 14,
+						fontFamily: 'inherit',
+					}}
+				/>
 			</div>
 
-			{reports.length > 0 ? (
-				<button
-					type="button"
-					onClick={() => void handleReprocessAll()}
-					disabled={isReprocessing}
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 8,
-						background: C.card2,
-						border: `1px solid ${C.border}`,
-						borderRadius: 100,
-						padding: '8px 14px',
-						fontSize: 12,
-						fontWeight: 700,
-						color: C.textSec,
-						cursor: isReprocessing ? 'not-allowed' : 'pointer',
-						fontFamily: 'inherit',
-						marginBottom: reprocessMessage ? 8 : 16,
-					}}
-				>
-					{isReprocessing ? (
-						<Loader2
-							size={14}
-							style={{ animation: 'spin 1s linear infinite' }}
-						/>
-					) : (
-						<RefreshCw size={14} />
-					)}
-					Reprocess all reports
-				</button>
-			) : null}
+			<div
+				style={{
+					display: 'flex',
+					gap: 8,
+					overflowX: 'auto',
+					marginBottom: 10,
+					scrollbarWidth: 'none',
+				}}
+			>
+				{STATUS_FILTERS.map((filter) => (
+					<button
+						key={filter.value}
+						type="button"
+						onClick={() => setStatusFilter(filter.value)}
+						style={{
+							flexShrink: 0,
+							background: statusFilter === filter.value ? C.accent : C.card,
+							border:
+								statusFilter === filter.value
+									? 'none'
+									: `1px solid ${C.border}`,
+							borderRadius: 100,
+							padding: '6px 12px',
+							fontSize: 12,
+							fontWeight: 700,
+							color: statusFilter === filter.value ? C.white : C.textSec,
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+						}}
+					>
+						{filter.label}
+					</button>
+				))}
+			</div>
 
-			{reprocessMessage ? (
-				<div style={{ fontSize: 12, color: C.textSec, marginBottom: 16 }}>
-					{reprocessMessage}
-				</div>
-			) : null}
-
-			<HealthSectionHeader title="All Reports" />
-
-			{uploadedQuery.isLoading ? (
-				<div style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>
-					Loading reports…
-				</div>
-			) : reports.length === 0 ? (
-				<DashboardEmptyState
-					title="No reports imported"
-					message="Import health reports from Google Drive to see them here."
-					emoji="📄"
-					actionLabel="Open Import Center"
-					onAction={() => navigate(ROUTES.settingsImport)}
-				/>
-			) : (
+			{categories.length > 1 ? (
 				<div
 					style={{
 						display: 'flex',
-						flexDirection: 'column',
 						gap: 8,
-						marginBottom: 28,
+						overflowX: 'auto',
+						marginBottom: 16,
+						scrollbarWidth: 'none',
 					}}
 				>
-					{reports.map((report) => {
+					{categories.map((category) => (
+						<button
+							key={category}
+							type="button"
+							onClick={() => setCategoryFilter(category)}
+							style={{
+								flexShrink: 0,
+								background:
+									categoryFilter === category ? C.card2 : 'transparent',
+								border: `1px solid ${C.border}`,
+								borderRadius: 100,
+								padding: '6px 12px',
+								fontSize: 12,
+								fontWeight: 600,
+								color: C.textSec,
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							{category === 'all'
+								? 'All categories'
+								: formatReportTypeLabel(category)}
+						</button>
+					))}
+				</div>
+			) : null}
+
+			{filteredReports.length === 0 ? (
+				<DashboardEmptyState
+					title="No matching reports"
+					message="Try a different search or filter."
+					emoji="🔍"
+				/>
+			) : (
+				<div style={{ display: 'grid', gap: 10 }}>
+					{filteredReports.map((report) => {
 						const parsed = getParsedHealthReport(report)
 						const title = getReportDisplayTitle(report)
 						const date = getReportDisplayDate(report, parsed)
 						const lab = parsed?.metadata.laboratory ?? 'Unknown lab'
+						const doctor = parsed?.metadata.doctorName
+						const category = parsed
+							? formatReportTypeLabel(parsed.metadata.reportType)
+							: 'General'
+						const source = reportSourceLabel(report)
 
 						return (
-							<div
+							<button
 								key={report.id}
+								type="button"
 								onClick={() => navigate(healthReportPath(report.id))}
 								style={{
 									background: C.card,
@@ -154,6 +265,9 @@ export function HealthReportsPage() {
 									alignItems: 'center',
 									gap: 12,
 									cursor: 'pointer',
+									fontFamily: 'inherit',
+									textAlign: 'left',
+									width: '100%',
 								}}
 							>
 								<div style={{ flex: 1, minWidth: 0 }}>
@@ -165,7 +279,7 @@ export function HealthReportsPage() {
 											fontWeight: 600,
 										}}
 									>
-										{date} · {lab}
+										{date} · {category}
 									</div>
 									<div
 										style={{
@@ -178,68 +292,39 @@ export function HealthReportsPage() {
 										{title}
 									</div>
 									<div
+										style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}
+									>
+										{lab}
+										{doctor ? ` · Dr. ${doctor}` : ''}
+									</div>
+									<div
 										style={{
-											fontSize: 12,
-											color: C.textSec,
-											marginBottom: 8,
-											overflow: 'hidden',
-											textOverflow: 'ellipsis',
-											whiteSpace: 'nowrap',
+											display: 'flex',
+											gap: 6,
+											flexWrap: 'wrap',
+											alignItems: 'center',
 										}}
 									>
-										{report.file_name}
-									</div>
-									<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+										<ReportStatusBadge status={report.status} />
 										<span
 											style={{
 												fontSize: 11,
-												fontWeight: 700,
-												color:
-													report.status === 'completed' ? C.greenAlt : C.orange,
-												background:
-													report.status === 'completed'
-														? `${C.greenAlt}18`
-														: `${C.orange}18`,
+												color: C.textMuted,
+												background: C.card2,
 												borderRadius: 100,
 												padding: '3px 9px',
 											}}
 										>
-											{report.status}
+											{source}
 										</span>
-										<OcrReprocessBadge report={report} />
 									</div>
 								</div>
 								<ChevronRight size={18} color={C.textMuted} />
-							</div>
+							</button>
 						)
 					})}
 				</div>
 			)}
-
-			<HealthSectionHeader title="Compare Reports" />
-			{reports.filter((report) => report.status === 'completed').length >= 2 ? (
-				<div style={{ marginBottom: 16 }}>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.healthCompare)}
-						style={{
-							width: '100%',
-							background: C.accentDim,
-							border: `1px solid rgba(108,111,255,0.22)`,
-							borderRadius: 14,
-							padding: '12px 16px',
-							fontSize: 14,
-							fontWeight: 600,
-							color: C.accent,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-							marginBottom: 16,
-						}}
-					>
-						Open Comparison View
-					</button>
-				</div>
-			) : null}
 		</>
 	)
 }

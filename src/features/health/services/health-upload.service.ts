@@ -31,6 +31,7 @@ export async function fetchUploadedHealthReports(): Promise<
 export async function uploadHealthReport(
 	userId: string,
 	file: File,
+	familyMemberId?: string | null,
 ): Promise<UploadedHealthReport> {
 	if (file.type !== 'application/pdf') {
 		throw new Error('Only PDF files are supported.')
@@ -59,6 +60,7 @@ export async function uploadHealthReport(
 		.from('health_reports')
 		.insert({
 			user_id: userId,
+			family_member_id: familyMemberId ?? null,
 			file_name: file.name,
 			storage_path: storagePath,
 			report_date: new Date().toISOString().slice(0, 10),

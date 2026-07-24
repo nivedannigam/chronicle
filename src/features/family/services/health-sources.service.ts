@@ -23,6 +23,12 @@ function mapAssignment(row: Record<string, unknown>): HealthSourceAssignment {
 		display_name?: string
 		relationship?: string
 		is_account_owner?: boolean
+		family_id?: string | null
+		role_id?: string
+		date_of_birth?: string | null
+		gender?: string | null
+		status?: string
+		avatar_url?: string | null
 		family_member_aliases?: Array<{ alias?: string }>
 	} | null
 	const aliases =
@@ -33,9 +39,15 @@ function mapAssignment(row: Record<string, unknown>): HealthSourceAssignment {
 	const memberWithAliases: FamilyMemberWithAliases = {
 		id: row.family_member_id as string,
 		userId: row.user_id as string,
+		familyId: member?.family_id ?? null,
 		displayName: member?.display_name ?? 'Unknown',
 		relationship: member?.relationship ?? 'other',
 		isAccountOwner: Boolean(member?.is_account_owner),
+		roleId: (member?.role_id as FamilyMemberWithAliases['roleId']) ?? 'adult',
+		dateOfBirth: member?.date_of_birth ?? null,
+		gender: member?.gender ?? null,
+		status: (member?.status as FamilyMemberWithAliases['status']) ?? 'active',
+		avatarUrl: member?.avatar_url ?? null,
 		sortOrder: 0,
 		createdAt: '',
 		updatedAt: '',

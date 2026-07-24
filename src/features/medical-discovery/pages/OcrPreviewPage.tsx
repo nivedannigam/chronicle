@@ -6,6 +6,23 @@ import { ExtractedMetricsList } from '@/features/health/components/ExtractedMetr
 import { OcrProcessingDetails } from '@/features/health/components/OcrProcessingDetails'
 import { useHealthReportDetail } from '@/features/health/hooks/useHealthReportDetail'
 import { formatReportTypeLabel } from '@/features/health/services/health-parsed-report.service'
+import type { MetricStatus } from '@/features/health/types'
+
+function mapMetricStatus(
+	status: import('@/features/document-intelligence/domain/metric.types').MetricStatus,
+): MetricStatus {
+	switch (status) {
+		case 'low':
+			return 'low'
+		case 'high':
+		case 'borderline':
+			return 'high'
+		case 'critical':
+			return 'critical'
+		default:
+			return 'normal'
+	}
+}
 
 export function OcrPreviewPage() {
 	const { reportId } = useParams<{ reportId: string }>()
@@ -94,7 +111,7 @@ export function OcrPreviewPage() {
 				}}
 			>
 				<Meta label="Patient" value={parsed?.metadata?.patientName ?? '—'} />
-				<Meta label="Hospital" value={parsed?.metadata?.labName ?? '—'} />
+				<Meta label="Hospital" value={parsed?.metadata?.laboratory ?? '—'} />
 				<Meta label="Doctor" value={parsed?.metadata?.doctorName ?? '—'} />
 				<Meta label="Report Date" value={report.report_date ?? '—'} />
 				<Meta
@@ -110,7 +127,14 @@ export function OcrPreviewPage() {
 					<div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
 						Extracted Metrics
 					</div>
-					<ExtractedMetricsList metrics={parsed.metrics} />
+					<ExtractedMetricsList
+						metrics={parsed.metrics.map((metric) => ({
+							name: metric.displayName,
+							value: metric.value,
+							reference: metric.referenceRange.rawText,
+							status: mapMetricStatus(metric.status),
+						}))}
+					/>
 				</div>
 			) : null}
 

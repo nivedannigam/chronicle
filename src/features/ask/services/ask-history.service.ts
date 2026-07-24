@@ -2,25 +2,9 @@ import type {
 	AskConversationTurn,
 	AskRecentQuestion,
 } from '@/features/ask/types'
+import { loadRecentQuestionsFromTurns } from '@/features/ask/services/conversation-persistence.service'
 
-const recentQuestions: AskRecentQuestion[] = [
-	{
-		id: 'recent-1',
-		question: 'How is my liver?',
-		displayTimestamp: 'Yesterday',
-		turn: undefined,
-	},
-	{
-		id: 'recent-2',
-		question: 'Show my Vitamin D trend.',
-		displayTimestamp: '2 days ago',
-	},
-	{
-		id: 'recent-3',
-		question: 'Summarize my latest report.',
-		displayTimestamp: '3 days ago',
-	},
-]
+const recentQuestions: AskRecentQuestion[] = []
 
 export function getRecentQuestions(): AskRecentQuestion[] {
 	return [...recentQuestions]
@@ -44,6 +28,14 @@ export function addRecentQuestion(
 	}
 
 	return entry
+}
+
+export function syncRecentQuestionsFromTurns(turns: AskConversationTurn[]) {
+	recentQuestions.splice(
+		0,
+		recentQuestions.length,
+		...loadRecentQuestionsFromTurns(turns),
+	)
 }
 
 export function getRecentQuestionById(

@@ -18,6 +18,11 @@ export const queryKeys = {
 	family: {
 		members: (userId: string | undefined) =>
 			['family-members', userId] as const,
+		context: (userId: string | undefined) =>
+			['family-context', userId] as const,
+		roles: () => ['family-roles'] as const,
+		invitations: (familyId: string | undefined) =>
+			['family-invitations', familyId] as const,
 	},
 	health: {
 		reports: (userId: string | undefined) =>

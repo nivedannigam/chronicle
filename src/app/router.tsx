@@ -9,34 +9,33 @@ import '@/features/connectors/services/connector-bootstrap'
 import {
 	HealthComparePage,
 	HealthDashboardPage,
+	HealthInsightsPage,
 	HealthLayout,
+	HealthMetricsPage,
 	HealthReportDetailPage,
 	HealthReportsPage,
-	HealthTrendsPage,
+	HealthSettingsPage,
+	HealthTimelinePage,
 } from '@/features/health'
-import {
-	HealthKnowledgeDebugPage,
-	HealthMetricTimelinePage,
-} from '@/features/health-knowledge'
-import {
-	HealthImportWizardPage,
-	ImportCenterPage,
-	ImportDebugPage,
-} from '@/features/health-import'
-import {
-	DiscoveryDashboardPage,
-	ImportReviewPage,
-	OcrPreviewPage,
-} from '@/features/medical-discovery'
-import { HealthValidationPage } from '@/features/health-validation'
+import { HealthMetricTimelinePage } from '@/features/health-knowledge'
+import { ImportReviewPage } from '@/features/medical-discovery'
 import { HomePage } from '@/features/home'
+import { HomeActivityPage } from '@/features/home/pages/HomeActivityPage'
 import { MailPage } from '@/features/mail'
-import { HealthSourcesPage } from '@/features/family'
+import {
+	FamilyMemberDetailPage,
+	FamilyMemberFormPage,
+	FamilyOverviewPage,
+} from '@/features/family'
+import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage'
 import { MorePage } from '@/features/more'
 import {
 	SettingsAccountPage,
+	SettingsAppearancePage,
 	SettingsDataPage,
+	SettingsNotificationsPage,
 	ProfilePage,
+	PreferencesPage,
 } from '@/features/settings'
 import { TasksPage } from '@/features/tasks'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -44,6 +43,8 @@ import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { NotFoundPage } from '@/pages/NotFound/NotFoundPage'
 
 export function AppRouter() {
+	const isDev = import.meta.env.DEV
+
 	return (
 		<Routes>
 			<Route
@@ -58,14 +59,45 @@ export function AppRouter() {
 			<Route element={<ProtectedRoute />}>
 				<Route element={<AppLayout />}>
 					<Route path={ROUTES.home} element={<HomePage />} />
+					<Route path={ROUTES.homeActivity} element={<HomeActivityPage />} />
+					<Route path={ROUTES.family} element={<FamilyOverviewPage />} />
+					<Route
+						path={ROUTES.familyMemberNew}
+						element={<FamilyMemberFormPage />}
+					/>
+					<Route
+						path={ROUTES.familyMemberEdit}
+						element={<FamilyMemberFormPage />}
+					/>
+					<Route
+						path={ROUTES.familyMember}
+						element={<FamilyMemberDetailPage />}
+					/>
+					<Route path={ROUTES.integrations} element={<IntegrationsPage />} />
+					<Route
+						path={ROUTES.settings}
+						element={<Navigate to={ROUTES.profile} replace />}
+					/>
+					<Route path={ROUTES.preferences} element={<PreferencesPage />} />
+					<Route
+						path={ROUTES.settingsNotifications}
+						element={<SettingsNotificationsPage />}
+					/>
+					<Route
+						path={ROUTES.settingsAppearance}
+						element={<SettingsAppearancePage />}
+					/>
 					<Route path={ROUTES.ask} element={<AskPage />} />
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
 					<Route path={ROUTES.more} element={<MorePage />} />
-					<Route path={ROUTES.healthSources} element={<HealthSourcesPage />} />
+					<Route
+						path={ROUTES.healthSources}
+						element={<Navigate to={ROUTES.healthSettings} replace />}
+					/>
 					<Route
 						path={ROUTES.settingsHealthSources}
-						element={<HealthSourcesPage />}
+						element={<Navigate to={ROUTES.healthSettings} replace />}
 					/>
 					<Route path={ROUTES.profile} element={<ProfilePage />} />
 					<Route
@@ -77,22 +109,21 @@ export function AppRouter() {
 						path={ROUTES.settingsConnectorsDrive}
 						element={<GoogleDriveConnectorPage />}
 					/>
-					<Route path={ROUTES.settingsImport} element={<ImportCenterPage />} />
+					<Route
+						path={ROUTES.settingsImport}
+						element={<Navigate to={ROUTES.healthSettings} replace />}
+					/>
 					<Route
 						path={ROUTES.connectorsGoogleDrive}
 						element={<Navigate to={ROUTES.settingsConnectorsDrive} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImport}
-						element={<Navigate to={ROUTES.settingsImport} replace />}
+						element={<Navigate to={ROUTES.healthSettings} replace />}
 					/>
 					<Route
-						path={ROUTES.healthImportWizard}
-						element={<HealthImportWizardPage />}
-					/>
-					<Route
-						path={ROUTES.healthDiscovery}
-						element={<DiscoveryDashboardPage />}
+						path={ROUTES.healthTrends}
+						element={<Navigate to={ROUTES.healthMetrics} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImportReview}
@@ -102,24 +133,22 @@ export function AppRouter() {
 					<Route path={ROUTES.health} element={<HealthLayout />}>
 						<Route index element={<HealthDashboardPage />} />
 						<Route path="reports" element={<HealthReportsPage />} />
-						<Route path="trends" element={<HealthTrendsPage />} />
+						<Route path="timeline" element={<HealthTimelinePage />} />
+						<Route path="metrics" element={<HealthMetricsPage />} />
+						<Route path="insights" element={<HealthInsightsPage />} />
+						<Route path="settings" element={<HealthSettingsPage />} />
 					</Route>
+
 					<Route
 						path={ROUTES.healthReport}
 						element={<HealthReportDetailPage />}
 					/>
-					<Route path={ROUTES.healthOcrPreview} element={<OcrPreviewPage />} />
-					<Route
-						path={ROUTES.healthValidation}
-						element={<HealthValidationPage />}
-					/>
-					<Route path={ROUTES.healthCompare} element={<HealthComparePage />} />
 					<Route
 						path={ROUTES.healthMetric}
 						element={<HealthMetricTimelinePage />}
 					/>
 
-					{import.meta.env.DEV ? (
+					{isDev ? (
 						<>
 							<Route
 								path={ROUTES.connectorsDebug}
@@ -127,14 +156,65 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthImportDebug}
-								element={<ImportDebugPage />}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
 							/>
 							<Route
 								path={ROUTES.healthKnowledgeDebug}
-								element={<HealthKnowledgeDebugPage />}
+								element={<Navigate to={ROUTES.healthInsights} replace />}
+							/>
+							<Route
+								path={ROUTES.healthValidation}
+								element={<Navigate to={ROUTES.health} replace />}
+							/>
+							<Route
+								path={ROUTES.healthDiscovery}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
+							/>
+							<Route
+								path={ROUTES.healthOcrPreview}
+								element={<Navigate to={ROUTES.healthReports} replace />}
+							/>
+							<Route
+								path={ROUTES.healthImportWizard}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
+							/>
+							<Route
+								path={ROUTES.healthCompare}
+								element={<HealthComparePage />}
 							/>
 						</>
-					) : null}
+					) : (
+						<>
+							<Route
+								path={ROUTES.healthValidation}
+								element={<Navigate to={ROUTES.health} replace />}
+							/>
+							<Route
+								path={ROUTES.healthDiscovery}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
+							/>
+							<Route
+								path={ROUTES.healthOcrPreview}
+								element={<Navigate to={ROUTES.healthReports} replace />}
+							/>
+							<Route
+								path={ROUTES.healthImportWizard}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
+							/>
+							<Route
+								path={ROUTES.healthImportDebug}
+								element={<Navigate to={ROUTES.healthSettings} replace />}
+							/>
+							<Route
+								path={ROUTES.healthKnowledgeDebug}
+								element={<Navigate to={ROUTES.healthInsights} replace />}
+							/>
+							<Route
+								path={ROUTES.healthCompare}
+								element={<Navigate to={ROUTES.healthReports} replace />}
+							/>
+						</>
+					)}
 				</Route>
 			</Route>
 

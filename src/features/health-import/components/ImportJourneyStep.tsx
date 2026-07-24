@@ -123,7 +123,13 @@ export function ImportJourneyStep({
 			</div>
 
 			{phase === 'summary' && result ? (
-				<SummaryPanel result={result} onReview={onReview} />
+				<SummaryPanel
+					result={result}
+					onReview={() => {
+						onClose()
+						navigate(ROUTES.healthImportReview)
+					}}
+				/>
 			) : null}
 
 			{showBanner && errorMessage ? (
@@ -432,7 +438,7 @@ function ContextAction({
 					/>
 				) : null}
 				<ActionButton
-					label="View Dashboard"
+					label="Open Health"
 					variant={needsReview > 0 ? 'secondary' : 'primary'}
 					onClick={onViewDashboard}
 				/>

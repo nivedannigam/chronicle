@@ -1,7 +1,9 @@
-export type AskAiProviderType = 'openai' | 'azure-openai' | 'gemini' | 'claude'
+export type AskAiProviderType =
+	'mock' | 'openai' | 'azure-openai' | 'gemini' | 'claude'
 
 function readProvider(value: string | undefined): AskAiProviderType | null {
 	if (
+		value === 'mock' ||
 		value === 'openai' ||
 		value === 'azure-openai' ||
 		value === 'gemini' ||

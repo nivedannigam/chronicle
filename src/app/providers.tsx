@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/components/AuthProvider'
+import { FamilyProvider } from '@/features/family/context/FamilyContext'
 import { AppRouter } from '@/app/router'
 import { queryClient } from '@/lib/query-client'
 
@@ -9,7 +10,9 @@ export function AppProviders() {
 		<QueryClientProvider client={queryClient}>
 			<BrowserRouter>
 				<AuthProvider>
-					<AppRouter />
+					<FamilyProvider>
+						<AppRouter />
+					</FamilyProvider>
 				</AuthProvider>
 			</BrowserRouter>
 		</QueryClientProvider>

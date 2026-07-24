@@ -31,7 +31,8 @@ export function HealthFolderAssignmentCard({
 	onRemove,
 	onSelectFolder,
 }: HealthFolderAssignmentCardProps) {
-	const isConfigured = status === 'configured'
+	const isScanning = status === 'scanning'
+	const isConfigured = status === 'configured' || isScanning
 
 	return (
 		<div
@@ -123,7 +124,7 @@ export function HealthFolderAssignmentCard({
 									}).format(new Date(nextScheduledScanAt))}
 								</div>
 							) : null}
-							{status === 'scanning' ? (
+							{isScanning ? (
 								<div style={{ color: C.accent }}>Scanning…</div>
 							) : (
 								<div

@@ -125,6 +125,7 @@ export type HealthReportStatus =
 export interface UploadedHealthReport {
 	id: string
 	user_id: string
+	family_member_id?: string | null
 	file_name: string
 	storage_path: string
 	report_date: string | null

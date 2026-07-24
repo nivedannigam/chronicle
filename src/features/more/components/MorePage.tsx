@@ -1,168 +1,116 @@
-import { useNavigate } from 'react-router-dom'
 import { C, pagePadding } from '@/constants/colors'
-import {
-	getComingSoonModules,
-	getMoreGridModules,
-	MODULE_ROUTES,
-} from '@/constants/modules'
-import { ROUTES } from '@/constants/routes'
-import { ChevronRight } from 'lucide-react'
+import { getExploreCapabilities } from '@/constants/modules'
 
 export function MorePage() {
-	const navigate = useNavigate()
-	const moreGridModules = getMoreGridModules()
-	const comingSoonModules = getComingSoonModules()
-
-	const handleModuleClick = (moduleId: string) => {
-		const route = MODULE_ROUTES[moduleId]
-
-		if (route) {
-			navigate(route)
-		}
-	}
+	const modules = getExploreCapabilities().filter(
+		(module) => module.id !== 'health',
+	)
 
 	return (
 		<div style={{ padding: pagePadding.more, color: C.text }}>
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					marginBottom: 20,
-				}}
-			>
+			<div style={{ marginBottom: 8 }}>
 				<div
-					style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}
-				>
-					Modules
-				</div>
-				<button
-					type="button"
-					onClick={() => navigate(ROUTES.profile)}
 					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 4,
-						background: C.card2,
-						border: `1px solid ${C.border}`,
-						borderRadius: 100,
-						padding: '8px 14px',
-						fontSize: 12,
-						fontWeight: 600,
-						color: C.textSec,
-						cursor: 'pointer',
-						fontFamily: 'inherit',
+						fontSize: 34,
+						fontWeight: 800,
+						letterSpacing: '-0.04em',
+						lineHeight: 1.05,
+						marginBottom: 8,
 					}}
 				>
-					Profile
-					<ChevronRight size={14} />
-				</button>
+					More
+				</div>
+				<div
+					style={{
+						fontSize: 14,
+						color: C.textMuted,
+						lineHeight: 1.5,
+						maxWidth: 300,
+					}}
+				>
+					Upcoming capabilities for your family&apos;s personal operating
+					system.
+				</div>
 			</div>
 
-			<div
-				style={{
-					fontSize: 11,
-					fontWeight: 600,
-					letterSpacing: '0.09em',
-					textTransform: 'uppercase',
-					color: C.textMuted,
-					marginBottom: 12,
-				}}
-			>
-				All Modules
-			</div>
 			<div
 				style={{
 					display: 'grid',
-					gridTemplateColumns: '1fr 1fr 1fr',
-					gap: 10,
-					marginBottom: 28,
+					gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+					gap: 12,
+					marginTop: 24,
 				}}
 			>
-				{moreGridModules.map((mod) => (
+				{modules.map((module) => (
 					<div
-						key={mod.id}
-						onClick={() => handleModuleClick(mod.id)}
+						key={module.id}
 						style={{
-							background: C.card,
+							background: `linear-gradient(160deg, ${module.color ?? C.accent}14 0%, ${C.card} 100%)`,
 							border: `1px solid ${C.border}`,
 							borderRadius: 20,
-							padding: '18px 0',
-							aspectRatio: '1',
+							padding: '18px 16px',
+							minHeight: 132,
 							display: 'flex',
 							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: 10,
-							cursor: 'pointer',
+							gap: 14,
+							position: 'relative',
+							overflow: 'hidden',
 						}}
 					>
 						<div
 							style={{
-								width: 42,
-								height: 42,
+								position: 'absolute',
+								top: -20,
+								right: -20,
+								width: 80,
+								height: 80,
+								borderRadius: '50%',
+								background: `${module.color ?? C.accent}16`,
+								filter: 'blur(24px)',
+								pointerEvents: 'none',
+							}}
+						/>
+						<div
+							style={{
+								width: 44,
+								height: 44,
 								borderRadius: 14,
-								background: `${mod.color}18`,
-								border: `1px solid ${mod.color}25`,
+								background: `${module.color ?? C.textMuted}18`,
+								border: `1px solid ${module.color ?? C.textMuted}28`,
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
 							}}
 						>
-							<mod.icon size={22} color={mod.color} strokeWidth={1.7} />
+							<module.icon
+								size={22}
+								color={module.color ?? C.textSec}
+								strokeWidth={1.7}
+							/>
 						</div>
-						<span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>
-							{mod.name}
-						</span>
-					</div>
-				))}
-			</div>
-
-			<div
-				style={{
-					fontSize: 11,
-					fontWeight: 600,
-					letterSpacing: '0.09em',
-					textTransform: 'uppercase',
-					color: C.textMuted,
-					marginBottom: 12,
-				}}
-			>
-				Coming Soon
-			</div>
-			<div
-				style={{
-					display: 'flex',
-					justifyContent: 'space-around',
-					marginBottom: 28,
-				}}
-			>
-				{comingSoonModules.map((mod) => (
-					<div
-						key={mod.id}
-						style={{
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							gap: 8,
-							opacity: 0.35,
-						}}
-					>
-						<div
-							style={{
-								width: 52,
-								height: 52,
-								borderRadius: 16,
-								background: C.card,
-								border: `1px solid ${C.border}`,
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							<mod.icon size={22} color={C.textMuted} strokeWidth={1.5} />
+						<div style={{ flex: 1 }}>
+							<div
+								style={{
+									fontSize: 15,
+									fontWeight: 700,
+									marginBottom: 4,
+									letterSpacing: '-0.01em',
+								}}
+							>
+								{module.name}
+							</div>
+							<div
+								style={{
+									fontSize: 11,
+									fontWeight: 600,
+									letterSpacing: '0.06em',
+									textTransform: 'uppercase',
+									color: module.color ?? C.textMuted,
+								}}
+							>
+								Coming Soon
+							</div>
 						</div>
-						<span style={{ fontSize: 12, color: C.textMuted }}>{mod.name}</span>
 					</div>
 				))}
 			</div>

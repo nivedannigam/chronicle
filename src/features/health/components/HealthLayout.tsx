@@ -2,34 +2,17 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/features/auth'
-import { UploadReportButton } from '@/features/health/components/UploadReportButton'
-import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
-
-const NAV_ITEMS = [
-	{ label: 'Dashboard', path: ROUTES.health },
-	{ label: 'Reports', path: ROUTES.healthReports },
-	{ label: 'Trends', path: ROUTES.healthTrends, requiresImport: true },
-] as const
+import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
+import { HEALTH_NAV_ITEMS } from '@/features/health/constants/health-nav'
 
 export function HealthLayout() {
 	const navigate = useNavigate()
-	const { user } = useAuth()
-	const uploadedQuery = useUploadedHealthReports(user?.id)
-	const hasImportedReports = (uploadedQuery.data ?? []).some(
-		(report) => report.status === 'completed',
-	)
-
-	const visibleNavItems = NAV_ITEMS.filter(
-		(item) =>
-			!('requiresImport' in item && item.requiresImport) || hasImportedReports,
-	)
 
 	return (
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.more)}
+				onClick={() => navigate(ROUTES.home)}
 				style={{
 					display: 'flex',
 					alignItems: 'center',
@@ -45,7 +28,7 @@ export function HealthLayout() {
 				}}
 			>
 				<ArrowLeft size={18} />
-				Back
+				Home
 			</button>
 
 			<div
@@ -66,40 +49,45 @@ export function HealthLayout() {
 				>
 					Health
 				</div>
-				<UploadReportButton userId={user?.id} />
+				<FamilyMemberSwitcher />
 			</div>
 
-			<div
+			<nav
 				style={{
-					display: 'flex',
+					display: 'grid',
+					gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
 					gap: 8,
 					marginBottom: 22,
-					overflowX: 'auto',
-					scrollbarWidth: 'none',
 				}}
+				aria-label="Health sections"
 			>
-				{visibleNavItems.map(({ label, path }) => (
+				{HEALTH_NAV_ITEMS.map(({ label, path }) => (
 					<NavLink
 						key={path}
 						to={path}
 						end={path === ROUTES.health}
 						style={({ isActive }) => ({
-							flexShrink: 0,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							minHeight: 40,
 							background: isActive ? C.accent : C.card,
 							border: isActive ? 'none' : `1px solid ${C.border}`,
-							borderRadius: 100,
-							padding: '8px 16px',
-							fontSize: 13,
+							borderRadius: 12,
+							padding: '8px 6px',
+							fontSize: 11,
 							fontWeight: 700,
 							color: isActive ? C.white : C.textSec,
 							textDecoration: 'none',
 							fontFamily: 'inherit',
+							textAlign: 'center',
+							lineHeight: 1.2,
 						})}
 					>
 						{label}
 					</NavLink>
 				))}
-			</div>
+			</nav>
 
 			<Outlet />
 		</div>

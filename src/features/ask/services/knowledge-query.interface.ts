@@ -23,7 +23,11 @@ export interface AskReasoningEngine {
 	answerQuestion(input: {
 		userId: string
 		question: string
+		memberId?: string | null
+		memberName?: string | null
+		familyMembers?: import('@/features/family/types/family.types').FamilyMemberWithAliases[]
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 	}): Promise<import('@/features/ask/types').AskQuestionResult>
 }

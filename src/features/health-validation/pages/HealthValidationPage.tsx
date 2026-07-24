@@ -27,7 +27,7 @@ export function HealthValidationPage() {
 				style={backButtonStyle}
 			>
 				<ArrowLeft size={18} />
-				Back to Dashboard
+				Back to Home
 			</button>
 
 			<div

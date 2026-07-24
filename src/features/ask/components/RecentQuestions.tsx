@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { C } from '@/constants/colors'
+import { ASK_COPY } from '@/constants/product-copy'
 import { ConversationTurnView } from '@/features/ask/components/ConversationTurnView'
 import type { AskRecentQuestion } from '@/features/ask/types'
 
@@ -17,6 +18,10 @@ export function RecentQuestions({
 }: RecentQuestionsProps) {
 	const [expandedId, setExpandedId] = useState<string | null>(null)
 
+	if (items.length === 0) {
+		return null
+	}
+
 	return (
 		<>
 			<div
@@ -29,7 +34,7 @@ export function RecentQuestions({
 					marginBottom: 12,
 				}}
 			>
-				Recent Questions
+				{ASK_COPY.recentHeading}
 			</div>
 			<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 				{items.map((item) => {

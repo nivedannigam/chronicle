@@ -11,14 +11,14 @@ export interface ConversationTurnMemory {
 const sessionMemory = new Map<string, ConversationTurnMemory[]>()
 
 export class ConversationMemory {
-	getTurns(userId: string): ConversationTurnMemory[] {
-		return sessionMemory.get(userId) ?? []
+	getTurns(sessionKey: string): ConversationTurnMemory[] {
+		return sessionMemory.get(sessionKey) ?? []
 	}
 
 	getPreviousTopic(
-		userId: string,
+		sessionKey: string,
 	): { categoryId?: string; metricName?: string } | undefined {
-		const turns = this.getTurns(userId)
+		const turns = this.getTurns(sessionKey)
 		const latest = turns[turns.length - 1]
 
 		if (!latest) {
@@ -32,14 +32,14 @@ export class ConversationMemory {
 	}
 
 	addTurn(
-		userId: string,
+		sessionKey: string,
 		turn: AskConversationTurn,
 		meta: { intent: string; categoryId?: string; metricName?: string },
 	): void {
-		const existing = this.getTurns(userId)
+		const existing = this.getTurns(sessionKey)
 
 		sessionMemory.set(
-			userId,
+			sessionKey,
 			[
 				...existing,
 				{
@@ -53,9 +53,9 @@ export class ConversationMemory {
 		)
 	}
 
-	clear(userId?: string): void {
-		if (userId) {
-			sessionMemory.delete(userId)
+	clear(sessionKey?: string): void {
+		if (sessionKey) {
+			sessionMemory.delete(sessionKey)
 			return
 		}
 

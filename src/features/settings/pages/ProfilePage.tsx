@@ -1,207 +1,187 @@
 import { useNavigate } from 'react-router-dom'
 import {
-	ArrowLeft,
-	Cloud,
-	Database,
-	FolderOpen,
+	Bell,
+	ChevronRight,
+	Code2,
+	Heart,
+	Link2,
 	LogOut,
+	Palette,
+	Plug,
 	Shield,
+	SlidersHorizontal,
 	User,
-	Wrench,
+	Users,
 } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import { signOut } from '@/features/auth'
-import { useAuth } from '@/features/auth'
-import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useUser } from '@/features/user/hooks/useUser'
-import { getConnectorConnection } from '@/features/connectors/services/connector-store.service'
-import { ConnectedServicesPanel } from '@/features/settings/components/ConnectedServicesPanel'
-import { useEffect, useState } from 'react'
 
-type ConnectionTone = 'connected' | 'partial' | 'disconnected'
-
-const TONE_LABELS: Record<ConnectionTone, string> = {
-	connected: 'Connected',
-	partial: 'Needs attention',
-	disconnected: 'Not connected',
-}
-
-const TONE_COLORS: Record<ConnectionTone, string> = {
-	connected: C.greenAlt,
-	partial: '#FFB020',
-	disconnected: C.red,
-}
-
-function resolveConnectionTone(
-	status: string | null | undefined,
-	failedCount: number,
-): ConnectionTone {
-	if (status !== 'connected') return 'disconnected'
-	if (failedCount > 0) return 'partial'
-	return 'connected'
+interface MenuItem {
+	icon: typeof User
+	label: string
+	hint?: string
+	path?: string
+	destructive?: boolean
+	onClick?: () => void
 }
 
 export function ProfilePage() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { profile } = useUser()
-	const userId = user?.id
-	const importStatus = useHealthImportStatus(userId)
-	const [connectionStatus, setConnectionStatus] = useState<string | null>(null)
 
-	useEffect(() => {
-		if (!userId) return
-		void getConnectorConnection(userId, 'google-drive').then((connection) => {
-			setConnectionStatus(
-				(connection?.status as string | undefined) ?? 'disconnected',
-			)
-		})
-	}, [userId])
+	const accountItems: MenuItem[] = [
+		{
+			icon: User,
+			label: 'Account',
+			hint: 'Name, email, and security',
+			path: ROUTES.settingsAccount,
+		},
+		{
+			icon: Users,
+			label: 'Family Management',
+			hint: 'Members, roles, and health sources',
+			path: ROUTES.family,
+		},
+		{
+			icon: SlidersHorizontal,
+			label: 'Preferences',
+			hint: 'Family context and defaults',
+			path: ROUTES.preferences,
+		},
+	]
 
-	const tone = resolveConnectionTone(
-		connectionStatus,
-		importStatus.data?.failedImportsCount ?? 0,
-	)
+	const connectionItems: MenuItem[] = [
+		{
+			icon: Link2,
+			label: 'Connected Accounts',
+			hint: 'Google Drive and sign-in providers',
+			path: ROUTES.settingsConnectorsDrive,
+		},
+		{
+			icon: Plug,
+			label: 'Integrations',
+			hint: 'Connectors and data sources',
+			path: ROUTES.integrations,
+		},
+	]
+
+	const appItems: MenuItem[] = [
+		{
+			icon: Heart,
+			label: 'Health Preferences',
+			hint: 'Import sources, folders, and scan settings',
+			path: ROUTES.healthSettings,
+		},
+		{
+			icon: Bell,
+			label: 'Notifications',
+			hint: 'Import alerts and reminders',
+			path: ROUTES.settingsNotifications,
+		},
+		{
+			icon: Palette,
+			label: 'Appearance',
+			hint: 'Theme and display',
+			path: ROUTES.settingsAppearance,
+		},
+		{
+			icon: Shield,
+			label: 'Privacy & Data',
+			hint: 'Export and reset health data',
+			path: ROUTES.settingsData,
+		},
+	]
+
+	const developerItems: MenuItem[] = import.meta.env.DEV
+		? [
+				{
+					icon: Code2,
+					label: 'Developer Options',
+					hint: 'Debug tools and import utilities',
+					path: ROUTES.healthSettings,
+				},
+			]
+		: []
 
 	return (
 		<div style={{ padding: '18px 18px 24px', color: C.text }}>
-			<button
-				type="button"
-				onClick={() => navigate(-1)}
+			<div
 				style={{
 					display: 'flex',
+					flexDirection: 'column',
 					alignItems: 'center',
-					gap: 6,
-					background: 'none',
-					border: 'none',
-					padding: 0,
-					marginBottom: 18,
-					cursor: 'pointer',
-					color: C.textSec,
-					fontFamily: 'inherit',
-					fontSize: 14,
+					textAlign: 'center',
+					marginBottom: 28,
+					paddingTop: 8,
 				}}
 			>
-				<ArrowLeft size={18} />
-				Back
-			</button>
-
-			<div style={{ marginBottom: 22 }}>
-				<div style={{ fontSize: 24, fontWeight: 800, color: C.text }}>
-					{profile?.name ?? 'Account'}
+				<UserAvatar
+					name={profile?.name}
+					imageUrl={profile?.avatarUrl}
+					size={80}
+				/>
+				<div
+					style={{
+						fontSize: 22,
+						fontWeight: 800,
+						letterSpacing: '-0.03em',
+						marginTop: 14,
+					}}
+				>
+					{profile?.name ?? 'Your Profile'}
 				</div>
 				{user?.email ? (
-					<div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>
+					<div style={{ fontSize: 14, color: C.textMuted, marginTop: 4 }}>
 						{user.email}
 					</div>
 				) : null}
-				<div
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 6,
-						marginTop: 10,
-						fontSize: 12,
-						color: TONE_COLORS[tone],
-					}}
-				>
-					<span
-						style={{
-							width: 8,
-							height: 8,
-							borderRadius: '50%',
-							background: TONE_COLORS[tone],
-						}}
-					/>
-					Google Drive · {TONE_LABELS[tone]}
-				</div>
 			</div>
 
-			<SectionLabel>Health</SectionLabel>
-			<MenuGroup
-				items={[
-					{
-						icon: FolderOpen,
-						label: 'Health Sources',
-						hint: 'Folders & family assignments',
-						onClick: () => navigate(ROUTES.healthSources),
-					},
-					{
-						icon: Database,
-						label: 'Import & Review',
-						hint: 'Import center and pending reports',
-						onClick: () => navigate(ROUTES.settingsImport),
-					},
-					{
-						icon: Cloud,
-						label: 'Google Drive connector',
-						hint: 'Browse folders and sync settings',
-						onClick: () => navigate(ROUTES.settingsConnectorsDrive),
-					},
-				]}
-			/>
+			<SectionLabel>Profile</SectionLabel>
+			<MenuGroup items={accountItems} onNavigate={navigate} />
 
-			<SectionLabel>Connected Services</SectionLabel>
-			<div style={{ marginBottom: 14 }}>
-				<ConnectedServicesPanel />
-			</div>
+			<SectionLabel>Connections</SectionLabel>
+			<MenuGroup items={connectionItems} onNavigate={navigate} />
 
-			<SectionLabel>Account</SectionLabel>
-			<MenuGroup
-				items={[
-					{
-						icon: User,
-						label: 'Account settings',
-						onClick: () => navigate(ROUTES.settingsAccount),
-					},
-					{
-						icon: Shield,
-						label: 'Reset imported health data',
-						destructive: true,
-						onClick: () => navigate(ROUTES.settingsData),
-					},
-					{
-						icon: LogOut,
-						label: 'Sign out',
-						destructive: true,
-						onClick: () => void signOut(),
-					},
-				]}
-			/>
+			<SectionLabel>App</SectionLabel>
+			<MenuGroup items={appItems} onNavigate={navigate} />
 
-			{import.meta.env.DEV ? (
+			{developerItems.length > 0 ? (
 				<>
 					<SectionLabel>Developer</SectionLabel>
-					<MenuGroup
-						items={[
-							{
-								icon: Wrench,
-								label: 'Discovery Dashboard',
-								hint: 'Raw discovery stats and scan history',
-								onClick: () => navigate(ROUTES.healthDiscovery),
-							},
-							{
-								icon: Wrench,
-								label: 'Validate Pipeline',
-								hint: 'End-to-end health data validation',
-								onClick: () => navigate(ROUTES.healthValidation),
-							},
-							{
-								icon: Wrench,
-								label: 'Import Debug',
-								hint: 'Import queue and registry diagnostics',
-								onClick: () => navigate(ROUTES.healthImportDebug),
-							},
-							{
-								icon: Wrench,
-								label: 'Connector debug',
-								onClick: () => navigate(ROUTES.connectorsDebug),
-							},
-						]}
-					/>
+					<MenuGroup items={developerItems} onNavigate={navigate} />
 				</>
 			) : null}
+
+			<button
+				type="button"
+				onClick={() => void signOut()}
+				style={{
+					width: '100%',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					gap: 8,
+					padding: '14px 16px',
+					marginTop: 8,
+					borderRadius: 16,
+					border: `1px solid rgba(255,69,58,0.25)`,
+					background: 'rgba(255,69,58,0.08)',
+					color: C.red,
+					fontSize: 15,
+					fontWeight: 700,
+					cursor: 'pointer',
+					fontFamily: 'inherit',
+				}}
+			>
+				<LogOut size={18} />
+				Logout
+			</button>
 		</div>
 	)
 }
@@ -226,14 +206,10 @@ function SectionLabel({ children }: { children: string }) {
 
 function MenuGroup({
 	items,
+	onNavigate,
 }: {
-	items: Array<{
-		icon: typeof User
-		label: string
-		hint?: string
-		destructive?: boolean
-		onClick: () => void
-	}>
+	items: MenuItem[]
+	onNavigate: (path: string) => void
 }) {
 	return (
 		<div
@@ -248,8 +224,9 @@ function MenuGroup({
 			{items.map((item, index) => (
 				<MenuRow
 					key={item.label}
-					{...item}
+					item={item}
 					isLast={index === items.length - 1}
+					onNavigate={onNavigate}
 				/>
 			))}
 		</div>
@@ -257,24 +234,29 @@ function MenuGroup({
 }
 
 function MenuRow({
-	icon: Icon,
-	label,
-	hint,
-	destructive = false,
-	isLast = false,
-	onClick,
+	item,
+	isLast,
+	onNavigate,
 }: {
-	icon: typeof User
-	label: string
-	hint?: string
-	destructive?: boolean
-	isLast?: boolean
-	onClick: () => void
+	item: MenuItem
+	isLast: boolean
+	onNavigate: (path: string) => void
 }) {
+	const { icon: Icon, label, hint, path, destructive = false, onClick } = item
+
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={() => {
+				if (onClick) {
+					onClick()
+					return
+				}
+
+				if (path) {
+					onNavigate(path)
+				}
+			}}
 			style={{
 				display: 'flex',
 				alignItems: 'center',
@@ -306,6 +288,7 @@ function MenuRow({
 					</div>
 				) : null}
 			</div>
+			<ChevronRight size={16} color={C.textMuted} />
 		</button>
 	)
 }

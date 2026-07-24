@@ -29,7 +29,9 @@ export function DriveBrowser({ userId }: DriveBrowserProps) {
 		folderName: browser.currentFolderName,
 		members,
 		assignments,
-		onRefresh: refresh,
+		onRefresh: async () => {
+			await refresh()
+		},
 		onJourneyComplete: (result) => {
 			setJourneyResult(result)
 		},

@@ -1,21 +1,25 @@
+import type { AskQuestionGroup } from '@/constants/product-copy'
+import { ASK_QUESTION_GROUPS } from '@/constants/product-copy'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
 
-export function buildSuggestedQuestions(userId: string): string[] {
+function appendHealthQuestions(
+	groups: AskQuestionGroup[],
+	userId: string,
+): AskQuestionGroup[] {
 	const graph = healthKnowledgeService.getGraphForUser(userId)
-	const suggestions = new Set<string>()
+	const healthGroup = groups.find((group) => group.id === 'health')
 
-	suggestions.add('How is my liver?')
-	suggestions.add('Show all abnormal blood tests.')
-	suggestions.add('Which metrics are improving?')
-	suggestions.add('Compare my last two reports.')
+	if (!healthGroup) {
+		return groups
+	}
 
+	const extra: string[] = []
 	const vitaminHistory = graph.profile.metricHistories.find(
 		(history) => history.canonicalMetricId === 'vitamin-d',
 	)
 
 	if (vitaminHistory) {
-		suggestions.add('When was my Vitamin D lowest?')
-		suggestions.add('Explain my Vitamin D trend.')
+		extra.push('Explain my Vitamin D trend.')
 	}
 
 	const hba1cHistory = graph.profile.metricHistories.find(
@@ -23,14 +27,42 @@ export function buildSuggestedQuestions(userId: string): string[] {
 	)
 
 	if (hba1cHistory) {
-		suggestions.add('Explain my HbA1c trend.')
+		extra.push('Explain my HbA1c trend.')
 	}
 
 	if (graph.profile.alerts.length > 0) {
-		suggestions.add('What should I discuss with my doctor?')
+		extra.push('What should I discuss with my doctor?')
 	}
 
-	suggestions.add('Summarize my latest report.')
+	if (extra.length === 0) {
+		return groups
+	}
 
-	return [...suggestions].slice(0, 6)
+	return groups.map((group) =>
+		group.id === 'health'
+			? {
+					...group,
+					questions: [...new Set([...group.questions, ...extra])],
+				}
+			: group,
+	)
+}
+
+export function buildSuggestedQuestionGroups(
+	userId: string,
+): AskQuestionGroup[] {
+	return appendHealthQuestions(
+		ASK_QUESTION_GROUPS.map((group) => ({
+			...group,
+			questions: [...group.questions],
+		})),
+		userId,
+	)
+}
+
+/** @deprecated Use buildSuggestedQuestionGroups */
+export function buildSuggestedQuestions(userId: string): string[] {
+	return buildSuggestedQuestionGroups(userId)
+		.flatMap((group) => group.questions)
+		.slice(0, 8)
 }

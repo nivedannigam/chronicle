@@ -13,6 +13,7 @@ export interface GoogleDriveOAuthSession {
 export interface FinalizeGoogleDriveConnectionResult {
 	success: boolean
 	connected: boolean
+	googleEmail?: string | null
 	provider?: string
 	error?: string
 }

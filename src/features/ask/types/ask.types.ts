@@ -110,6 +110,16 @@ export interface RelatedMetricRef {
 	status: string
 }
 
+export interface EvidenceCitation {
+	reportId: string
+	reportTitle: string
+	hospital: string
+	date: string
+	metricName?: string
+	timelineRef?: string
+	source: import('@/features/knowledge/retrieval/knowledge-retriever.types').KnowledgeDomain
+}
+
 export interface AskConversationTurn {
 	id: string
 	question: string
@@ -117,6 +127,13 @@ export interface AskConversationTurn {
 	cards: AnswerCardData[]
 	relatedReports: RelatedReportRef[]
 	relatedMetrics: RelatedMetricRef[]
+	citations: EvidenceCitation[]
+	evidence: string[]
+	followUpQuestions: string[]
+	memberId: string | null
+	memberName: string | null
+	domains: import('@/features/knowledge/retrieval/knowledge-retriever.types').KnowledgeDomain[]
+	dataAvailable: boolean
 	confidence: number
 	timestamp: string
 	displayTimestamp: string

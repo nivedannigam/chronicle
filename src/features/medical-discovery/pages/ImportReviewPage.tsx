@@ -81,7 +81,7 @@ export function ImportReviewPage() {
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.healthDiscovery)}
+				onClick={() => navigate(ROUTES.healthSettings)}
 				style={{
 					display: 'flex',
 					alignItems: 'center',
@@ -384,8 +384,8 @@ function ReviewDocumentCard({
 }
 
 function StatusBadge({ doc }: { doc: ReviewDocument }) {
-	let label = doc.approvalStatus
-	let color = C.textSec
+	let label: string = doc.approvalStatus
+	let color: string = C.textSec
 
 	if (doc.importStatus === 'completed') {
 		label = 'imported'

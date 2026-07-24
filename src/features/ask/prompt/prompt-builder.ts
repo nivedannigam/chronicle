@@ -1,6 +1,7 @@
-import type { AiMessage } from '@/features/ai/types'
 import type { ConversationTurnMemory } from '@/features/ask/memory/conversation-memory'
+import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import type { AiMessage } from '@/features/ai/types'
 
 export interface BuiltPrompt {
 	system: string
@@ -9,38 +10,55 @@ export interface BuiltPrompt {
 	contextJson: string
 }
 
-const SAFETY_RULES = `
-You are Ask Chronicle, a health information assistant.
+const CHRONICLE_SYSTEM_PROMPT = `
+You are Chronicle — the intelligence layer of a family's personal operating system.
 
-STRICT RULES:
-- Answer ONLY using the structured knowledge context provided below.
-- NEVER use raw PDF text or invent data not present in the context.
-- NEVER diagnose conditions or prescribe medication.
-- Use phrasing such as "Based on your reports..." and "Discuss these findings with your healthcare professional."
-- Always include: "This is informational and not medical advice."
-- If the context is insufficient, say you do not have enough structured data.
-- Return valid JSON with keys: answer, confidence, citations, cards.
+Your role is to explain, connect, and summarize information the family has already entrusted to Chronicle.
+You are NOT a generic chatbot. You do NOT browse the internet. You do NOT invent facts.
+
+SOURCE OF TRUTH:
+- Use ONLY the structured knowledge context provided in the user message.
+- The knowledge graph is the product. Your words organize what is already known.
+- If information is missing, say clearly: "I don't have that in your Chronicle records yet."
+
+VOICE:
+- Personal, calm, and precise — like a trusted family advisor.
+- Refer to the selected family member when relevant.
+- Prefer phrases like "In your records…", "Based on what Chronicle knows…", "From your report on…"
+
+MEDICAL SAFETY (when health records are in context):
+- Never diagnose or prescribe.
+- Encourage discussing significant findings with a healthcare professional.
+- End health-related answers with: "This is informational and not medical advice."
+
+OUTPUT:
+Return valid JSON only with keys: answer, confidence, citations.
+Each citation must reference a reportId that exists in the context when citing reports.
 `.trim()
 
 export class PromptBuilder {
 	build(input: {
 		question: string
-		knowledge: RetrievedKnowledge
+		knowledge: RetrievedKnowledge | null
 		memory: ConversationTurnMemory[]
+		member: IntelligenceMemberContext
+		dataAvailable: boolean
 	}): BuiltPrompt {
 		const contextJson = JSON.stringify(
 			{
-				domain: input.knowledge.domain,
-				intent: input.knowledge.intent,
-				reports: input.knowledge.reports,
-				metrics: input.knowledge.metrics,
-				timelines: input.knowledge.timelines,
-				trends: input.knowledge.trends,
-				observations: input.knowledge.observations.slice(0, 40),
-				relationships: input.knowledge.relationships,
-				insights: input.knowledge.insights,
-				alerts: input.knowledge.alerts,
-				summaryLines: input.knowledge.summaryLines,
+				selectedMember: input.member.memberName,
+				domain: input.knowledge?.domain ?? 'health',
+				intent: input.knowledge?.intent,
+				dataAvailable: input.dataAvailable,
+				reports: input.knowledge?.reports ?? [],
+				metrics: input.knowledge?.metrics ?? [],
+				timelines: input.knowledge?.timelines ?? [],
+				trends: input.knowledge?.trends ?? [],
+				observations: input.knowledge?.observations.slice(0, 40) ?? [],
+				relationships: input.knowledge?.relationships ?? [],
+				insights: input.knowledge?.insights ?? [],
+				alerts: input.knowledge?.alerts ?? [],
+				summaryLines: input.knowledge?.summaryLines ?? [],
 			},
 			null,
 			2,
@@ -50,26 +68,37 @@ export class PromptBuilder {
 			.slice(-4)
 			.map(
 				(turn) =>
-					`User: ${turn.question}\nAssistant: ${turn.answer.slice(0, 400)}`,
+					`User: ${turn.question}\nChronicle: ${turn.answer.slice(0, 400)}`,
 			)
 			.join('\n\n')
 
-		const system = `${SAFETY_RULES}
+		const system = `${CHRONICLE_SYSTEM_PROMPT}
 
 Output JSON schema:
 {
   "answer": "string",
   "confidence": 0.0-1.0,
-  "citations": [{ "reportId": "string", "reportTitle": "string", "metricName": "string" }],
-  "cards": [{ "type": "summary|metric|trend|timeline|report|comparison|alert", "...": "..." }]
+  "citations": [{
+    "reportId": "string",
+    "reportTitle": "string",
+    "metricName": "string optional",
+    "hospital": "string optional",
+    "date": "string optional",
+    "timelineRef": "string optional"
+  }]
 }`
 
 		const user = [
-			'Structured knowledge context (ONLY source of truth):',
+			input.member.memberName
+				? `Selected family member: ${input.member.memberName}`
+				: 'Selected family member: account owner',
+			'Structured Chronicle knowledge (ONLY source of truth):',
 			contextJson,
-			history ? `\nConversation history:\n${history}` : '',
-			`\nCurrent question:\n${input.question}`,
-			'\nRespond with grounded JSON only.',
+			history ? `\nRecent conversation:\n${history}` : '',
+			`\nQuestion:\n${input.question}`,
+			input.dataAvailable
+				? '\nAnswer using only the knowledge above.'
+				: '\nNo matching records were found. Explain what is missing and what capability would answer this in the future.',
 		]
 			.filter(Boolean)
 			.join('\n')

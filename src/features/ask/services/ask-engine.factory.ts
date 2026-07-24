@@ -1,6 +1,9 @@
 import { askAiConfig, isAskAiProviderConfigured } from '@/config/ask-ai'
 import { aiAskReasoningEngine } from '@/features/ask/services/ai-ask-reasoning.engine'
 import type { AskReasoningEngine } from '@/features/ask/services/knowledge-query.interface'
+import { bootstrapIntelligenceProviders } from '@/features/intelligence/pipeline/chronicle-intelligence.pipeline'
+
+bootstrapIntelligenceProviders()
 
 export function createAskReasoningEngine(): AskReasoningEngine {
 	return aiAskReasoningEngine

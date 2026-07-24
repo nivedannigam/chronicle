@@ -1,3 +1,6 @@
 export { SettingsAccountPage } from '@/features/settings/pages/SettingsAccountPage'
 export { SettingsDataPage } from '@/features/settings/pages/SettingsDataPage'
+export { SettingsNotificationsPage } from '@/features/settings/pages/SettingsNotificationsPage'
+export { SettingsAppearancePage } from '@/features/settings/pages/SettingsAppearancePage'
+export { PreferencesPage } from '@/features/settings/pages/PreferencesPage'
 export { ProfilePage } from '@/features/settings/pages/ProfilePage'

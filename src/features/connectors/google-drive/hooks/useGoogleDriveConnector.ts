@@ -111,7 +111,7 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 			} = {},
 		) => {
 			void _source
-			const tasks = [connectionQuery.refetch()]
+			const tasks: Array<Promise<unknown>> = [connectionQuery.refetch()]
 
 			if (options.folders ?? isConnected) {
 				tasks.push(foldersQuery.refetch())
@@ -125,8 +125,8 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 				tasks.push(syncQuery.refetch())
 			}
 
-			const [connectionResult] = await Promise.all(tasks)
-			return connectionResult.data ?? null
+			await Promise.all(tasks)
+			return connectionQuery.data ?? null
 		},
 		[connectionQuery, foldersQuery, isConnected, registryQuery, syncQuery],
 	)

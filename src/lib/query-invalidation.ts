@@ -7,6 +7,9 @@ export function invalidateFamilyQueries(userId: string | undefined) {
 	void queryClient.invalidateQueries({
 		queryKey: queryKeys.family.members(userId),
 	})
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.family.context(userId),
+	})
 }
 
 export function invalidateHealthSourcesQueries(userId: string | undefined) {

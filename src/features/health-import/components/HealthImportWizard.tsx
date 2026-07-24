@@ -159,7 +159,7 @@ export function HealthImportWizard({
 							}}
 							style={primaryButtonStyle}
 						>
-							View Health Dashboard
+							Open Health
 						</button>
 						<button
 							type="button"

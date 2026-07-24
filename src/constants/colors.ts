@@ -58,7 +58,7 @@ export const phoneFrameStyle = {
 
 export const pagePadding = {
 	home: '16px 18px 20px',
-	ask: '22px 18px 20px',
+	ask: '20px 18px 0',
 	more: '18px 18px 20px',
 } as const
 

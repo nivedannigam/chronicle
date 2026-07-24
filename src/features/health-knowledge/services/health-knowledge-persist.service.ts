@@ -8,7 +8,6 @@ export async function persistHealthKnowledgeGraph(
 	familyMemberId: string | null,
 ) {
 	const graph = buildHealthKnowledgeGraph({
-		userId,
 		personId: userId,
 		mockReports: [],
 		uploadedReports: await fetchUploadedHealthReports(),

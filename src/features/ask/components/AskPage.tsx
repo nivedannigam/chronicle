@@ -1,12 +1,15 @@
 import { isAskAiProviderConfigured } from '@/config/ask-ai'
 import { useAuth } from '@/features/auth'
-import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
+import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
+import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { AskSearchBar } from '@/features/ask/components/AskSearchBar'
 import { AiDebugPanel } from '@/features/ask/components/AiDebugPanel'
-import { ConversationTurnView } from '@/features/ask/components/ConversationTurnView'
+import { ConversationThread } from '@/features/ask/components/ConversationThread'
 import { RecentQuestions } from '@/features/ask/components/RecentQuestions'
 import { SuggestedQuestions } from '@/features/ask/components/SuggestedQuestions'
-import { ASK_COPY } from '@/features/ask/constants/suggested-questions'
+import { ASK_COPY } from '@/constants/product-copy'
 import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
 import { C, pagePadding } from '@/constants/colors'
 import { Sparkles } from 'lucide-react'
@@ -15,17 +18,34 @@ import { useCallback, useMemo, useState } from 'react'
 export function AskPage() {
 	const { user } = useAuth()
 	const userId = user?.id ?? ''
+	const { members, selectedMember, selectedMemberId } = useFamilyContext()
 	const aiConfigured = isAskAiProviderConfigured()
-	const uploadedQuery = useUploadedHealthReports(user?.id)
+	const uploadedQuery = useMemberHealthReports()
+	const driveConnector = useGoogleDriveConnector(userId)
 	const [query, setQuery] = useState('')
+	const memberContext = useMemo(
+		() => ({
+			selectedMemberId,
+			selectedMemberName: selectedMember?.displayName ?? null,
+			members,
+		}),
+		[members, selectedMember?.displayName, selectedMemberId],
+	)
 	const {
 		ask,
 		cancel,
+		clearConversation,
 		isLoading,
-		streamingAnswer,
+		turns,
 		currentTurn,
+		pendingTurn,
 		recentQuestions,
-	} = useAskChronicle(userId, uploadedQuery.data ?? [])
+	} = useAskChronicle(
+		userId,
+		uploadedQuery.data ?? [],
+		memberContext,
+		driveConnector.registry ?? [],
+	)
 
 	const handleSubmit = useCallback(
 		async (questionOverride?: string) => {
@@ -41,34 +61,40 @@ export function AskPage() {
 		[ask, isLoading, query],
 	)
 
-	const displayRecents = useMemo(() => recentQuestions, [recentQuestions])
-	const displayTurn =
-		currentTurn && streamingAnswer != null && streamingAnswer.length > 0
-			? { ...currentTurn, answer: streamingAnswer }
-			: currentTurn
+	const streamingTurn = pendingTurn
+
+	const capabilityNotice = aiConfigured
+		? ASK_COPY.capabilityNoticeEnhanced
+		: ASK_COPY.capabilityNotice
 
 	return (
-		<div style={{ padding: pagePadding.ask, color: C.text }}>
+		<div
+			style={{
+				padding: pagePadding.ask,
+				paddingBottom: 32,
+				color: C.text,
+			}}
+		>
 			<div
 				style={{
-					width: 52,
-					height: 52,
-					borderRadius: 16,
+					width: 48,
+					height: 48,
+					borderRadius: 14,
 					background: C.accentDim,
 					border: `1px solid rgba(108,111,255,0.25)`,
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'center',
-					marginBottom: 18,
+					marginBottom: 14,
 					boxShadow: `0 0 24px rgba(108,111,255,0.20)`,
 				}}
 			>
-				<Sparkles size={26} color={C.accent} />
+				<Sparkles size={24} color={C.accent} />
 			</div>
 
 			<div
 				style={{
-					fontSize: 34,
+					fontSize: 32,
 					fontWeight: 800,
 					letterSpacing: '-0.03em',
 					lineHeight: 1.05,
@@ -81,36 +107,59 @@ export function AskPage() {
 				style={{
 					fontSize: 15,
 					color: C.textSec,
-					marginBottom: aiConfigured ? 28 : 12,
-					lineHeight: 1.5,
+					marginBottom: 12,
+					lineHeight: 1.55,
 				}}
 			>
-				{ASK_COPY.subtitleBefore}
-				<em style={{ fontStyle: 'italic', color: C.text }}>
-					{ASK_COPY.subtitleEmphasis}
-				</em>
-				{ASK_COPY.subtitleAfter}
+				{ASK_COPY.subtitle}
 			</div>
 
-			{!aiConfigured ? (
-				<div
-					style={{
-						background: C.card2,
-						border: `1px solid ${C.border}`,
-						borderRadius: 12,
-						padding: '10px 12px',
-						fontSize: 12,
-						color: C.textMuted,
-						lineHeight: 1.5,
-						marginBottom: 28,
-					}}
-				>
-					<strong style={{ color: C.textSec }}>Grounded mode</strong> — answers
-					use your imported health data only. Set{' '}
-					<code>VITE_ASK_PROVIDER=openai</code> (and API key) for AI-enhanced
-					responses.
-				</div>
-			) : null}
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: 12,
+					marginBottom: 16,
+					flexWrap: 'wrap',
+				}}
+			>
+				<FamilyMemberSwitcher />
+				{turns.length > 0 ? (
+					<button
+						type="button"
+						onClick={clearConversation}
+						style={{
+							fontSize: 12,
+							fontWeight: 600,
+							color: C.textMuted,
+							background: 'transparent',
+							border: `1px solid ${C.border}`,
+							borderRadius: 100,
+							padding: '6px 12px',
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+						}}
+					>
+						Clear conversation
+					</button>
+				) : null}
+			</div>
+
+			<div
+				style={{
+					background: C.card,
+					border: `1px solid ${C.border}`,
+					borderRadius: 14,
+					padding: '12px 14px',
+					fontSize: 13,
+					color: C.textSec,
+					lineHeight: 1.55,
+					marginBottom: 18,
+				}}
+			>
+				{capabilityNotice}
+			</div>
 
 			<AskSearchBar
 				value={query}
@@ -120,37 +169,40 @@ export function AskPage() {
 				isLoading={isLoading}
 			/>
 
-			{displayTurn ? (
-				<div
-					style={{
-						background: C.card,
-						border: `1px solid rgba(108,111,255,0.22)`,
-						borderRadius: 18,
-						padding: '16px',
-						marginBottom: 24,
-					}}
-				>
-					<ConversationTurnView turn={displayTurn} />
+			{turns.length > 0 || streamingTurn ? (
+				<div style={{ marginBottom: 24 }}>
+					<ConversationThread
+						turns={turns}
+						streamingTurn={streamingTurn}
+						onFollowUpSelect={(question) => {
+							setQuery(question)
+							void handleSubmit(question)
+						}}
+					/>
 				</div>
 			) : null}
 
-			<SuggestedQuestions
-				userId={userId}
-				onSelect={(prompt) => {
-					setQuery(prompt)
-					void handleSubmit(prompt)
-				}}
-				disabled={isLoading}
-			/>
+			{turns.length === 0 ? (
+				<>
+					<SuggestedQuestions
+						userId={userId}
+						onSelect={(prompt) => {
+							setQuery(prompt)
+							void handleSubmit(prompt)
+						}}
+						disabled={isLoading}
+					/>
 
-			<RecentQuestions
-				items={displayRecents}
-				onSelectQuestion={(question) => {
-					setQuery(question)
-					void handleSubmit(question)
-				}}
-				activeTurnId={currentTurn?.id ?? null}
-			/>
+					<RecentQuestions
+						items={recentQuestions}
+						onSelectQuestion={(question) => {
+							setQuery(question)
+							void handleSubmit(question)
+						}}
+						activeTurnId={currentTurn?.id ?? null}
+					/>
+				</>
+			) : null}
 
 			<AiDebugPanel />
 		</div>

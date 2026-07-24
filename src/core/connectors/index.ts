@@ -27,6 +27,7 @@ export type {
 	ConnectorSyncMode,
 	ConnectorSyncRun,
 	DocumentRegistryStatus,
+	DriveBrowseFile,
 	DriveBrowseFolder,
 	DriveBrowseResult,
 	ImportQueueStatus,

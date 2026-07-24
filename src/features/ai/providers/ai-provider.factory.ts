@@ -3,6 +3,7 @@ import {
 	createAzureOpenAiProvider,
 	createClaudeProvider,
 	createGeminiProvider,
+	createMockAiProvider,
 	createOpenAiProvider,
 	type AiProvider,
 } from '@/features/ai/providers/ai-providers'
@@ -17,6 +18,8 @@ export function createAskAiProvider(provider: AskAiProviderType): AiProvider {
 	}
 
 	switch (provider) {
+		case 'mock':
+			return createMockAiProvider()
 		case 'openai':
 			return createOpenAiProvider(options)
 		case 'azure-openai':

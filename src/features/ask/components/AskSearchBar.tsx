@@ -1,6 +1,6 @@
 import { Loader2, Send, X } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { ASK_COPY } from '@/features/ask/constants/suggested-questions'
+import { ASK_COPY } from '@/constants/product-copy'
 
 interface AskSearchBarProps {
 	value: string
@@ -23,10 +23,10 @@ export function AskSearchBar({
 				background: C.card,
 				border: `1px solid ${C.border}`,
 				borderRadius: 18,
-				padding: '14px 14px 12px',
-				marginBottom: 20,
+				padding: '12px 14px 10px',
+				marginBottom: 18,
 				position: 'relative',
-				minHeight: 100,
+				minHeight: 88,
 			}}
 		>
 			<textarea
@@ -49,8 +49,8 @@ export function AskSearchBar({
 					color: C.text,
 					fontFamily: 'inherit',
 					resize: 'none',
-					minHeight: 72,
-					lineHeight: 1.55,
+					minHeight: 56,
+					lineHeight: 1.5,
 					opacity: isLoading ? 0.7 : 1,
 				}}
 			/>

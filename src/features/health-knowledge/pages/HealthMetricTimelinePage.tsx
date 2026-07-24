@@ -9,7 +9,7 @@ import {
 import { MetricMiniChart } from '@/features/health/components/dashboard/MetricMiniChart'
 import { TrendArrow } from '@/features/health/components/dashboard/TrendArrow'
 import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
-import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
 import { findRelationshipsForMetric } from '@/features/health-knowledge/engines/relationship.engine'
 
@@ -25,7 +25,7 @@ export function HealthMetricTimelinePage() {
 	const { metricId = '' } = useParams()
 	const navigate = useNavigate()
 	const { user } = useAuth()
-	const uploadedQuery = useUploadedHealthReports(user?.id)
+	const uploadedQuery = useMemberHealthReports()
 	const { getMetricHistory } = useHealthKnowledge(
 		user?.id,
 		uploadedQuery.data ?? [],
@@ -45,7 +45,7 @@ export function HealthMetricTimelinePage() {
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.healthTrends)}
+				onClick={() => navigate(ROUTES.healthMetrics)}
 				style={{
 					background: 'none',
 					border: 'none',

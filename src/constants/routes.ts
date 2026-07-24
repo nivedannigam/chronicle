@@ -2,13 +2,27 @@ export const ROUTES = {
 	root: '/',
 	login: '/login',
 	home: '/home',
+	homeActivity: '/home/activity',
+	family: '/family',
+	familyMember: '/family/members/:memberId',
+	familyMemberNew: '/family/members/new',
+	familyMemberEdit: '/family/members/:memberId/edit',
+	integrations: '/integrations',
+	settings: '/settings',
+	preferences: '/settings/preferences',
+	settingsNotifications: '/settings/notifications',
+	settingsAppearance: '/settings/appearance',
 	ask: '/ask',
 	mail: '/mail',
 	tasks: '/tasks',
 	more: '/more',
 	health: '/health',
 	healthReports: '/health/reports',
-	healthTrends: '/health/trends',
+	healthTimeline: '/health/timeline',
+	healthMetrics: '/health/metrics',
+	healthInsights: '/health/insights',
+	healthSettings: '/health/settings',
+	healthTrends: '/health/metrics',
 	healthCompare: '/health/compare',
 	healthReport: '/health/reports/:reportId',
 	healthMetric: '/health/metrics/:metricId',
@@ -34,6 +48,14 @@ export const ROUTES = {
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
 
 export const DEFAULT_AUTHENTICATED_ROUTE = ROUTES.home
+
+export function familyMemberPath(memberId: string) {
+	return `/family/members/${memberId}`
+}
+
+export function familyMemberEditPath(memberId: string) {
+	return `/family/members/${memberId}/edit`
+}
 
 export function healthReportPath(reportId: string) {
 	return `/health/reports/${reportId}`

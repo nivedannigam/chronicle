@@ -1,9 +1,14 @@
 import { supabase } from '@/lib/supabase'
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
+import { getOrCreateFamily } from '@/features/family/services/family-platform.service'
 import type {
 	FamilyMember,
 	FamilyMemberWithAliases,
 } from '@/features/family/types/family.types'
+import type {
+	FamilyMemberStatus,
+	FamilyRoleId,
+} from '@/types/database/family-foundation.types'
 
 const ensureDefaultPromises = new Map<
 	string,
@@ -14,9 +19,15 @@ function mapFamilyMember(row: Record<string, unknown>): FamilyMember {
 	return {
 		id: row.id as string,
 		userId: row.user_id as string,
+		familyId: (row.family_id as string | null) ?? null,
 		displayName: row.display_name as string,
 		relationship: row.relationship as string,
 		isAccountOwner: Boolean(row.is_account_owner),
+		roleId: (row.role_id as FamilyRoleId) ?? 'adult',
+		dateOfBirth: (row.date_of_birth as string | null) ?? null,
+		gender: (row.gender as string | null) ?? null,
+		status: (row.status as FamilyMemberStatus) ?? 'active',
+		avatarUrl: (row.avatar_url as string | null) ?? null,
 		sortOrder: Number(row.sort_order ?? 0),
 		createdAt: row.created_at as string,
 		updatedAt: row.updated_at as string,
@@ -68,19 +79,48 @@ export async function listFamilyMembersWithAliases(
 	)
 }
 
+export async function getFamilyMemberById(
+	memberId: string,
+): Promise<FamilyMemberWithAliases | null> {
+	const { data, error } = await supabase
+		.from('family_members')
+		.select('*, family_member_aliases(alias)')
+		.eq('id', memberId)
+		.maybeSingle()
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	return data
+		? mapFamilyMemberWithAliases(data as Record<string, unknown>)
+		: null
+}
+
 export async function createFamilyMember(input: {
 	userId: string
+	familyId: string
 	displayName: string
 	relationship: string
+	roleId?: FamilyRoleId
+	dateOfBirth?: string | null
+	gender?: string | null
+	status?: FamilyMemberStatus
 	aliases?: string[]
 }) {
 	const { data, error } = await supabase
 		.from('family_members')
 		.insert({
 			user_id: input.userId,
+			family_id: input.familyId,
 			display_name: input.displayName.trim(),
 			relationship: input.relationship,
 			is_account_owner: input.relationship === 'self',
+			role_id:
+				input.roleId ?? (input.relationship === 'self' ? 'owner' : 'adult'),
+			date_of_birth: input.dateOfBirth ?? null,
+			gender: input.gender ?? null,
+			status: input.status ?? 'active',
 		})
 		.select('*')
 		.single()
@@ -132,13 +172,29 @@ export async function setFamilyMemberAliases(
 
 export async function updateFamilyMember(
 	memberId: string,
-	updates: Partial<Pick<FamilyMember, 'displayName' | 'relationship'>>,
+	updates: Partial<
+		Pick<
+			FamilyMember,
+			| 'displayName'
+			| 'relationship'
+			| 'roleId'
+			| 'dateOfBirth'
+			| 'gender'
+			| 'status'
+			| 'avatarUrl'
+		>
+	>,
 ) {
 	const { error } = await supabase
 		.from('family_members')
 		.update({
 			display_name: updates.displayName,
 			relationship: updates.relationship,
+			role_id: updates.roleId,
+			date_of_birth: updates.dateOfBirth,
+			gender: updates.gender,
+			status: updates.status,
+			avatar_url: updates.avatarUrl,
 			updated_at: new Date().toISOString(),
 		})
 		.eq('id', memberId)
@@ -183,16 +239,33 @@ async function ensureDefaultFamilyMemberInternal(input: {
 	displayName: string
 	profileName?: string
 }) {
+	const family = await getOrCreateFamily(input.userId)
 	const existing = await listFamilyMembersWithAliases(input.userId)
 
 	if (existing.length > 0) {
-		return dedupeFamilyMembers(existing)
+		const needsFamilyLink = existing.some((member) => !member.familyId)
+
+		if (needsFamilyLink) {
+			await supabase
+				.from('family_members')
+				.update({ family_id: family.id })
+				.eq('user_id', input.userId)
+				.is('family_id', null)
+		}
+
+		return dedupeFamilyMembers(
+			existing.map((member) =>
+				member.familyId ? member : { ...member, familyId: family.id },
+			),
+		)
 	}
 
 	const member = await createFamilyMember({
 		userId: input.userId,
+		familyId: family.id,
 		displayName: input.displayName,
 		relationship: 'self',
+		roleId: 'owner',
 	})
 
 	const aliases =

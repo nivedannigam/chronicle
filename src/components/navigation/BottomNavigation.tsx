@@ -1,5 +1,5 @@
 import { NAV_BAR_STYLE, NAVIGATION_ITEMS } from '@/constants/navigation'
-import { getModuleById } from '@/constants/modules'
+import { getModuleByTab } from '@/constants/modules'
 import { C } from '@/constants/colors'
 import { useActiveTab } from '@/hooks/useActiveTab'
 
@@ -15,7 +15,7 @@ export function BottomNavigation() {
 		>
 			{NAVIGATION_ITEMS.map(({ moduleId, label, badge }) => {
 				const active = tab === moduleId
-				const module = getModuleById(moduleId)
+				const module = getModuleByTab(moduleId)
 				const Icon = module?.icon
 
 				if (!Icon) {
@@ -38,7 +38,7 @@ export function BottomNavigation() {
 							padding: '6px 12px',
 							borderRadius: 12,
 							position: 'relative',
-							minWidth: 68,
+							minWidth: 56,
 							minHeight: 44,
 						}}
 					>
@@ -85,7 +85,7 @@ export function BottomNavigation() {
 						</div>
 						<span
 							style={{
-								fontSize: 11,
+								fontSize: 10,
 								fontWeight: active ? 700 : 400,
 								color: active ? C.accent : C.textMuted,
 								letterSpacing: '-0.01em',

@@ -13,6 +13,25 @@ function createTurnId(): string {
 	return crypto.randomUUID()
 }
 
+const DEFAULT_TURN_FIELDS: Pick<
+	AskConversationTurn,
+	| 'citations'
+	| 'evidence'
+	| 'followUpQuestions'
+	| 'memberId'
+	| 'memberName'
+	| 'domains'
+	| 'dataAvailable'
+> = {
+	citations: [],
+	evidence: [],
+	followUpQuestions: [],
+	memberId: null,
+	memberName: null,
+	domains: ['health'],
+	dataAvailable: true,
+}
+
 function formatTimestamp(iso: string): string {
 	return new Date(iso).toLocaleString('en-US', {
 		month: 'short',
@@ -42,11 +61,37 @@ function toRelatedMetrics(
 	}))
 }
 
+type IntentTurn = Omit<
+	AskConversationTurn,
+	| 'id'
+	| 'timestamp'
+	| 'displayTimestamp'
+	| 'citations'
+	| 'evidence'
+	| 'followUpQuestions'
+	| 'memberId'
+	| 'memberName'
+	| 'domains'
+	| 'dataAvailable'
+> &
+	Partial<
+		Pick<
+			AskConversationTurn,
+			| 'citations'
+			| 'evidence'
+			| 'followUpQuestions'
+			| 'memberId'
+			| 'memberName'
+			| 'domains'
+			| 'dataAvailable'
+		>
+	>
+
 type IntentHandler = (
 	userId: string,
 	question: string,
 ) => Omit<AskQuestionResult, 'turn'> & {
-	turn: Omit<AskConversationTurn, 'id' | 'timestamp' | 'displayTimestamp'>
+	turn: IntentTurn
 }
 
 const INTENT_HANDLERS: Array<{
@@ -388,9 +433,7 @@ const INTENT_HANDLERS: Array<{
 function buildTrendAnswer(
 	question: string,
 	metricName: string,
-): Omit<AskQuestionResult, 'turn'> & {
-	turn: Omit<AskConversationTurn, 'id' | 'timestamp' | 'displayTimestamp'>
-} {
+): Omit<AskQuestionResult, 'turn'> & { turn: IntentTurn } {
 	const trend = mockKnowledgeQueryService.getTrendForMetric(metricName)
 	const metrics = mockKnowledgeQueryService.findMetrics('', metricName)
 
@@ -457,12 +500,9 @@ function buildTrendAnswer(
 	}
 }
 
-function buildComparisonAnswer(question: string): Omit<
-	AskQuestionResult,
-	'turn'
-> & {
-	turn: Omit<AskConversationTurn, 'id' | 'timestamp' | 'displayTimestamp'>
-} {
+function buildComparisonAnswer(
+	question: string,
+): Omit<AskQuestionResult, 'turn'> & { turn: IntentTurn } {
 	const comparison = mockKnowledgeQueryService.compareReports('')
 
 	const cards: AnswerCardData[] = [
@@ -512,12 +552,9 @@ function buildComparisonAnswer(question: string): Omit<
 	}
 }
 
-function buildSummaryAnswer(question: string): Omit<
-	AskQuestionResult,
-	'turn'
-> & {
-	turn: Omit<AskConversationTurn, 'id' | 'timestamp' | 'displayTimestamp'>
-} {
+function buildSummaryAnswer(
+	question: string,
+): Omit<AskQuestionResult, 'turn'> & { turn: IntentTurn } {
 	const summary = mockKnowledgeQueryService.summarizeReport('')
 
 	if (!summary) {
@@ -591,9 +628,7 @@ function buildSummaryAnswer(question: string): Omit<
 function buildFallbackAnswer(
 	userId: string,
 	question: string,
-): Omit<AskQuestionResult, 'turn'> & {
-	turn: Omit<AskConversationTurn, 'id' | 'timestamp' | 'displayTimestamp'>
-} {
+): Omit<AskQuestionResult, 'turn'> & { turn: IntentTurn } {
 	const searchResult = mockKnowledgeQueryService.searchKnowledge(
 		userId,
 		question,
@@ -675,6 +710,7 @@ export class MockAskReasoningEngine implements AskReasoningEngine {
 		return {
 			...result,
 			turn: {
+				...DEFAULT_TURN_FIELDS,
 				...result.turn,
 				id: createTurnId(),
 				timestamp,

@@ -1,21 +1,21 @@
 import {
-	Activity,
-	Calendar,
-	Car,
-	CheckSquare,
-	DollarSign,
 	FileText,
+	FolderOpen,
+	Gem,
+	GraduationCap,
+	Heart,
 	Home,
-	Image,
-	Mail,
+	KeyRound,
+	Landmark,
 	Plane,
-	Settings2,
+	Shield,
 	Sparkles,
-	Wifi,
+	User,
 } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import type { ModuleDefinition } from '@/types/modules'
+import type { Tab } from '@/types/navigation'
 
 export const MODULE_REGISTRY: ModuleDefinition[] = [
 	{
@@ -26,122 +26,137 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
 		comingSoon: false,
 	},
 	{
-		id: 'ask',
-		name: 'Ask',
-		icon: Sparkles,
-		enabled: true,
-		comingSoon: false,
-	},
-	{
-		id: 'mail',
-		name: 'Mail',
-		icon: Mail,
-		enabled: true,
-		comingSoon: false,
-		color: C.accentBlue,
-	},
-	{
-		id: 'tasks',
-		name: 'Tasks',
-		icon: CheckSquare,
-		enabled: true,
-		comingSoon: false,
-	},
-	{
-		id: 'more',
-		name: 'More',
-		icon: Settings2,
-		enabled: true,
-		comingSoon: false,
-	},
-	{
 		id: 'health',
 		name: 'Health',
-		icon: Activity,
+		icon: Heart,
 		enabled: true,
 		comingSoon: false,
 		color: C.teal,
 	},
 	{
-		id: 'finance',
-		name: 'Finance',
-		icon: DollarSign,
-		enabled: true,
-		comingSoon: false,
-		color: C.greenAlt,
-	},
-	{
-		id: 'travel',
-		name: 'Travel',
-		icon: Plane,
-		enabled: true,
-		comingSoon: false,
-		color: C.orange,
-	},
-	{
-		id: 'photos',
-		name: 'Photos',
-		icon: Image,
-		enabled: true,
-		comingSoon: false,
-		color: C.photos,
-	},
-	{
-		id: 'calendar',
-		name: 'Calendar',
-		icon: Calendar,
-		enabled: true,
-		comingSoon: false,
-		color: C.accentBlue,
-	},
-	{
-		id: 'documents',
-		name: 'Docs',
-		icon: FileText,
+		id: 'ask',
+		name: 'Ask Chronicle',
+		icon: Sparkles,
 		enabled: true,
 		comingSoon: false,
 		color: C.accent,
 	},
 	{
-		id: 'vehicles',
-		name: 'Vehicles',
-		icon: Car,
-		enabled: false,
-		comingSoon: true,
+		id: 'more',
+		name: 'More',
+		icon: FolderOpen,
+		enabled: true,
+		comingSoon: false,
 	},
 	{
-		id: 'smart-home',
-		name: 'Smart Home',
-		icon: Wifi,
+		id: 'profile',
+		name: 'Profile',
+		icon: User,
+		enabled: true,
+		comingSoon: false,
+	},
+	{
+		id: 'finance',
+		name: 'Finance',
+		icon: Landmark,
 		enabled: false,
 		comingSoon: true,
+		color: C.greenAlt,
+	},
+	{
+		id: 'documents',
+		name: 'Documents',
+		icon: FileText,
+		enabled: false,
+		comingSoon: true,
+		color: C.accent,
+	},
+	{
+		id: 'insurance',
+		name: 'Insurance',
+		icon: Shield,
+		enabled: false,
+		comingSoon: true,
+		color: C.accentBlue,
+	},
+	{
+		id: 'travel',
+		name: 'Travel',
+		icon: Plane,
+		enabled: false,
+		comingSoon: true,
+		color: C.orange,
+	},
+	{
+		id: 'education',
+		name: 'Education',
+		icon: GraduationCap,
+		enabled: false,
+		comingSoon: true,
+		color: C.accentBlue,
+	},
+	{
+		id: 'assets',
+		name: 'Assets',
+		icon: Gem,
+		enabled: false,
+		comingSoon: true,
+		color: C.yellow,
+	},
+	{
+		id: 'passwords',
+		name: 'Passwords',
+		icon: KeyRound,
+		enabled: false,
+		comingSoon: true,
+		color: C.photos,
 	},
 ]
 
-const MORE_GRID_MODULE_IDS = [
+export const MORE_COMING_SOON_MODULE_IDS = [
 	'finance',
-	'travel',
 	'documents',
-	'photos',
-	'calendar',
-	'mail',
-	'health',
+	'insurance',
+	'travel',
+	'education',
+	'assets',
+	'passwords',
 ] as const
+
+/** @deprecated Use MORE_COMING_SOON_MODULE_IDS */
+export const DASHBOARD_COMING_SOON_MODULE_IDS = MORE_COMING_SOON_MODULE_IDS
 
 export const MODULE_ROUTES: Partial<Record<string, string>> = {
 	health: ROUTES.health,
+	family: ROUTES.family,
 }
 
 export function getModuleById(id: string): ModuleDefinition | undefined {
 	return MODULE_REGISTRY.find((module) => module.id === id)
 }
 
-export function getMoreGridModules(): ModuleDefinition[] {
-	return MORE_GRID_MODULE_IDS.map((id) => getModuleById(id)).filter(
+export function getModuleByTab(tab: Tab): ModuleDefinition | undefined {
+	return getModuleById(tab)
+}
+
+export const EXPLORE_CAPABILITY_IDS = [
+	'health',
+	...MORE_COMING_SOON_MODULE_IDS,
+] as const
+
+export function getExploreCapabilities(): ModuleDefinition[] {
+	return EXPLORE_CAPABILITY_IDS.map((id) => getModuleById(id)).filter(
 		(module): module is ModuleDefinition => module !== undefined,
 	)
 }
 
+export function getMoreComingSoonModules(): ModuleDefinition[] {
+	return MORE_COMING_SOON_MODULE_IDS.map((id) => getModuleById(id)).filter(
+		(module): module is ModuleDefinition => module !== undefined,
+	)
+}
+
+/** @deprecated Use getMoreComingSoonModules */
 export function getComingSoonModules(): ModuleDefinition[] {
-	return MODULE_REGISTRY.filter((module) => module.comingSoon)
+	return getMoreComingSoonModules()
 }

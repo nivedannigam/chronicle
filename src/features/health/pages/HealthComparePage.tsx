@@ -1,18 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { ReportComparisonView } from '@/features/health/components/ReportComparisonView'
-import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { formatReportTypeLabel } from '@/features/health/services/health-parsed-report.service'
 
 export function HealthComparePage() {
 	const navigate = useNavigate()
-	const { user } = useAuth()
-	const uploadedQuery = useUploadedHealthReports(user?.id)
+	const uploadedQuery = useMemberHealthReports()
 	const completedReports = (uploadedQuery.data ?? []).filter(
 		(report) => report.status === 'completed',
 	)
@@ -59,7 +57,7 @@ export function HealthComparePage() {
 					message="Import at least two health reports to compare results side by side."
 					emoji="⚖️"
 					actionLabel="Go to Health Sources"
-					onAction={() => navigate(ROUTES.healthSources)}
+					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</div>
 		)
@@ -170,8 +168,13 @@ export function HealthComparePage() {
 						id: `${olderId}-${newerId}`,
 						olderReportId: olderId,
 						newerReportId: newerId,
-						title: 'Report Comparison',
-						summary: 'Comparing selected imported reports.',
+						label: 'Report Comparison',
+						olderLabel:
+							reportOptions.find((option) => option.id === olderId)?.label ??
+							'Older report',
+						newerLabel:
+							reportOptions.find((option) => option.id === newerId)?.label ??
+							'Newer report',
 						metrics: [],
 					}}
 				/>
