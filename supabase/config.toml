@@ -1,0 +1,14 @@
+# Supabase local project config
+project_id = "mqmznhyndzqtieaxaiyu"
+
+[db]
+major_version = 15
+
+[functions.drive-connector]
+verify_jwt = true
+
+[functions.ask-ai]
+verify_jwt = false
+
+[functions.document-ocr]
+verify_jwt = true

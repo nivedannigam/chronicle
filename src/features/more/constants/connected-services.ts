@@ -23,7 +23,7 @@ export const connectedServices: ConnectedService[] = [
 		id: 'google-drive',
 		name: 'Google Drive',
 		status: 'coming_soon',
-		statusLabel: 'Coming Soon',
+		statusLabel: 'Tap to connect',
 		Icon: HardDrive,
 	},
 	{

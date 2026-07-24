@@ -2,35 +2,30 @@ import { ChevronRight, Loader2, Upload } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
 import { healthReportPath } from '@/constants/routes'
+import { getHealthReportStatusLabel } from '@/features/health/services/health-processing.service'
 import type {
 	HealthUploadTimelineItem,
 	UploadTimelineStatus,
 } from '@/features/health/types'
 
-function statusLabel(status: UploadTimelineStatus): string {
-	switch (status) {
-		case 'upload':
-			return 'Upload'
-		case 'processing':
-			return 'Processing'
-		case 'completed':
-			return 'Completed'
-		default:
-			return status
-	}
-}
-
 function statusColor(status: UploadTimelineStatus): string {
 	switch (status) {
-		case 'upload':
-			return C.accentBlue
-		case 'processing':
-			return C.orange
 		case 'completed':
 			return C.greenAlt
+		case 'failed':
+			return C.red
+		case 'processing':
+		case 'parsed':
+			return C.accentBlue
+		case 'queued':
+			return C.orange
 		default:
 			return C.textMuted
 	}
+}
+
+function isActiveStatus(status: UploadTimelineStatus): boolean {
+	return status === 'processing' || status === 'parsed' || status === 'queued'
 }
 
 interface HealthUploadTimelineProps {
@@ -63,7 +58,7 @@ export function HealthUploadTimeline({ items }: HealthUploadTimelineProps) {
 							alignItems: 'center',
 							gap: 12,
 							cursor: clickable ? 'pointer' : 'default',
-							opacity: item.status === 'upload' ? 0.85 : 1,
+							opacity: item.status === 'uploaded' ? 0.85 : 1,
 						}}
 					>
 						<div
@@ -78,13 +73,13 @@ export function HealthUploadTimeline({ items }: HealthUploadTimelineProps) {
 								flexShrink: 0,
 							}}
 						>
-							{item.status === 'processing' ? (
+							{isActiveStatus(item.status) ? (
 								<Loader2
 									size={16}
 									color={color}
 									style={{ animation: 'spin 1s linear infinite' }}
 								/>
-							) : item.status === 'upload' ? (
+							) : item.status === 'uploaded' ? (
 								<Upload size={16} color={color} />
 							) : (
 								<ChevronRight size={16} color={color} />
@@ -124,7 +119,7 @@ export function HealthUploadTimeline({ items }: HealthUploadTimelineProps) {
 									padding: '3px 8px',
 								}}
 							>
-								{statusLabel(item.status)}
+								{getHealthReportStatusLabel(item.status)}
 							</span>
 						</div>
 					</div>

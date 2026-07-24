@@ -165,7 +165,7 @@ export const healthUploadTimeline: HealthUploadTimelineItem[] = [
 		id: 'upload-6',
 		fileName: 'Kidney_Panel_Aug2025.pdf',
 		displayDate: 'Aug 18, 2025',
-		status: 'upload',
+		status: 'uploaded',
 	},
 ]
 

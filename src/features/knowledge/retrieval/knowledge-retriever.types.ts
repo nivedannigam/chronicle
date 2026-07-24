@@ -1,0 +1,113 @@
+export type KnowledgeDomain =
+	'health' | 'finance' | 'travel' | 'mail' | 'documents' | 'photos'
+
+export type AskIntent =
+	| 'organ_status'
+	| 'metric_trend'
+	| 'metric_history'
+	| 'abnormal_reports'
+	| 'improving_metrics'
+	| 'declining_metrics'
+	| 'compare_reports'
+	| 'summarize_report'
+	| 'latest_report'
+	| 'doctor_discussion'
+	| 'metric_lookup'
+	| 'general_health'
+
+export interface RetrievalQuery {
+	userId: string
+	question: string
+	intent: AskIntent
+	resolvedQuestion: string
+	categoryId?: string
+	metricId?: string
+	metricName?: string
+	timeRangeYears?: number
+	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+}
+
+export interface RetrievedReport {
+	id: string
+	title: string
+	date: string
+	lab: string
+	category: string
+	summary: string
+}
+
+export interface RetrievedMetric {
+	canonicalId: string
+	displayName: string
+	latestValue: string
+	unit: string | null
+	status: string
+	referenceRange: string
+	trend: string
+	categoryId: string
+	reportId: string
+	reportTitle: string
+	observedAt: string
+}
+
+export interface RetrievedObservation {
+	id: string
+	metricId: string
+	displayName: string
+	value: string
+	status: string
+	observedAt: string
+	reportId: string
+	reportTitle: string
+	referenceRange: string
+}
+
+export interface RetrievedTimeline {
+	metricId: string
+	displayName: string
+	unit: string | null
+	trend: string
+	observations: RetrievedObservation[]
+	baseline: {
+		latest: string
+		lowest: string | null
+		highest: string | null
+		firstRecorded: string | null
+		lastRecorded: string | null
+	}
+}
+
+export interface RetrievedTrend {
+	metricId: string
+	displayName: string
+	direction: string
+	changePercent: string
+	dataPointCount: number
+	latestValue: string
+}
+
+export interface RetrievedRelationship {
+	id: string
+	fromMetricId: string
+	toMetricId: string
+	label: string
+}
+
+export interface RetrievedKnowledge {
+	domain: KnowledgeDomain
+	intent: AskIntent
+	reports: RetrievedReport[]
+	metrics: RetrievedMetric[]
+	timelines: RetrievedTimeline[]
+	trends: RetrievedTrend[]
+	observations: RetrievedObservation[]
+	relationships: RetrievedRelationship[]
+	insights: string[]
+	alerts: string[]
+	summaryLines: string[]
+}
+
+export interface KnowledgeRetriever {
+	readonly domain: KnowledgeDomain
+	retrieve(query: RetrievalQuery): RetrievedKnowledge
+}

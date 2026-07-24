@@ -1,21 +1,67 @@
+import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
-import { MetricsList } from '@/features/health/components/MetricsList'
+import { ROUTES, healthOcrPreviewPath } from '@/constants/routes'
+import { ExtractedMetricsList } from '@/features/health/components/ExtractedMetricsList'
 import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
-import { useHealthReport } from '@/features/health/hooks/useHealthReport'
-import { getCategoryById } from '@/features/health/services/health.service'
+import {
+	OcrReprocessBadge,
+	LegacyOcrDataBanner,
+} from '@/features/health/components/OcrStatusBanner'
+import { OcrProcessingDetails } from '@/features/health/components/OcrProcessingDetails'
+import { ProcessingDebugPanel } from '@/features/health/components/ProcessingDebugPanel'
+import { useHealthReportDetail } from '@/features/health/hooks/useHealthReportDetail'
+import {
+	getReportDisplayDate,
+	getReportDisplayTitle,
+	hasLegacyApproximateOcr,
+} from '@/features/health/services/health-parsed-report.service'
+import { reprocessHealthReport } from '@/features/health/services/health-processing.service'
+import { queryClient } from '@/lib/query-client'
+import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
 
 export function HealthReportDetailPage() {
 	const { reportId } = useParams<{ reportId: string }>()
 	const navigate = useNavigate()
-	const report = useHealthReport(reportId)
+	const detail = useHealthReportDetail(reportId)
+	const [isReprocessing, setIsReprocessing] = useState(false)
 
-	if (!report) {
+	if (detail.isLoading) {
+		return (
+			<div
+				style={{ padding: '18px 18px 20px', color: C.textMuted, fontSize: 14 }}
+			>
+				Loading report...
+			</div>
+		)
+	}
+
+	if (!detail.source) {
 		return <Navigate to={ROUTES.healthReports} replace />
 	}
 
-	const category = getCategoryById(report.category)
+	const uploaded = detail.source.report
+	const parsed = detail.parsed
+	const showLegacyBanner = hasLegacyApproximateOcr(uploaded)
+	const showFailedBanner = uploaded.status === 'failed'
+
+	const handleReprocess = async () => {
+		if (!reportId) {
+			return
+		}
+
+		setIsReprocessing(true)
+
+		try {
+			await reprocessHealthReport(reportId)
+			void queryClient.invalidateQueries({
+				queryKey: uploadedHealthReportsQueryKey(uploaded.user_id),
+			})
+		} finally {
+			setIsReprocessing(false)
+		}
+	}
 
 	return (
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
@@ -36,6 +82,24 @@ export function HealthReportDetailPage() {
 				← Back to Reports
 			</button>
 
+			{showLegacyBanner ? <LegacyOcrDataBanner /> : null}
+			{showFailedBanner && uploaded.processing_error ? (
+				<div
+					style={{
+						background: 'rgba(255,69,58,0.08)',
+						border: '1px solid rgba(255,69,58,0.2)',
+						borderRadius: 14,
+						padding: '12px 14px',
+						fontSize: 13,
+						color: C.red,
+						lineHeight: 1.5,
+						marginBottom: 16,
+					}}
+				>
+					<strong>OCR failed</strong> — {uploaded.processing_error}
+				</div>
+			) : null}
+
 			<div
 				style={{
 					fontSize: 28,
@@ -44,78 +108,133 @@ export function HealthReportDetailPage() {
 					marginBottom: 8,
 				}}
 			>
-				{report.title}
+				{getReportDisplayTitle(uploaded)}
 			</div>
-			<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 20 }}>
-				{report.displayDate} · {report.lab}
-				{category ? ` · ${category.name}` : ''}
+			<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
+				{uploaded.file_name}
+			</div>
+			<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 12 }}>
+				{getReportDisplayDate(uploaded, parsed)}
+				{parsed ? ` · ${parsed.metadata.laboratory}` : ''}
 			</div>
 
-			<HealthSectionHeader title="Summary" />
 			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '16px',
-					marginBottom: 24,
-					fontSize: 14,
-					color: C.textSec,
-					lineHeight: 1.6,
-				}}
+				style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}
 			>
-				{report.summary}
+				<OcrReprocessBadge report={uploaded} />
+				<button
+					type="button"
+					onClick={() => void handleReprocess()}
+					disabled={isReprocessing}
+					style={{
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: 6,
+						background: C.card2,
+						border: `1px solid ${C.border}`,
+						borderRadius: 100,
+						padding: '8px 14px',
+						fontSize: 12,
+						fontWeight: 700,
+						color: C.textSec,
+						cursor: isReprocessing ? 'not-allowed' : 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					{isReprocessing ? (
+						<Loader2
+							size={14}
+							style={{ animation: 'spin 1s linear infinite' }}
+						/>
+					) : (
+						<RefreshCw size={14} />
+					)}
+					Reprocess
+				</button>
+				<button
+					type="button"
+					onClick={() => navigate(healthOcrPreviewPath(uploaded.id))}
+					style={{
+						background: C.accentDim,
+						border: '1px solid rgba(108,111,255,0.25)',
+						borderRadius: 100,
+						padding: '8px 14px',
+						fontSize: 12,
+						fontWeight: 700,
+						color: C.accent,
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					View OCR Preview
+				</button>
 			</div>
 
-			<HealthSectionHeader title="Key Metrics" />
+			<HealthSectionHeader title="Document Processing" />
 			<div style={{ marginBottom: 24 }}>
-				<MetricsList metrics={report.metrics} />
+				<OcrProcessingDetails report={uploaded} />
 			</div>
 
-			<HealthSectionHeader title="Doctor Notes" />
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '16px',
-					marginBottom: 24,
-					fontSize: 14,
-					color: C.textSec,
-					lineHeight: 1.6,
-					fontStyle: 'italic',
-				}}
-			>
-				{report.doctorNotes}
-			</div>
-
-			<HealthSectionHeader title="Recommendations" />
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					overflow: 'hidden',
-				}}
-			>
-				{report.recommendations.map((rec, index) => (
+			{parsed ? (
+				<>
+					<HealthSectionHeader title="Report Information" />
 					<div
-						key={rec}
 						style={{
-							padding: '14px 16px',
-							borderBottom:
-								index < report.recommendations.length - 1
-									? `1px solid ${C.border}`
-									: 'none',
-							fontSize: 14,
+							background: C.card,
+							border: `1px solid ${C.border}`,
+							borderRadius: 18,
+							padding: '16px',
+							marginBottom: 24,
+							fontSize: 13,
 							color: C.textSec,
-							lineHeight: 1.5,
+							lineHeight: 1.7,
 						}}
 					>
-						· {rec}
+						{parsed.metadata.patientName ? (
+							<div>Patient: {parsed.metadata.patientName}</div>
+						) : null}
+						{parsed.metadata.doctorName ? (
+							<div>Doctor: {parsed.metadata.doctorName}</div>
+						) : null}
+						{parsed.metadata.referenceNumber ? (
+							<div>Reference: {parsed.metadata.referenceNumber}</div>
+						) : null}
+						{parsed.metadata.collectionDate ? (
+							<div>Collection Date: {parsed.metadata.collectionDate}</div>
+						) : null}
+						<div>Laboratory: {parsed.metadata.laboratory}</div>
+						<div>
+							{parsed.metrics.length} structured metrics extracted from OCR
+							output.
+						</div>
 					</div>
-				))}
-			</div>
+
+					<HealthSectionHeader title="Extracted Metrics" />
+					<div style={{ marginBottom: 24 }}>
+						<ExtractedMetricsList metrics={detail.uiMetrics ?? []} />
+					</div>
+
+					{parsed.debug ? (
+						<ProcessingDebugPanel
+							debug={parsed.debug}
+							rawOcrText={uploaded.extracted_text}
+						/>
+					) : null}
+				</>
+			) : (
+				<div
+					style={{
+						background: C.card,
+						border: `1px solid ${C.border}`,
+						borderRadius: 18,
+						padding: '16px',
+						fontSize: 14,
+						color: C.textMuted,
+					}}
+				>
+					Report processing is incomplete or parsed data is unavailable.
+				</div>
+			)}
 		</div>
 	)
 }

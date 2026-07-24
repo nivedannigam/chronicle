@@ -63,7 +63,7 @@ function HealthSnapshotCard({ snapshot }: HealthSnapshotCardProps) {
 					marginBottom: 8,
 				}}
 			>
-				{snapshot.status}
+				{snapshot.latestValue ?? snapshot.status}
 			</div>
 			<div
 				style={{
@@ -77,9 +77,12 @@ function HealthSnapshotCard({ snapshot }: HealthSnapshotCardProps) {
 			>
 				<TrendIcon trend={snapshot.trend} />
 				{trendLabel(snapshot.trend)}
+				{snapshot.historyCount != null && snapshot.historyCount > 0
+					? ` · ${snapshot.historyCount} readings`
+					: ''}
 			</div>
 			<div style={{ fontSize: 10, color: C.textMuted }}>
-				{snapshot.latestResultDate}
+				Updated {snapshot.latestResultDate}
 			</div>
 		</div>
 	)

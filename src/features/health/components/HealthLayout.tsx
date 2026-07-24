@@ -2,15 +2,28 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
+import { useAuth } from '@/features/auth'
+import { UploadReportButton } from '@/features/health/components/UploadReportButton'
+import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
 
 const NAV_ITEMS = [
 	{ label: 'Dashboard', path: ROUTES.health },
 	{ label: 'Reports', path: ROUTES.healthReports },
-	{ label: 'Trends', path: ROUTES.healthTrends },
+	{ label: 'Trends', path: ROUTES.healthTrends, requiresImport: true },
 ] as const
 
 export function HealthLayout() {
 	const navigate = useNavigate()
+	const { user } = useAuth()
+	const uploadedQuery = useUploadedHealthReports(user?.id)
+	const hasImportedReports = (uploadedQuery.data ?? []).some(
+		(report) => report.status === 'completed',
+	)
+
+	const visibleNavItems = NAV_ITEMS.filter(
+		(item) =>
+			!('requiresImport' in item && item.requiresImport) || hasImportedReports,
+	)
 
 	return (
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
@@ -37,13 +50,23 @@ export function HealthLayout() {
 
 			<div
 				style={{
-					fontSize: 34,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: 12,
 					marginBottom: 16,
 				}}
 			>
-				Health
+				<div
+					style={{
+						fontSize: 34,
+						fontWeight: 800,
+						letterSpacing: '-0.03em',
+					}}
+				>
+					Health
+				</div>
+				<UploadReportButton userId={user?.id} />
 			</div>
 
 			<div
@@ -55,7 +78,7 @@ export function HealthLayout() {
 					scrollbarWidth: 'none',
 				}}
 			>
-				{NAV_ITEMS.map(({ label, path }) => (
+				{visibleNavItems.map(({ label, path }) => (
 					<NavLink
 						key={path}
 						to={path}

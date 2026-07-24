@@ -1,0 +1,12 @@
+-- Identify duplicate family members per user (run manually; do not auto-delete without review)
+--
+-- SELECT user_id, display_name, relationship, count(*) AS member_count
+-- FROM public.family_members
+-- GROUP BY user_id, display_name, relationship
+-- HAVING count(*) > 1;
+--
+-- To inspect duplicates for one user:
+-- SELECT id, display_name, relationship, is_account_owner, created_at
+-- FROM public.family_members
+-- WHERE user_id = '<user-id>'
+-- ORDER BY display_name, created_at;

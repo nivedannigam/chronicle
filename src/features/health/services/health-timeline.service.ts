@@ -3,7 +3,11 @@ import type {
 	HealthTimelineItem,
 	UploadedHealthReport,
 } from '@/features/health/types'
-import { formatUploadedReportDate } from '@/features/health/services/health-upload.service'
+import {
+	getParsedHealthReport,
+	getReportDisplayDate,
+	getReportDisplayTitle,
+} from '@/features/health/services/health-parsed-report.service'
 
 export function buildHealthTimeline(
 	mockReports: HealthReport[],
@@ -21,9 +25,13 @@ export function buildHealthTimeline(
 
 	return [...mockItems, ...uploadItems].sort((a, b) => {
 		const dateA =
-			a.type === 'mock' ? a.report.date : a.report.uploaded_at.slice(0, 10)
+			a.type === 'mock'
+				? a.report.date
+				: (a.report.report_date ?? a.report.uploaded_at.slice(0, 10))
 		const dateB =
-			b.type === 'mock' ? b.report.date : b.report.uploaded_at.slice(0, 10)
+			b.type === 'mock'
+				? b.report.date
+				: (b.report.report_date ?? b.report.uploaded_at.slice(0, 10))
 
 		return new Date(dateB).getTime() - new Date(dateA).getTime()
 	})
@@ -34,7 +42,17 @@ export function getTimelineDisplayDate(item: HealthTimelineItem): string {
 		return item.report.displayDate
 	}
 
-	return formatUploadedReportDate(item.report.uploaded_at)
+	const parsed = getParsedHealthReport(item.report)
+
+	if (parsed?.metadata.reportDate) {
+		return new Date(parsed.metadata.reportDate).toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+		})
+	}
+
+	return getReportDisplayDate(item.report, parsed)
 }
 
 export function getTimelineTitle(item: HealthTimelineItem): string {
@@ -42,5 +60,17 @@ export function getTimelineTitle(item: HealthTimelineItem): string {
 		return item.report.title
 	}
 
+	const parsed = getParsedHealthReport(item.report)
+
+	if (parsed) {
+		return `${getReportDisplayTitle(item.report)} · ${parsed.metadata.laboratory}`
+	}
+
 	return item.report.file_name
+}
+
+export function uploadedReportToTimelineItem(
+	report: UploadedHealthReport,
+): HealthTimelineItem {
+	return { type: 'upload', report }
 }

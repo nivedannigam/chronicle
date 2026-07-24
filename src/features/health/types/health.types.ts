@@ -14,13 +14,15 @@ export type SnapshotTrend = 'improving' | 'stable' | 'declining' | 'attention'
 
 export type InsightTone = 'positive' | 'warning' | 'neutral'
 
-export type UploadTimelineStatus = 'upload' | 'processing' | 'completed'
+export type UploadTimelineStatus =
+	'uploaded' | 'queued' | 'processing' | 'parsed' | 'completed' | 'failed'
 
 export interface HealthMetric {
 	name: string
 	value: string
 	reference: string
 	status: MetricStatus
+	confidence?: number
 }
 
 export interface HealthReport {
@@ -60,6 +62,8 @@ export interface HealthSnapshot {
 	trend: SnapshotTrend
 	latestResultDate: string
 	color: string
+	latestValue?: string
+	historyCount?: number
 }
 
 export interface HealthInsight {
@@ -86,6 +90,7 @@ export interface TrendDataPoint {
 	date: string
 	label: string
 	value: number
+	reportId?: string
 }
 
 export interface TrendSeries {
@@ -114,7 +119,8 @@ export interface ReportComparison {
 	metrics: ReportComparisonMetric[]
 }
 
-export type HealthReportStatus = 'queued' | 'processing' | 'ready' | 'failed'
+export type HealthReportStatus =
+	'uploaded' | 'queued' | 'processing' | 'parsed' | 'completed' | 'failed'
 
 export interface UploadedHealthReport {
 	id: string
@@ -127,8 +133,18 @@ export interface UploadedHealthReport {
 	created_at: string
 	status: HealthReportStatus
 	extracted_text: string | null
+	parsed_data: Record<string, unknown> | null
+	ocr_page_count: number | null
+	ocr_confidence: number | null
+	ocr_provider: string | null
+	ocr_processing_time_ms: number | null
+	ocr_metadata: Record<string, unknown> | null
 	processed_at: string | null
 	processing_error: string | null
+	source?: string
+	external_file_id?: string | null
+	external_modified_at?: string | null
+	connector_id?: string | null
 }
 
 export interface HealthReportProcessingQueueItem {

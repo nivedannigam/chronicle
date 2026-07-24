@@ -31,14 +31,15 @@ export function BottomNavigation() {
 							display: 'flex',
 							flexDirection: 'column',
 							alignItems: 'center',
-							gap: 3,
+							gap: 4,
 							background: 'none',
 							border: 'none',
 							cursor: 'pointer',
-							padding: '2px 10px',
+							padding: '6px 12px',
 							borderRadius: 12,
 							position: 'relative',
-							minWidth: 56,
+							minWidth: 68,
+							minHeight: 44,
 						}}
 					>
 						{active && (
@@ -53,7 +54,7 @@ export function BottomNavigation() {
 						)}
 						<div style={{ position: 'relative' }}>
 							<Icon
-								size={22}
+								size={27}
 								color={active ? C.accent : C.textMuted}
 								strokeWidth={active ? 2.2 : 1.6}
 							/>
@@ -84,7 +85,7 @@ export function BottomNavigation() {
 						</div>
 						<span
 							style={{
-								fontSize: 10,
+								fontSize: 11,
 								fontWeight: active ? 700 : 400,
 								color: active ? C.accent : C.textMuted,
 								letterSpacing: '-0.01em',

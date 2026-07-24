@@ -1,15 +1,51 @@
-import { useState } from 'react'
-import { ChevronDown, ChevronUp, FileText, Send, Sparkles } from 'lucide-react'
+import { isAskAiProviderConfigured } from '@/config/ask-ai'
+import { useAuth } from '@/features/auth'
+import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { AskSearchBar } from '@/features/ask/components/AskSearchBar'
+import { AiDebugPanel } from '@/features/ask/components/AiDebugPanel'
+import { ConversationTurnView } from '@/features/ask/components/ConversationTurnView'
+import { RecentQuestions } from '@/features/ask/components/RecentQuestions'
+import { SuggestedQuestions } from '@/features/ask/components/SuggestedQuestions'
+import { ASK_COPY } from '@/features/ask/constants/suggested-questions'
+import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
 import { C, pagePadding } from '@/constants/colors'
-import {
-	ASK_COPY,
-	askPrompts,
-	askRecents,
-} from '@/features/ask/constants/mock-data'
+import { Sparkles } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
 
 export function AskPage() {
+	const { user } = useAuth()
+	const userId = user?.id ?? ''
+	const aiConfigured = isAskAiProviderConfigured()
+	const uploadedQuery = useUploadedHealthReports(user?.id)
 	const [query, setQuery] = useState('')
-	const [expanded, setExpanded] = useState<number | null>(0)
+	const {
+		ask,
+		cancel,
+		isLoading,
+		streamingAnswer,
+		currentTurn,
+		recentQuestions,
+	} = useAskChronicle(userId, uploadedQuery.data ?? [])
+
+	const handleSubmit = useCallback(
+		async (questionOverride?: string) => {
+			const question = (questionOverride ?? query).trim()
+
+			if (!question || isLoading) {
+				return
+			}
+
+			setQuery('')
+			await ask(question)
+		},
+		[ask, isLoading, query],
+	)
+
+	const displayRecents = useMemo(() => recentQuestions, [recentQuestions])
+	const displayTurn =
+		currentTurn && streamingAnswer != null && streamingAnswer.length > 0
+			? { ...currentTurn, answer: streamingAnswer }
+			: currentTurn
 
 	return (
 		<div style={{ padding: pagePadding.ask, color: C.text }}>
@@ -45,7 +81,7 @@ export function AskPage() {
 				style={{
 					fontSize: 15,
 					color: C.textSec,
-					marginBottom: 28,
+					marginBottom: aiConfigured ? 28 : 12,
 					lineHeight: 1.5,
 				}}
 			>
@@ -56,178 +92,67 @@ export function AskPage() {
 				{ASK_COPY.subtitleAfter}
 			</div>
 
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '14px 14px 12px',
-					marginBottom: 20,
-					position: 'relative',
-					minHeight: 100,
-				}}
-			>
-				<textarea
-					value={query}
-					onChange={(e) => setQuery(e.target.value)}
-					placeholder={ASK_COPY.placeholder}
+			{!aiConfigured ? (
+				<div
 					style={{
-						width: '100%',
-						background: 'none',
-						border: 'none',
-						outline: 'none',
-						fontSize: 15,
-						color: C.text,
-						fontFamily: 'inherit',
-						resize: 'none',
-						minHeight: 72,
-						lineHeight: 1.55,
-					}}
-				/>
-				<button
-					type="button"
-					style={{
-						position: 'absolute',
-						bottom: 12,
-						right: 12,
-						width: 36,
-						height: 36,
-						borderRadius: '50%',
-						background: C.accent,
-						border: 'none',
-						cursor: 'pointer',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						boxShadow: `0 4px 16px rgba(108,111,255,0.35)`,
+						background: C.card2,
+						border: `1px solid ${C.border}`,
+						borderRadius: 12,
+						padding: '10px 12px',
+						fontSize: 12,
+						color: C.textMuted,
+						lineHeight: 1.5,
+						marginBottom: 28,
 					}}
 				>
-					<Send size={16} color="white" strokeWidth={2} />
-				</button>
-			</div>
+					<strong style={{ color: C.textSec }}>Grounded mode</strong> — answers
+					use your imported health data only. Set{' '}
+					<code>VITE_ASK_PROVIDER=openai</code> (and API key) for AI-enhanced
+					responses.
+				</div>
+			) : null}
 
-			<div
-				style={{
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: 8,
-					marginBottom: 30,
-				}}
-			>
-				{askPrompts.map((prompt) => (
-					<button
-						key={prompt}
-						type="button"
-						onClick={() => setQuery(prompt)}
-						style={{
-							background: 'none',
-							border: `1px solid ${C.border}`,
-							borderRadius: 100,
-							padding: '8px 15px',
-							fontSize: 13,
-							color: C.textSec,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						{prompt}
-					</button>
-				))}
-			</div>
+			<AskSearchBar
+				value={query}
+				onChange={setQuery}
+				onSubmit={() => void handleSubmit()}
+				onCancel={isLoading ? cancel : undefined}
+				isLoading={isLoading}
+			/>
 
-			<div
-				style={{
-					fontSize: 11,
-					fontWeight: 600,
-					letterSpacing: '0.09em',
-					textTransform: 'uppercase',
-					color: C.textMuted,
-					marginBottom: 12,
+			{displayTurn ? (
+				<div
+					style={{
+						background: C.card,
+						border: `1px solid rgba(108,111,255,0.22)`,
+						borderRadius: 18,
+						padding: '16px',
+						marginBottom: 24,
+					}}
+				>
+					<ConversationTurnView turn={displayTurn} />
+				</div>
+			) : null}
+
+			<SuggestedQuestions
+				userId={userId}
+				onSelect={(prompt) => {
+					setQuery(prompt)
+					void handleSubmit(prompt)
 				}}
-			>
-				Recent
-			</div>
-			<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-				{askRecents.map((recent, i) => (
-					<div
-						key={recent.q}
-						style={{
-							background: C.card,
-							borderRadius: 18,
-							overflow: 'hidden',
-							border: `1px solid ${C.border}`,
-						}}
-					>
-						<div
-							onClick={() => setExpanded(expanded === i ? null : i)}
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								padding: '14px 16px',
-								cursor: 'pointer',
-								gap: 12,
-							}}
-						>
-							<span
-								style={{
-									fontSize: 15,
-									fontWeight: 600,
-									color: C.text,
-									flex: 1,
-								}}
-							>
-								{recent.q}
-							</span>
-							<span
-								style={{
-									fontSize: 12,
-									color: C.textMuted,
-									flexShrink: 0,
-								}}
-							>
-								{recent.when}
-							</span>
-							{expanded === i ? (
-								<ChevronUp size={16} color={C.textMuted} />
-							) : (
-								<ChevronDown size={16} color={C.textMuted} />
-							)}
-						</div>
-						{expanded === i && recent.answer && (
-							<div
-								style={{
-									padding: '0 16px 14px',
-									borderTop: `1px solid ${C.border}`,
-									paddingTop: 12,
-								}}
-							>
-								<div
-									style={{
-										display: 'flex',
-										alignItems: 'flex-start',
-										gap: 8,
-									}}
-								>
-									<FileText
-										size={14}
-										color={C.accentBlue}
-										style={{ flexShrink: 0, marginTop: 2 }}
-									/>
-									<span
-										style={{
-											fontSize: 13,
-											color: C.textSec,
-											lineHeight: 1.6,
-										}}
-									>
-										{recent.answer}
-									</span>
-								</div>
-							</div>
-						)}
-					</div>
-				))}
-			</div>
+				disabled={isLoading}
+			/>
+
+			<RecentQuestions
+				items={displayRecents}
+				onSelectQuestion={(question) => {
+					setQuery(question)
+					void handleSubmit(question)
+				}}
+				activeTurnId={currentTurn?.id ?? null}
+			/>
+
+			<AiDebugPanel />
 		</div>
 	)
 }

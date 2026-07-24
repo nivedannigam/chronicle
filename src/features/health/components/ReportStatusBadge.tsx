@@ -4,14 +4,17 @@ import type { HealthReportStatus } from '@/features/health/types'
 
 function statusColor(status: HealthReportStatus): string {
 	switch (status) {
-		case 'ready':
+		case 'completed':
 			return C.greenAlt
 		case 'failed':
 			return C.red
 		case 'processing':
+		case 'parsed':
 			return C.accentBlue
-		default:
+		case 'queued':
 			return C.orange
+		default:
+			return C.textMuted
 	}
 }
 

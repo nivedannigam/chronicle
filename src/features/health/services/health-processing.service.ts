@@ -1,29 +1,45 @@
 import { supabase } from '@/lib/supabase'
+import {
+	createDocumentFromUpload,
+	runDocumentIntelligencePipeline,
+} from '@/features/document-intelligence'
 import { createKnowledgeItemFromHealthReport } from '@/features/knowledge/services/knowledge-health.service'
+import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
+import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
+import { serializeParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
 } from '@/features/health/types'
 
-function placeholderExtractedText(report: UploadedHealthReport): string {
-	return [
-		'[Placeholder extraction]',
-		`Document: ${report.file_name}`,
-		`Uploaded: ${report.uploaded_at}`,
-		'',
-		'Text extraction will be available in a future release.',
-	].join('\n')
-}
+const PENDING_STATUSES: HealthReportStatus[] = [
+	'uploaded',
+	'queued',
+	'processing',
+	'parsed',
+]
 
-async function updateReportStatus(
-	reportId: string,
-	updates: Partial<
-		Pick<
-			UploadedHealthReport,
-			'status' | 'extracted_text' | 'processed_at' | 'processing_error'
-		>
-	>,
-) {
+const REPROCESSABLE_STATUSES: HealthReportStatus[] = ['completed', 'failed']
+
+type ReportUpdate = Partial<
+	Pick<
+		UploadedHealthReport,
+		| 'status'
+		| 'extracted_text'
+		| 'processed_at'
+		| 'processing_error'
+		| 'parsed_data'
+		| 'ocr_page_count'
+		| 'ocr_confidence'
+		| 'ocr_provider'
+		| 'ocr_processing_time_ms'
+		| 'ocr_metadata'
+		| 'report_type'
+		| 'report_date'
+	>
+>
+
+async function updateReportStatus(reportId: string, updates: ReportUpdate) {
 	const { error } = await supabase
 		.from('health_reports')
 		.update(updates)
@@ -68,10 +84,13 @@ export async function enqueueHealthReportProcessing(
 	if (error) {
 		throw new Error(error.message)
 	}
+
+	await updateReportStatus(reportId, { status: 'queued' })
 }
 
 export async function processHealthReport(
 	reportId: string,
+	options: { force?: boolean } = {},
 ): Promise<UploadedHealthReport> {
 	const { data: report, error: fetchError } = await supabase
 		.from('health_reports')
@@ -85,12 +104,19 @@ export async function processHealthReport(
 
 	const typedReport = report as UploadedHealthReport
 
-	if (typedReport.status === 'ready') {
+	if (typedReport.status === 'completed' && !options.force) {
 		createKnowledgeItemFromHealthReport(typedReport)
 		return typedReport
 	}
 
-	if (typedReport.status === 'processing') {
+	if (
+		!options.force &&
+		(typedReport.status === 'processing' || typedReport.status === 'parsed')
+	) {
+		return typedReport
+	}
+
+	if (typedReport.status === 'failed' && !options.force) {
 		return typedReport
 	}
 
@@ -104,33 +130,72 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
-		// Placeholder text extraction — real OCR will replace this step
-		const extractedText = placeholderExtractedText(typedReport)
+		const document = createDocumentFromUpload({
+			id: typedReport.id,
+			userId: typedReport.user_id,
+			fileName: typedReport.file_name,
+			storagePath: typedReport.storage_path,
+			uploadedAt: typedReport.uploaded_at,
+		})
+
+		const outcome = await runDocumentIntelligencePipeline({
+			document,
+			onProgress: async (progress) => {
+				if (progress.stage === 'parsed') {
+					await updateReportStatus(reportId, { status: 'parsed' })
+					await updateQueueStatus(reportId, 'parsed')
+				}
+			},
+		})
+
+		if (outcome.stage === 'failed') {
+			throw new Error(outcome.error)
+		}
+
 		const processedAt = new Date().toISOString()
+		const { healthReport } = outcome
 
 		await updateReportStatus(reportId, {
-			status: 'ready',
-			extracted_text: extractedText,
+			status: 'completed',
+			extracted_text: outcome.extractedText,
+			parsed_data: serializeParsedHealthReport(healthReport),
+			ocr_page_count: outcome.pageCount,
+			ocr_confidence: outcome.confidence,
+			ocr_provider: outcome.ocrProvider,
+			ocr_processing_time_ms: outcome.processingTimeMs,
+			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
+			report_type: healthReport.metadata.reportType,
+			report_date: healthReport.metadata.reportDate,
 			processed_at: processedAt,
 			processing_error: null,
 		})
 
-		await updateQueueStatus(reportId, 'ready', {
+		await updateQueueStatus(reportId, 'completed', {
 			completed_at: processedAt,
 			error_message: null,
 		})
 
-		const readyReport: UploadedHealthReport = {
+		const completedReport: UploadedHealthReport = {
 			...typedReport,
-			status: 'ready',
-			extracted_text: extractedText,
+			status: 'completed',
+			extracted_text: outcome.extractedText,
+			parsed_data: serializeParsedHealthReport(healthReport),
+			ocr_page_count: outcome.pageCount,
+			ocr_confidence: outcome.confidence,
+			ocr_provider: outcome.ocrProvider,
+			ocr_processing_time_ms: outcome.processingTimeMs,
+			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
+			report_type: healthReport.metadata.reportType,
+			report_date: healthReport.metadata.reportDate,
 			processed_at: processedAt,
 			processing_error: null,
 		}
 
-		createKnowledgeItemFromHealthReport(readyReport)
+		createKnowledgeItemFromHealthReport(completedReport)
+		invalidateHealthKnowledgeCache(completedReport.user_id)
+		await persistHealthKnowledgeGraph(completedReport.user_id, null)
 
-		return readyReport
+		return completedReport
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Processing failed.'
@@ -149,13 +214,57 @@ export async function processHealthReport(
 	}
 }
 
+export async function reprocessHealthReport(
+	reportId: string,
+): Promise<UploadedHealthReport> {
+	return processHealthReport(reportId, { force: true })
+}
+
+export async function reprocessAllHealthReports(userId: string): Promise<{
+	processed: number
+	failed: number
+}> {
+	const { data, error } = await supabase
+		.from('health_reports')
+		.select('id, status')
+		.eq('user_id', userId)
+		.in('status', REPROCESSABLE_STATUSES)
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	let processed = 0
+	let failed = 0
+
+	for (const row of data ?? []) {
+		try {
+			await processHealthReport(row.id as string, { force: true })
+			processed += 1
+		} catch {
+			failed += 1
+		}
+	}
+
+	invalidateHealthKnowledgeCache(userId)
+	await persistHealthKnowledgeGraph(userId, null)
+
+	return { processed, failed }
+}
+
 export function processPendingHealthReports(
 	reports: UploadedHealthReport[],
 ): Promise<void> {
-	const pending = reports.filter((report) => report.status === 'queued')
+	const pending = reports.filter((report) =>
+		PENDING_STATUSES.includes(report.status),
+	)
 
 	return pending.reduce(async (chain, report) => {
 		await chain
+
+		if (report.status === 'uploaded') {
+			return
+		}
 
 		try {
 			await processHealthReport(report.id)
@@ -167,19 +276,25 @@ export function processPendingHealthReports(
 
 export function getHealthReportStatusLabel(status: HealthReportStatus): string {
 	switch (status) {
+		case 'uploaded':
+			return 'Uploaded'
 		case 'queued':
 			return 'Queued'
 		case 'processing':
 			return 'Processing'
-		case 'ready':
-			return 'Ready'
+		case 'parsed':
+			return 'Parsed'
+		case 'completed':
+			return 'Completed'
 		case 'failed':
 			return 'Failed'
 	}
 }
 
 export function hasPendingProcessing(reports: UploadedHealthReport[]): boolean {
-	return reports.some(
-		(report) => report.status === 'queued' || report.status === 'processing',
-	)
+	return reports.some((report) => PENDING_STATUSES.includes(report.status))
+}
+
+export function isProcessingStatus(status: HealthReportStatus): boolean {
+	return status === 'processing' || status === 'parsed'
 }

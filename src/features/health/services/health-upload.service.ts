@@ -1,3 +1,4 @@
+import { HEALTH_REPORT_MAX_FILE_SIZE_BYTES } from '@/features/health-import/constants/import-limits'
 import { supabase } from '@/lib/supabase'
 import {
 	enqueueHealthReportProcessing,
@@ -7,8 +8,6 @@ import {
 	HEALTH_REPORTS_BUCKET,
 	type UploadedHealthReport,
 } from '@/features/health/types'
-
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 function sanitizeFileName(fileName: string): string {
 	return fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -37,8 +36,9 @@ export async function uploadHealthReport(
 		throw new Error('Only PDF files are supported.')
 	}
 
-	if (file.size > MAX_FILE_SIZE_BYTES) {
-		throw new Error('File must be 10 MB or smaller.')
+	if (file.size > HEALTH_REPORT_MAX_FILE_SIZE_BYTES) {
+		const limitMb = HEALTH_REPORT_MAX_FILE_SIZE_BYTES / (1024 * 1024)
+		throw new Error(`File must be ${limitMb} MB or smaller.`)
 	}
 
 	const reportId = crypto.randomUUID()
@@ -63,7 +63,7 @@ export async function uploadHealthReport(
 			storage_path: storagePath,
 			report_date: new Date().toISOString().slice(0, 10),
 			report_type: 'general',
-			status: 'queued',
+			status: 'uploaded',
 		})
 		.select('*')
 		.single()

@@ -104,13 +104,37 @@ export function TrendChart({ series }: TrendChartProps) {
 
 interface TrendChartGridProps {
 	series: TrendSeries[]
+	onSeriesClick?: (metricId: string) => void
 }
 
-export function TrendChartGrid({ series }: TrendChartGridProps) {
+export function TrendChartGrid({ series, onSeriesClick }: TrendChartGridProps) {
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 			{series.map((item) => (
-				<TrendChart key={item.id} series={item} />
+				<div
+					key={item.id}
+					role={onSeriesClick ? 'button' : undefined}
+					tabIndex={onSeriesClick ? 0 : undefined}
+					onClick={
+						onSeriesClick
+							? () => {
+									onSeriesClick(item.id)
+								}
+							: undefined
+					}
+					onKeyDown={
+						onSeriesClick
+							? (event) => {
+									if (event.key === 'Enter' || event.key === ' ') {
+										onSeriesClick(item.id)
+									}
+								}
+							: undefined
+					}
+					style={onSeriesClick ? { cursor: 'pointer' } : undefined}
+				>
+					<TrendChart series={item} />
+				</div>
 			))}
 		</div>
 	)

@@ -5,16 +5,20 @@ import {
 	processPendingHealthReports,
 } from '@/features/health/services/health-processing.service'
 import { fetchUploadedHealthReports } from '@/features/health/services/health-upload.service'
+import {
+	queryKeys,
+	STALE_TIME,
+	uploadedHealthReportsQueryKey,
+} from '@/lib/query-keys'
 
-export function uploadedHealthReportsQueryKey(userId: string | undefined) {
-	return ['health-reports', userId] as const
-}
+export { uploadedHealthReportsQueryKey }
 
 export function useUploadedHealthReports(userId: string | undefined) {
 	const query = useQuery({
-		queryKey: uploadedHealthReportsQueryKey(userId),
+		queryKey: queryKeys.health.reports(userId),
 		queryFn: fetchUploadedHealthReports,
 		enabled: Boolean(userId),
+		staleTime: STALE_TIME.reports,
 		refetchInterval: (currentQuery) => {
 			const reports = currentQuery.state.data
 

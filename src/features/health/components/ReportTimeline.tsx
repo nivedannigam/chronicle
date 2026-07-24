@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { ChevronRight, ExternalLink, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { healthReportPath } from '@/constants/routes'
+import { OcrProcessingDetails } from '@/features/health/components/OcrProcessingDetails'
 import { ReportStatusBadge } from '@/features/health/components/ReportStatusBadge'
 import {
 	getTimelineDisplayDate,
 	getTimelineTitle,
 } from '@/features/health/services/health-timeline.service'
-import { getHealthReportSignedUrl } from '@/features/health/services/health-upload.service'
+import { isProcessingStatus } from '@/features/health/services/health-processing.service'
 import type { HealthTimelineItem } from '@/features/health/types'
 
 interface ReportTimelineItemProps {
@@ -18,16 +19,17 @@ interface ReportTimelineItemProps {
 
 function ReportTimelineItem({ item, isLast }: ReportTimelineItemProps) {
 	const navigate = useNavigate()
-	const [isOpening, setIsOpening] = useState(false)
 	const [openError, setOpenError] = useState<string | null>(null)
 
-	const handleClick = async () => {
+	const handleClick = () => {
+		setOpenError(null)
+
 		if (item.type === 'mock') {
 			navigate(healthReportPath(item.report.id))
 			return
 		}
 
-		if (item.report.status !== 'ready') {
+		if (item.report.status !== 'completed') {
 			setOpenError(
 				item.report.status === 'failed'
 					? (item.report.processing_error ?? 'Processing failed.')
@@ -36,19 +38,7 @@ function ReportTimelineItem({ item, isLast }: ReportTimelineItemProps) {
 			return
 		}
 
-		setOpenError(null)
-		setIsOpening(true)
-
-		try {
-			const signedUrl = await getHealthReportSignedUrl(item.report.storage_path)
-			window.open(signedUrl, '_blank', 'noopener,noreferrer')
-		} catch (error) {
-			setOpenError(
-				error instanceof Error ? error.message : 'Could not open report.',
-			)
-		} finally {
-			setIsOpening(false)
-		}
+		navigate(healthReportPath(item.report.id))
 	}
 
 	const isUpload = item.type === 'upload'
@@ -60,13 +50,6 @@ function ReportTimelineItem({ item, isLast }: ReportTimelineItemProps) {
 					display: 'flex',
 					gap: 14,
 					position: 'relative',
-					cursor: isOpening ? 'wait' : 'pointer',
-					opacity: isOpening ? 0.7 : 1,
-				}}
-				onClick={() => {
-					if (!isOpening) {
-						void handleClick()
-					}
 				}}
 			>
 				<div
@@ -107,61 +90,59 @@ function ReportTimelineItem({ item, isLast }: ReportTimelineItemProps) {
 						border: `1px solid ${C.border}`,
 						borderRadius: 16,
 						padding: '12px 14px',
-						display: 'flex',
-						alignItems: 'center',
-						gap: 10,
+						cursor: 'pointer',
 					}}
+					onClick={handleClick}
 				>
-					<div style={{ flex: 1, minWidth: 0 }}>
-						<div
-							style={{
-								fontSize: 11,
-								color: C.textMuted,
-								marginBottom: 4,
-								fontWeight: 600,
-							}}
-						>
-							{getTimelineDisplayDate(item)}
-						</div>
-						<div
-							style={{
-								fontSize: 14,
-								fontWeight: 600,
-								color: C.text,
-								letterSpacing: '-0.01em',
-								overflow: 'hidden',
-								textOverflow: 'ellipsis',
-								whiteSpace: 'nowrap',
-								marginBottom: isUpload ? 6 : 0,
-							}}
-						>
-							{getTimelineTitle(item)}
-						</div>
-						{isUpload ? (
-							<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-								<ReportStatusBadge status={item.report.status} />
-								{item.report.status === 'processing' ||
-								item.report.status === 'queued' ? (
-									<Loader2
-										size={12}
-										color={C.textMuted}
-										style={{ animation: 'spin 1s linear infinite' }}
-									/>
-								) : null}
+					<div
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 10,
+						}}
+					>
+						<div style={{ flex: 1, minWidth: 0 }}>
+							<div
+								style={{
+									fontSize: 11,
+									color: C.textMuted,
+									marginBottom: 4,
+									fontWeight: 600,
+								}}
+							>
+								{getTimelineDisplayDate(item)}
 							</div>
-						) : null}
-					</div>
-					{isOpening ? (
-						<Loader2
-							size={16}
-							color={C.textMuted}
-							style={{ animation: 'spin 1s linear infinite' }}
-						/>
-					) : isUpload ? (
-						<ExternalLink size={16} color={C.textMuted} />
-					) : (
+							<div
+								style={{
+									fontSize: 14,
+									fontWeight: 600,
+									color: C.text,
+									letterSpacing: '-0.01em',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									marginBottom: isUpload ? 6 : 0,
+								}}
+							>
+								{getTimelineTitle(item)}
+							</div>
+							{isUpload ? (
+								<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+									<ReportStatusBadge status={item.report.status} />
+									{isProcessingStatus(item.report.status) ||
+									item.report.status === 'queued' ? (
+										<Loader2
+											size={12}
+											color={C.textMuted}
+											style={{ animation: 'spin 1s linear infinite' }}
+										/>
+									) : null}
+								</div>
+							) : null}
+						</div>
 						<ChevronRight size={16} color={C.textMuted} />
-					)}
+					</div>
+					{isUpload ? <OcrProcessingDetails report={item.report} /> : null}
 				</div>
 			</div>
 			{openError ? (
