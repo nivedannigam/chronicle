@@ -83,6 +83,20 @@ export function detectIntent(
 	const timeRangeYears = detectTimeRange(normalized)
 
 	if (
+		/why did you say|what evidence supports|which reports contributed|what information is missing/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'explain_response',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.92,
+		}
+	}
+
+	if (
 		/what should i pay attention to|pay attention to|need attention/i.test(
 			normalized,
 		)

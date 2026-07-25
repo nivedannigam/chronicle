@@ -27,6 +27,7 @@ export type AskIntent =
 	| 'attention_summary'
 	| 'summarize_health'
 	| 'since_last_report'
+	| 'explain_response'
 
 export interface RetrievalQuery {
 	userId: string

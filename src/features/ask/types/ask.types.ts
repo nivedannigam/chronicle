@@ -116,7 +116,10 @@ export interface EvidenceCitation {
 	hospital: string
 	date: string
 	metricName?: string
+	metricId?: string
 	timelineRef?: string
+	ocrExcerpt?: string
+	claimKind?: import('@/features/ask/trust/trust.types').ClaimKind
 	source: import('@/features/knowledge/retrieval/knowledge-retriever.types').KnowledgeDomain
 }
 
@@ -136,6 +139,7 @@ export interface AskConversationTurn {
 	dataAvailable: boolean
 	confidence: number
 	confidenceLevel: import('@/features/intelligence/types/confidence.types').ConfidenceLevel
+	trust?: import('@/features/ask/trust/trust.types').TrustResponse
 	timestamp: string
 	displayTimestamp: string
 }

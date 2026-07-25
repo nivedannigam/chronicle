@@ -7,12 +7,10 @@ import type {
 	RelatedReportRef,
 } from '@/features/ask/types'
 import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.types'
-import {
-	computeGroundedConfidence,
-	parseConfidenceLevel,
-} from '@/features/intelligence/types/confidence.types'
+import { parseConfidenceLevel } from '@/features/intelligence/types/confidence.types'
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 import { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
+import { buildTrustResponse } from '@/features/ask/trust/trust-response.builder'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
@@ -359,6 +357,7 @@ export function buildGroundedTurn(input: {
 	domains: KnowledgeDomain[]
 	dataAvailable: boolean
 	confidence?: number
+	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
 }): AskConversationTurn {
 	const timestamp = new Date().toISOString()
 	const knowledge =
@@ -379,43 +378,133 @@ export function buildGroundedTurn(input: {
 		} satisfies RetrievedKnowledge)
 
 	const citations = input.dataAvailable ? buildEvidenceCitations(knowledge) : []
-	const confidence = computeGroundedConfidence({
+	const evidence = input.dataAvailable ? buildEvidenceLines(knowledge) : []
+	const relatedReports = input.dataAvailable ? toRelatedReports(knowledge) : []
+	const relatedMetrics = input.dataAvailable ? toRelatedMetrics(knowledge) : []
+	const followUpQuestions = generateFollowUpQuestions({
+		intent: knowledge.intent,
+		knowledge,
+		memberName: input.member.memberName,
+		question: input.question,
+		domains: input.domains,
+	})
+
+	const rawAnswer = buildGroundedAnswer({
+		knowledge: input.knowledge,
+		question: input.question,
+		memberName: input.member.memberName,
 		dataAvailable: input.dataAvailable,
-		metricCount: knowledge.metrics.length,
-		reportCount: knowledge.reports.length,
-		citationCount: citations.length,
+	})
+
+	const trust = buildTrustResponse({
+		answer: rawAnswer,
+		question: input.question,
+		knowledge,
+		dataAvailable: input.dataAvailable,
+		evidence,
+		citations,
+		relatedReports,
+		relatedMetrics,
+		followUpQuestions,
 		intentConfidence: input.confidence,
+		uploadedReports: input.uploadedReports,
 	})
 
 	return {
 		id: crypto.randomUUID(),
 		question: input.question,
-		answer: buildGroundedAnswer({
-			knowledge: input.knowledge,
-			question: input.question,
-			memberName: input.member.memberName,
-			dataAvailable: input.dataAvailable,
-		}),
+		answer: trust.directAnswer,
 		cards: input.dataAvailable ? buildCards(knowledge) : [],
-		relatedReports: input.dataAvailable ? toRelatedReports(knowledge) : [],
-		relatedMetrics: input.dataAvailable ? toRelatedMetrics(knowledge) : [],
-		citations,
-		evidence: input.dataAvailable ? buildEvidenceLines(knowledge) : [],
-		followUpQuestions: generateFollowUpQuestions({
-			intent: knowledge.intent,
-			knowledge,
-			memberName: input.member.memberName,
-			question: input.question,
-			domains: input.domains,
-		}),
+		relatedReports: trust.supportingReports,
+		relatedMetrics,
+		citations: trust.evidenceItems.length
+			? trust.evidenceItems.map((item) => ({
+					reportId: item.reportId,
+					reportTitle: item.reportTitle,
+					hospital: item.hospital ?? '',
+					date: item.reportDate,
+					metricName: item.metricName,
+					metricId: item.metricId,
+					ocrExcerpt: item.ocrExcerpt,
+					claimKind: item.claimKind,
+					source: item.source,
+				}))
+			: citations,
+		evidence: trust.evidence,
+		followUpQuestions: trust.followUpQuestions,
 		memberId: input.member.memberId,
 		memberName: input.member.memberName,
 		domains: input.domains,
 		dataAvailable: input.dataAvailable,
-		confidence: confidence.score,
-		confidenceLevel: confidence.level,
+		confidence: trust.confidence.score,
+		confidenceLevel: trust.confidence.level,
+		trust,
 		timestamp,
 		displayTimestamp: formatTimestamp(timestamp),
+	}
+}
+
+export function attachTrustToTurn(
+	turn: AskConversationTurn,
+	input: {
+		knowledge: RetrievedKnowledge | null
+		question: string
+		dataAvailable: boolean
+		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+		confidence?: number
+	},
+): AskConversationTurn {
+	const knowledge =
+		input.knowledge ??
+		({
+			domain: 'health',
+			intent: 'general_health',
+			reports: [],
+			metrics: [],
+			timelines: [],
+			trends: [],
+			observations: [],
+			relationships: [],
+			insights: [],
+			alerts: [],
+			summaryLines: [],
+			comparisons: [],
+		} satisfies RetrievedKnowledge)
+
+	const trust = buildTrustResponse({
+		answer: turn.answer,
+		question: input.question,
+		knowledge,
+		dataAvailable: input.dataAvailable,
+		evidence: turn.evidence,
+		citations: turn.citations,
+		relatedReports: turn.relatedReports,
+		relatedMetrics: turn.relatedMetrics,
+		followUpQuestions: turn.followUpQuestions,
+		intentConfidence: input.confidence,
+		uploadedReports: input.uploadedReports,
+	})
+
+	return {
+		...turn,
+		answer: trust.directAnswer,
+		relatedReports: trust.supportingReports,
+		confidence: trust.confidence.score,
+		confidenceLevel: trust.confidence.level,
+		trust,
+		citations: trust.evidenceItems.length
+			? trust.evidenceItems.map((item) => ({
+					reportId: item.reportId,
+					reportTitle: item.reportTitle,
+					hospital: item.hospital ?? '',
+					date: item.reportDate,
+					metricName: item.metricName,
+					metricId: item.metricId,
+					ocrExcerpt: item.ocrExcerpt,
+					claimKind: item.claimKind,
+					source: item.source,
+				}))
+			: turn.citations,
 	}
 }
 

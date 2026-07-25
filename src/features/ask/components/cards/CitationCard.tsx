@@ -19,6 +19,11 @@ export function CitationCard({ citation }: CitationCardProps) {
 				{citation.metricName ? ` · ${citation.metricName}` : ''}
 				{citation.timelineRef ? ` · ${citation.timelineRef}` : ''}
 			</div>
+			{citation.ocrExcerpt ? (
+				<div style={{ marginTop: 6, fontStyle: 'italic', color: C.textMuted }}>
+					"{citation.ocrExcerpt}"
+				</div>
+			) : null}
 		</>
 	)
 

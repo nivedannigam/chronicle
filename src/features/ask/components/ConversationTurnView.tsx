@@ -1,5 +1,7 @@
 import { C } from '@/constants/colors'
 import { CitationCard } from '@/features/ask/components/cards/CitationCard'
+import { DisagreementPanel } from '@/features/ask/components/DisagreementPanel'
+import { EvidencePanel } from '@/features/ask/components/EvidencePanel'
 import { TypingIndicator } from '@/features/ask/components/TypingIndicator'
 import { AnswerCardRenderer } from '@/features/ask/components/AnswerCardRenderer'
 import { confidenceLevelLabel } from '@/features/intelligence/types/confidence.types'
@@ -31,8 +33,14 @@ export function ConversationTurnView({
 	isTyping = false,
 	onFollowUpSelect,
 }: ConversationTurnViewProps) {
-	const confidenceTextColor = confidenceColor(turn.confidenceLevel)
+	const trust = turn.trust
+	const confidenceLevel = trust?.confidence.level ?? turn.confidenceLevel
+	const confidenceTextColor = confidenceColor(confidenceLevel)
 	const showTyping = isTyping && !turn.answer.trim()
+
+	const handleFollowUp = onFollowUpSelect
+		? (question: string) => onFollowUpSelect(question)
+		: undefined
 
 	return (
 		<div style={{ paddingTop: compact ? 14 : 0 }}>
@@ -65,22 +73,40 @@ export function ConversationTurnView({
 			{showTyping ? (
 				<TypingIndicator />
 			) : (
-				<div
-					style={{
-						fontSize: 14,
-						color: C.textSec,
-						lineHeight: 1.6,
-						marginBottom: 16,
-						whiteSpace: 'pre-wrap',
-					}}
-				>
-					{turn.answer}
-				</div>
+				<>
+					<div
+						style={{
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: '0.08em',
+							textTransform: 'uppercase',
+							color: C.textMuted,
+							marginBottom: 6,
+						}}
+					>
+						Answer
+					</div>
+					<div
+						style={{
+							fontSize: 14,
+							color: C.textSec,
+							lineHeight: 1.6,
+							marginBottom: 16,
+							whiteSpace: 'pre-wrap',
+						}}
+					>
+						{turn.answer}
+					</div>
+				</>
 			)}
 
 			{!showTyping ? <AnswerCardRenderer cards={turn.cards} /> : null}
 
-			{turn.evidence.length > 0 ? (
+			{trust ? <DisagreementPanel disagreements={trust.disagreements} /> : null}
+
+			{trust ? (
+				<EvidencePanel trust={trust} />
+			) : turn.evidence.length > 0 ? (
 				<div
 					style={{
 						marginTop: 16,
@@ -125,7 +151,48 @@ export function ConversationTurnView({
 				</div>
 			) : null}
 
-			{turn.citations.length > 0 ? (
+			{trust && trust.timelineSummary.length > 0 ? (
+				<div
+					style={{
+						marginTop: 16,
+						paddingTop: 14,
+						borderTop: `1px solid ${C.border}`,
+					}}
+				>
+					<div
+						style={{
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: '0.08em',
+							textTransform: 'uppercase',
+							color: C.textMuted,
+							marginBottom: 8,
+						}}
+					>
+						Timeline
+					</div>
+					<ul
+						style={{
+							margin: 0,
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 4,
+						}}
+					>
+						{trust.timelineSummary.map((line) => (
+							<li
+								key={line}
+								style={{ fontSize: 12, color: C.textSec, lineHeight: 1.5 }}
+							>
+								{line}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
+
+			{!trust && turn.citations.length > 0 ? (
 				<div
 					style={{
 						marginTop: 16,
@@ -156,6 +223,47 @@ export function ConversationTurnView({
 				</div>
 			) : null}
 
+			{trust && trust.missingInformation.length > 0 ? (
+				<div
+					style={{
+						marginTop: 16,
+						paddingTop: 14,
+						borderTop: `1px solid ${C.border}`,
+					}}
+				>
+					<div
+						style={{
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: '0.08em',
+							textTransform: 'uppercase',
+							color: C.textMuted,
+							marginBottom: 8,
+						}}
+					>
+						What Chronicle does not know
+					</div>
+					<ul
+						style={{
+							margin: 0,
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 4,
+						}}
+					>
+						{trust.missingInformation.map((line) => (
+							<li
+								key={line}
+								style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}
+							>
+								{line}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
+
 			{(turn.relatedReports.length > 0 || turn.relatedMetrics.length > 0) && (
 				<div
 					style={{
@@ -176,7 +284,7 @@ export function ConversationTurnView({
 									marginBottom: 8,
 								}}
 							>
-								Referenced Reports
+								Supporting Reports
 							</div>
 							<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
 								{turn.relatedReports.map((report) => (
@@ -233,7 +341,7 @@ export function ConversationTurnView({
 				</div>
 			)}
 
-			{turn.followUpQuestions.length > 0 && onFollowUpSelect ? (
+			{turn.followUpQuestions.length > 0 && handleFollowUp ? (
 				<div
 					style={{
 						marginTop: 16,
@@ -258,7 +366,7 @@ export function ConversationTurnView({
 							<button
 								key={question}
 								type="button"
-								onClick={() => onFollowUpSelect(question)}
+								onClick={() => handleFollowUp(question)}
 								style={{
 									textAlign: 'left',
 									fontSize: 13,
@@ -278,25 +386,74 @@ export function ConversationTurnView({
 				</div>
 			) : null}
 
+			{trust && handleFollowUp ? (
+				<div
+					style={{
+						marginTop: 12,
+						display: 'flex',
+						flexWrap: 'wrap',
+						gap: 6,
+					}}
+				>
+					{trust.explainabilityPrompts.map((prompt) => (
+						<button
+							key={prompt}
+							type="button"
+							onClick={() => handleFollowUp(prompt)}
+							style={{
+								fontSize: 11,
+								fontWeight: 600,
+								color: C.textMuted,
+								background: C.card2,
+								border: `1px solid ${C.border}`,
+								borderRadius: 100,
+								padding: '6px 10px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							{prompt}
+						</button>
+					))}
+				</div>
+			) : null}
+
 			<div
 				style={{
 					display: 'flex',
 					justifyContent: 'space-between',
-					alignItems: 'center',
+					alignItems: 'flex-start',
+					gap: 12,
 					marginTop: 14,
 					paddingTop: 12,
 					borderTop: compact ? 'none' : `1px solid ${C.border}`,
 				}}
 			>
-				<span
-					style={{
-						fontSize: 11,
-						fontWeight: 700,
-						color: confidenceTextColor,
-					}}
-				>
-					{confidenceLevelLabel(turn.confidenceLevel, turn.dataAvailable)}
-				</span>
+				<div>
+					<span
+						style={{
+							fontSize: 11,
+							fontWeight: 700,
+							color: confidenceTextColor,
+							display: 'block',
+						}}
+					>
+						{confidenceLevelLabel(confidenceLevel, turn.dataAvailable)}
+					</span>
+					{trust?.confidence.factors.slice(0, 2).map((factor) => (
+						<span
+							key={factor}
+							style={{
+								fontSize: 10,
+								color: C.textMuted,
+								display: 'block',
+								marginTop: 2,
+							}}
+						>
+							{factor}
+						</span>
+					))}
+				</div>
 				<span style={{ fontSize: 11, color: C.textMuted }}>
 					{turn.displayTimestamp}
 				</span>

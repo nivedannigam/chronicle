@@ -4,12 +4,15 @@ import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { promptBuilder } from '@/features/ask/prompt/prompt-builder'
 import type { AskReasoningEngine } from '@/features/ask/services/knowledge-query.interface'
 import {
+	attachTrustToTurn,
 	buildGroundedTurn,
 	citationsFromAiResponse,
 	extractPartialAnswerFromJsonStream,
 	parseAiJsonResponse,
 	verifyCitations,
 } from '@/features/ask/services/grounded-response.builder'
+import { loadConversationTurns } from '@/features/ask/services/conversation-persistence.service'
+import { buildExplainabilityTurn } from '@/features/ask/trust/explainability-response.builder'
 import type { AskDebugInfo, AskQuestionResult } from '@/features/ask/types'
 import {
 	buildMemorySessionKey,
@@ -73,6 +76,46 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			dataAvailable: pipeline.dataAvailable,
 		})
 
+		if (pipeline.detection.intent === 'explain_response') {
+			const priorTurns = loadConversationTurns(sessionKey)
+			const previousTurn = priorTurns[priorTurns.length - 1] ?? null
+			const explainTurn = buildExplainabilityTurn({
+				question: input.question,
+				previousTurn,
+				memberId: member.memberId,
+				memberName: member.memberName,
+			})
+
+			if (explainTurn) {
+				if (input.onStream) {
+					input.onStream(explainTurn.answer)
+				}
+
+				conversationMemory.addTurn(sessionKey, explainTurn, {
+					intent: 'explain_response',
+					categoryId: pipeline.detection.categoryId,
+					metricName: pipeline.detection.metricName,
+				})
+
+				lastDebugInfo = {
+					intent: 'explain_response',
+					resolvedQuestion: input.question,
+					retrievedKnowledge: knowledge,
+					prompt,
+					provider: 'explainability',
+					providerResponse: explainTurn.answer,
+					turn: explainTurn,
+				}
+
+				return {
+					turn: explainTurn,
+					intent: 'explain_response',
+					implementation: 'grounded-only',
+					debug: lastDebugInfo,
+				}
+			}
+		}
+
 		const cacheKey = `${sessionKey}:${pipeline.detection.intent}:${pipeline.resolvedQuestion}:${knowledge.metrics.length}:${knowledge.reports.length}`
 		let turn = buildGroundedTurn({
 			question: input.question,
@@ -81,6 +124,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			domains: pipeline.activeDomains,
 			dataAvailable: pipeline.dataAvailable,
 			confidence: pipeline.detection.confidence,
+			uploadedReports: input.uploadedReports,
 		})
 		let providerResponse = ''
 		const aiConfigured = isAskAiProviderConfigured()
@@ -120,31 +164,40 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 				if (parsed) {
 					const verified = verifyCitations(parsed, knowledge)
 
-					turn = {
-						...turn,
-						answer: verified.answer.endsWith('not medical advice.')
-							? verified.answer
-							: `${verified.answer}\n\nThis is informational and not medical advice.`,
-						confidence:
-							typeof verified.confidence === 'number'
-								? verified.confidence
-								: turn.confidence,
-						confidenceLevel: verified.confidenceLevel ?? turn.confidenceLevel,
-						citations:
-							verified.citations.length > 0
-								? citationsFromAiResponse(verified, knowledge)
-								: turn.citations,
-						relatedReports: verified.citations.map((citation) => ({
-							id: citation.reportId,
-							title: citation.reportTitle,
-							date:
-								knowledge.reports.find(
-									(report) => report.id === citation.reportId,
-								)?.date ??
-								citation.date ??
-								'',
-						})),
-					}
+					turn = attachTrustToTurn(
+						{
+							...turn,
+							answer: verified.answer.endsWith('not medical advice.')
+								? verified.answer
+								: `${verified.answer}\n\nThis is informational and not medical advice.`,
+							confidence:
+								typeof verified.confidence === 'number'
+									? verified.confidence
+									: turn.confidence,
+							confidenceLevel: verified.confidenceLevel ?? turn.confidenceLevel,
+							citations:
+								verified.citations.length > 0
+									? citationsFromAiResponse(verified, knowledge)
+									: turn.citations,
+							relatedReports: verified.citations.map((citation) => ({
+								id: citation.reportId,
+								title: citation.reportTitle,
+								date:
+									knowledge.reports.find(
+										(report) => report.id === citation.reportId,
+									)?.date ??
+									citation.date ??
+									'',
+							})),
+						},
+						{
+							knowledge: pipeline.mergedKnowledge,
+							question: input.question,
+							dataAvailable: pipeline.dataAvailable,
+							uploadedReports: input.uploadedReports,
+							confidence: pipeline.detection.confidence,
+						},
+					)
 				}
 			} catch {
 				turn = buildGroundedTurn({
@@ -154,6 +207,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 					domains: pipeline.activeDomains,
 					dataAvailable: pipeline.dataAvailable,
 					confidence: Math.max(0.6, pipeline.detection.confidence - 0.1),
+					uploadedReports: input.uploadedReports,
 				})
 				usedProvider = 'grounded'
 			}
