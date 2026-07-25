@@ -1,6 +1,10 @@
 import type { MetricStatus } from '@/features/health/types'
 import type { SemanticSearchHit } from '@/features/intelligence/types/intelligence.types'
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
+import type {
+	MetricHistoryRecord,
+	YearTimelineGroup,
+} from '@/features/semantic-memory/types/semantic-memory.types'
 
 export type KnowledgeDomain =
 	'health' | 'finance' | 'travel' | 'mail' | 'documents' | 'photos'
@@ -18,6 +22,11 @@ export type AskIntent =
 	| 'doctor_discussion'
 	| 'metric_lookup'
 	| 'general_health'
+	| 'health_journey'
+	| 'resolved_findings'
+	| 'attention_summary'
+	| 'summarize_health'
+	| 'since_last_report'
 
 export interface RetrievalQuery {
 	userId: string
@@ -126,6 +135,8 @@ export interface RetrievedKnowledge {
 	alerts: string[]
 	summaryLines: string[]
 	comparisons: RetrievedComparison[]
+	semanticTimeline?: YearTimelineGroup[]
+	metricHistories?: MetricHistoryRecord[]
 }
 
 export interface KnowledgeRetriever {

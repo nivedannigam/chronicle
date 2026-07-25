@@ -4,10 +4,6 @@ import type {
 	KnowledgeDomain,
 } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
-function isHealthDomain(domains: KnowledgeDomain[]): boolean {
-	return domains.length === 0 || domains.includes('health')
-}
-
 export function generateFollowUpQuestions(input: {
 	intent: AskIntent
 	knowledge: RetrievedKnowledge
@@ -18,7 +14,6 @@ export function generateFollowUpQuestions(input: {
 	const suggestions = new Set<string>()
 	const prefix = input.memberName ? `${input.memberName}'s ` : 'My '
 	const domains = input.domains ?? [input.knowledge.domain]
-	const healthFocused = isHealthDomain(domains)
 
 	if (input.knowledge.metrics.length > 0) {
 		const metric = input.knowledge.metrics[0]!
@@ -43,8 +38,8 @@ export function generateFollowUpQuestions(input: {
 	}
 
 	if (
-		healthFocused &&
-		(input.knowledge.alerts.length > 0 || input.intent === 'doctor_discussion')
+		input.knowledge.alerts.length > 0 ||
+		input.intent === 'doctor_discussion'
 	) {
 		suggestions.add('What should I discuss with my doctor?')
 	}
@@ -57,13 +52,24 @@ export function generateFollowUpQuestions(input: {
 		suggestions.add('Which results need attention?')
 	}
 
-	if (domains.includes('documents')) {
-		suggestions.add('Show related documents from Google Drive.')
+	if (input.intent === 'attention_summary') {
+		suggestions.add('What changed since my last report?')
+		suggestions.add('What should I discuss with my doctor?')
 	}
 
-	if (suggestions.size === 0 && healthFocused) {
-		suggestions.add('How has my health changed?')
-		suggestions.add('Summarize my latest report.')
+	if (
+		input.intent === 'summarize_health' ||
+		input.intent === 'health_journey'
+	) {
+		suggestions.add("What's improving?")
+	}
+
+	if (domains.includes('documents')) {
+		suggestions.add('Show related documents.')
+	}
+
+	if (domains.includes('finance')) {
+		suggestions.add('Show related financial records.')
 	}
 
 	if (suggestions.size === 0) {

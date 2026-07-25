@@ -14,6 +14,7 @@ import type {
 	UploadedHealthReport,
 } from '@/features/health/types'
 import { topReportIdsFromHits } from '@/features/intelligence/services/search-ranking.service'
+import { semanticMemoryService } from '@/features/semantic-memory/memory/semantic-memory.service'
 import type {
 	KnowledgeRetriever,
 	RetrievalQuery,
@@ -314,8 +315,8 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			}
 		}
 
-		return {
-			domain: 'health',
+		const baseKnowledge = {
+			domain: 'health' as const,
 			intent: query.intent,
 			reports,
 			metrics,
@@ -333,6 +334,21 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			summaryLines,
 			comparisons,
 		}
+
+		const memory = semanticMemoryService.getSemanticMemory({
+			personId: query.member?.memberId ?? query.userId,
+			userId: query.userId,
+			uploadedReports: query.uploadedReports,
+		})
+
+		return semanticMemoryService.enrichRetrievedKnowledge({
+			knowledge: baseKnowledge,
+			memory,
+			intent: query.intent,
+			categoryId,
+			userId: query.userId,
+			uploadedReports: query.uploadedReports,
+		})
 	}
 }
 

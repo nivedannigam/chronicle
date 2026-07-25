@@ -5,6 +5,7 @@ import { HomeContinueCard } from '@/features/home/components/HomeContinueCard'
 import { HomeExploreChronicle } from '@/features/home/components/HomeExploreChronicle'
 import { HomeGreeting } from '@/features/home/components/HomeGreeting'
 import { HomeHealthSnapshot } from '@/features/home/components/HomeHealthSnapshot'
+import { HomeInsightsSection } from '@/features/home/components/HomeInsightsSection'
 import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
 import { HomeRecentActivity } from '@/features/home/components/HomeRecentActivity'
 import { useHomeBriefing } from '@/features/home/hooks/useHomeBriefing'
@@ -36,6 +37,8 @@ export function HomePage() {
 			/>
 
 			<HomeHealthSnapshot briefing={briefing} />
+
+			<HomeInsightsSection briefing={briefing} />
 
 			<HomeExploreChronicle />
 

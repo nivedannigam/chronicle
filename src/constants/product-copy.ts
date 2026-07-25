@@ -41,10 +41,10 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 		label: 'Health',
 		available: true,
 		questions: [
-			'How has my health changed?',
-			'Summarize my latest report.',
-			'Find all reports from Apollo.',
-			'Which metrics need attention?',
+			'What should I pay attention to?',
+			'What changed since my last report?',
+			'Summarize my health.',
+			'What should I discuss with my doctor?',
 		],
 	},
 	{

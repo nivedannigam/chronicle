@@ -1,11 +1,7 @@
-import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
-import type { UploadedHealthReport } from '@/features/health/types'
-import type { ConnectorDocumentRecord } from '@/core/connectors'
-import type {
-	AskIntent,
-	RetrievedKnowledge,
-} from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { IntentDetectionResult } from '@/features/ask/retrieval/intent-detector'
+import type { BuiltKnowledgeContext } from '@/features/intelligence/context/context-builder'
+import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
 export interface IntelligenceMemberContext {
 	memberId: string | null
@@ -13,28 +9,12 @@ export interface IntelligenceMemberContext {
 	familyMemberNames: string[]
 }
 
+/** Domain-agnostic orchestrator input — providers read their slice from `sources`. */
 export interface IntelligenceQueryInput {
 	userId: string
 	question: string
 	member: IntelligenceMemberContext
-	uploadedReports?: UploadedHealthReport[]
-	connectorDocuments?: ConnectorDocumentRecord[]
-	onStream?: (partialAnswer: string) => void
-}
-
-export interface KnowledgeProviderContext {
-	userId: string
-	question: string
-	intent: AskIntent
-	resolvedQuestion: string
-	member: IntelligenceMemberContext
-	categoryId?: string
-	metricId?: string
-	metricName?: string
-	timeRangeYears?: number
-	uploadedReports?: UploadedHealthReport[]
-	connectorDocuments?: ConnectorDocumentRecord[]
-	searchHits?: SemanticSearchHit[]
+	sources?: Record<string, unknown>
 }
 
 export interface SemanticSearchHit {
@@ -51,52 +31,32 @@ export interface SemanticSearchHit {
 	memberId?: string | null
 }
 
-export interface KnowledgeProviderResult {
-	domain: KnowledgeDomain
-	available: boolean
-	knowledge: RetrievedKnowledge | null
-	unavailableReason?: string
-}
-
-export interface ChronicleKnowledgeProvider {
-	readonly domain: KnowledgeDomain
-	readonly label: string
-	isAvailable(context: KnowledgeProviderContext): boolean
-	search?(context: KnowledgeProviderContext): SemanticSearchHit[]
-	retrieve(context: KnowledgeProviderContext): KnowledgeProviderResult
-}
-
 export interface IntelligencePipelineContext {
 	input: IntelligenceQueryInput
 	resolvedQuestion: string
 	detection: IntentDetectionResult
 	member: IntelligenceMemberContext
 	searchHits: SemanticSearchHit[]
+	builtContext: BuiltKnowledgeContext
 	mergedKnowledge: RetrievedKnowledge | null
 	activeDomains: KnowledgeDomain[]
 	dataAvailable: boolean
 }
 
-export interface IntelligencePipelineResult {
-	context: IntelligencePipelineContext
-}
+/** Builds domain-agnostic `sources` payload from Ask hook data. */
+export function buildIntelligenceSources(input: {
+	uploadedReports?: unknown[]
+	connectorDocuments?: unknown[]
+}): Record<string, unknown> {
+	const sources: Record<string, unknown> = {}
 
-export function createEmptyKnowledge(
-	intent: AskIntent,
-	domain: KnowledgeDomain = 'health',
-): RetrievedKnowledge {
-	return {
-		domain,
-		intent,
-		reports: [],
-		metrics: [],
-		timelines: [],
-		trends: [],
-		observations: [],
-		relationships: [],
-		insights: [],
-		alerts: [],
-		summaryLines: [],
-		comparisons: [],
+	if (input.uploadedReports?.length) {
+		sources.health = { uploadedReports: input.uploadedReports }
 	}
+
+	if (input.connectorDocuments?.length) {
+		sources.documents = { connectorDocuments: input.connectorDocuments }
+	}
+
+	return sources
 }

@@ -21,7 +21,7 @@ export interface MemberStageOutput {
 }
 
 export interface SearchStageInput {
-	context: import('@/features/intelligence/types/intelligence.types').KnowledgeProviderContext
+	query: import('@/features/intelligence/contracts/knowledge-provider.contract').KnowledgeProviderQuery
 }
 
 export interface SearchStageOutput {
@@ -29,7 +29,7 @@ export interface SearchStageOutput {
 }
 
 export interface RetrieveStageInput {
-	context: import('@/features/intelligence/types/intelligence.types').KnowledgeProviderContext
+	query: import('@/features/intelligence/contracts/knowledge-provider.contract').KnowledgeProviderQuery
 }
 
 export interface RetrieveStageOutput {

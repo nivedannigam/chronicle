@@ -16,7 +16,9 @@ import {
 	resolveMemberFromQuestion,
 } from '@/features/intelligence/services/member-context.service'
 import { runIntelligencePipeline } from '@/features/intelligence/pipeline/chronicle-intelligence.pipeline'
-import { createEmptyKnowledge } from '@/features/intelligence/types/intelligence.types'
+import { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'
+import { createEmptyContextPackage } from '@/features/intelligence/entities/knowledge-entities'
+import { toRetrievedKnowledge } from '@/features/intelligence/adapters/retrieved-knowledge.adapter'
 
 let lastDebugInfo: AskDebugInfo | null = null
 
@@ -46,18 +48,26 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			userId: input.userId,
 			question: input.question,
 			member,
-			uploadedReports: input.uploadedReports,
-			connectorDocuments: input.connectorDocuments,
+			sources: buildIntelligenceSources({
+				uploadedReports: input.uploadedReports,
+				connectorDocuments: input.connectorDocuments,
+			}),
 		})
 
 		const sessionKey = buildMemorySessionKey(input.userId, member.memberId)
+		const fallbackDomain = pipeline.activeDomains[0] ?? 'health'
 		const knowledge =
 			pipeline.mergedKnowledge ??
-			createEmptyKnowledge(pipeline.detection.intent)
+			toRetrievedKnowledge(
+				createEmptyContextPackage(),
+				fallbackDomain,
+				pipeline.detection.intent,
+			)
 
 		const prompt = promptBuilder.build({
 			question: pipeline.resolvedQuestion,
 			knowledge: pipeline.mergedKnowledge,
+			contextJson: pipeline.builtContext.contextJson,
 			memory: conversationMemory.getTurns(sessionKey),
 			member,
 			dataAvailable: pipeline.dataAvailable,

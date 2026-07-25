@@ -1,19 +1,42 @@
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { getReportDisplayTitle } from '@/features/health/services/health-parsed-report.service'
 import type { UploadedHealthReport } from '@/features/health/types'
-import { healthKnowledgeRetriever } from '@/features/knowledge/retrieval/health-knowledge-retriever'
+import { fromRetrievedKnowledge } from '@/features/intelligence/adapters/retrieved-knowledge.adapter'
+import type {
+	ChronicleKnowledgeProvider,
+	KnowledgeProviderQuery,
+	ProviderContextResult,
+} from '@/features/intelligence/contracts/knowledge-provider.contract'
+import type {
+	KnowledgeContextPackage,
+	KnowledgeDocument,
+	KnowledgeMetric,
+	KnowledgeReference,
+	KnowledgeTimelineEvent,
+} from '@/features/intelligence/entities/knowledge-entities'
+import { registerKnowledgeProvider } from '@/features/intelligence/registry/intelligence-registry'
 import {
 	extractTextSnippet,
 	mergeSearchHits,
 	scoreTextMatch,
 	tokenizeQuery,
 } from '@/features/intelligence/services/semantic-search.service'
-import type {
-	ChronicleKnowledgeProvider,
-	KnowledgeProviderContext,
-	KnowledgeProviderResult,
-	SemanticSearchHit,
-} from '@/features/intelligence/types/intelligence.types'
+import type { SemanticSearchHit } from '@/features/intelligence/types/intelligence.types'
+import { healthKnowledgeRetriever } from '@/features/knowledge/retrieval/health-knowledge-retriever'
+import type { RetrievalQuery } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+
+const PROVIDER_ID = 'health'
+
+export interface HealthProviderSource {
+	uploadedReports?: UploadedHealthReport[]
+}
+
+function getHealthReports(
+	query: KnowledgeProviderQuery,
+): UploadedHealthReport[] {
+	const source = query.sources[PROVIDER_ID] as HealthProviderSource | undefined
+	return source?.uploadedReports ?? []
+}
 
 function searchHealthReports(input: {
 	question: string
@@ -118,61 +141,110 @@ function searchHealthReports(input: {
 	return mergeSearchHits(hits)
 }
 
-export class HealthKnowledgeProvider implements ChronicleKnowledgeProvider {
-	readonly domain = 'health' as const
-	readonly label = 'Health'
+function toRetrievalQuery(query: KnowledgeProviderQuery): RetrievalQuery {
+	return {
+		userId: query.userId,
+		question: query.question,
+		intent: query.intent,
+		resolvedQuestion: query.resolvedQuestion,
+		categoryId: query.categoryId,
+		metricId: query.metricId,
+		metricName: query.metricName,
+		timeRangeYears: query.timeRangeYears,
+		uploadedReports: getHealthReports(query),
+		searchHits: query.searchHits,
+		member: query.member,
+	}
+}
 
-	isAvailable(context: KnowledgeProviderContext): boolean {
-		return (context.uploadedReports?.length ?? 0) > 0
+function loadHealthPackage(
+	query: KnowledgeProviderQuery,
+): KnowledgeContextPackage {
+	const knowledge = healthKnowledgeRetriever.retrieve(toRetrievalQuery(query))
+	const pkg = fromRetrievedKnowledge(knowledge, PROVIDER_ID)
+
+	const healthHits =
+		query.searchHits?.filter((hit) => hit.domain === 'health') ?? []
+
+	if (healthHits.length > 0 && pkg.summaryLines.length === 0) {
+		pkg.summaryLines.push(
+			`Found ${healthHits.length} related item${healthHits.length === 1 ? '' : 's'} in your health records.`,
+		)
 	}
 
-	search(context: KnowledgeProviderContext): SemanticSearchHit[] {
+	return pkg
+}
+
+export class HealthKnowledgeProvider implements ChronicleKnowledgeProvider {
+	readonly id = PROVIDER_ID
+	readonly domain = 'health' as const
+	readonly label = 'Health'
+	readonly priority = 10
+
+	supports(query: KnowledgeProviderQuery): boolean {
+		return getHealthReports(query).length > 0
+	}
+
+	search(query: KnowledgeProviderQuery): SemanticSearchHit[] {
 		return searchHealthReports({
-			question: context.resolvedQuestion,
-			reports: context.uploadedReports ?? [],
+			question: query.resolvedQuestion,
+			reports: getHealthReports(query),
 		})
 	}
 
-	retrieve(context: KnowledgeProviderContext): KnowledgeProviderResult {
-		if (!this.isAvailable(context)) {
+	retrieveContext(query: KnowledgeProviderQuery): ProviderContextResult {
+		if (!this.supports(query)) {
 			return {
-				domain: 'health',
+				providerId: this.id,
+				domain: this.domain,
 				available: false,
-				knowledge: null,
+				package: null,
 				unavailableReason:
 					'No health records are available for this family member yet.',
 			}
 		}
 
-		const knowledge = healthKnowledgeRetriever.retrieve({
-			userId: context.userId,
-			question: context.question,
-			intent: context.intent,
-			resolvedQuestion: context.resolvedQuestion,
-			categoryId: context.categoryId,
-			metricId: context.metricId,
-			metricName: context.metricName,
-			timeRangeYears: context.timeRangeYears,
-			uploadedReports: context.uploadedReports,
-			searchHits: context.searchHits,
-			member: context.member,
-		})
-
-		const healthHits =
-			context.searchHits?.filter((hit) => hit.domain === 'health') ?? []
-
-		if (healthHits.length > 0 && knowledge.summaryLines.length === 0) {
-			knowledge.summaryLines.push(
-				`Found ${healthHits.length} related item${healthHits.length === 1 ? '' : 's'} in your health records.`,
-			)
-		}
-
 		return {
-			domain: 'health',
+			providerId: this.id,
+			domain: this.domain,
 			available: true,
-			knowledge,
+			package: loadHealthPackage(query),
 		}
+	}
+
+	retrieveTimeline(query: KnowledgeProviderQuery): KnowledgeTimelineEvent[] {
+		if (!this.supports(query)) {
+			return []
+		}
+
+		return loadHealthPackage(query).timelineEvents
+	}
+
+	retrieveEntities(query: KnowledgeProviderQuery): KnowledgeDocument[] {
+		if (!this.supports(query)) {
+			return []
+		}
+
+		return loadHealthPackage(query).documents
+	}
+
+	retrieveMetrics(query: KnowledgeProviderQuery): KnowledgeMetric[] {
+		if (!this.supports(query)) {
+			return []
+		}
+
+		return loadHealthPackage(query).metrics
+	}
+
+	retrieveEvidence(query: KnowledgeProviderQuery): KnowledgeReference[] {
+		if (!this.supports(query)) {
+			return []
+		}
+
+		return loadHealthPackage(query).references
 	}
 }
 
 export const healthKnowledgeProvider = new HealthKnowledgeProvider()
+
+registerKnowledgeProvider(healthKnowledgeProvider)

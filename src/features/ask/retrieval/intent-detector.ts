@@ -83,6 +83,88 @@ export function detectIntent(
 	const timeRangeYears = detectTimeRange(normalized)
 
 	if (
+		/what should i pay attention to|pay attention to|need attention/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'attention_summary',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/summarize my health|summary of my health|how is my health overall/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'summarize_health',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/since my last report|since last report|what changed since/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'since_last_report',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/health journey|my journey|summarize my health|health history/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'health_journey',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/resolved|normalized|no longer abnormal|which findings have resolved/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'resolved_findings',
+			categoryId: resolvedCategory,
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.88,
+		}
+	}
+
+	if (
+		/liver history|show my liver|kidney history|heart history/i.test(normalized)
+	) {
+		return {
+			intent: 'organ_status',
+			categoryId: resolvedCategory ?? detectCategory(normalized),
+			metricName: resolvedMetric,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
 		/what should i discuss with my doctor|discuss with my doctor|doctor visit/i.test(
 			normalized,
 		)

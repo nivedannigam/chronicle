@@ -1,3 +1,5 @@
+import type { HealthInsight } from '@/features/health/types'
+
 export interface HomePendingAction {
 	id: string
 	label: string
@@ -36,5 +38,6 @@ export interface HomeBriefing {
 	activities: HomeActivityItem[]
 	totalActivityCount: number
 	isLoading: boolean
+	proactiveInsights: HealthInsight[]
 	hasHealthData: boolean
 }

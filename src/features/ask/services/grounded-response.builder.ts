@@ -120,6 +120,37 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 		})
 	}
 
+	if (knowledge.semanticTimeline && knowledge.semanticTimeline.length > 0) {
+		for (const group of knowledge.semanticTimeline.slice(-3)) {
+			cards.push({
+				type: 'timeline',
+				id: `journey-${group.year}`,
+				items: group.events.slice(0, 6).map((event) => ({
+					title: event.label,
+					date: event.date,
+					status: event.kind,
+					reportId: event.reportId,
+				})),
+			})
+		}
+	}
+
+	for (const trend of knowledge.trends.slice(0, 2)) {
+		const history = knowledge.metricHistories?.find(
+			(item) => item.canonicalId === trend.metricId,
+		)
+
+		if (!history) {
+			continue
+		}
+
+		cards.push({
+			type: 'summary',
+			id: `trend-summary-${trend.metricId}`,
+			text: `${trend.displayName}: ${history.previousValue ?? '—'} → ${history.latestValue} (${trend.direction}, ${trend.changePercent}). Range ${history.lowest ?? '—'}–${history.highest ?? '—'}.`,
+		})
+	}
+
 	for (const metric of knowledge.metrics.slice(0, 4)) {
 		cards.push({
 			type: 'metric',
@@ -247,7 +278,9 @@ function buildGroundedAnswer(input: {
 
 	if (
 		knowledge.timelines.length > 0 &&
-		/trend|change|over|history|lowest|highest/i.test(input.question)
+		/trend|change|over|history|lowest|highest|journey|since last year/i.test(
+			input.question,
+		)
 	) {
 		const timeline = knowledge.timelines[0]!
 		const first = timeline.observations[0]
@@ -260,21 +293,58 @@ function buildGroundedAnswer(input: {
 		}
 	}
 
-	if (knowledge.intent === 'doctor_discussion') {
+	if (knowledge.semanticTimeline && knowledge.semanticTimeline.length > 0) {
+		const recent = knowledge.semanticTimeline.slice(-2)
+
+		for (const group of recent) {
+			if (group.events.length > 0) {
+				lines.push(
+					`In ${group.year}: ${group.events.map((event) => event.label).join('; ')}.`,
+				)
+			}
+		}
+	}
+
+	if (knowledge.metricHistories && knowledge.metricHistories.length > 0) {
+		const history = knowledge.metricHistories[0]!
+
+		if (/how has|changed over|since last year/i.test(input.question)) {
+			lines.push(
+				`${history.displayName} changed from ${history.previousValue ?? '—'} to ${history.latestValue} (${history.trendDirection}, ${history.changePercent ?? '—'}).`,
+			)
+		}
+	}
+
+	if (
+		knowledge.intent === 'doctor_discussion' ||
+		knowledge.intent === 'attention_summary'
+	) {
 		const discussionPoints = [
 			...knowledge.alerts.slice(0, 2),
-			...knowledge.insights
-				.filter((insight) =>
-					/attention|declining|abnormal|low|high/i.test(insight),
-				)
-				.slice(0, 2),
+			...knowledge.insights.slice(0, 3),
 		]
 
 		if (discussionPoints.length > 0) {
 			lines.push(
-				`You may want to discuss with your healthcare professional: ${discussionPoints.join('; ')}.`,
+				`Based on your Chronicle records, you may want to review: ${discussionPoints.join('; ')}.`,
 			)
 		}
+	}
+
+	if (
+		knowledge.intent === 'summarize_health' ||
+		knowledge.intent === 'health_journey'
+	) {
+		if (knowledge.insights.length > 0) {
+			lines.push(knowledge.insights.slice(0, 3).join(' '))
+		}
+	}
+
+	if (
+		knowledge.intent === 'since_last_report' &&
+		knowledge.summaryLines.length > 0
+	) {
+		lines.push(knowledge.summaryLines[0]!)
 	}
 
 	lines.push('This is informational and not medical advice.')

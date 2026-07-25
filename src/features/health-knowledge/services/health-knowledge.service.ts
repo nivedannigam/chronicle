@@ -1,3 +1,4 @@
+import { healthInsightsService } from '@/features/health-insights/services/health-insights.service'
 import {
 	buildHealthKnowledgeGraph,
 	buildHealthKnowledgeSourceKey,
@@ -66,6 +67,16 @@ export class HealthKnowledgeService {
 		userId: string | undefined,
 		uploadedReports: UploadedHealthReport[] = [],
 	): HealthInsight[] {
+		const proactive = healthInsightsService.getProactiveHealthInsights({
+			userId,
+			uploadedReports,
+			limit: 12,
+		})
+
+		if (proactive.healthInsights.length > 0) {
+			return proactive.healthInsights
+		}
+
 		const graph = this.getGraphForUser(userId, uploadedReports)
 
 		return derivedInsightsToHealthInsights(graph.profile.insights)

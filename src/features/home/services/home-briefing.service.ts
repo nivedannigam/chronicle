@@ -326,6 +326,7 @@ export function buildHomeBriefing(input: {
 		totalActivityCount: allActivities.length,
 		isLoading: input.isLoading,
 		hasHealthData: completed.length > 0,
+		proactiveInsights: input.insights.slice(0, 5),
 	}
 }
 

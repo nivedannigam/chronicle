@@ -1,16 +1,23 @@
 export {
-	bootstrapIntelligenceProviders,
-	resolveIntelligenceMember,
 	runIntelligencePipeline,
+	resolveIntelligenceMember,
 } from '@/features/intelligence/pipeline/chronicle-intelligence.pipeline'
+export { runKnowledgeOrchestrator } from '@/features/intelligence/orchestrator/knowledge-orchestrator'
+export {
+	contextBuilder,
+	ContextBuilder,
+} from '@/features/intelligence/context/context-builder'
+export type { BuiltKnowledgeContext } from '@/features/intelligence/context/context-builder'
 export {
 	registerKnowledgeProvider,
+	unregisterKnowledgeProvider,
+	clearKnowledgeProviders,
 	getKnowledgeProvider,
 	getRegisteredProviders,
-	getAvailableProviders,
+	getSupportingProviders,
+	getRegisteredProviderCount,
+	getRegisteredProviderIds,
 } from '@/features/intelligence/registry/intelligence-registry'
-export { healthKnowledgeProvider } from '@/features/intelligence/providers/health-knowledge.provider'
-export { documentsKnowledgeProvider } from '@/features/intelligence/providers/documents-knowledge.provider'
 export { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
 export {
 	computeGroundedConfidence,
@@ -33,13 +40,34 @@ export {
 	buildMemorySessionKey,
 	resolveMemberFromQuestion,
 } from '@/features/intelligence/services/member-context.service'
+export {
+	toRetrievedKnowledge,
+	fromRetrievedKnowledge,
+} from '@/features/intelligence/adapters/retrieved-knowledge.adapter'
+export type {
+	KnowledgePerson,
+	KnowledgeDocument,
+	KnowledgeMetric,
+	KnowledgeObservation,
+	KnowledgeTimelineEvent,
+	KnowledgeFinding,
+	KnowledgeReference,
+	KnowledgeComparison,
+	KnowledgeContextPackage,
+} from '@/features/intelligence/entities/knowledge-entities'
+export {
+	createEmptyContextPackage,
+	isContextPackageEmpty,
+} from '@/features/intelligence/entities/knowledge-entities'
 export type {
 	ChronicleKnowledgeProvider,
+	KnowledgeProviderQuery,
+	ProviderContextResult,
+} from '@/features/intelligence/contracts/knowledge-provider.contract'
+export type {
 	IntelligenceMemberContext,
-	IntelligencePipelineContext,
 	IntelligenceQueryInput,
-	KnowledgeProviderContext,
-	KnowledgeProviderResult,
+	IntelligencePipelineContext,
 	SemanticSearchHit,
 } from '@/features/intelligence/types/intelligence.types'
-export { createEmptyKnowledge } from '@/features/intelligence/types/intelligence.types'
+export { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'

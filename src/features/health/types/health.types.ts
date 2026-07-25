@@ -70,6 +70,9 @@ export interface HealthInsight {
 	id: string
 	text: string
 	tone: InsightTone
+	title?: string
+	category?: string
+	confidence?: 'high' | 'medium' | 'low'
 }
 
 export interface UpcomingAction {

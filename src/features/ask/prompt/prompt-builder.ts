@@ -40,29 +40,32 @@ export class PromptBuilder {
 	build(input: {
 		question: string
 		knowledge: RetrievedKnowledge | null
+		contextJson?: string
 		memory: ConversationTurnMemory[]
 		member: IntelligenceMemberContext
 		dataAvailable: boolean
 	}): BuiltPrompt {
-		const contextJson = JSON.stringify(
-			{
-				selectedMember: input.member.memberName,
-				domain: input.knowledge?.domain ?? 'health',
-				intent: input.knowledge?.intent,
-				dataAvailable: input.dataAvailable,
-				reports: input.knowledge?.reports ?? [],
-				metrics: input.knowledge?.metrics ?? [],
-				timelines: input.knowledge?.timelines ?? [],
-				trends: input.knowledge?.trends ?? [],
-				observations: input.knowledge?.observations.slice(0, 40) ?? [],
-				relationships: input.knowledge?.relationships ?? [],
-				insights: input.knowledge?.insights ?? [],
-				alerts: input.knowledge?.alerts ?? [],
-				summaryLines: input.knowledge?.summaryLines ?? [],
-			},
-			null,
-			2,
-		)
+		const contextJson =
+			input.contextJson ??
+			JSON.stringify(
+				{
+					selectedMember: input.member.memberName,
+					domain: input.knowledge?.domain,
+					intent: input.knowledge?.intent,
+					dataAvailable: input.dataAvailable,
+					reports: input.knowledge?.reports ?? [],
+					metrics: input.knowledge?.metrics ?? [],
+					timelines: input.knowledge?.timelines ?? [],
+					trends: input.knowledge?.trends ?? [],
+					observations: input.knowledge?.observations.slice(0, 40) ?? [],
+					relationships: input.knowledge?.relationships ?? [],
+					insights: input.knowledge?.insights ?? [],
+					alerts: input.knowledge?.alerts ?? [],
+					summaryLines: input.knowledge?.summaryLines ?? [],
+				},
+				null,
+				2,
+			)
 
 		const history = input.memory
 			.slice(-4)

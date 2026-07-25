@@ -58,7 +58,16 @@ export function HealthInsightsList({ insights }: HealthInsightsListProps) {
 							lineHeight: 1.5,
 						}}
 					>
-						{insight.text}
+						{insight.title ? (
+							<>
+								<span style={{ fontWeight: 600, color: C.text }}>
+									{insight.title}.{' '}
+								</span>
+								{insight.text}
+							</>
+						) : (
+							insight.text
+						)}
 					</p>
 				</div>
 			))}
