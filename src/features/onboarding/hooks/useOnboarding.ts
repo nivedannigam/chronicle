@@ -3,7 +3,6 @@ import {
 	completeOnboardingStep,
 	dismissOnboarding,
 	readOnboardingProgress,
-	shouldShowOnboarding,
 	type OnboardingStepId,
 } from '@/features/onboarding/services/onboarding.service'
 
@@ -28,7 +27,7 @@ export function useOnboarding() {
 		readOnboardingProgress,
 	)
 
-	const isVisible = shouldShowOnboarding()
+	const isVisible = !progress.completed && !progress.dismissed
 
 	const completeStep = useCallback((stepId: OnboardingStepId) => {
 		completeOnboardingStep(stepId)

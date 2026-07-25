@@ -17,22 +17,42 @@ const DEFAULT_PROGRESS: OnboardingProgress = {
 	completedAt: null,
 }
 
-export function readOnboardingProgress(): OnboardingProgress {
+let cachedRaw: string | null | undefined
+let cachedSnapshot: OnboardingProgress = DEFAULT_PROGRESS
+
+function parseProgress(raw: string | null): OnboardingProgress {
+	if (!raw) {
+		return DEFAULT_PROGRESS
+	}
+
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY)
-
-		if (!raw) {
-			return { ...DEFAULT_PROGRESS }
-		}
-
 		return { ...DEFAULT_PROGRESS, ...JSON.parse(raw) }
 	} catch {
-		return { ...DEFAULT_PROGRESS }
+		return DEFAULT_PROGRESS
 	}
+}
+
+function invalidateProgressCache(): void {
+	cachedRaw = undefined
+}
+
+/** Stable snapshot for useSyncExternalStore — same reference until storage changes. */
+export function readOnboardingProgress(): OnboardingProgress {
+	const raw = localStorage.getItem(STORAGE_KEY)
+
+	if (raw === cachedRaw) {
+		return cachedSnapshot
+	}
+
+	cachedRaw = raw
+	cachedSnapshot = parseProgress(raw)
+	return cachedSnapshot
 }
 
 export function writeOnboardingProgress(progress: OnboardingProgress): void {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
+	cachedRaw = JSON.stringify(progress)
+	cachedSnapshot = progress
 }
 
 export function completeOnboardingStep(
@@ -74,4 +94,5 @@ export function shouldShowOnboarding(): boolean {
 
 export function resetOnboardingForDev(): void {
 	localStorage.removeItem(STORAGE_KEY)
+	invalidateProgressCache()
 }
