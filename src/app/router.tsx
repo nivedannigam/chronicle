@@ -18,7 +18,7 @@ import {
 	HealthTimelinePage,
 } from '@/features/health'
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
-import { ImportReviewPage } from '@/features/medical-discovery'
+import { ImportReviewPage, OcrPreviewPage } from '@/features/medical-discovery'
 import { HomePage } from '@/features/home'
 import { MailPage } from '@/features/mail'
 import {
@@ -161,6 +161,7 @@ export function AppRouter() {
 						path={ROUTES.healthReport}
 						element={<HealthReportDetailPage />}
 					/>
+					<Route path={ROUTES.healthOcrPreview} element={<OcrPreviewPage />} />
 					<Route
 						path={ROUTES.healthMetric}
 						element={<HealthMetricTimelinePage />}
@@ -189,10 +190,6 @@ export function AppRouter() {
 								element={<Navigate to={ROUTES.healthSettings} replace />}
 							/>
 							<Route
-								path={ROUTES.healthOcrPreview}
-								element={<Navigate to={ROUTES.healthReports} replace />}
-							/>
-							<Route
 								path={ROUTES.healthImportWizard}
 								element={<Navigate to={ROUTES.healthSettings} replace />}
 							/>
@@ -210,10 +207,6 @@ export function AppRouter() {
 							<Route
 								path={ROUTES.healthDiscovery}
 								element={<Navigate to={ROUTES.healthSettings} replace />}
-							/>
-							<Route
-								path={ROUTES.healthOcrPreview}
-								element={<Navigate to={ROUTES.healthReports} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportWizard}

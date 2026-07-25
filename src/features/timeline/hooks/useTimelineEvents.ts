@@ -38,14 +38,19 @@ function buildTimelineSources(input: {
 	}
 }
 
-export function useTimelineSources(): TimelineSources {
+export function useTimelineSources(): {
+	sources: TimelineSources
+	isLoading: boolean
+	isError: boolean
+	refetch: () => void
+} {
 	const reportsQuery = useMemberHealthReports()
 	const documentsQuery = useMemberDocuments()
 	const { user } = useAuth()
 	const { graph } = useHealthKnowledge(user?.id, reportsQuery.data ?? [])
 	const importStatus = useHealthImportStatus(user?.id)
 
-	return useMemo(
+	const sources = useMemo(
 		() =>
 			buildTimelineSources({
 				reports: reportsQuery.data,
@@ -60,14 +65,28 @@ export function useTimelineSources(): TimelineSources {
 			importStatus.data,
 		],
 	)
+
+	const isLoading =
+		reportsQuery.isLoading || documentsQuery.isLoading || importStatus.isLoading
+
+	const isError =
+		reportsQuery.isError || documentsQuery.isError || importStatus.isError
+
+	const refetch = () => {
+		void reportsQuery.refetch()
+		void documentsQuery.refetch()
+		void importStatus.refetch()
+	}
+
+	return { sources, isLoading, isError, refetch }
 }
 
 export function useTimelineEvents(filters: TimelineFilters = {}) {
 	const { user } = useAuth()
 	const { selectedMemberId, selectedMember } = useFamilyContext()
-	const sources = useTimelineSources()
+	const { sources, isLoading, isError, refetch } = useTimelineSources()
 
-	return useMemo(
+	const timeline = useMemo(
 		() =>
 			buildTimelineEvents({
 				userId: user?.id ?? '',
@@ -81,12 +100,14 @@ export function useTimelineEvents(filters: TimelineFilters = {}) {
 			}),
 		[user?.id, selectedMemberId, selectedMember?.displayName, sources, filters],
 	)
+
+	return { ...timeline, isLoading, isError, refetch }
 }
 
 export function useTimelinePreview(count = 5) {
 	const { user } = useAuth()
 	const { selectedMemberId, selectedMember } = useFamilyContext()
-	const sources = useTimelineSources()
+	const { sources } = useTimelineSources()
 
 	return useMemo(
 		() =>

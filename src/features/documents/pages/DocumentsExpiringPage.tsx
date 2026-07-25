@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { C } from '@/constants/colors'
 import { documentPath } from '@/constants/routes'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { documentsExpiringWithin } from '@/features/documents/services/document.service'
 
@@ -18,7 +20,12 @@ function formatDate(value: string | null): string {
 }
 
 export function DocumentsExpiringPage() {
-	const { data: documents = [] } = useMemberDocuments()
+	const {
+		data: documents = [],
+		isLoading,
+		isError,
+		refetch,
+	} = useMemberDocuments()
 	const expiring = useMemo(
 		() => documentsExpiringWithin(documents, 365),
 		[documents],
@@ -30,8 +37,26 @@ export function DocumentsExpiringPage() {
 				Documents expiring within the next year
 			</div>
 
-			{expiring.length === 0 ? (
-				<div style={{ color: C.textMuted, fontSize: 14 }}>
+			{isError ? (
+				<InlineErrorBanner
+					message="Could not load documents."
+					onRetry={() => void refetch()}
+				/>
+			) : null}
+
+			{isLoading ? (
+				<ListSkeleton rows={3} height={56} />
+			) : expiring.length === 0 ? (
+				<div
+					style={{
+						padding: '24px 16px',
+						borderRadius: 16,
+						border: `1px dashed ${C.border}`,
+						color: C.textMuted,
+						fontSize: 14,
+						lineHeight: 1.5,
+					}}
+				>
 					No upcoming expiries found in your document library.
 				</div>
 			) : (
@@ -49,7 +74,15 @@ export function DocumentsExpiringPage() {
 								color: C.text,
 							}}
 						>
-							<div style={{ fontWeight: 700, marginBottom: 4 }}>
+							<div
+								style={{
+									fontWeight: 700,
+									marginBottom: 4,
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								}}
+							>
 								{document.title}
 							</div>
 							<div style={{ fontSize: 12, color: C.textSec }}>

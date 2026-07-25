@@ -1,5 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { C } from '@/constants/colors'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { TimelineEventRow } from '@/features/timeline/components/TimelineEventRow'
 import { TimelineGroupHeader } from '@/features/timeline/components/TimelineGroupHeader'
 import { useTimelineEvents } from '@/features/timeline/hooks/useTimelineEvents'
@@ -155,7 +157,16 @@ export function TimelineFeed() {
 				onImportanceChange={setImportanceFilter}
 			/>
 
-			{timeline.totalCount === 0 ? (
+			{timeline.isError ? (
+				<InlineErrorBanner
+					message="Could not load your timeline."
+					onRetry={timeline.refetch}
+				/>
+			) : null}
+
+			{timeline.isLoading ? (
+				<ListSkeleton rows={5} height={64} />
+			) : timeline.totalCount === 0 ? (
 				<div
 					style={{
 						padding: '24px 16px',

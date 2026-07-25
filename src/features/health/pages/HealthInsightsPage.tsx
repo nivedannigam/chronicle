@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
-import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
+import {
+	DashboardEmptyState,
+	DashboardSkeleton,
+} from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthInsightsList } from '@/features/health/components/HealthInsightsList'
 import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
@@ -14,8 +17,18 @@ export function HealthInsightsPage() {
 	const { insights, hasImportedReports } = useHealthDashboard(uploadedReports)
 
 	if (uploadedQuery.isLoading) {
+		return <DashboardSkeleton />
+	}
+
+	if (uploadedQuery.isError) {
 		return (
-			<DashboardEmptyState title="Loading insights…" message="" emoji="✨" />
+			<DashboardEmptyState
+				title="Could not load insights"
+				message="Check your connection and try again."
+				emoji="⚠️"
+				actionLabel="Try again"
+				onAction={() => void uploadedQuery.refetch()}
+			/>
 		)
 	}
 

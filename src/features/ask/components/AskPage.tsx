@@ -81,8 +81,8 @@ export function AskPage() {
 			style={{
 				display: 'flex',
 				flexDirection: 'column',
-				height: 'calc(100dvh - 64px)',
-				maxHeight: 'calc(100dvh - 64px)',
+				height: '100%',
+				minHeight: 0,
 				color: C.text,
 				overflow: 'hidden',
 			}}
@@ -121,13 +121,16 @@ export function AskPage() {
 						>
 							<Sparkles size={20} color={C.accent} />
 						</div>
-						<div>
+						<div style={{ flex: 1, minWidth: 0 }}>
 							<div
 								style={{
 									fontSize: 20,
 									fontWeight: 800,
 									letterSpacing: '-0.03em',
 									lineHeight: 1.1,
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
 								}}
 							>
 								{ASK_COPY.title}
@@ -241,7 +244,7 @@ export function AskPage() {
 				onNewConversation={clearConversation}
 			/>
 
-			<AiDebugPanel />
+			{import.meta.env.DEV ? <AiDebugPanel /> : null}
 		</div>
 	)
 }

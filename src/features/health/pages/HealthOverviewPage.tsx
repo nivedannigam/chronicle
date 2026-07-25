@@ -71,6 +71,18 @@ export function HealthOverviewPage() {
 		return <DashboardSkeleton />
 	}
 
+	if (uploadedQuery.isError) {
+		return (
+			<DashboardEmptyState
+				title="Could not load health data"
+				message="Check your connection and try again."
+				emoji="⚠️"
+				actionLabel="Try again"
+				onAction={() => void uploadedQuery.refetch()}
+			/>
+		)
+	}
+
 	if (!hasImportedReports) {
 		return (
 			<>

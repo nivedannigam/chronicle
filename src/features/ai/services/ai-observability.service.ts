@@ -4,6 +4,10 @@ const logs: AiObservabilityLog[] = []
 const MAX_LOGS = 50
 
 export function logAiRequest(entry: AiObservabilityLog): void {
+	if (!import.meta.env.DEV) {
+		return
+	}
+
 	logs.unshift(entry)
 
 	if (logs.length > MAX_LOGS) {

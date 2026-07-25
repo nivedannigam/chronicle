@@ -203,10 +203,12 @@ async function importRegistryRecord(
 	}
 
 	if (insertError && isHealthReportStatusConstraintError(insertError)) {
-		console.warn(
-			'health_reports insert failed status constraint; retrying with status queued',
-			insertError.message,
-		)
+		if (import.meta.env.DEV) {
+			console.warn(
+				'health_reports insert failed status constraint; retrying with status queued',
+				insertError.message,
+			)
+		}
 
 		if (existingReport) {
 			const retry = await supabase

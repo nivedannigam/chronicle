@@ -129,21 +129,23 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 					metricName: pipeline.detection.metricName,
 				})
 
-				lastDebugInfo = {
-					intent: 'explain_response',
-					resolvedQuestion: input.question,
-					retrievedKnowledge: knowledge,
-					prompt,
-					provider: 'explainability',
-					providerResponse: explainTurn.answer,
-					turn: explainTurn,
+				if (import.meta.env.DEV) {
+					lastDebugInfo = {
+						intent: 'explain_response',
+						resolvedQuestion: input.question,
+						retrievedKnowledge: knowledge,
+						prompt,
+						provider: 'explainability',
+						providerResponse: explainTurn.answer,
+						turn: explainTurn,
+					}
 				}
 
 				return {
 					turn: explainTurn,
 					intent: 'explain_response',
 					implementation: 'grounded-only',
-					debug: lastDebugInfo,
+					debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
 				}
 			}
 		}
@@ -278,21 +280,23 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			timestamp: new Date().toISOString(),
 		})
 
-		lastDebugInfo = {
-			intent: pipeline.detection.intent,
-			resolvedQuestion: pipeline.resolvedQuestion,
-			retrievedKnowledge: knowledge,
-			prompt,
-			provider: usedProvider,
-			providerResponse,
-			turn,
+		if (import.meta.env.DEV) {
+			lastDebugInfo = {
+				intent: pipeline.detection.intent,
+				resolvedQuestion: pipeline.resolvedQuestion,
+				retrievedKnowledge: knowledge,
+				prompt,
+				provider: usedProvider,
+				providerResponse,
+				turn,
+			}
 		}
 
 		return {
 			turn,
 			intent: pipeline.detection.intent,
 			implementation: aiConfigured ? 'ai-provider' : 'grounded-only',
-			debug: lastDebugInfo,
+			debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
 		}
 	}
 }

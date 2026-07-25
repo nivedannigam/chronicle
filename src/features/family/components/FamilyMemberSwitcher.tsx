@@ -31,7 +31,17 @@ export function FamilyMemberSwitcher() {
 					avatarUrl={selectedMember.avatarUrl}
 					size={28}
 				/>
-				<span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+				<span
+					style={{
+						fontSize: 13,
+						fontWeight: 600,
+						color: C.text,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+						maxWidth: 140,
+					}}
+				>
 					{selectedMember.displayName}
 				</span>
 			</div>
@@ -62,7 +72,17 @@ export function FamilyMemberSwitcher() {
 						size={28}
 					/>
 				) : null}
-				<span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+				<span
+					style={{
+						fontSize: 13,
+						fontWeight: 600,
+						color: C.text,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+						maxWidth: 140,
+					}}
+				>
 					{selectedMember?.displayName ?? 'Select member'}
 				</span>
 				<ChevronDown size={16} color={C.textMuted} />
@@ -113,7 +133,18 @@ export function FamilyMemberSwitcher() {
 								avatarUrl={member.avatarUrl}
 								size={32}
 							/>
-							<span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+							<span
+								style={{
+									fontSize: 14,
+									fontWeight: 600,
+									color: C.text,
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									flex: 1,
+									minWidth: 0,
+								}}
+							>
 								{member.displayName}
 							</span>
 						</button>

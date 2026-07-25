@@ -14,7 +14,7 @@ async function deleteStoragePaths(storagePaths: string[]) {
 		.from(HEALTH_REPORTS_BUCKET)
 		.remove(uniquePaths)
 
-	if (error) {
+	if (error && import.meta.env.DEV) {
 		console.warn('Could not delete some storage files:', error.message)
 	}
 }

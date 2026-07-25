@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { FileText, Upload } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { documentPath } from '@/constants/routes'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useUploadDocument } from '@/features/documents/hooks/useUploadDocument'
 import {
@@ -24,7 +26,12 @@ function formatDate(value: string | null): string {
 
 export function DocumentsPage() {
 	const fileInputRef = useRef<HTMLInputElement>(null)
-	const { data: documents = [], isLoading } = useMemberDocuments()
+	const {
+		data: documents = [],
+		isLoading,
+		isError,
+		refetch,
+	} = useMemberDocuments()
 	const uploadDocument = useUploadDocument()
 
 	return (
@@ -37,7 +44,17 @@ export function DocumentsPage() {
 					marginBottom: 16,
 				}}
 			>
-				<div style={{ fontSize: 14, color: C.textSec }}>
+				<div
+					style={{
+						flex: 1,
+						minWidth: 0,
+						fontSize: 14,
+						color: C.textSec,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+					}}
+				>
 					{documents.length} document{documents.length === 1 ? '' : 's'} in your
 					library
 				</div>
@@ -56,8 +73,10 @@ export function DocumentsPage() {
 						padding: '8px 12px',
 						fontSize: 13,
 						fontWeight: 700,
-						cursor: 'pointer',
+						cursor: uploadDocument.isPending ? 'not-allowed' : 'pointer',
 						fontFamily: 'inherit',
+						flexShrink: 0,
+						opacity: uploadDocument.isPending ? 0.65 : 1,
 					}}
 				>
 					<Upload size={16} />
@@ -88,10 +107,15 @@ export function DocumentsPage() {
 				</div>
 			) : null}
 
+			{isError ? (
+				<InlineErrorBanner
+					message="Could not load documents."
+					onRetry={() => void refetch()}
+				/>
+			) : null}
+
 			{isLoading ? (
-				<div style={{ color: C.textMuted, fontSize: 14 }}>
-					Loading documents…
-				</div>
+				<ListSkeleton rows={4} />
 			) : documents.length === 0 ? (
 				<div
 					style={{
