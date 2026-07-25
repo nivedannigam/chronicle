@@ -1,3 +1,7 @@
+import type { MetricStatus } from '@/features/health/types'
+import type { SemanticSearchHit } from '@/features/intelligence/types/intelligence.types'
+import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
+
 export type KnowledgeDomain =
 	'health' | 'finance' | 'travel' | 'mail' | 'documents' | 'photos'
 
@@ -25,6 +29,8 @@ export interface RetrievalQuery {
 	metricName?: string
 	timeRangeYears?: number
 	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+	searchHits?: SemanticSearchHit[]
+	member?: IntelligenceMemberContext
 }
 
 export interface RetrievedReport {
@@ -93,6 +99,20 @@ export interface RetrievedRelationship {
 	label: string
 }
 
+export interface RetrievedComparison {
+	id: string
+	label: string
+	olderLabel: string
+	newerLabel: string
+	metrics: Array<{
+		metric: string
+		oldValue: string
+		newValue: string
+		difference: string
+		status: MetricStatus
+	}>
+}
+
 export interface RetrievedKnowledge {
 	domain: KnowledgeDomain
 	intent: AskIntent
@@ -105,6 +125,7 @@ export interface RetrievedKnowledge {
 	insights: string[]
 	alerts: string[]
 	summaryLines: string[]
+	comparisons: RetrievedComparison[]
 }
 
 export interface KnowledgeRetriever {

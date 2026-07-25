@@ -1,4 +1,3 @@
-import { getReportComparisons } from '@/features/health/services/health.service'
 import { C } from '@/constants/colors'
 import type {
 	AnswerCardData,
@@ -7,6 +6,11 @@ import type {
 	RelatedMetricRef,
 	RelatedReportRef,
 } from '@/features/ask/types'
+import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.types'
+import {
+	computeGroundedConfidence,
+	parseConfidenceLevel,
+} from '@/features/intelligence/types/confidence.types'
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 import { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
@@ -182,9 +186,7 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 	}
 
 	if (knowledge.intent === 'compare_reports') {
-		const comparison = getReportComparisons()[0]
-
-		if (comparison) {
+		for (const comparison of knowledge.comparisons.slice(0, 1)) {
 			cards.push({
 				type: 'comparison',
 				id: comparison.id,
@@ -303,7 +305,17 @@ export function buildGroundedTurn(input: {
 			insights: [],
 			alerts: [],
 			summaryLines: [],
+			comparisons: [],
 		} satisfies RetrievedKnowledge)
+
+	const citations = input.dataAvailable ? buildEvidenceCitations(knowledge) : []
+	const confidence = computeGroundedConfidence({
+		dataAvailable: input.dataAvailable,
+		metricCount: knowledge.metrics.length,
+		reportCount: knowledge.reports.length,
+		citationCount: citations.length,
+		intentConfidence: input.confidence,
+	})
 
 	return {
 		id: crypto.randomUUID(),
@@ -317,7 +329,7 @@ export function buildGroundedTurn(input: {
 		cards: input.dataAvailable ? buildCards(knowledge) : [],
 		relatedReports: input.dataAvailable ? toRelatedReports(knowledge) : [],
 		relatedMetrics: input.dataAvailable ? toRelatedMetrics(knowledge) : [],
-		citations: input.dataAvailable ? buildEvidenceCitations(knowledge) : [],
+		citations,
 		evidence: input.dataAvailable ? buildEvidenceLines(knowledge) : [],
 		followUpQuestions: generateFollowUpQuestions({
 			intent: knowledge.intent,
@@ -330,11 +342,8 @@ export function buildGroundedTurn(input: {
 		memberName: input.member.memberName,
 		domains: input.domains,
 		dataAvailable: input.dataAvailable,
-		confidence:
-			input.confidence ??
-			(input.dataAvailable
-				? Math.min(0.95, 0.55 + knowledge.metrics.length * 0.05)
-				: 0.35),
+		confidence: confidence.score,
+		confidenceLevel: confidence.level,
 		timestamp,
 		displayTimestamp: formatTimestamp(timestamp),
 	}
@@ -342,7 +351,8 @@ export function buildGroundedTurn(input: {
 
 export interface ParsedAiResponse {
 	answer: string
-	confidence: number
+	confidence: number | ConfidenceLevel
+	confidenceLevel?: ConfidenceLevel
 	citations: Array<{
 		reportId: string
 		reportTitle: string
@@ -360,7 +370,24 @@ export function parseAiJsonResponse(content: string): ParsedAiResponse | null {
 			return null
 		}
 
-		return parsed
+		const level =
+			parseConfidenceLevel(parsed.confidenceLevel) ??
+			parseConfidenceLevel(parsed.confidence)
+
+		return {
+			...parsed,
+			confidenceLevel: level ?? 'medium',
+			confidence:
+				typeof parsed.confidence === 'number'
+					? parsed.confidence
+					: level
+						? level === 'high'
+							? 0.9
+							: level === 'medium'
+								? 0.75
+								: 0.55
+						: 0.7,
+		}
 	} catch {
 		return null
 	}

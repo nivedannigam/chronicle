@@ -135,6 +135,7 @@ export interface AskConversationTurn {
 	domains: import('@/features/knowledge/retrieval/knowledge-retriever.types').KnowledgeDomain[]
 	dataAvailable: boolean
 	confidence: number
+	confidenceLevel: import('@/features/intelligence/types/confidence.types').ConfidenceLevel
 	timestamp: string
 	displayTimestamp: string
 }

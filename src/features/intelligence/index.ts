@@ -13,6 +13,17 @@ export { healthKnowledgeProvider } from '@/features/intelligence/providers/healt
 export { documentsKnowledgeProvider } from '@/features/intelligence/providers/documents-knowledge.provider'
 export { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
 export {
+	computeGroundedConfidence,
+	confidenceLevelLabel,
+	parseConfidenceLevel,
+	toConfidenceLevel,
+} from '@/features/intelligence/types/confidence.types'
+export type { ConfidenceLevel } from '@/features/intelligence/types/confidence.types'
+export {
+	rankSearchHits,
+	topReportIdsFromHits,
+} from '@/features/intelligence/services/search-ranking.service'
+export {
 	extractTextSnippet,
 	mergeSearchHits,
 	scoreTextMatch,

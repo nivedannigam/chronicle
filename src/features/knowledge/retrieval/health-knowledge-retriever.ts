@@ -1,13 +1,23 @@
 import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
-import { getHealthReports } from '@/features/health/services/health.service'
+import {
+	getParsedHealthReport,
+	getReportDisplayDate,
+	getReportDisplayTitle,
+} from '@/features/health/services/health-parsed-report.service'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
 import type {
 	HealthMetricHistory,
 	MetricCategoryId,
 } from '@/features/health-knowledge/types'
 import type {
+	MetricStatus,
+	UploadedHealthReport,
+} from '@/features/health/types'
+import { topReportIdsFromHits } from '@/features/intelligence/services/search-ranking.service'
+import type {
 	KnowledgeRetriever,
 	RetrievalQuery,
+	RetrievedComparison,
 	RetrievedKnowledge,
 	RetrievedMetric,
 	RetrievedObservation,
@@ -142,6 +152,95 @@ function latestMetricFromHistory(
 	}
 }
 
+function buildReportsFromUploads(
+	uploadedReports: UploadedHealthReport[],
+	prioritizedReportIds: string[] = [],
+): RetrievedReport[] {
+	const completed = uploadedReports.filter(
+		(report) => report.status === 'completed',
+	)
+
+	const prioritized = new Set(prioritizedReportIds)
+	const ordered = [
+		...completed.filter((report) => prioritized.has(report.id)),
+		...completed
+			.filter((report) => !prioritized.has(report.id))
+			.sort(
+				(a, b) =>
+					new Date(b.report_date ?? b.uploaded_at).getTime() -
+					new Date(a.report_date ?? a.uploaded_at).getTime(),
+			),
+	]
+
+	return ordered.slice(0, 6).map((report) => {
+		const parsed = getParsedHealthReport(report)
+
+		return {
+			id: report.id,
+			title: getReportDisplayTitle(report),
+			date: getReportDisplayDate(report, parsed),
+			lab: parsed?.metadata.laboratory ?? '',
+			category: parsed?.metadata.reportType ?? report.report_type ?? 'general',
+			summary: parsed
+				? `${parsed.metrics.length} extracted metrics`
+				: report.file_name,
+		}
+	})
+}
+
+function mapComparisonStatus(value: string): MetricStatus {
+	switch (value) {
+		case 'low':
+			return 'low'
+		case 'high':
+		case 'borderline':
+			return 'high'
+		case 'critical':
+			return 'critical'
+		default:
+			return 'normal'
+	}
+}
+
+function buildReportComparison(
+	reports: RetrievedReport[],
+	histories: HealthMetricHistory[],
+): RetrievedComparison | null {
+	if (reports.length < 2) {
+		return null
+	}
+
+	const older = reports[1]!
+	const newer = reports[0]!
+	const sharedMetrics = histories
+		.filter((history) => history.observations.length >= 2)
+		.slice(0, 6)
+		.map((history) => {
+			const previous = history.observations[history.observations.length - 2]!
+			const latest = history.observations[history.observations.length - 1]!
+
+			return {
+				metric: history.displayName,
+				oldValue: previous.value,
+				newValue: latest.value,
+				difference: `${previous.value} → ${latest.value}`,
+				status: mapComparisonStatus(latest.status),
+			}
+		})
+
+	if (sharedMetrics.length === 0) {
+		return null
+	}
+
+	return {
+		id: `${older.id}-${newer.id}`,
+		label: 'Report comparison',
+		olderLabel: `${older.title} · ${older.date}`,
+		newerLabel: `${newer.title} · ${newer.date}`,
+		metrics: sharedMetrics,
+	}
+}
+
 export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 	readonly domain = 'health' as const
 
@@ -169,25 +268,11 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			)
 		}
 
-		const reports: RetrievedReport[] = getHealthReports()
-			.filter((report) => {
-				if (!categoryId) {
-					return profile.reportIds.includes(report.id)
-				}
-
-				return (
-					report.category === categoryId || report.category === query.categoryId
-				)
-			})
-			.slice(0, 6)
-			.map((report) => ({
-				id: report.id,
-				title: report.title,
-				date: report.displayDate,
-				lab: report.lab,
-				category: report.category,
-				summary: report.summary,
-			}))
+		const prioritizedReportIds = topReportIdsFromHits(query.searchHits ?? [])
+		const reports = buildReportsFromUploads(
+			query.uploadedReports ?? [],
+			prioritizedReportIds,
+		)
 
 		const metrics = histories
 			.map((history) => latestMetricFromHistory(history))
@@ -219,6 +304,16 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			alerts,
 		})
 
+		const comparisons: RetrievedComparison[] = []
+
+		if (query.intent === 'compare_reports') {
+			const comparison = buildReportComparison(reports, histories)
+
+			if (comparison) {
+				comparisons.push(comparison)
+			}
+		}
+
 		return {
 			domain: 'health',
 			intent: query.intent,
@@ -236,6 +331,7 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			insights,
 			alerts,
 			summaryLines,
+			comparisons,
 		}
 	}
 }

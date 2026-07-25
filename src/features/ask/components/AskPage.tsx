@@ -174,6 +174,7 @@ export function AskPage() {
 					<ConversationThread
 						turns={turns}
 						streamingTurn={streamingTurn}
+						isTyping={isLoading}
 						onFollowUpSelect={(question) => {
 							setQuery(question)
 							void handleSubmit(question)

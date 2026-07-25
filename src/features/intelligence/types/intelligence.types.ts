@@ -47,6 +47,8 @@ export interface SemanticSearchHit {
 	reportId?: string
 	metricName?: string
 	date?: string
+	reportType?: string
+	memberId?: string | null
 }
 
 export interface KnowledgeProviderResult {
@@ -95,5 +97,6 @@ export function createEmptyKnowledge(
 		insights: [],
 		alerts: [],
 		summaryLines: [],
+		comparisons: [],
 	}
 }

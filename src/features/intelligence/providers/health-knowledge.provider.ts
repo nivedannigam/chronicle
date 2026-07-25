@@ -31,6 +31,8 @@ function searchHealthReports(input: {
 		const title = getReportDisplayTitle(report)
 		const lab = parsed?.metadata.laboratory ?? ''
 		const reportDate = report.report_date ?? report.uploaded_at
+		const reportType = parsed?.metadata.reportType ?? report.report_type ?? ''
+		const memberId = report.family_member_id ?? null
 		const body = [
 			title,
 			lab,
@@ -53,6 +55,8 @@ function searchHealthReports(input: {
 				score: reportScore,
 				reportId: report.id,
 				date: reportDate,
+				reportType,
+				memberId,
 			})
 		}
 
@@ -69,6 +73,8 @@ function searchHealthReports(input: {
 					score: ocrScore + 0.25,
 					reportId: report.id,
 					date: reportDate,
+					reportType,
+					memberId,
 				})
 			}
 		}
@@ -88,6 +94,8 @@ function searchHealthReports(input: {
 					reportId: report.id,
 					metricName: metric.displayName,
 					date: reportDate,
+					reportType,
+					memberId,
 				})
 
 				hits.push({
@@ -100,6 +108,8 @@ function searchHealthReports(input: {
 					reportId: report.id,
 					metricName: metric.displayName,
 					date: reportDate,
+					reportType,
+					memberId,
 				})
 			}
 		}
@@ -144,6 +154,8 @@ export class HealthKnowledgeProvider implements ChronicleKnowledgeProvider {
 			metricName: context.metricName,
 			timeRangeYears: context.timeRangeYears,
 			uploadedReports: context.uploadedReports,
+			searchHits: context.searchHits,
+			member: context.member,
 		})
 
 		const healthHits =

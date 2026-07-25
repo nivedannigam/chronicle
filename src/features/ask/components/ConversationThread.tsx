@@ -5,12 +5,14 @@ import type { AskConversationTurn } from '@/features/ask/types'
 interface ConversationThreadProps {
 	turns: AskConversationTurn[]
 	streamingTurn?: AskConversationTurn | null
+	isTyping?: boolean
 	onFollowUpSelect?: (question: string) => void
 }
 
 export function ConversationThread({
 	turns,
 	streamingTurn,
+	isTyping = false,
 	onFollowUpSelect,
 }: ConversationThreadProps) {
 	if (turns.length === 0 && !streamingTurn) {
@@ -45,7 +47,7 @@ export function ConversationThread({
 						padding: '16px',
 					}}
 				>
-					<ConversationTurnView turn={streamingTurn} />
+					<ConversationTurnView turn={streamingTurn} isTyping={isTyping} />
 				</div>
 			) : null}
 		</div>

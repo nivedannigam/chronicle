@@ -11,7 +11,8 @@ import {
 	registerKnowledgeProvider,
 } from '@/features/intelligence/registry/intelligence-registry'
 import { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
-import { mergeSearchHits } from '@/features/intelligence/services/semantic-search.service'
+import { rankSearchHits } from '@/features/intelligence/services/search-ranking.service'
+import { tokenizeQuery } from '@/features/intelligence/services/semantic-search.service'
 import {
 	buildMemorySessionKey,
 	resolveMemberFromQuestion,
@@ -59,6 +60,7 @@ function mergeProviderResults(
 		merged.insights.push(...result.knowledge.insights)
 		merged.alerts.push(...result.knowledge.alerts)
 		merged.summaryLines.push(...result.knowledge.summaryLines)
+		merged.comparisons.push(...result.knowledge.comparisons)
 	}
 
 	return merged
@@ -77,7 +79,10 @@ function runProviderSearch(
 		hits.push(...provider.search(context))
 	}
 
-	return mergeSearchHits(hits)
+	return rankSearchHits(hits, {
+		memberId: context.member.memberId,
+		queryTokens: tokenizeQuery(context.resolvedQuestion),
+	})
 }
 
 export function runIntelligencePipeline(

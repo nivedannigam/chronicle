@@ -1,92 +1,38 @@
-import { Link } from 'react-router-dom'
 import { C } from '@/constants/colors'
-import { healthReportPath } from '@/constants/routes'
+import { CitationCard } from '@/features/ask/components/cards/CitationCard'
+import { TypingIndicator } from '@/features/ask/components/TypingIndicator'
 import { AnswerCardRenderer } from '@/features/ask/components/AnswerCardRenderer'
-import type {
-	AskConversationTurn,
-	EvidenceCitation,
-} from '@/features/ask/types'
+import { confidenceLevelLabel } from '@/features/intelligence/types/confidence.types'
+import type { AskConversationTurn } from '@/features/ask/types'
 
 interface ConversationTurnViewProps {
 	turn: AskConversationTurn
 	compact?: boolean
+	isTyping?: boolean
 	onFollowUpSelect?: (question: string) => void
 }
 
-function confidenceColor(confidence: number): string {
-	if (confidence >= 0.85) {
-		return C.greenAlt
+function confidenceColor(
+	level: AskConversationTurn['confidenceLevel'],
+): string {
+	switch (level) {
+		case 'high':
+			return C.greenAlt
+		case 'medium':
+			return C.orange
+		default:
+			return C.textMuted
 	}
-
-	if (confidence >= 0.7) {
-		return C.orange
-	}
-
-	return C.textMuted
-}
-
-function confidenceLabel(confidence: number, dataAvailable: boolean): string {
-	if (!dataAvailable) {
-		return 'Limited data'
-	}
-
-	const percent = Math.round(confidence * 100)
-
-	if (confidence >= 0.85) {
-		return `${percent}% confidence`
-	}
-
-	if (confidence >= 0.7) {
-		return `${percent}% confidence`
-	}
-
-	return `${percent}% confidence`
-}
-
-function CitationCard({ citation }: { citation: EvidenceCitation }) {
-	const content = (
-		<>
-			<div style={{ fontWeight: 600, color: C.text }}>
-				{citation.reportTitle}
-			</div>
-			<div>
-				{citation.hospital ? `${citation.hospital} · ` : ''}
-				{citation.date}
-				{citation.metricName ? ` · ${citation.metricName}` : ''}
-				{citation.timelineRef ? ` · ${citation.timelineRef}` : ''}
-			</div>
-		</>
-	)
-
-	const style = {
-		display: 'block',
-		fontSize: 12,
-		color: C.textSec,
-		background: C.card2,
-		border: `1px solid ${C.border}`,
-		borderRadius: 10,
-		padding: '8px 10px',
-		lineHeight: 1.45,
-		textDecoration: 'none',
-	} as const
-
-	if (citation.source === 'health' && citation.reportId) {
-		return (
-			<Link to={healthReportPath(citation.reportId)} style={style}>
-				{content}
-			</Link>
-		)
-	}
-
-	return <div style={style}>{content}</div>
 }
 
 export function ConversationTurnView({
 	turn,
 	compact = false,
+	isTyping = false,
 	onFollowUpSelect,
 }: ConversationTurnViewProps) {
-	const confidenceTextColor = confidenceColor(turn.confidence)
+	const confidenceTextColor = confidenceColor(turn.confidenceLevel)
+	const showTyping = isTyping && !turn.answer.trim()
 
 	return (
 		<div style={{ paddingTop: compact ? 14 : 0 }}>
@@ -116,19 +62,23 @@ export function ConversationTurnView({
 				</div>
 			) : null}
 
-			<div
-				style={{
-					fontSize: 14,
-					color: C.textSec,
-					lineHeight: 1.6,
-					marginBottom: 16,
-					whiteSpace: 'pre-wrap',
-				}}
-			>
-				{turn.answer}
-			</div>
+			{showTyping ? (
+				<TypingIndicator />
+			) : (
+				<div
+					style={{
+						fontSize: 14,
+						color: C.textSec,
+						lineHeight: 1.6,
+						marginBottom: 16,
+						whiteSpace: 'pre-wrap',
+					}}
+				>
+					{turn.answer}
+				</div>
+			)}
 
-			<AnswerCardRenderer cards={turn.cards} />
+			{!showTyping ? <AnswerCardRenderer cards={turn.cards} /> : null}
 
 			{turn.evidence.length > 0 ? (
 				<div
@@ -345,7 +295,7 @@ export function ConversationTurnView({
 						color: confidenceTextColor,
 					}}
 				>
-					{confidenceLabel(turn.confidence, turn.dataAvailable)}
+					{confidenceLevelLabel(turn.confidenceLevel, turn.dataAvailable)}
 				</span>
 				<span style={{ fontSize: 11, color: C.textMuted }}>
 					{turn.displayTimestamp}

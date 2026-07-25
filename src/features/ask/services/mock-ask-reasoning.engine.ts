@@ -22,6 +22,7 @@ const DEFAULT_TURN_FIELDS: Pick<
 	| 'memberName'
 	| 'domains'
 	| 'dataAvailable'
+	| 'confidenceLevel'
 > = {
 	citations: [],
 	evidence: [],
@@ -30,6 +31,7 @@ const DEFAULT_TURN_FIELDS: Pick<
 	memberName: null,
 	domains: ['health'],
 	dataAvailable: true,
+	confidenceLevel: 'medium',
 }
 
 function formatTimestamp(iso: string): string {
@@ -73,6 +75,7 @@ type IntentTurn = Omit<
 	| 'memberName'
 	| 'domains'
 	| 'dataAvailable'
+	| 'confidenceLevel'
 > &
 	Partial<
 		Pick<
@@ -84,6 +87,7 @@ type IntentTurn = Omit<
 			| 'memberName'
 			| 'domains'
 			| 'dataAvailable'
+			| 'confidenceLevel'
 		>
 	>
 

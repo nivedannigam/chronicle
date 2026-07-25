@@ -77,7 +77,7 @@ export class PromptBuilder {
 Output JSON schema:
 {
   "answer": "string",
-  "confidence": 0.0-1.0,
+  "confidence": "high" | "medium" | "low",
   "citations": [{
     "reportId": "string",
     "reportTitle": "string",

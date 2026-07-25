@@ -150,6 +150,7 @@ export function useAskChronicle(
 				domains: ['health'],
 				dataAvailable: true,
 				confidence: 0.5,
+				confidenceLevel: 'medium',
 				timestamp: new Date().toISOString(),
 				displayTimestamp: 'Now',
 			}

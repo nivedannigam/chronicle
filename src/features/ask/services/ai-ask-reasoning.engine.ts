@@ -115,7 +115,11 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 						answer: verified.answer.endsWith('not medical advice.')
 							? verified.answer
 							: `${verified.answer}\n\nThis is informational and not medical advice.`,
-						confidence: verified.confidence,
+						confidence:
+							typeof verified.confidence === 'number'
+								? verified.confidence
+								: turn.confidence,
+						confidenceLevel: verified.confidenceLevel ?? turn.confidenceLevel,
 						citations:
 							verified.citations.length > 0
 								? citationsFromAiResponse(verified, knowledge)
