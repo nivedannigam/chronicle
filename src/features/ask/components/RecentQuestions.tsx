@@ -100,7 +100,10 @@ export function RecentQuestions({
 										borderTop: `1px solid ${C.border}`,
 									}}
 								>
-									<ConversationTurnView turn={item.turn} compact />
+									<ConversationTurnView
+										turn={item.turn}
+										showUserBubble={false}
+									/>
 								</div>
 							) : null}
 						</div>

@@ -20,7 +20,6 @@ import {
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
 import { ImportReviewPage } from '@/features/medical-discovery'
 import { HomePage } from '@/features/home'
-import { HomeActivityPage } from '@/features/home/pages/HomeActivityPage'
 import { MailPage } from '@/features/mail'
 import {
 	FamilyMemberDetailPage,
@@ -44,6 +43,7 @@ import {
 	DocumentsLayout,
 	DocumentsPage,
 } from '@/features/documents'
+import { TimelinePage } from '@/features/timeline'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { NotFoundPage } from '@/pages/NotFound/NotFoundPage'
@@ -65,7 +65,11 @@ export function AppRouter() {
 			<Route element={<ProtectedRoute />}>
 				<Route element={<AppLayout />}>
 					<Route path={ROUTES.home} element={<HomePage />} />
-					<Route path={ROUTES.homeActivity} element={<HomeActivityPage />} />
+					<Route
+						path={ROUTES.homeActivity}
+						element={<Navigate to={ROUTES.timeline} replace />}
+					/>
+					<Route path={ROUTES.timeline} element={<TimelinePage />} />
 					<Route path={ROUTES.family} element={<FamilyOverviewPage />} />
 					<Route
 						path={ROUTES.familyMemberNew}

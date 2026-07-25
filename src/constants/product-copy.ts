@@ -3,6 +3,19 @@ export const PRODUCT = {
 	tagline: "Your family's personal operating system.",
 } as const
 
+export const COMMAND_CENTER_COPY = {
+	headline: 'Family Command Center',
+	searchLabel: 'Search Chronicle',
+	searchPlaceholder: 'Passport, HbA1c, insurance, vaccination…',
+	attentionLabel: 'Attention Needed',
+	familyLabel: 'Your Family',
+	quickActionsLabel: 'Quick Actions',
+	insightsLabel: 'AI Insights',
+	documentsLabel: 'Important Documents',
+	timelineLabel: 'Life Timeline',
+	viewTimelineLabel: 'View Timeline',
+} as const
+
 export const HOME_COPY = {
 	briefLabel: "Today's Brief",
 	continueLabel: 'Continue where you left off',
@@ -10,6 +23,8 @@ export const HOME_COPY = {
 	exploreLabel: 'Explore Chronicle',
 	askLabel: 'Ask Chronicle',
 	activityLabel: 'Recent Activity',
+	timelineLabel: 'Life Timeline',
+	viewTimelineLabel: 'View Timeline',
 } as const
 
 export const ASK_COPY = {
@@ -50,7 +65,7 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 	{
 		id: 'documents',
 		label: 'Documents',
-		available: false,
+		available: true,
 		questions: [
 			'Where is my passport?',
 			'Find my latest tax return.',

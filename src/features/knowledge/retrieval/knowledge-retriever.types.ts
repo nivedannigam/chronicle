@@ -33,6 +33,9 @@ export type AskIntent =
 	| 'document_expiry'
 	| 'document_summary'
 	| 'general_documents'
+	| 'timeline_query'
+	| 'timeline_search'
+	| 'timeline_last_event'
 
 export interface RetrievalQuery {
 	userId: string

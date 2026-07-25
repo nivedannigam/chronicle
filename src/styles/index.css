@@ -60,3 +60,28 @@ input::placeholder {
 		transform: rotate(360deg);
 	}
 }
+
+@keyframes ask-bounce {
+	0%,
+	60%,
+	100% {
+		transform: translateY(0);
+		opacity: 0.45;
+	}
+
+	30% {
+		transform: translateY(-4px);
+		opacity: 1;
+	}
+}
+
+@keyframes ask-pulse {
+	0%,
+	100% {
+		opacity: 0.35;
+	}
+
+	50% {
+		opacity: 0.7;
+	}
+}

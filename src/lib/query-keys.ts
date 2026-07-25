@@ -13,6 +13,7 @@ export const STALE_TIME = {
 	driveBrowse: 30 * 1000,
 	default: 60 * 1000,
 	documents: 2 * 60 * 1000,
+	timeline: 2 * 60 * 1000,
 } as const
 
 export const queryKeys = {
@@ -75,6 +76,10 @@ export const queryKeys = {
 		list: (userId: string | undefined) => ['documents', userId] as const,
 		detail: (documentId: string | undefined) =>
 			['document-detail', documentId] as const,
+	},
+	timeline: {
+		events: (userId: string | undefined, memberId: string | null | undefined) =>
+			['timeline-events', userId, memberId] as const,
 	},
 } as const
 

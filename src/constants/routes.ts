@@ -3,6 +3,7 @@ export const ROUTES = {
 	login: '/login',
 	home: '/home',
 	homeActivity: '/home/activity',
+	timeline: '/timeline',
 	family: '/family',
 	familyMember: '/family/members/:memberId',
 	familyMemberNew: '/family/members/new',

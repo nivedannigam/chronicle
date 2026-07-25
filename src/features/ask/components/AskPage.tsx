@@ -8,14 +8,15 @@ import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthR
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { AskSearchBar } from '@/features/ask/components/AskSearchBar'
 import { AiDebugPanel } from '@/features/ask/components/AiDebugPanel'
+import { AskEmptyState } from '@/features/ask/components/AskEmptyState'
+import { AskErrorBanner } from '@/features/ask/components/AskErrorBanner'
+import { ConversationHistoryDrawer } from '@/features/ask/components/ConversationHistoryDrawer'
 import { ConversationThread } from '@/features/ask/components/ConversationThread'
-import { RecentQuestions } from '@/features/ask/components/RecentQuestions'
-import { SuggestedQuestions } from '@/features/ask/components/SuggestedQuestions'
 import { ASK_COPY } from '@/constants/product-copy'
 import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
-import { C, pagePadding } from '@/constants/colors'
-import { Sparkles } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { C } from '@/constants/colors'
+import { History, Sparkles } from 'lucide-react'
+import { useCallback, useState } from 'react'
 
 export function AskPage() {
 	const { user } = useAuth()
@@ -27,23 +28,26 @@ export function AskPage() {
 	const documentsQuery = useMemberDocuments()
 	const driveConnector = useGoogleDriveConnector(userId)
 	const [query, setQuery] = useState('')
-	const memberContext = useMemo(
-		() => ({
-			selectedMemberId,
-			selectedMemberName: selectedMember?.displayName ?? null,
-			members,
-		}),
-		[members, selectedMember?.displayName, selectedMemberId],
-	)
+	const [historyOpen, setHistoryOpen] = useState(false)
+	const memberContext = {
+		selectedMemberId,
+		selectedMemberName: selectedMember?.displayName ?? null,
+		members,
+	}
 	const {
 		ask,
 		cancel,
 		clearConversation,
+		loadConversation,
+		regenerateTurn,
+		continueTurn,
+		dismissError,
 		isLoading,
 		turns,
-		currentTurn,
 		pendingTurn,
-		recentQuestions,
+		error,
+		activeSessionId,
+		regeneratingTurnId,
 	} = useAskChronicle(
 		userId,
 		uploadedQuery.data ?? [],
@@ -67,8 +71,7 @@ export function AskPage() {
 		[ask, isLoading, query],
 	)
 
-	const streamingTurn = pendingTurn
-
+	const hasConversation = turns.length > 0 || Boolean(pendingTurn)
 	const capabilityNotice = aiConfigured
 		? ASK_COPY.capabilityNoticeEnhanced
 		: ASK_COPY.capabilityNotice
@@ -76,145 +79,167 @@ export function AskPage() {
 	return (
 		<div
 			style={{
-				padding: pagePadding.ask,
-				paddingBottom: 32,
+				display: 'flex',
+				flexDirection: 'column',
+				height: 'calc(100dvh - 64px)',
+				maxHeight: 'calc(100dvh - 64px)',
 				color: C.text,
+				overflow: 'hidden',
 			}}
 		>
-			<div
+			<header
 				style={{
-					width: 48,
-					height: 48,
-					borderRadius: 14,
-					background: C.accentDim,
-					border: `1px solid rgba(108,111,255,0.25)`,
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					marginBottom: 14,
-					boxShadow: `0 0 24px rgba(108,111,255,0.20)`,
+					flexShrink: 0,
+					padding: '16px 18px 12px',
+					paddingTop: 'max(16px, env(safe-area-inset-top))',
+					borderBottom: `1px solid ${C.border}`,
+					background: C.bg,
 				}}
 			>
-				<Sparkles size={24} color={C.accent} />
-			</div>
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'flex-start',
+						justifyContent: 'space-between',
+						gap: 12,
+						marginBottom: 12,
+					}}
+				>
+					<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+						<div
+							style={{
+								width: 40,
+								height: 40,
+								borderRadius: 12,
+								background: C.accentDim,
+								border: `1px solid rgba(108,111,255,0.25)`,
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								boxShadow: `0 0 20px rgba(108,111,255,0.16)`,
+							}}
+						>
+							<Sparkles size={20} color={C.accent} />
+						</div>
+						<div>
+							<div
+								style={{
+									fontSize: 20,
+									fontWeight: 800,
+									letterSpacing: '-0.03em',
+									lineHeight: 1.1,
+								}}
+							>
+								{ASK_COPY.title}
+							</div>
+							<div
+								style={{
+									fontSize: 12,
+									color: C.textMuted,
+									marginTop: 2,
+								}}
+							>
+								{capabilityNotice}
+							</div>
+						</div>
+					</div>
 
-			<div
-				style={{
-					fontSize: 32,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
-					lineHeight: 1.05,
-					marginBottom: 8,
-				}}
-			>
-				{ASK_COPY.title}
-			</div>
-			<div
-				style={{
-					fontSize: 15,
-					color: C.textSec,
-					marginBottom: 12,
-					lineHeight: 1.55,
-				}}
-			>
-				{ASK_COPY.subtitle}
-			</div>
-
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					gap: 12,
-					marginBottom: 16,
-					flexWrap: 'wrap',
-				}}
-			>
-				<FamilyMemberSwitcher />
-				{turns.length > 0 ? (
 					<button
 						type="button"
-						onClick={clearConversation}
+						onClick={() => setHistoryOpen(true)}
+						aria-label="Open conversation history"
 						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: 5,
 							fontSize: 12,
 							fontWeight: 600,
-							color: C.textMuted,
-							background: 'transparent',
+							color: C.textSec,
+							background: C.card2,
 							border: `1px solid ${C.border}`,
 							borderRadius: 100,
-							padding: '6px 12px',
+							padding: '7px 12px',
 							cursor: 'pointer',
 							fontFamily: 'inherit',
+							flexShrink: 0,
 						}}
 					>
-						Clear conversation
+						<History size={14} />
+						History
 					</button>
-				) : null}
-			</div>
+				</div>
 
-			<div
+				<FamilyMemberSwitcher />
+			</header>
+
+			<main
 				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 14,
-					padding: '12px 14px',
-					fontSize: 13,
-					color: C.textSec,
-					lineHeight: 1.55,
-					marginBottom: 18,
+					flex: 1,
+					overflowY: 'auto',
+					overflowX: 'hidden',
+					padding: '16px 18px',
+					WebkitOverflowScrolling: 'touch',
 				}}
 			>
-				{capabilityNotice}
-			</div>
-
-			<AskSearchBar
-				value={query}
-				onChange={setQuery}
-				onSubmit={() => void handleSubmit()}
-				onCancel={isLoading ? cancel : undefined}
-				isLoading={isLoading}
-			/>
-
-			{turns.length > 0 || streamingTurn ? (
-				<div style={{ marginBottom: 24 }}>
-					<ConversationThread
-						turns={turns}
-						streamingTurn={streamingTurn}
-						isTyping={isLoading}
-						onFollowUpSelect={(question) => {
-							setQuery(question)
-							void handleSubmit(question)
+				{error ? (
+					<AskErrorBanner
+						kind={error.kind}
+						message={error.message}
+						onRetry={() => {
+							dismissError()
 						}}
+						onDismiss={dismissError}
 					/>
-				</div>
-			) : null}
+				) : null}
 
-			{turns.length === 0 ? (
-				<>
-					<SuggestedQuestions
-						userId={userId}
-						memberId={selectedMemberId}
-						memberName={selectedMember?.displayName ?? null}
+				{!hasConversation ? (
+					<AskEmptyState
 						uploadedReports={uploadedQuery.data ?? []}
-						preferences={preferences}
-						recentQuestions={recentQuestions.map((item) => item.question)}
-						onSelect={(prompt) => {
-							setQuery(prompt)
-							void handleSubmit(prompt)
-						}}
+						documents={documentsQuery.data ?? []}
+						memberName={selectedMember?.displayName ?? null}
+						onSelect={(prompt) => void handleSubmit(prompt)}
 						disabled={isLoading}
 					/>
-
-					<RecentQuestions
-						items={recentQuestions}
-						onSelectQuestion={(question) => {
-							setQuery(question)
-							void handleSubmit(question)
-						}}
-						activeTurnId={currentTurn?.id ?? null}
+				) : (
+					<ConversationThread
+						turns={turns}
+						streamingTurn={pendingTurn}
+						isTyping={isLoading}
+						onFollowUpSelect={(question) => void handleSubmit(question)}
+						onRegenerateTurn={(turnId) => void regenerateTurn(turnId)}
+						onContinueTurn={(turnId) => void continueTurn(turnId)}
+						regeneratingTurnId={regeneratingTurnId}
 					/>
-				</>
-			) : null}
+				)}
+			</main>
+
+			<footer
+				style={{
+					flexShrink: 0,
+					padding: '12px 18px 16px',
+					paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+					borderTop: `1px solid ${C.border}`,
+					background: C.bg,
+				}}
+			>
+				<AskSearchBar
+					value={query}
+					onChange={setQuery}
+					onSubmit={() => void handleSubmit()}
+					onCancel={isLoading ? cancel : undefined}
+					isLoading={isLoading}
+					pinned
+				/>
+			</footer>
+
+			<ConversationHistoryDrawer
+				userId={userId}
+				open={historyOpen}
+				activeSessionId={activeSessionId}
+				onClose={() => setHistoryOpen(false)}
+				onSelectSession={loadConversation}
+				onNewConversation={clearConversation}
+			/>
 
 			<AiDebugPanel />
 		</div>

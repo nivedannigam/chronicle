@@ -1,5 +1,5 @@
-import { C } from '@/constants/colors'
 import { ConversationTurnView } from '@/features/ask/components/ConversationTurnView'
+import { useAskAutoScroll } from '@/features/ask/hooks/useAskAutoScroll'
 import type { AskConversationTurn } from '@/features/ask/types'
 
 interface ConversationThreadProps {
@@ -7,6 +7,9 @@ interface ConversationThreadProps {
 	streamingTurn?: AskConversationTurn | null
 	isTyping?: boolean
 	onFollowUpSelect?: (question: string) => void
+	onRegenerateTurn?: (turnId: string) => void
+	onContinueTurn?: (turnId: string) => void
+	regeneratingTurnId?: string | null
 }
 
 export function ConversationThread({
@@ -14,42 +17,59 @@ export function ConversationThread({
 	streamingTurn,
 	isTyping = false,
 	onFollowUpSelect,
+	onRegenerateTurn,
+	onContinueTurn,
+	regeneratingTurnId,
 }: ConversationThreadProps) {
+	const { containerRef, bottomRef } = useAskAutoScroll([
+		turns.length,
+		streamingTurn?.answer,
+		isTyping,
+	])
+
 	if (turns.length === 0 && !streamingTurn) {
 		return null
 	}
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+		<div
+			ref={containerRef}
+			role="log"
+			aria-live="polite"
+			aria-relevant="additions text"
+			aria-label="Conversation"
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				gap: 4,
+				paddingBottom: 8,
+			}}
+		>
 			{turns.map((turn) => (
-				<div
+				<ConversationTurnView
 					key={turn.id}
-					style={{
-						background: C.card,
-						border: `1px solid ${C.border}`,
-						borderRadius: 18,
-						padding: '16px',
-					}}
-				>
-					<ConversationTurnView
-						turn={turn}
-						onFollowUpSelect={onFollowUpSelect}
-					/>
-				</div>
+					turn={turn}
+					onFollowUpSelect={onFollowUpSelect}
+					onRegenerate={
+						onRegenerateTurn ? () => onRegenerateTurn(turn.id) : undefined
+					}
+					onContinue={
+						onContinueTurn ? () => onContinueTurn(turn.id) : undefined
+					}
+					isRegenerating={regeneratingTurnId === turn.id}
+				/>
 			))}
 
 			{streamingTurn ? (
-				<div
-					style={{
-						background: C.card,
-						border: `1px solid rgba(108,111,255,0.22)`,
-						borderRadius: 18,
-						padding: '16px',
-					}}
-				>
-					<ConversationTurnView turn={streamingTurn} isTyping={isTyping} />
-				</div>
+				<ConversationTurnView
+					turn={streamingTurn}
+					isTyping={isTyping}
+					isStreaming
+					showUserBubble={turns.length === 0}
+				/>
 			) : null}
+
+			<div ref={bottomRef} aria-hidden style={{ height: 1 }} />
 		</div>
 	)
 }

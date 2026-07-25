@@ -292,6 +292,45 @@ export function detectIntent(
 	const documentCategory = resolveCategoryFromQuery(normalized)
 
 	if (
+		/when was my last health check|last health check|most recent health check/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'timeline_last_event',
+			categoryId: resolvedCategory,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/show everything related to|everything related to|related to my/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'timeline_search',
+			categoryId: documentCategory ?? resolvedCategory,
+			timeRangeYears,
+			confidence: 0.88,
+		}
+	}
+
+	if (
+		/what happened last year|what changed in|what happened in|timeline|life events|what happened this year/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'timeline_query',
+			categoryId: documentCategory ?? resolvedCategory,
+			timeRangeYears,
+			confidence: 0.87,
+		}
+	}
+
+	if (
 		/when does .* expire|expir(e|ing|y)|expires this year|documents expiring/i.test(
 			normalized,
 		)
