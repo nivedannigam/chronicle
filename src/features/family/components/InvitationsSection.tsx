@@ -8,6 +8,10 @@ interface InvitationsSectionProps {
 }
 
 export function InvitationsSection({ invitations }: InvitationsSectionProps) {
+	if (invitations.length === 0) {
+		return null
+	}
+
 	return (
 		<section>
 			<div
@@ -32,55 +36,38 @@ export function InvitationsSection({ invitations }: InvitationsSectionProps) {
 						Invitations
 					</div>
 					<div style={{ fontSize: 14, color: C.textSec }}>
-						Architecture ready — email delivery not enabled yet.
+						Pending family invitations
 					</div>
 				</div>
 				<MailPlus size={20} color={C.textMuted} />
 			</div>
 
-			{invitations.length === 0 ? (
-				<div
-					style={{
-						padding: '18px 16px',
-						borderRadius: 16,
-						border: `1px dashed ${C.border}`,
-						background: C.card,
-						color: C.textMuted,
-						fontSize: 13,
-						lineHeight: 1.5,
-					}}
-				>
-					No pending invitations. When email invites ship, they will appear
-					here.
-				</div>
-			) : (
-				<div style={{ display: 'grid', gap: 10 }}>
-					{invitations.map((invitation) => (
-						<div
-							key={invitation.id}
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 12,
-								padding: '14px 16px',
-								borderRadius: 16,
-								border: `1px solid ${C.border}`,
-								background: C.card,
-							}}
-						>
-							<Users size={18} color={C.accent} />
-							<div style={{ flex: 1 }}>
-								<div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-									{invitation.email}
-								</div>
-								<div style={{ fontSize: 12, color: C.textMuted }}>
-									{FAMILY_ROLE_LABELS[invitation.roleId]} · {invitation.status}
-								</div>
+			<div style={{ display: 'grid', gap: 10 }}>
+				{invitations.map((invitation) => (
+					<div
+						key={invitation.id}
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 12,
+							padding: '14px 16px',
+							borderRadius: 16,
+							border: `1px solid ${C.border}`,
+							background: C.card,
+						}}
+					>
+						<Users size={18} color={C.accent} />
+						<div style={{ flex: 1 }}>
+							<div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+								{invitation.email}
+							</div>
+							<div style={{ fontSize: 12, color: C.textMuted }}>
+								{FAMILY_ROLE_LABELS[invitation.roleId]} · Pending
 							</div>
 						</div>
-					))}
-				</div>
-			)}
+					</div>
+				))}
+			</div>
 		</section>
 	)
 }

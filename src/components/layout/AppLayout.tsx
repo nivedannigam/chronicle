@@ -1,14 +1,21 @@
 import { Outlet } from 'react-router-dom'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { BottomNavigation } from '@/components/navigation/BottomNavigation'
-import { phoneFrameStyle } from '@/constants/colors'
+import {
+	isStandaloneDisplayMode,
+	phoneFrameStyle,
+	standaloneLayoutStyle,
+} from '@/constants/colors'
 
 export function AppLayout() {
+	const standalone = isStandaloneDisplayMode()
+	const layout = standalone ? standaloneLayoutStyle : phoneFrameStyle
+
 	return (
-		<div style={phoneFrameStyle.outer}>
-			<div style={phoneFrameStyle.inner}>
+		<div style={layout.outer}>
+			<div style={layout.inner}>
 				<AppHeader />
-				<div style={phoneFrameStyle.content}>
+				<div style={layout.content}>
 					<Outlet />
 				</div>
 				<BottomNavigation />

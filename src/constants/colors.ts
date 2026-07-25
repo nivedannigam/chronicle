@@ -22,6 +22,19 @@ export const C = {
 	white: '#fff',
 } as const
 
+export function isStandaloneDisplayMode(): boolean {
+	if (typeof window === 'undefined') {
+		return false
+	}
+
+	return (
+		window.matchMedia('(display-mode: standalone)').matches ||
+		// iOS Safari
+		(window.navigator as Navigator & { standalone?: boolean }).standalone ===
+			true
+	)
+}
+
 export const phoneFrameStyle = {
 	outer: {
 		minHeight: '100vh',
@@ -54,6 +67,34 @@ export const phoneFrameStyle = {
 		scrollbarWidth: 'none' as const,
 		paddingBottom: 90,
 	},
+}
+
+export const standaloneLayoutStyle = {
+	outer: {
+		minHeight: '100dvh',
+		background: C.bg,
+		display: 'flex',
+		flexDirection: 'column' as const,
+		fontFamily:
+			'-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
+		WebkitFontSmoothing: 'antialiased' as const,
+	} as const,
+	inner: {
+		flex: 1,
+		display: 'flex',
+		flexDirection: 'column' as const,
+		minHeight: '100dvh',
+		background: C.bg,
+		position: 'relative' as const,
+		overflow: 'hidden' as const,
+	} as const,
+	content: {
+		flex: 1,
+		overflowY: 'auto' as const,
+		overflowX: 'hidden' as const,
+		scrollbarWidth: 'none' as const,
+		paddingBottom: 'calc(90px + env(safe-area-inset-bottom))',
+	} as const,
 }
 
 export const pagePadding = {

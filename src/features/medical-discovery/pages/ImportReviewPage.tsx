@@ -241,7 +241,8 @@ export function ImportReviewPage() {
 					}}
 				>
 					No import candidates found. Assign a health folder and run a scan from
-					Health Sources first.
+					No reports found yet. Connect a health folder and scan from Setup
+					first.
 				</div>
 			) : (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

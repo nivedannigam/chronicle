@@ -235,7 +235,7 @@ function EvidenceItemCard({ item }: { item: TrustEvidenceItem }) {
 							textDecoration: 'none',
 						}}
 					>
-						OCR source
+						View original report
 					</Link>
 				) : null}
 			</div>

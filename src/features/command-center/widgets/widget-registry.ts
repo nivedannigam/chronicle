@@ -71,8 +71,8 @@ export function getDefaultQuickActions(): import('@/features/command-center/type
 	if (isModuleEnabled('health')) {
 		actions.unshift({
 			id: 'import-health',
-			label: 'Import health reports',
-			description: 'Bring lab results into Chronicle',
+			label: 'Set up health records',
+			description: 'Connect Google Drive and find lab reports',
 			path: ROUTES.healthSettings,
 			module: 'health',
 		})

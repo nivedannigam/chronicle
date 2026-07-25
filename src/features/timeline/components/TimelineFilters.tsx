@@ -13,7 +13,7 @@ import type {
 const PAGE_SIZE = 20
 
 const MODULE_OPTIONS: Array<{ id: TimelineModule | 'all'; label: string }> = [
-	{ id: 'all', label: 'All modules' },
+	{ id: 'all', label: 'All events' },
 	{ id: 'health', label: 'Health' },
 	{ id: 'documents', label: 'Documents' },
 ]

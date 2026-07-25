@@ -101,7 +101,7 @@ export function HealthFolderAssignmentCard({
 								</div>
 							) : null}
 							<div>
-								Import candidates: {documentsScanned} · Medical reports:{' '}
+								Reports found: {documentsScanned} · Health reports:{' '}
 								{medicalReports}
 							</div>
 							{lastScanAt ? (

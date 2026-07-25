@@ -24,7 +24,7 @@ export const NAV_BAR_STYLE = {
 	background: 'rgba(12,12,18,0.94)',
 	backdropFilter: 'blur(24px)',
 	WebkitBackdropFilter: 'blur(24px)',
-	padding: '8px 6px 26px',
+	padding: '8px 6px calc(12px + env(safe-area-inset-bottom))',
 	display: 'flex',
 	justifyContent: 'space-around',
 	zIndex: 50,

@@ -265,14 +265,20 @@ function buildGroundedAnswer(input: {
 	const memberPrefix = input.memberName ? `For ${input.memberName}, ` : ''
 
 	if (knowledge.intent === 'organ_status' && knowledge.metrics.length > 0) {
+		const focusLabel =
+			knowledge.metrics[0]?.categoryId?.replace(/_/g, ' ') ??
+			input.question.replace(/how is my|how are my|how's my|\?/gi, '').trim()
+
 		const metricSummaries = knowledge.metrics
 			.slice(0, 4)
 			.map(
 				(metric) =>
-					`${metric.displayName} is ${metric.latestValue} (${metric.status})`,
+					`${metric.displayName} is ${metric.latestValue} (${metric.status}) from ${metric.reportTitle} on ${metric.observedAt}`,
 			)
 
-		lines.push(`${memberPrefix}${metricSummaries.join('. ')}.`)
+		lines.push(
+			`${memberPrefix}based on your records${focusLabel ? ` for ${focusLabel}` : ''}: ${metricSummaries.join('. ')}.`,
+		)
 	} else if (knowledge.summaryLines.length > 0) {
 		lines.push(
 			`${memberPrefix}based on your Chronicle records, ${knowledge.summaryLines[0]!.toLowerCase()}`,
@@ -284,11 +290,12 @@ function buildGroundedAnswer(input: {
 		)
 	} else if (knowledge.reports.length > 0) {
 		lines.push(
-			`${memberPrefix}I found ${knowledge.reports.length} related report${knowledge.reports.length === 1 ? '' : 's'} in your Chronicle knowledge graph.`,
+			`${memberPrefix}I found ${knowledge.reports.length} related report${knowledge.reports.length === 1 ? '' : 's'} in your records.`,
 		)
 	}
 
 	if (
+		knowledge.intent !== 'organ_status' &&
 		knowledge.timelines.length > 0 &&
 		/trend|change|over|history|lowest|highest|journey|since last year/i.test(
 			input.question,
@@ -305,7 +312,11 @@ function buildGroundedAnswer(input: {
 		}
 	}
 
-	if (knowledge.semanticTimeline && knowledge.semanticTimeline.length > 0) {
+	if (
+		knowledge.intent !== 'organ_status' &&
+		knowledge.semanticTimeline &&
+		knowledge.semanticTimeline.length > 0
+	) {
 		const recent = knowledge.semanticTimeline.slice(-2)
 
 		for (const group of recent) {

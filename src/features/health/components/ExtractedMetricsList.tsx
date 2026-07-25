@@ -43,7 +43,7 @@ export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 					color: C.textMuted,
 				}}
 			>
-				No extracted metrics available.
+				No results available for this visit yet.
 			</div>
 		)
 	}
@@ -115,15 +115,12 @@ export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 							>
 								{metric.value}
 							</span>
-							<span style={{ fontSize: 12, color: C.textMuted }}>
-								Ref: {metric.reference}
-							</span>
+							{metric.reference ? (
+								<span style={{ fontSize: 12, color: C.textMuted }}>
+									Reference: {metric.reference}
+								</span>
+							) : null}
 						</div>
-						{metric.confidence != null ? (
-							<div style={{ fontSize: 11, color: C.textSec }}>
-								Confidence {Math.round(metric.confidence * 100)}%
-							</div>
-						) : null}
 					</div>
 				)
 			})}

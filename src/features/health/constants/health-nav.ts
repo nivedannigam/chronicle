@@ -6,5 +6,5 @@ export const HEALTH_NAV_ITEMS = [
 	{ label: 'Timeline', path: ROUTES.healthTimeline },
 	{ label: 'Metrics', path: ROUTES.healthMetrics },
 	{ label: 'Insights', path: ROUTES.healthInsights },
-	{ label: 'Settings', path: ROUTES.healthSettings },
+	{ label: 'Setup', path: ROUTES.healthSettings },
 ] as const

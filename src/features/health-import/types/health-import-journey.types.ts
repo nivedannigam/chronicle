@@ -43,13 +43,13 @@ export const IMPORT_JOURNEY_STEPS: {
 	phase: ImportJourneyPhase
 	label: string
 }[] = [
-	{ phase: 'assign', label: 'Assign Folder' },
-	{ phase: 'scanning', label: 'Scanning Google Drive' },
-	{ phase: 'detection', label: 'Medical Report Detection' },
-	{ phase: 'download', label: 'Download' },
-	{ phase: 'ocr', label: 'OCR' },
-	{ phase: 'metrics', label: 'Metric Extraction' },
-	{ phase: 'summary', label: 'Import Summary' },
+	{ phase: 'assign', label: 'Folder connected' },
+	{ phase: 'scanning', label: 'Searching your Drive' },
+	{ phase: 'detection', label: 'Finding health reports' },
+	{ phase: 'download', label: 'Downloading reports' },
+	{ phase: 'ocr', label: 'Reading reports' },
+	{ phase: 'metrics', label: 'Organizing results' },
+	{ phase: 'summary', label: 'Complete' },
 ]
 
 export interface ImportQueueRunResult {

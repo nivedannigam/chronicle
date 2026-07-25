@@ -36,8 +36,7 @@ export function MorePage() {
 						maxWidth: 300,
 					}}
 				>
-					Explore Chronicle capabilities for your family&apos;s personal
-					operating system.
+					Organize health records and documents for your family.
 				</div>
 			</div>
 

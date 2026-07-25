@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Download, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import { C } from '@/constants/colors'
+import { USER_VOCAB, formatReportStatus } from '@/constants/user-vocabulary'
 import { ROUTES } from '@/constants/routes'
 import { ExtractedMetricsList } from '@/features/health/components/ExtractedMetricsList'
 import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
@@ -68,7 +69,7 @@ export function HealthReportDetailPage() {
 			})
 		} catch (error) {
 			setActionError(
-				error instanceof Error ? error.message : 'Reprocess failed.',
+				error instanceof Error ? error.message : 'Could not refresh report.',
 			)
 		} finally {
 			setIsReprocessing(false)
@@ -150,7 +151,7 @@ export function HealthReportDetailPage() {
 						marginBottom: 16,
 					}}
 				>
-					Processing failed — {uploaded.processing_error}
+					Import failed — {uploaded.processing_error}
 					<button
 						type="button"
 						onClick={() => void handleReprocess()}
@@ -169,7 +170,7 @@ export function HealthReportDetailPage() {
 							fontFamily: 'inherit',
 						}}
 					>
-						{isReprocessing ? 'Retrying…' : 'Retry processing'}
+						{isReprocessing ? 'Trying again…' : USER_VOCAB.actions.retryImport}
 					</button>
 				</div>
 			) : null}
@@ -204,7 +205,7 @@ export function HealthReportDetailPage() {
 				<div>Hospital / Lab: {parsed?.metadata.laboratory ?? '—'}</div>
 				<div>Doctor: {parsed?.metadata.doctorName ?? '—'}</div>
 				<div>Source: {reportSourceLabel(uploaded)}</div>
-				<div>Status: {uploaded.status}</div>
+				<div>Status: {formatReportStatus(uploaded.status)}</div>
 			</div>
 
 			<div
@@ -217,7 +218,11 @@ export function HealthReportDetailPage() {
 				/>
 				<ActionButton
 					icon={RefreshCw}
-					label={isReprocessing ? 'Reprocessing…' : 'Reprocess'}
+					label={
+						isReprocessing
+							? USER_VOCAB.actions.reprocessing
+							: USER_VOCAB.actions.reprocess
+					}
 					onClick={() => void handleReprocess()}
 					disabled={isReprocessing}
 				/>
@@ -238,7 +243,7 @@ export function HealthReportDetailPage() {
 
 			{parsed ? (
 				<>
-					<HealthSectionHeader title="Report Details" />
+					<HealthSectionHeader title={USER_VOCAB.sections.reportDetails} />
 					<div
 						style={{
 							background: C.card,
@@ -258,12 +263,12 @@ export function HealthReportDetailPage() {
 							<div>Reference: {parsed.metadata.referenceNumber}</div>
 						) : null}
 						<div>
-							{parsed.metrics.length} structured metrics extracted from this
-							report.
+							{parsed.metrics.length} result
+							{parsed.metrics.length === 1 ? '' : 's'} from this visit.
 						</div>
 					</div>
 
-					<HealthSectionHeader title="Extracted Metrics" />
+					<HealthSectionHeader title={USER_VOCAB.sections.extractedMetrics} />
 					<div style={{ marginBottom: 24 }}>
 						<ExtractedMetricsList metrics={detail.uiMetrics ?? []} />
 					</div>

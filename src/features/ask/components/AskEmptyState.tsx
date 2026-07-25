@@ -1,7 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ASK_COPY } from '@/constants/product-copy'
-import { ASK_QUESTION_GROUPS } from '@/constants/product-copy'
 import {
 	buildDynamicSuggestionChips,
 	type DynamicSuggestionChip,
@@ -34,10 +33,6 @@ export function AskEmptyState({
 				memberName,
 			}),
 		[uploadedReports, documents, memberName],
-	)
-
-	const comingSoonGroups = ASK_QUESTION_GROUPS.filter(
-		(group) => !group.available,
 	)
 
 	return (
@@ -85,8 +80,8 @@ export function AskEmptyState({
 					maxWidth: 420,
 				}}
 			>
-				{ASK_COPY.subtitle} Chronicle answers using your health records and
-				documents — grounded, explainable, and private.
+				{ASK_COPY.subtitle} Answers include sources from your records so you can
+				check the details.
 			</div>
 
 			<DynamicSuggestionChips
@@ -94,41 +89,6 @@ export function AskEmptyState({
 				onSelect={onSelect}
 				disabled={disabled}
 			/>
-
-			{comingSoonGroups.length > 0 ? (
-				<div style={{ marginTop: 8 }}>
-					<div
-						style={{
-							fontSize: 11,
-							fontWeight: 600,
-							letterSpacing: '0.08em',
-							textTransform: 'uppercase',
-							color: C.textMuted,
-							marginBottom: 8,
-						}}
-					>
-						Coming to Chronicle
-					</div>
-					<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-						{comingSoonGroups.map((group) => (
-							<span
-								key={group.id}
-								style={{
-									fontSize: 11,
-									fontWeight: 600,
-									color: C.textMuted,
-									background: C.card2,
-									border: `1px dashed ${C.border}`,
-									borderRadius: 100,
-									padding: '5px 10px',
-								}}
-							>
-								{group.label}
-							</span>
-						))}
-					</div>
-				</div>
-			) : null}
 		</div>
 	)
 }

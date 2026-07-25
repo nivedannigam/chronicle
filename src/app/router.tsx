@@ -161,7 +161,16 @@ export function AppRouter() {
 						path={ROUTES.healthReport}
 						element={<HealthReportDetailPage />}
 					/>
-					<Route path={ROUTES.healthOcrPreview} element={<OcrPreviewPage />} />
+					<Route
+						path={ROUTES.healthOcrPreview}
+						element={
+							isDev ? (
+								<OcrPreviewPage />
+							) : (
+								<Navigate to={ROUTES.healthReports} replace />
+							)
+						}
+					/>
 					<Route
 						path={ROUTES.healthMetric}
 						element={<HealthMetricTimelinePage />}

@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { HEALTH_COPY } from '@/constants/product-copy'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthJourneyTimeline } from '@/features/health/components/companion/HealthJourneyTimeline'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 
 export function HealthTimelinePage() {
@@ -29,12 +29,11 @@ export function HealthTimelinePage() {
 	if (!hasImportedReports || companion.journeyEvents.length === 0) {
 		return (
 			<>
-				<HealthSetupGuide compact />
 				<DashboardEmptyState
 					title="Your health journey will appear here"
 					message="Checkups, findings, and improvements from your reports will show up as a readable timeline — not an upload log."
 					emoji="🩺"
-					actionLabel="Add reports"
+					actionLabel={HEALTH_COPY.emptyAddReports}
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>

@@ -1,43 +1,89 @@
 export const PRODUCT = {
 	name: 'Chronicle',
-	tagline: "Your family's personal operating system.",
+	tagline:
+		'Your family health and documents — organized, searchable, and private.',
+	valueProposition:
+		'Chronicle brings together health reports and important documents so your family can find answers quickly.',
+} as const
+
+export const ONBOARDING_COPY = {
+	welcomeTitle: 'Welcome to Chronicle',
+	welcomeBody:
+		'Chronicle organizes your family health records and important documents in one calm, private place.',
+	stepFamilyTitle: 'Start with your family',
+	stepFamilyBody:
+		'Add family members so health records and documents stay organized by person.',
+	stepHealthTitle: 'Connect health records',
+	stepHealthBody:
+		'Link Google Drive and Chronicle will find lab reports and organize them for you.',
+	stepDocumentTitle: 'Add an important document',
+	stepDocumentBody:
+		'Upload a passport, insurance policy, or any document you want to keep handy.',
+	stepAskTitle: 'Ask your first question',
+	stepAskBody:
+		'Try "What should I pay attention to?" or "Where is my passport?" — Chronicle answers from your records.',
+	completeTitle: "You're all set",
+	completeBody:
+		'Chronicle is ready. Your home page will fill in as you add more records.',
+	skip: 'Skip for now',
+	continue: 'Continue',
+	getStarted: 'Get started',
+	done: 'Go to Home',
 } as const
 
 export const COMMAND_CENTER_COPY = {
-	headline: 'Family Command Center',
+	headline: 'Home',
+	todaySummaryLabel: "Today's Summary",
 	searchLabel: 'Search Chronicle',
-	searchPlaceholder: 'Passport, HbA1c, insurance, vaccination…',
-	attentionLabel: 'Attention Needed',
+	searchPlaceholder: 'Passport, cholesterol, insurance, vaccination…',
+	attentionLabel: 'Needs Your Attention',
 	familyLabel: 'Your Family',
+	healthSnapshotLabel: 'Health Snapshot',
+	recentActivityLabel: 'Recent Activity',
 	quickActionsLabel: 'Quick Actions',
-	insightsLabel: 'AI Insights',
+	insightsLabel: 'Insights',
 	documentsLabel: 'Important Documents',
 	timelineLabel: 'Life Timeline',
-	viewTimelineLabel: 'View Timeline',
+	viewTimelineLabel: 'View all',
+	exploreLabel: 'Explore Chronicle',
+	getStartedTitle: 'Get started with Chronicle',
+	getStartedBody:
+		'Connect health records or upload a document — Chronicle will organize everything for you.',
 } as const
 
 export const HOME_COPY = {
-	briefLabel: "Today's Brief",
+	briefLabel: "Today's Summary",
 	continueLabel: 'Continue where you left off',
 	healthLabel: 'Health Snapshot',
 	exploreLabel: 'Explore Chronicle',
 	askLabel: 'Ask Chronicle',
 	activityLabel: 'Recent Activity',
 	timelineLabel: 'Life Timeline',
-	viewTimelineLabel: 'View Timeline',
+	viewTimelineLabel: 'View all',
+} as const
+
+export const HEALTH_COPY = {
+	setupTab: 'Setup',
+	settingsTab: 'Setup',
+	emptyAddReports: 'Set up health records',
+	reviewWaiting: 'Reports waiting for your OK',
+	insightsIntro:
+		'A plain-language summary of what your records mean — written for you.',
 } as const
 
 export const ASK_COPY = {
 	title: 'Ask Chronicle',
 	subtitle:
-		"Everything you've entrusted to Chronicle — understood and ready to explore.",
+		'Ask questions about health records and documents you have shared with Chronicle.',
 	placeholder: 'What would you like to know?',
 	capabilityNotice:
-		"Today I can answer questions using your Health records. As you enable more Chronicle capabilities, I'll understand those too.",
+		'I can answer questions using your health records and documents.',
 	capabilityNoticeEnhanced:
-		"I'm connected to your family's Health records and ready to help.",
+		"I'm connected to your family's records and ready to help.",
 	suggestedHeading: 'Try asking',
 	recentHeading: 'Recent',
+	evidenceFromRecords: 'From your records',
+	viewOriginal: 'View original report',
 } as const
 
 export type AskCapabilityId =
@@ -58,7 +104,7 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 		questions: [
 			'What should I pay attention to?',
 			'What changed since my last report?',
-			'Summarize my health.',
+			'How is my liver?',
 			'What should I discuss with my doctor?',
 		],
 	},

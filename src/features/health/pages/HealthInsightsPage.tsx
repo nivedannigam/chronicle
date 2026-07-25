@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { HEALTH_COPY } from '@/constants/product-copy'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
@@ -7,7 +8,6 @@ import {
 	DashboardEmptyState,
 	DashboardSkeleton,
 } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 
 export function HealthInsightsPage() {
@@ -31,12 +31,11 @@ export function HealthInsightsPage() {
 	if (!hasImportedReports) {
 		return (
 			<>
-				<HealthSetupGuide compact />
 				<DashboardEmptyState
 					title="Insights will appear here"
 					message="Chronicle turns your lab results into plain-language guidance once reports are added."
 					emoji="✨"
-					actionLabel="Add reports"
+					actionLabel={HEALTH_COPY.emptyAddReports}
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>
@@ -53,8 +52,7 @@ export function HealthInsightsPage() {
 					lineHeight: 1.5,
 				}}
 			>
-				A narrative summary of what your records mean — written for you, not for
-				developers.
+				{HEALTH_COPY.insightsIntro}
 			</div>
 
 			<HealthNarrativeInsights paragraphs={companion.narrative} />

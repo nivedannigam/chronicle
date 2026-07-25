@@ -273,9 +273,9 @@ function SummaryPanel({
 					hint="Discovered in your Drive folder"
 				/>
 				<Stat
-					label="Import candidates"
+					label="Reports found"
 					value={String(result.importCandidates)}
-					hint="Possible medical reports"
+					hint="Possible health reports"
 				/>
 				<Stat
 					label="Imported this run"
@@ -288,11 +288,11 @@ function SummaryPanel({
 				<Stat
 					label="Needs review"
 					value={String(result.needsReview)}
-					hint="Approve on Import Review to import remaining files"
+					hint="Review in Setup to import remaining files"
 				/>
 				<Stat label="Auto-approved" value={String(result.autoApprovedCount)} />
 				<Stat
-					label="Metrics extracted"
+					label="Results organized"
 					value={String(result.metricsExtracted)}
 					hint="From imported reports this run"
 				/>

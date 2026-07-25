@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { HEALTH_COPY } from '@/constants/product-copy'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthReportRecordCard } from '@/features/health/components/companion/HealthReportRecordCard'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import {
 	buildReportSummaries,
@@ -106,12 +106,11 @@ export function HealthReportsPage() {
 	if (!hasImportedReports) {
 		return (
 			<>
-				<HealthSetupGuide compact />
 				<DashboardEmptyState
 					title="No medical records yet"
 					message="Add health reports and Chronicle will organize them like a personal medical file."
 					emoji="📋"
-					actionLabel="Add reports"
+					actionLabel={HEALTH_COPY.emptyAddReports}
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>

@@ -35,6 +35,7 @@ export interface UnifiedSearchResult {
 	source: CommandCenterModuleId
 	sourceLabel: string
 	path: string
+	score?: number
 }
 
 export interface QuickAction {
@@ -54,13 +55,21 @@ export interface CommandCenterWidgetDefinition {
 	isEnabled: boolean
 }
 
+export interface HealthSnapshotSummary {
+	status: string
+	reportCount: number
+	latestReportTitle: string | null
+}
+
 export interface CommandCenterBriefing {
 	greeting: string
 	greetingName: string
 	dateLabel: string
 	familyName: string
+	todaySummary: string
 	attentionItems: AttentionItem[]
 	memberSummaries: FamilyMemberSummary[]
+	healthSnapshot: HealthSnapshotSummary
 	insights: import('@/features/health/types').HealthInsight[]
 	expiringDocuments: import('@/features/documents/types/document.types').ChronicleDocument[]
 	documentCount: number
@@ -74,4 +83,5 @@ export interface CommandCenterBriefing {
 		timeline: boolean
 	}
 	hasAnyData: boolean
+	isNewUser: boolean
 }

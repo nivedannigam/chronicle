@@ -1,18 +1,18 @@
 {
 	"name": "Chronicle",
 	"short_name": "Chronicle",
-	"description": "Your family's personal operating system",
-	"start_url": "/",
+	"description": "Your family health and documents — organized, searchable, and private.",
+	"start_url": "/home",
 	"display": "standalone",
 	"background_color": "#0C0C12",
 	"theme_color": "#0C0C12",
 	"orientation": "portrait",
 	"icons": [
 		{
-			"src": "/vite.svg",
+			"src": "/icons/chronicle-icon.svg",
 			"sizes": "any",
 			"type": "image/svg+xml",
-			"purpose": "any"
+			"purpose": "any maskable"
 		}
 	]
 }

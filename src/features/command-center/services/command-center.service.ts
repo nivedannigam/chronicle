@@ -213,7 +213,7 @@ export function buildAttentionItems(input: {
 
 		items.push({
 			id: `abnormal-${report.id}`,
-			title: 'Abnormal lab result',
+			title: 'Result needs attention',
 			description: getReportDisplayTitle(report),
 			tone: 'warning',
 			path: healthReportPath(report.id),
@@ -224,10 +224,11 @@ export function buildAttentionItems(input: {
 	}
 
 	if ((input.importStatus?.needsReviewCount ?? 0) > 0) {
+		const count = input.importStatus!.needsReviewCount
 		items.push({
 			id: 'import-review',
-			title: 'Imports need review',
-			description: `${input.importStatus!.needsReviewCount} item${input.importStatus!.needsReviewCount === 1 ? '' : 's'} waiting for review`,
+			title: 'Reports waiting for your OK',
+			description: `${count} report${count === 1 ? '' : 's'} ready to review`,
 			tone: 'attention',
 			path: ROUTES.healthSettings,
 			module: 'health',
@@ -244,8 +245,8 @@ export function buildAttentionItems(input: {
 		if (memberReports.length === 0) {
 			items.push({
 				id: `missing-health-${member.id}`,
-				title: `No health reports for ${member.displayName}`,
-				description: 'Import lab results to build a health picture',
+				title: `No health records for ${member.displayName}`,
+				description: 'Connect health records to get started',
 				tone: 'info',
 				path: ROUTES.healthSettings,
 				module: 'health',
@@ -289,7 +290,11 @@ export function buildUnifiedSearchResults(input: {
 			parsed?.metrics.map((metric) => metric.displayName).join(' ') ?? '',
 		].join(' ')
 
-		const score = scoreTextMatch(tokens, body)
+		const score = boostSearchScore(
+			normalized,
+			body,
+			scoreTextMatch(tokens, body),
+		)
 
 		if (score <= 0) {
 			continue
@@ -302,6 +307,7 @@ export function buildUnifiedSearchResults(input: {
 			source: 'health',
 			sourceLabel: 'Health',
 			path: healthReportPath(report.id),
+			score,
 		})
 	}
 
@@ -314,7 +320,11 @@ export function buildUnifiedSearchResults(input: {
 			document.tags.join(' '),
 		].join(' ')
 
-		const score = scoreTextMatch(tokens, body)
+		const score = boostSearchScore(
+			normalized,
+			body,
+			scoreTextMatch(tokens, body),
+		)
 
 		if (score <= 0) {
 			continue
@@ -327,6 +337,7 @@ export function buildUnifiedSearchResults(input: {
 			source: 'documents',
 			sourceLabel: 'Documents',
 			path: documentPath(document.id),
+			score,
 		})
 	}
 
@@ -343,7 +354,11 @@ export function buildUnifiedSearchResults(input: {
 
 	for (const event of timelineEvents) {
 		const body = [event.title, event.summary, event.tags.join(' ')].join(' ')
-		const score = scoreTextMatch(tokens, body)
+		const score = boostSearchScore(
+			normalized,
+			body,
+			scoreTextMatch(tokens, body),
+		)
 
 		if (score <= 0) {
 			continue
@@ -356,10 +371,83 @@ export function buildUnifiedSearchResults(input: {
 			source: event.sourceModule === 'documents' ? 'documents' : 'health',
 			sourceLabel: event.sourceModule === 'documents' ? 'Documents' : 'Health',
 			path: ROUTES.timeline,
+			score,
 		})
 	}
 
-	return results.slice(0, input.limit ?? 8)
+	return results
+		.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+		.slice(0, input.limit ?? 8)
+}
+
+const SEARCH_TOPIC_ALIASES: Record<string, string[]> = {
+	liver: ['liver', 'alt', 'ast', 'sgpt', 'sgot', 'bilirubin', 'lft'],
+	kidney: ['kidney', 'creatinine', 'egfr', 'urea', 'bun'],
+	heart: ['heart', 'cholesterol', 'ldl', 'hdl', 'triglyceride', 'lipid'],
+	diabetes: ['diabetes', 'glucose', 'hba1c', 'a1c', 'sugar'],
+	passport: ['passport', 'identity', 'visa', 'travel'],
+	insurance: ['insurance', 'policy', 'premium', 'coverage'],
+}
+
+function boostSearchScore(
+	query: string,
+	body: string,
+	baseScore: number,
+): number {
+	if (baseScore <= 0) {
+		return 0
+	}
+
+	const normalizedQuery = query.toLowerCase()
+
+	for (const [topic, aliases] of Object.entries(SEARCH_TOPIC_ALIASES)) {
+		if (!aliases.some((alias) => normalizedQuery.includes(alias))) {
+			continue
+		}
+
+		const bodyLower = body.toLowerCase()
+
+		if (aliases.some((alias) => bodyLower.includes(alias))) {
+			return baseScore + 3
+		}
+
+		if (bodyLower.includes(topic)) {
+			return baseScore + 2
+		}
+	}
+
+	return baseScore
+}
+
+export function buildTodaysSummary(input: {
+	attentionCount: number
+	reportCount: number
+	documentCount: number
+	expiringCount: number
+	greetingName: string
+	hasAnyData: boolean
+}): string {
+	if (!input.hasAnyData) {
+		return `${input.greetingName}, welcome to Chronicle. Connect health records or upload a document to get started.`
+	}
+
+	if (input.attentionCount > 0) {
+		return `${input.greetingName}, you have ${input.attentionCount} item${input.attentionCount === 1 ? '' : 's'} that need${input.attentionCount === 1 ? 's' : ''} your attention today.`
+	}
+
+	if (input.expiringCount > 0) {
+		return `${input.greetingName}, ${input.expiringCount} document${input.expiringCount === 1 ? '' : 's'} expiring soon — worth a look.`
+	}
+
+	if (input.reportCount > 0 && input.documentCount > 0) {
+		return `${input.greetingName}, your health records and documents are up to date. Ask Chronicle if you need anything.`
+	}
+
+	if (input.reportCount > 0) {
+		return `${input.greetingName}, your health records are organized. Open Health to see how you are doing.`
+	}
+
+	return `${input.greetingName}, your document library is ready. Search or ask Chronicle to find what you need.`
 }
 
 export function buildCommandCenterBriefing(input: {
@@ -399,6 +487,23 @@ export function buildCommandCenterBriefing(input: {
 	})
 
 	const expiringDocuments = documentsExpiringWithin(input.documents, 365)
+	const attentionItems = buildAttentionItems({
+		members: input.members,
+		reports: input.reports,
+		documents: input.documents,
+		importStatus: input.importStatus,
+		metricHistories: input.metricHistories,
+		accountOwnerMemberId,
+	})
+	const hasAnyData =
+		completedReports.length > 0 ||
+		input.documents.length > 0 ||
+		timelinePreview.length > 0
+	const latestReport = [...completedReports].sort(
+		(a, b) =>
+			Date.parse(b.report_date ?? b.uploaded_at) -
+			Date.parse(a.report_date ?? a.uploaded_at),
+	)[0]
 
 	return {
 		greeting: getTimeOfDayGreeting(),
@@ -412,14 +517,18 @@ export function buildCommandCenterBriefing(input: {
 			day: 'numeric',
 		}),
 		familyName: input.familyName ?? 'My Family',
-		attentionItems: buildAttentionItems({
-			members: input.members,
-			reports: input.reports,
-			documents: input.documents,
-			importStatus: input.importStatus,
-			metricHistories: input.metricHistories,
-			accountOwnerMemberId,
+		todaySummary: buildTodaysSummary({
+			attentionCount: attentionItems.length,
+			reportCount: completedReports.length,
+			documentCount: input.documents.length,
+			expiringCount: expiringDocuments.length,
+			greetingName: getGreetingName(
+				input.profileName,
+				input.members[0]?.displayName,
+			),
+			hasAnyData,
 		}),
+		attentionItems,
 		memberSummaries: input.members.map((member) =>
 			buildMemberSummary({
 				member,
@@ -428,16 +537,25 @@ export function buildCommandCenterBriefing(input: {
 				accountOwnerMemberId,
 			}),
 		),
-		insights: derivedInsights.slice(0, 4),
+		healthSnapshot: {
+			status: deriveHealthStatus({
+				reportCount: completedReports.length,
+				abnormalCount,
+				metricHistories: input.metricHistories,
+			}),
+			reportCount: completedReports.length,
+			latestReportTitle: latestReport
+				? getReportDisplayTitle(latestReport)
+				: null,
+		},
+		insights: derivedInsights.slice(0, 3),
 		expiringDocuments: expiringDocuments.slice(0, 3),
 		documentCount: input.documents.length,
 		timelinePreview,
 		quickActions: getDefaultQuickActions(),
 		widgets: getCommandCenterWidgets(),
 		loading: input.loading,
-		hasAnyData:
-			completedReports.length > 0 ||
-			input.documents.length > 0 ||
-			timelinePreview.length > 0,
+		hasAnyData,
+		isNewUser: !hasAnyData,
 	}
 }

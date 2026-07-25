@@ -72,7 +72,7 @@ export function LoginPage() {
 						lineHeight: 1.5,
 					}}
 				>
-					Your Personal Operating System
+					Your family health and documents — organized, searchable, and private.
 				</p>
 
 				<GoogleSignInButton />

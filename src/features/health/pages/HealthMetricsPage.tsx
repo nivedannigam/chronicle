@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { HEALTH_COPY } from '@/constants/product-copy'
 import { C } from '@/constants/colors'
 import { healthMetricPath, ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthMetricInsightGroups } from '@/features/health/components/companion/HealthMetricInsightGroups'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { TrendChartGrid } from '@/features/health/components/TrendChart'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
@@ -37,12 +37,11 @@ export function HealthMetricsPage() {
 	if (!hasImportedReports) {
 		return (
 			<>
-				<HealthSetupGuide compact />
 				<DashboardEmptyState
 					title="No numbers yet"
 					message="Import health reports to see how your key markers are changing."
 					emoji="📊"
-					actionLabel="Add reports"
+					actionLabel={HEALTH_COPY.emptyAddReports}
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>

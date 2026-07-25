@@ -24,7 +24,7 @@ const COPY: Record<AskErrorKind, { title: string; description: string }> = {
 	llm_failure: {
 		title: 'AI response unavailable',
 		description:
-			'Chronicle could not complete the AI response. A grounded summary may still be available.',
+			'Chronicle could not complete the AI response. A summary from your records may still be available.',
 	},
 	network: {
 		title: 'Connection issue',
@@ -33,7 +33,7 @@ const COPY: Record<AskErrorKind, { title: string; description: string }> = {
 	provider: {
 		title: 'AI provider unavailable',
 		description:
-			'The configured AI provider is not responding. Chronicle will use grounded answers when possible.',
+			'The AI service is not responding. Chronicle will answer from your records when possible.',
 	},
 	unknown: {
 		title: 'Something went wrong',
