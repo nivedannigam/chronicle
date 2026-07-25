@@ -299,15 +299,27 @@ export function detectIntent(
 
 export function resolveQuestionWithContext(
 	question: string,
-	previousTopic?: { categoryId?: string; metricName?: string },
+	previousTopic?: {
+		categoryId?: string
+		metricName?: string
+		reportId?: string
+		timeRangeYears?: number
+		intent?: string
+		lastQuestion?: string
+	},
 ): string {
 	if (!previousTopic) {
 		return question
 	}
 
+	const normalized = question.trim()
+
 	const refersToPrevious =
 		/^(how about|what about|and|last year|past year|that|those|it|them)\b/i.test(
-			question.trim(),
+			normalized,
+		) ||
+		/\b(how does that compare|compare with last year|was it improving|before that|compared to last year)\b/i.test(
+			normalized,
 		)
 
 	if (!refersToPrevious) {
@@ -320,7 +332,19 @@ export function resolveQuestionWithContext(
 			? `my ${previousTopic.categoryId}`
 			: 'that topic'
 
-	if (/last year|past year/i.test(question)) {
+	if (
+		/how does that compare|compare with last year|compared to last year/i.test(
+			normalized,
+		)
+	) {
+		return `Compare ${subject} with last year`
+	}
+
+	if (/was it improving|before that/i.test(normalized)) {
+		return `Show ${subject} trend history over time`
+	}
+
+	if (/last year|past year/i.test(normalized)) {
 		return `Show ${subject} history over the past year`
 	}
 

@@ -1,5 +1,7 @@
 import type { ConversationTurnMemory } from '@/features/ask/memory/conversation-memory'
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
+import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
+import { stylePromptInstructions } from '@/features/personalization/services/response-adapter.service'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { AiMessage } from '@/features/ai/types'
 
@@ -47,7 +49,13 @@ export class PromptBuilder {
 		memory: ConversationTurnMemory[]
 		member: IntelligenceMemberContext
 		dataAvailable: boolean
+		personalContext?: PersonalContext
 	}): BuiltPrompt {
+		const preferences = input.personalContext?.preferences
+		const styleInstruction = preferences
+			? stylePromptInstructions(preferences.communicationStyle)
+			: stylePromptInstructions('detailed')
+
 		const contextJson =
 			input.contextJson ??
 			JSON.stringify(
@@ -56,6 +64,13 @@ export class PromptBuilder {
 					domain: input.knowledge?.domain,
 					intent: input.knowledge?.intent,
 					dataAvailable: input.dataAvailable,
+					preferences: preferences
+						? {
+								language: preferences.language,
+								units: preferences.units,
+								communicationStyle: preferences.communicationStyle,
+							}
+						: undefined,
 					reports: input.knowledge?.reports ?? [],
 					metrics: input.knowledge?.metrics ?? [],
 					timelines: input.knowledge?.timelines ?? [],
@@ -79,6 +94,11 @@ export class PromptBuilder {
 			.join('\n\n')
 
 		const system = `${CHRONICLE_SYSTEM_PROMPT}
+
+PERSONALIZATION:
+- ${styleInstruction}
+- Always answer for the selected family member unless the question explicitly names someone else.
+- Use conversation history to resolve follow-up questions without asking the user to repeat context.
 
 Output JSON schema:
 {

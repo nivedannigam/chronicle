@@ -14,6 +14,8 @@ import {
 	getOrCreateFamily,
 	saveSelectedMemberPreference,
 } from '@/features/family/services/family-platform.service'
+import { parsePersonalPreferences } from '@/features/personalization/services/personal-preferences.service'
+import type { ChroniclePersonalPreferences } from '@/features/personalization/types/personal-context.types'
 import { ensureDefaultFamilyMember } from '@/features/family/services/family.service'
 import type {
 	Family,
@@ -30,6 +32,7 @@ interface FamilyContextValue {
 	selectedMemberId: string | null
 	accountOwnerMemberId: string | null
 	currentUserMember: FamilyMemberWithAliases | null
+	personalPreferences: ChroniclePersonalPreferences
 	setSelectedMemberId: (memberId: string | null) => void
 	refresh: () => Promise<void>
 }
@@ -112,6 +115,11 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
 		[members, selectedMemberId],
 	)
 
+	const personalPreferences = useMemo(
+		() => parsePersonalPreferences(query.data?.preferences?.preferences),
+		[query.data?.preferences?.preferences],
+	)
+
 	const currentUserMember = useMemo(
 		() => members.find((member) => member.isAccountOwner) ?? members[0] ?? null,
 		[members],
@@ -126,6 +134,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
 			selectedMemberId,
 			accountOwnerMemberId,
 			currentUserMember,
+			personalPreferences,
 			setSelectedMemberId,
 			refresh: async () => {
 				await query.refetch()
@@ -139,6 +148,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
 			selectedMemberId,
 			accountOwnerMemberId,
 			currentUserMember,
+			personalPreferences,
 			setSelectedMemberId,
 			query,
 		],

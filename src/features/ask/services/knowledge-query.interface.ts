@@ -29,5 +29,6 @@ export interface AskReasoningEngine {
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
+		personalPreferences?: import('@/features/personalization/types/personal-context.types').ChroniclePersonalPreferences
 	}): Promise<import('@/features/ask/types').AskQuestionResult>
 }

@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { AskSearchBar } from '@/features/ask/components/AskSearchBar'
 import { AiDebugPanel } from '@/features/ask/components/AiDebugPanel'
@@ -19,6 +20,7 @@ export function AskPage() {
 	const { user } = useAuth()
 	const userId = user?.id ?? ''
 	const { members, selectedMember, selectedMemberId } = useFamilyContext()
+	const { preferences } = usePersonalPreferences()
 	const aiConfigured = isAskAiProviderConfigured()
 	const uploadedQuery = useMemberHealthReports()
 	const driveConnector = useGoogleDriveConnector(userId)
@@ -45,6 +47,7 @@ export function AskPage() {
 		uploadedQuery.data ?? [],
 		memberContext,
 		driveConnector.registry ?? [],
+		preferences,
 	)
 
 	const handleSubmit = useCallback(
@@ -187,6 +190,11 @@ export function AskPage() {
 				<>
 					<SuggestedQuestions
 						userId={userId}
+						memberId={selectedMemberId}
+						memberName={selectedMember?.displayName ?? null}
+						uploadedReports={uploadedQuery.data ?? []}
+						preferences={preferences}
+						recentQuestions={recentQuestions.map((item) => item.question)}
 						onSelect={(prompt) => {
 							setQuery(prompt)
 							void handleSubmit(prompt)

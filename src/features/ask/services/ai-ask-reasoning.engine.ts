@@ -18,6 +18,16 @@ import {
 	buildMemorySessionKey,
 	resolveMemberFromQuestion,
 } from '@/features/intelligence/services/member-context.service'
+import {
+	buildConversationContext,
+	buildPersonalContext,
+} from '@/features/personalization/services/personal-context.engine'
+import {
+	DEFAULT_PERSONAL_PREFERENCES,
+	type ChroniclePersonalPreferences,
+} from '@/features/personalization/types/personal-context.types'
+import { recordUsageSignal } from '@/features/personalization/services/usage-tracker.service'
+import { adaptAnswerForStyle } from '@/features/personalization/services/response-adapter.service'
 import { runIntelligencePipeline } from '@/features/intelligence/pipeline/chronicle-intelligence.pipeline'
 import { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'
 import { createEmptyContextPackage } from '@/features/intelligence/entities/knowledge-entities'
@@ -39,25 +49,44 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
+		personalPreferences?: ChroniclePersonalPreferences
 	}): Promise<AskQuestionResult> {
+		const preferences =
+			input.personalPreferences ?? DEFAULT_PERSONAL_PREFERENCES
+		const bootstrapSessionKey = buildMemorySessionKey(
+			input.userId,
+			input.memberId ?? null,
+		)
+		const bootstrapConversation = buildConversationContext(bootstrapSessionKey)
+
 		const member = resolveMemberFromQuestion({
 			question: input.question,
 			selectedMemberId: input.memberId ?? null,
 			selectedMemberName: input.memberName ?? null,
 			members: input.familyMembers ?? [],
+			conversationContext: bootstrapConversation,
+		})
+
+		const sessionKey = buildMemorySessionKey(input.userId, member.memberId)
+		const personalContext = buildPersonalContext({
+			userId: input.userId,
+			question: input.question,
+			selectedMemberId: input.memberId ?? null,
+			selectedMemberName: input.memberName ?? null,
+			members: input.familyMembers ?? [],
+			preferences,
+			sessionKey,
 		})
 
 		const pipeline = runIntelligencePipeline({
 			userId: input.userId,
 			question: input.question,
-			member,
+			member: personalContext.activeMember,
 			sources: buildIntelligenceSources({
 				uploadedReports: input.uploadedReports,
 				connectorDocuments: input.connectorDocuments,
 			}),
 		})
-
-		const sessionKey = buildMemorySessionKey(input.userId, member.memberId)
 		const fallbackDomain = pipeline.activeDomains[0] ?? 'health'
 		const knowledge =
 			pipeline.mergedKnowledge ??
@@ -72,8 +101,9 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			knowledge: pipeline.mergedKnowledge,
 			contextJson: pipeline.builtContext.contextJson,
 			memory: conversationMemory.getTurns(sessionKey),
-			member,
+			member: personalContext.activeMember,
 			dataAvailable: pipeline.dataAvailable,
+			personalContext,
 		})
 
 		if (pipeline.detection.intent === 'explain_response') {
@@ -82,8 +112,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			const explainTurn = buildExplainabilityTurn({
 				question: input.question,
 				previousTurn,
-				memberId: member.memberId,
-				memberName: member.memberName,
+				memberId: personalContext.activeMember.memberId,
+				memberName: personalContext.activeMember.memberName,
 			})
 
 			if (explainTurn) {
@@ -120,11 +150,12 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		let turn = buildGroundedTurn({
 			question: input.question,
 			knowledge: pipeline.mergedKnowledge,
-			member,
+			member: personalContext.activeMember,
 			domains: pipeline.activeDomains,
 			dataAvailable: pipeline.dataAvailable,
 			confidence: pipeline.detection.confidence,
 			uploadedReports: input.uploadedReports,
+			personalContext,
 		})
 		let providerResponse = ''
 		const aiConfigured = isAskAiProviderConfigured()
@@ -163,13 +194,19 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 
 				if (parsed) {
 					const verified = verifyCitations(parsed, knowledge)
+					const styledAnswer = adaptAnswerForStyle({
+						answer: verified.answer.endsWith('not medical advice.')
+							? verified.answer
+							: `${verified.answer}\n\nThis is informational and not medical advice.`,
+						style: preferences.communicationStyle,
+						knowledge: pipeline.mergedKnowledge,
+						memberName: personalContext.activeMember.memberName,
+					})
 
 					turn = attachTrustToTurn(
 						{
 							...turn,
-							answer: verified.answer.endsWith('not medical advice.')
-								? verified.answer
-								: `${verified.answer}\n\nThis is informational and not medical advice.`,
+							answer: styledAnswer,
 							confidence:
 								typeof verified.confidence === 'number'
 									? verified.confidence
@@ -203,11 +240,12 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 				turn = buildGroundedTurn({
 					question: input.question,
 					knowledge: pipeline.mergedKnowledge,
-					member,
+					member: personalContext.activeMember,
 					domains: pipeline.activeDomains,
 					dataAvailable: pipeline.dataAvailable,
 					confidence: Math.max(0.6, pipeline.detection.confidence - 0.1),
 					uploadedReports: input.uploadedReports,
+					personalContext,
 				})
 				usedProvider = 'grounded'
 			}
@@ -225,6 +263,17 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			intent: pipeline.detection.intent,
 			categoryId: pipeline.detection.categoryId,
 			metricName: pipeline.detection.metricName,
+			reportId: turn.relatedReports[0]?.id,
+			timeRangeYears: pipeline.detection.timeRangeYears,
+		})
+
+		recordUsageSignal({
+			userId: input.userId,
+			memberId: personalContext.activeMember.memberId,
+			type: 'ask_question',
+			topic: pipeline.detection.metricName ?? pipeline.detection.categoryId,
+			reportId: turn.relatedReports[0]?.id,
+			timestamp: new Date().toISOString(),
 		})
 
 		lastDebugInfo = {

@@ -1,68 +1,43 @@
 import type { AskQuestionGroup } from '@/constants/product-copy'
-import { ASK_QUESTION_GROUPS } from '@/constants/product-copy'
-import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
+import { buildPersonalizedQuestionGroups } from '@/features/personalization/services/personalized-suggestions.service'
+import type { ChroniclePersonalPreferences } from '@/features/personalization/types/personal-context.types'
+import type { UploadedHealthReport } from '@/features/health/types'
 
-function appendHealthQuestions(
-	groups: AskQuestionGroup[],
-	userId: string,
-): AskQuestionGroup[] {
-	const graph = healthKnowledgeService.getGraphForUser(userId)
-	const healthGroup = groups.find((group) => group.id === 'health')
-
-	if (!healthGroup) {
-		return groups
-	}
-
-	const extra: string[] = []
-	const vitaminHistory = graph.profile.metricHistories.find(
-		(history) => history.canonicalMetricId === 'vitamin-d',
-	)
-
-	if (vitaminHistory) {
-		extra.push('Explain my Vitamin D trend.')
-	}
-
-	const hba1cHistory = graph.profile.metricHistories.find(
-		(history) => history.canonicalMetricId === 'hba1c',
-	)
-
-	if (hba1cHistory) {
-		extra.push('Explain my HbA1c trend.')
-	}
-
-	if (graph.profile.alerts.length > 0) {
-		extra.push('What should I discuss with my doctor?')
-	}
-
-	if (extra.length === 0) {
-		return groups
-	}
-
-	return groups.map((group) =>
-		group.id === 'health'
-			? {
-					...group,
-					questions: [...new Set([...group.questions, ...extra])],
-				}
-			: group,
-	)
+export function buildSuggestedQuestionGroups(input: {
+	userId: string
+	memberId?: string | null
+	memberName?: string | null
+	uploadedReports?: UploadedHealthReport[]
+	preferences?: ChroniclePersonalPreferences
+	recentQuestions?: string[]
+}): AskQuestionGroup[] {
+	return buildPersonalizedQuestionGroups({
+		userId: input.userId,
+		memberId: input.memberId ?? null,
+		memberName: input.memberName ?? null,
+		uploadedReports: input.uploadedReports ?? [],
+		preferences:
+			input.preferences ??
+			({
+				language: 'en',
+				units: 'metric',
+				communicationStyle: 'detailed',
+				displayFormat: 'detailed',
+				dashboardLayout: 'expanded',
+				notificationPreferences: {
+					healthAlerts: true,
+					importComplete: true,
+				},
+				frequentlyAccessedReportIds: [],
+				frequentTopics: [],
+			} satisfies ChroniclePersonalPreferences),
+		recentQuestions: input.recentQuestions ?? [],
+	})
 }
 
-export function buildSuggestedQuestionGroups(
-	userId: string,
-): AskQuestionGroup[] {
-	return appendHealthQuestions(
-		ASK_QUESTION_GROUPS.map((group) => ({
-			...group,
-			questions: [...group.questions],
-		})),
-		userId,
-	)
-}
-
-/** @deprecated Use buildSuggestedQuestionGroups */
+/** @deprecated Use buildSuggestedQuestionGroups with personalization input */
 export function buildSuggestedQuestions(userId: string): string[] {
-	return buildSuggestedQuestionGroups(userId)
+	return buildSuggestedQuestionGroups({ userId })
 		.flatMap((group) => group.questions)
 		.slice(0, 8)
 }

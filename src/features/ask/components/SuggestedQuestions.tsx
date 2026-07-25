@@ -1,19 +1,49 @@
 import { useMemo } from 'react'
 import { C } from '@/constants/colors'
 import { buildSuggestedQuestionGroups } from '@/features/ask/services/suggested-questions.service'
+import type { ChroniclePersonalPreferences } from '@/features/personalization/types/personal-context.types'
+import type { UploadedHealthReport } from '@/features/health/types'
 
 interface SuggestedQuestionsProps {
 	userId: string
+	memberId?: string | null
+	memberName?: string | null
+	uploadedReports?: UploadedHealthReport[]
+	preferences?: ChroniclePersonalPreferences
+	recentQuestions?: string[]
 	onSelect: (question: string) => void
 	disabled?: boolean
 }
 
 export function SuggestedQuestions({
 	userId,
+	memberId = null,
+	memberName = null,
+	uploadedReports = [],
+	preferences,
+	recentQuestions = [],
 	onSelect,
 	disabled = false,
 }: SuggestedQuestionsProps) {
-	const groups = useMemo(() => buildSuggestedQuestionGroups(userId), [userId])
+	const groups = useMemo(
+		() =>
+			buildSuggestedQuestionGroups({
+				userId,
+				memberId,
+				memberName,
+				uploadedReports,
+				preferences,
+				recentQuestions,
+			}),
+		[
+			userId,
+			memberId,
+			memberName,
+			uploadedReports,
+			preferences,
+			recentQuestions,
+		],
+	)
 
 	if (groups.length === 0) {
 		return null
@@ -31,7 +61,7 @@ export function SuggestedQuestions({
 					marginBottom: 14,
 				}}
 			>
-				Try asking
+				Suggested for {memberName ?? 'you'}
 			</div>
 
 			<div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

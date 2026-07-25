@@ -6,6 +6,10 @@ export interface ConversationTurnMemory {
 	intent: string
 	categoryId?: string
 	metricName?: string
+	reportId?: string
+	timeRangeYears?: number
+	memberId?: string | null
+	memberName?: string | null
 }
 
 const sessionMemory = new Map<string, ConversationTurnMemory[]>()
@@ -15,9 +19,18 @@ export class ConversationMemory {
 		return sessionMemory.get(sessionKey) ?? []
 	}
 
-	getPreviousTopic(
-		sessionKey: string,
-	): { categoryId?: string; metricName?: string } | undefined {
+	getPreviousTopic(sessionKey: string):
+		| {
+				categoryId?: string
+				metricName?: string
+				reportId?: string
+				timeRangeYears?: number
+				memberId?: string | null
+				memberName?: string | null
+				intent?: string
+				lastQuestion?: string
+		  }
+		| undefined {
 		const turns = this.getTurns(sessionKey)
 		const latest = turns[turns.length - 1]
 
@@ -28,13 +41,25 @@ export class ConversationMemory {
 		return {
 			categoryId: latest.categoryId,
 			metricName: latest.metricName,
+			reportId: latest.reportId,
+			timeRangeYears: latest.timeRangeYears,
+			memberId: latest.memberId,
+			memberName: latest.memberName,
+			intent: latest.intent,
+			lastQuestion: latest.question,
 		}
 	}
 
 	addTurn(
 		sessionKey: string,
 		turn: AskConversationTurn,
-		meta: { intent: string; categoryId?: string; metricName?: string },
+		meta: {
+			intent: string
+			categoryId?: string
+			metricName?: string
+			reportId?: string
+			timeRangeYears?: number
+		},
 	): void {
 		const existing = this.getTurns(sessionKey)
 
@@ -48,9 +73,21 @@ export class ConversationMemory {
 					intent: meta.intent,
 					categoryId: meta.categoryId,
 					metricName: meta.metricName,
+					reportId: meta.reportId,
+					timeRangeYears: meta.timeRangeYears,
+					memberId: turn.memberId,
+					memberName: turn.memberName,
 				},
 			].slice(-8),
 		)
+	}
+
+	hydrateFromTurns(sessionKey: string, turns: ConversationTurnMemory[]): void {
+		if (turns.length === 0) {
+			return
+		}
+
+		sessionMemory.set(sessionKey, turns.slice(-8))
 	}
 
 	clear(sessionKey?: string): void {

@@ -152,6 +152,29 @@ export async function saveSelectedMemberPreference(input: {
 	}
 }
 
+export async function savePersonalPreferences(input: {
+	userId: string
+	familyId: string
+	preferences: Record<string, unknown>
+}) {
+	const existing = await getMemberPreferences(input.userId, input.familyId)
+
+	const { error } = await supabase.from('member_preferences').upsert(
+		{
+			user_id: input.userId,
+			family_id: input.familyId,
+			selected_member_id: existing?.selectedMemberId ?? null,
+			preferences: input.preferences,
+			updated_at: new Date().toISOString(),
+		},
+		{ onConflict: 'user_id,family_id' },
+	)
+
+	if (error) {
+		throw new Error(error.message)
+	}
+}
+
 export async function listFamilyInvitations(
 	familyId: string,
 ): Promise<FamilyInvitation[]> {

@@ -13,6 +13,8 @@ import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { buildMemorySessionKey } from '@/features/intelligence/services/member-context.service'
+import { hydrateConversationMemoryFromStorage } from '@/features/personalization/services/conversation-session.service'
+import type { ChroniclePersonalPreferences } from '@/features/personalization/types/personal-context.types'
 
 export interface AskMemberContext {
 	selectedMemberId: string | null
@@ -21,6 +23,7 @@ export interface AskMemberContext {
 }
 
 function loadSessionState(sessionKey: string) {
+	hydrateConversationMemoryFromStorage(sessionKey)
 	const turns = loadConversationTurns(sessionKey)
 
 	return {
@@ -34,6 +37,7 @@ export function useAskChronicle(
 	uploadedReports: UploadedHealthReport[] = [],
 	memberContext?: AskMemberContext,
 	connectorDocuments: ConnectorDocumentRecord[] = [],
+	personalPreferences?: ChroniclePersonalPreferences,
 ) {
 	const memberId = memberContext?.selectedMemberId ?? null
 	const sessionKey = useMemo(
@@ -97,6 +101,7 @@ export function useAskChronicle(
 					familyMembers: memberContext?.members ?? [],
 					uploadedReports,
 					connectorDocuments,
+					personalPreferences,
 					onStream: (partialAnswer) => {
 						if (activeRequestRef.current === requestId) {
 							setStreamingAnswer(partialAnswer)
@@ -130,7 +135,14 @@ export function useAskChronicle(
 				}
 			}
 		},
-		[userId, uploadedReports, connectorDocuments, memberContext, sessionKey],
+		[
+			userId,
+			uploadedReports,
+			connectorDocuments,
+			memberContext,
+			sessionKey,
+			personalPreferences,
+		],
 	)
 
 	const currentTurn = turns[turns.length - 1] ?? null

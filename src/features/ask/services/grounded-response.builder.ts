@@ -11,6 +11,11 @@ import { parseConfidenceLevel } from '@/features/intelligence/types/confidence.t
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 import { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
 import { buildTrustResponse } from '@/features/ask/trust/trust-response.builder'
+import {
+	adaptAnswerForStyle,
+	shouldIncludeAnswerCards,
+} from '@/features/personalization/services/response-adapter.service'
+import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
@@ -358,6 +363,7 @@ export function buildGroundedTurn(input: {
 	dataAvailable: boolean
 	confidence?: number
 	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+	personalContext?: PersonalContext
 }): AskConversationTurn {
 	const timestamp = new Date().toISOString()
 	const knowledge =
@@ -396,8 +402,17 @@ export function buildGroundedTurn(input: {
 		dataAvailable: input.dataAvailable,
 	})
 
+	const adaptedAnswer = input.personalContext
+		? adaptAnswerForStyle({
+				answer: rawAnswer,
+				style: input.personalContext.preferences.communicationStyle,
+				knowledge: input.knowledge,
+				memberName: input.member.memberName,
+			})
+		: rawAnswer
+
 	const trust = buildTrustResponse({
-		answer: rawAnswer,
+		answer: adaptedAnswer,
 		question: input.question,
 		knowledge,
 		dataAvailable: input.dataAvailable,
@@ -414,7 +429,15 @@ export function buildGroundedTurn(input: {
 		id: crypto.randomUUID(),
 		question: input.question,
 		answer: trust.directAnswer,
-		cards: input.dataAvailable ? buildCards(knowledge) : [],
+		cards:
+			input.dataAvailable &&
+			(!input.personalContext ||
+				shouldIncludeAnswerCards(
+					input.personalContext.preferences.communicationStyle,
+					input.personalContext.preferences.displayFormat,
+				))
+				? buildCards(knowledge)
+				: [],
 		relatedReports: trust.supportingReports,
 		relatedMetrics,
 		citations: trust.evidenceItems.length
