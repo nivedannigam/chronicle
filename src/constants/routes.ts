@@ -37,6 +37,9 @@ export const ROUTES = {
 	healthImportReview: '/health/import/review',
 	healthValidation: '/health/validation',
 	healthOcrPreview: '/health/reports/:reportId/ocr',
+	documents: '/documents',
+	documentsExpiring: '/documents/expiring',
+	documentDetail: '/documents/:documentId',
 	settingsAccount: '/settings/account',
 	settingsHealthSources: '/settings/health-sources',
 	settingsConnectorsDrive: '/settings/connectors/drive',
@@ -67,4 +70,8 @@ export function healthMetricPath(metricId: string) {
 
 export function healthOcrPreviewPath(reportId: string) {
 	return `/health/reports/${reportId}/ocr`
+}
+
+export function documentPath(documentId: string) {
+	return `/documents/${documentId}`
 }

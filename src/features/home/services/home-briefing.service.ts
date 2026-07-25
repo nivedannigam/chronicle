@@ -1,4 +1,5 @@
 import { ROUTES } from '@/constants/routes'
+import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import {
 	getGreetingName,
@@ -218,6 +219,7 @@ function buildContinueItem(input: {
 function buildActivities(
 	reports: UploadedHealthReport[],
 	importStatus: HealthImportStatus | undefined,
+	documents: ChronicleDocument[] = [],
 ): HomeActivityItem[] {
 	const items: HomeActivityItem[] = []
 
@@ -235,6 +237,32 @@ function buildActivities(
 			timestamp,
 			kind: 'import',
 		})
+	}
+
+	for (const document of documents) {
+		if (document.status === 'failed') {
+			continue
+		}
+
+		items.push({
+			id: `document-${document.id}`,
+			title: document.issue_date
+				? 'Document issued'
+				: 'Document added to library',
+			subtitle: document.title,
+			timestamp: document.issue_date ?? document.uploaded_at,
+			kind: 'document',
+		})
+
+		if (document.expiry_date) {
+			items.push({
+				id: `document-expiry-${document.id}`,
+				title: 'Document expiry recorded',
+				subtitle: `${document.title} · expires ${new Date(document.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+				timestamp: document.expiry_date,
+				kind: 'document',
+			})
+		}
 	}
 
 	if (importStatus?.lastScanAt) {
@@ -260,6 +288,7 @@ export function buildHomeBriefing(input: {
 	insights: HealthInsight[]
 	healthScore: number | null
 	reports: UploadedHealthReport[]
+	documents?: ChronicleDocument[]
 	importStatus?: HealthImportStatus
 	driveConnected: boolean
 	isLoading: boolean
@@ -296,7 +325,11 @@ export function buildHomeBriefing(input: {
 		importCandidates,
 	})
 
-	const allActivities = buildActivities(input.reports, input.importStatus)
+	const allActivities = buildActivities(
+		input.reports,
+		input.importStatus,
+		input.documents ?? [],
+	)
 
 	const continueItem = buildContinueItem({
 		pendingActions,
@@ -333,6 +366,7 @@ export function buildHomeBriefing(input: {
 export function buildAllHomeActivities(
 	reports: UploadedHealthReport[],
 	importStatus?: HealthImportStatus,
+	documents: ChronicleDocument[] = [],
 ): HomeActivityItem[] {
-	return buildActivities(reports, importStatus)
+	return buildActivities(reports, importStatus, documents)
 }

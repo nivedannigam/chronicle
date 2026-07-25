@@ -6,6 +6,7 @@ import { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'
 import { useHealthDashboardSummary } from '@/features/health/hooks/useHealthDashboardSummary'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { buildHomeBriefing } from '@/features/home/services/home-briefing.service'
 import { useUser } from '@/features/user/hooks/useUser'
 
@@ -15,7 +16,12 @@ export function useHomeBriefing() {
 	const { family, members, selectedMember } = useFamilyContext()
 	const setup = useHealthMemberSetup()
 	const reportsQuery = useMemberHealthReports()
-	const reports = reportsQuery.data ?? []
+	const documentsQuery = useMemberDocuments()
+	const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
+	const documents = useMemo(
+		() => documentsQuery.data ?? [],
+		[documentsQuery.data],
+	)
 	const importStatus = useHealthImportStatus(user?.id)
 
 	const { insights, knowledgeGraph } = useHealthDashboard(reports)
@@ -31,10 +37,14 @@ export function useHomeBriefing() {
 				insights,
 				healthScore: summary.healthScore,
 				reports,
+				documents,
 				importStatus: importStatus.data,
 				driveConnected: setup.driveConnected,
 				isLoading:
-					reportsQuery.isLoading || setup.isLoading || importStatus.isLoading,
+					reportsQuery.isLoading ||
+					documentsQuery.isLoading ||
+					setup.isLoading ||
+					importStatus.isLoading,
 			}),
 		[
 			profile?.name,
@@ -44,10 +54,12 @@ export function useHomeBriefing() {
 			insights,
 			summary.healthScore,
 			reports,
+			documents,
 			importStatus.data,
 			setup.driveConnected,
 			setup.isLoading,
 			reportsQuery.isLoading,
+			documentsQuery.isLoading,
 			importStatus.isLoading,
 		],
 	)

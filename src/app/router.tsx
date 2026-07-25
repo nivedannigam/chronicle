@@ -38,6 +38,12 @@ import {
 	PreferencesPage,
 } from '@/features/settings'
 import { TasksPage } from '@/features/tasks'
+import {
+	DocumentDetailPage,
+	DocumentsExpiringPage,
+	DocumentsLayout,
+	DocumentsPage,
+} from '@/features/documents'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { NotFoundPage } from '@/pages/NotFound/NotFoundPage'
@@ -91,6 +97,14 @@ export function AppRouter() {
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
 					<Route path={ROUTES.more} element={<MorePage />} />
+					<Route path={ROUTES.documents} element={<DocumentsLayout />}>
+						<Route index element={<DocumentsPage />} />
+						<Route path="expiring" element={<DocumentsExpiringPage />} />
+					</Route>
+					<Route
+						path={ROUTES.documentDetail}
+						element={<DocumentDetailPage />}
+					/>
 					<Route
 						path={ROUTES.healthSources}
 						element={<Navigate to={ROUTES.healthSettings} replace />}

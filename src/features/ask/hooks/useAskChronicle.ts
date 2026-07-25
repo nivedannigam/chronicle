@@ -10,6 +10,7 @@ import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { aiService } from '@/features/ai/services/ai.service'
 import type { AskConversationTurn } from '@/features/ask/types'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
+import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { buildMemorySessionKey } from '@/features/intelligence/services/member-context.service'
@@ -38,6 +39,7 @@ export function useAskChronicle(
 	memberContext?: AskMemberContext,
 	connectorDocuments: ConnectorDocumentRecord[] = [],
 	personalPreferences?: ChroniclePersonalPreferences,
+	documents: ChronicleDocument[] = [],
 ) {
 	const memberId = memberContext?.selectedMemberId ?? null
 	const sessionKey = useMemo(
@@ -101,6 +103,7 @@ export function useAskChronicle(
 					familyMembers: memberContext?.members ?? [],
 					uploadedReports,
 					connectorDocuments,
+					documents,
 					personalPreferences,
 					onStream: (partialAnswer) => {
 						if (activeRequestRef.current === requestId) {
@@ -139,6 +142,7 @@ export function useAskChronicle(
 			userId,
 			uploadedReports,
 			connectorDocuments,
+			documents,
 			memberContext,
 			sessionKey,
 			personalPreferences,

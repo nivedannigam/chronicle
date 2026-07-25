@@ -20,7 +20,8 @@ export interface HomeActivityItem {
 	title: string
 	subtitle: string
 	timestamp: string
-	kind: 'import' | 'extraction' | 'connection' | 'review' | 'family'
+	kind:
+		'import' | 'extraction' | 'connection' | 'review' | 'family' | 'document'
 }
 
 export interface HomeBriefing {

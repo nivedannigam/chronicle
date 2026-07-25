@@ -49,6 +49,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
+		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: ChroniclePersonalPreferences
 	}): Promise<AskQuestionResult> {
 		const preferences =
@@ -85,6 +86,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			sources: buildIntelligenceSources({
 				uploadedReports: input.uploadedReports,
 				connectorDocuments: input.connectorDocuments,
+				documents: input.documents,
 			}),
 		})
 		const fallbackDomain = pipeline.activeDomains[0] ?? 'health'

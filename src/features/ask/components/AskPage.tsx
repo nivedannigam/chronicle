@@ -5,6 +5,7 @@ import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberS
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { AskSearchBar } from '@/features/ask/components/AskSearchBar'
 import { AiDebugPanel } from '@/features/ask/components/AiDebugPanel'
 import { ConversationThread } from '@/features/ask/components/ConversationThread'
@@ -23,6 +24,7 @@ export function AskPage() {
 	const { preferences } = usePersonalPreferences()
 	const aiConfigured = isAskAiProviderConfigured()
 	const uploadedQuery = useMemberHealthReports()
+	const documentsQuery = useMemberDocuments()
 	const driveConnector = useGoogleDriveConnector(userId)
 	const [query, setQuery] = useState('')
 	const memberContext = useMemo(
@@ -48,6 +50,7 @@ export function AskPage() {
 		memberContext,
 		driveConnector.registry ?? [],
 		preferences,
+		documentsQuery.data ?? [],
 	)
 
 	const handleSubmit = useCallback(

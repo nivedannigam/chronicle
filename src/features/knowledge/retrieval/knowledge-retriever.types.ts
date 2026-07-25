@@ -28,6 +28,11 @@ export type AskIntent =
 	| 'summarize_health'
 	| 'since_last_report'
 	| 'explain_response'
+	| 'find_document'
+	| 'list_documents'
+	| 'document_expiry'
+	| 'document_summary'
+	| 'general_documents'
 
 export interface RetrievalQuery {
 	userId: string
@@ -39,6 +44,9 @@ export interface RetrievalQuery {
 	metricName?: string
 	timeRangeYears?: number
 	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+	documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
+	connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
+	documentCategoryId?: string
 	searchHits?: SemanticSearchHit[]
 	member?: IntelligenceMemberContext
 }

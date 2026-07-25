@@ -1,4 +1,5 @@
 import type { AskIntent } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import { resolveCategoryFromQuery } from '@/features/documents/types/document-categories'
 
 export interface IntentDetectionResult {
 	intent: AskIntent
@@ -285,6 +286,70 @@ export function detectIntent(
 			metricName: resolvedMetric,
 			timeRangeYears,
 			confidence: 0.8,
+		}
+	}
+
+	const documentCategory = resolveCategoryFromQuery(normalized)
+
+	if (
+		/when does .* expire|expir(e|ing|y)|expires this year|documents expiring/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'document_expiry',
+			categoryId: documentCategory,
+			timeRangeYears,
+			confidence: 0.9,
+		}
+	}
+
+	if (
+		/passport|aadhaar|aadhar|pan card|driving licence|driving license|voter id|insurance policy|property papers|offer letter|bank statement|my passport|my pan/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'find_document',
+			categoryId: documentCategory,
+			timeRangeYears,
+			confidence: 0.88,
+		}
+	}
+
+	if (
+		/show all documents|list documents|which documents|what documents|documents for/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'list_documents',
+			categoryId: documentCategory,
+			timeRangeYears,
+			confidence: 0.86,
+		}
+	}
+
+	if (/summarize (this )?document|document summary/i.test(normalized)) {
+		return {
+			intent: 'document_summary',
+			categoryId: documentCategory,
+			timeRangeYears,
+			confidence: 0.84,
+		}
+	}
+
+	if (
+		documentCategory &&
+		/insurance|property|identity|education|employment|financial|medical document/i.test(
+			normalized,
+		)
+	) {
+		return {
+			intent: 'general_documents',
+			categoryId: documentCategory,
+			timeRangeYears,
+			confidence: 0.82,
 		}
 	}
 

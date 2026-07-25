@@ -4,6 +4,7 @@ import { C } from '@/constants/colors'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { HomeRecentActivity } from '@/features/home/components/HomeRecentActivity'
 import { buildAllHomeActivities } from '@/features/home/services/home-briefing.service'
 
@@ -11,10 +12,12 @@ export function HomeActivityPage() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const reportsQuery = useMemberHealthReports()
+	const documentsQuery = useMemberDocuments()
 	const importStatus = useHealthImportStatus(user?.id)
 	const activities = buildAllHomeActivities(
 		reportsQuery.data ?? [],
 		importStatus.data,
+		documentsQuery.data ?? [],
 	)
 
 	return (
@@ -54,7 +57,11 @@ export function HomeActivityPage() {
 			<HomeRecentActivity
 				activities={activities}
 				totalCount={activities.length}
-				isLoading={reportsQuery.isLoading || importStatus.isLoading}
+				isLoading={
+					reportsQuery.isLoading ||
+					documentsQuery.isLoading ||
+					importStatus.isLoading
+				}
 				title="All Activity"
 				showViewAll={false}
 			/>

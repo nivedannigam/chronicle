@@ -12,6 +12,7 @@ export const STALE_TIME = {
 	connectorRegistry: 30 * 1000,
 	driveBrowse: 30 * 1000,
 	default: 60 * 1000,
+	documents: 2 * 60 * 1000,
 } as const
 
 export const queryKeys = {
@@ -69,6 +70,11 @@ export const queryKeys = {
 	knowledge: {
 		timeline: (userId: string | undefined) =>
 			['knowledge-timeline', userId] as const,
+	},
+	documents: {
+		list: (userId: string | undefined) => ['documents', userId] as const,
+		detail: (documentId: string | undefined) =>
+			['document-detail', documentId] as const,
 	},
 } as const
 

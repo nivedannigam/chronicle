@@ -1,5 +1,11 @@
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, FileInput, HardDrive, Users } from 'lucide-react'
+import {
+	CheckCircle2,
+	FileInput,
+	FileText,
+	HardDrive,
+	Users,
+} from 'lucide-react'
 import { C } from '@/constants/colors'
 import { HOME_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
@@ -12,6 +18,7 @@ const KIND_ICONS = {
 	connection: HardDrive,
 	review: CheckCircle2,
 	family: Users,
+	document: FileText,
 } as const
 
 function formatActivityTime(timestamp: string): string {

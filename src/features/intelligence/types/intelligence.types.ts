@@ -47,6 +47,7 @@ export interface IntelligencePipelineContext {
 export function buildIntelligenceSources(input: {
 	uploadedReports?: unknown[]
 	connectorDocuments?: unknown[]
+	documents?: unknown[]
 }): Record<string, unknown> {
 	const sources: Record<string, unknown> = {}
 
@@ -54,8 +55,11 @@ export function buildIntelligenceSources(input: {
 		sources.health = { uploadedReports: input.uploadedReports }
 	}
 
-	if (input.connectorDocuments?.length) {
-		sources.documents = { connectorDocuments: input.connectorDocuments }
+	if (input.documents?.length || input.connectorDocuments?.length) {
+		sources.documents = {
+			uploadedDocuments: input.documents ?? [],
+			connectorDocuments: input.connectorDocuments ?? [],
+		}
 	}
 
 	return sources
