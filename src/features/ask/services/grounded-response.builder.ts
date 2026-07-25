@@ -264,7 +264,16 @@ function buildGroundedAnswer(input: {
 	const lines: string[] = []
 	const memberPrefix = input.memberName ? `For ${input.memberName}, ` : ''
 
-	if (knowledge.summaryLines.length > 0) {
+	if (knowledge.intent === 'organ_status' && knowledge.metrics.length > 0) {
+		const metricSummaries = knowledge.metrics
+			.slice(0, 4)
+			.map(
+				(metric) =>
+					`${metric.displayName} is ${metric.latestValue} (${metric.status})`,
+			)
+
+		lines.push(`${memberPrefix}${metricSummaries.join('. ')}.`)
+	} else if (knowledge.summaryLines.length > 0) {
 		lines.push(
 			`${memberPrefix}based on your Chronicle records, ${knowledge.summaryLines[0]!.toLowerCase()}`,
 		)

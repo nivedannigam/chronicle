@@ -67,6 +67,7 @@ export function getAskInsights(input: {
 	userId: string
 	uploadedReports: UploadedHealthReport[]
 	intent: string
+	categoryId?: string
 }): ChronicleInsight[] {
 	const result = getProactiveHealthInsights({
 		userId: input.userId,
@@ -74,7 +75,7 @@ export function getAskInsights(input: {
 		limit: 12,
 	})
 
-	return insightsForAskIntent(result.insights, input.intent)
+	return insightsForAskIntent(result.insights, input.intent, input.categoryId)
 }
 
 export const healthInsightsService = {

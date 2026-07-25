@@ -1,38 +1,35 @@
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
+import { C } from '@/constants/colors'
 import { healthMetricPath, ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { HealthMetricInsightGroups } from '@/features/health/components/companion/HealthMetricInsightGroups'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { TrendChartGrid } from '@/features/health/components/TrendChart'
-import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
-import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
+import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
+import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
 
 export function HealthMetricsPage() {
 	const navigate = useNavigate()
-	const { user } = useAuth()
-	const uploadedQuery = useMemberHealthReports()
-	const uploadedReports = uploadedQuery.data ?? []
-	const hasImportedReports = uploadedReports.some(
-		(report) => report.status === 'completed',
-	)
-	const knowledge = useHealthKnowledge(user?.id, uploadedReports)
-	const series = knowledge.trendSeries
+	const {
+		companion,
+		trendSeries,
+		hasImportedReports,
+		isLoading,
+		isError,
+		refetch,
+	} = useHealthCompanion()
 
-	if (uploadedQuery.isLoading) {
-		return (
-			<DashboardEmptyState title="Loading metrics…" message="" emoji="⏳" />
-		)
+	if (isLoading) {
+		return <ListSkeleton rows={4} height={120} />
 	}
 
-	if (uploadedQuery.isError) {
+	if (isError) {
 		return (
-			<DashboardEmptyState
-				title="Metrics unavailable"
-				message="We couldn't load your metrics. Try again in a moment."
-				emoji="📊"
-				actionLabel="Try again"
-				onAction={() => void uploadedQuery.refetch()}
+			<InlineErrorBanner
+				message="Could not load your health numbers."
+				onRetry={() => void refetch()}
 			/>
 		)
 	}
@@ -42,10 +39,10 @@ export function HealthMetricsPage() {
 			<>
 				<HealthSetupGuide compact />
 				<DashboardEmptyState
-					title="No metrics yet"
-					message="Import health reports to see extracted lab values and trends."
+					title="No numbers yet"
+					message="Import health reports to see how your key markers are changing."
 					emoji="📊"
-					actionLabel="Open Health settings"
+					actionLabel="Add reports"
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>
@@ -57,24 +54,29 @@ export function HealthMetricsPage() {
 			<div
 				style={{
 					fontSize: 14,
-					color: 'rgba(255,255,255,0.55)',
-					marginBottom: 22,
+					color: C.textSec,
+					marginBottom: 20,
 					lineHeight: 1.5,
 				}}
 			>
-				Only metrics extracted from your imported reports are shown.
+				Start with what matters — then explore the trends behind each number.
 			</div>
-			<HealthSectionHeader title="Extracted Metrics" />
-			{series.length === 0 ? (
-				<DashboardEmptyState
-					title="No metric data"
-					message="Reports may still be processing, or no structured metrics were found."
-					emoji="📊"
-				/>
+
+			<HealthMetricInsightGroups groups={companion.metricGroups} />
+
+			{trendSeries.length > 0 ? (
+				<section style={{ marginTop: 24 }}>
+					<HealthSectionLabel>Trends over time</HealthSectionLabel>
+					<TrendChartGrid
+						series={trendSeries}
+						onSeriesClick={(metricId) => navigate(healthMetricPath(metricId))}
+					/>
+				</section>
 			) : (
-				<TrendChartGrid
-					series={series}
-					onSeriesClick={(metricId) => navigate(healthMetricPath(metricId))}
+				<DashboardEmptyState
+					title="Charts will appear here"
+					message="Once Chronicle finds measurable lab values, you'll see trends for each marker."
+					emoji="📈"
 				/>
 			)}
 		</>

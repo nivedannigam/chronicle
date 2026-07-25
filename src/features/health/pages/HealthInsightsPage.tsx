@@ -1,33 +1,29 @@
 import { useNavigate } from 'react-router-dom'
+import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { HealthNarrativeInsights } from '@/features/health/components/companion/HealthNarrativeInsights'
 import {
 	DashboardEmptyState,
 	DashboardSkeleton,
 } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { HealthInsightsList } from '@/features/health/components/HealthInsightsList'
-import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
-import { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'
-import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 
 export function HealthInsightsPage() {
 	const navigate = useNavigate()
-	const uploadedQuery = useMemberHealthReports()
-	const uploadedReports = uploadedQuery.data ?? []
-	const { insights, hasImportedReports } = useHealthDashboard(uploadedReports)
+	const { companion, hasImportedReports, isLoading, isError, refetch } =
+		useHealthCompanion()
 
-	if (uploadedQuery.isLoading) {
+	if (isLoading) {
 		return <DashboardSkeleton />
 	}
 
-	if (uploadedQuery.isError) {
+	if (isError) {
 		return (
-			<DashboardEmptyState
-				title="Could not load insights"
-				message="Check your connection and try again."
-				emoji="⚠️"
-				actionLabel="Try again"
-				onAction={() => void uploadedQuery.refetch()}
+			<InlineErrorBanner
+				message="Could not load your health insights."
+				onRetry={() => void refetch()}
 			/>
 		)
 	}
@@ -37,10 +33,10 @@ export function HealthInsightsPage() {
 			<>
 				<HealthSetupGuide compact />
 				<DashboardEmptyState
-					title="No insights yet"
-					message="Insights are generated from your extracted lab data — import reports to get started."
+					title="Insights will appear here"
+					message="Chronicle turns your lab results into plain-language guidance once reports are added."
 					emoji="✨"
-					actionLabel="Open Health settings"
+					actionLabel="Add reports"
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>
@@ -52,25 +48,16 @@ export function HealthInsightsPage() {
 			<div
 				style={{
 					fontSize: 14,
-					color: 'rgba(255,255,255,0.55)',
-					marginBottom: 22,
+					color: C.textSec,
+					marginBottom: 20,
 					lineHeight: 1.5,
 				}}
 			>
-				Summaries based on your actual lab results — not generated fiction.
+				A narrative summary of what your records mean — written for you, not for
+				developers.
 			</div>
 
-			<HealthSectionHeader title="Health Insights" />
-
-			{insights.length === 0 ? (
-				<DashboardEmptyState
-					title="No insights available"
-					message="Import more reports with measurable lab values to unlock trend-based insights."
-					emoji="✨"
-				/>
-			) : (
-				<HealthInsightsList insights={insights} />
-			)}
+			<HealthNarrativeInsights paragraphs={companion.narrative} />
 		</>
 	)
 }

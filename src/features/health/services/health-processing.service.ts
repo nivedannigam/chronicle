@@ -277,17 +277,14 @@ export function processPendingHealthReports(
 export function getHealthReportStatusLabel(status: HealthReportStatus): string {
 	switch (status) {
 		case 'uploaded':
-			return 'Uploaded'
 		case 'queued':
-			return 'Queued'
 		case 'processing':
-			return 'Processing'
 		case 'parsed':
-			return 'Parsed'
+			return 'Importing…'
 		case 'completed':
-			return 'Completed'
+			return 'Ready'
 		case 'failed':
-			return 'Failed'
+			return 'Import failed'
 	}
 }
 

@@ -419,13 +419,32 @@ function buildSummaryLines(
 				)
 			}
 			break
+		case 'organ_status':
+			lines.push(
+				...data.metrics.map(
+					(metric) =>
+						`${metric.displayName}: ${metric.latestValue} (${metric.status}) in ${metric.reportTitle}`,
+				),
+			)
+			break
 		default:
 			lines.push(...data.insights.slice(0, 4))
 			break
 	}
 
 	if (lines.length === 0) {
-		lines.push(...data.insights.slice(0, 3))
+		if (data.metrics.length > 0) {
+			lines.push(
+				...data.metrics
+					.slice(0, 3)
+					.map(
+						(metric) =>
+							`${metric.displayName}: ${metric.latestValue} (${metric.status})`,
+					),
+			)
+		} else {
+			lines.push(...data.insights.slice(0, 3))
+		}
 	}
 
 	return lines

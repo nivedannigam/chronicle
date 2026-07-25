@@ -34,6 +34,12 @@ export function enrichRetrievedKnowledge(input: {
 	uploadedReports?: UploadedHealthReport[]
 }): RetrievedKnowledge {
 	const { knowledge, memory, intent, categoryId } = input
+	const scopedHistories = categoryId
+		? memory.metricHistories.filter(
+				(history) => history.categoryId === categoryId,
+			)
+		: memory.metricHistories
+
 	const filteredTimeline = categoryId
 		? memory.timeline
 				.map((group) => ({
@@ -45,7 +51,12 @@ export function enrichRetrievedKnowledge(input: {
 				.filter((group) => group.events.length > 0)
 		: memory.timeline
 
-	const semanticInsights = insightsForIntent(memory.insights, intent)
+	const semanticInsights = insightsForIntent(memory.insights, intent).filter(
+		(item) =>
+			!categoryId ||
+			item.categoryId === categoryId ||
+			item.text.toLowerCase().includes(categoryId),
+	)
 	const insightTexts = semanticInsights.map((item) => item.text)
 	const timelineSummary = formatTimelineForSummary(filteredTimeline)
 
@@ -55,6 +66,8 @@ export function enrichRetrievedKnowledge(input: {
 		timelineSummary,
 		insightTexts,
 		memory,
+		categoryId,
+		scopedHistories,
 	})
 
 	const proactiveInsights =
@@ -63,6 +76,7 @@ export function enrichRetrievedKnowledge(input: {
 					userId: input.userId,
 					uploadedReports: input.uploadedReports,
 					intent,
+					categoryId,
 				})
 			: []
 
@@ -70,8 +84,13 @@ export function enrichRetrievedKnowledge(input: {
 		formatInsightExplanation(item),
 	)
 
+	const shouldPrependProactive = proactiveTexts.length > 0 && !categoryId
+
 	return {
 		...knowledge,
+		metrics: categoryId
+			? knowledge.metrics.filter((metric) => metric.categoryId === categoryId)
+			: knowledge.metrics,
 		relationships: memory.relationships.map((relationship) => ({
 			id: relationship.id,
 			fromMetricId: relationship.fromEntityId.replace(/^metric:/, ''),
@@ -79,16 +98,21 @@ export function enrichRetrievedKnowledge(input: {
 			label: relationship.label,
 		})),
 		insights: [
-			...new Set([...proactiveTexts, ...insightTexts, ...knowledge.insights]),
+			...new Set([
+				...(categoryId ? [] : proactiveTexts),
+				...insightTexts,
+				...knowledge.insights.filter((line) =>
+					categoryId ? line.toLowerCase().includes(categoryId) : true,
+				),
+			]),
 		].slice(0, 10),
-		summaryLines:
-			proactiveTexts.length > 0
-				? [...proactiveTexts.slice(0, 4), ...summaryLines].slice(0, 8)
-				: summaryLines.length > 0
-					? summaryLines
-					: knowledge.summaryLines,
+		summaryLines: shouldPrependProactive
+			? [...proactiveTexts.slice(0, 4), ...summaryLines].slice(0, 8)
+			: summaryLines.length > 0
+				? summaryLines
+				: knowledge.summaryLines,
 		semanticTimeline: filteredTimeline,
-		metricHistories: memory.metricHistories,
+		metricHistories: scopedHistories,
 	}
 }
 
@@ -98,6 +122,8 @@ function buildSemanticSummaryLines(input: {
 	timelineSummary: string[]
 	insightTexts: string[]
 	memory: SemanticMemory
+	categoryId?: string
+	scopedHistories: SemanticMemory['metricHistories']
 }): string[] {
 	const lines: string[] = []
 
@@ -130,18 +156,20 @@ function buildSemanticSummaryLines(input: {
 			lines.push(...input.timelineSummary.slice(-2))
 			break
 		case 'organ_status':
-			lines.push(
-				...input.memory.metricHistories
-					.filter(
-						(history) =>
-							history.categoryId === input.knowledge.metrics[0]?.categoryId,
-					)
-					.slice(0, 4)
-					.map(
-						(history) =>
-							`${history.displayName}: latest ${history.latestValue} (${history.latestStatus})`,
-					),
-			)
+			if (input.scopedHistories.length > 0) {
+				lines.push(
+					...input.scopedHistories
+						.slice(0, 4)
+						.map(
+							(history) =>
+								`${history.displayName}: latest ${history.latestValue} (${history.latestStatus})`,
+						),
+				)
+			} else if (input.categoryId) {
+				lines.push(
+					`No ${input.categoryId} markers were found in your records yet.`,
+				)
+			}
 			break
 		default:
 			if (input.timelineSummary.length > 0) {

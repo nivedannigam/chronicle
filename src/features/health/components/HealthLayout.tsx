@@ -42,6 +42,8 @@ export function HealthLayout() {
 			>
 				<div
 					style={{
+						flex: 1,
+						minWidth: 0,
 						fontSize: 34,
 						fontWeight: 800,
 						letterSpacing: '-0.03em',

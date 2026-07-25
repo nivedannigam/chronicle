@@ -1,46 +1,31 @@
 import { useMemo, useState } from 'react'
-import { ChevronRight, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
-import { healthReportPath, ROUTES } from '@/constants/routes'
-import { ReportStatusBadge } from '@/features/health/components/ReportStatusBadge'
+import { ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
+import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
+import { HealthReportRecordCard } from '@/features/health/components/companion/HealthReportRecordCard'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
-import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import {
-	getParsedHealthReport,
-	getReportDisplayDate,
-	getReportDisplayTitle,
+	buildReportSummaries,
+	scoreReportSearchRelevance,
+} from '@/features/health/services/health-companion.service'
+import {
 	formatReportTypeLabel,
+	getParsedHealthReport,
 } from '@/features/health/services/health-parsed-report.service'
-
-const STATUS_FILTERS = [
-	{ value: 'all', label: 'All' },
-	{ value: 'completed', label: 'Imported' },
-	{ value: 'failed', label: 'Failed' },
-	{ value: 'processing', label: 'Processing' },
-] as const
-
-type StatusFilter = (typeof STATUS_FILTERS)[number]['value']
-
-function reportSourceLabel(report: {
-	source?: string
-	external_file_id?: string | null
-}): string {
-	if (report.source === 'google-drive' || report.external_file_id) {
-		return 'Google Drive'
-	}
-
-	return 'Manual upload'
-}
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
-	const uploadedQuery = useMemberHealthReports()
-	const reports = uploadedQuery.data ?? []
+	const { reports, hasImportedReports, isLoading, isError, refetch } =
+		useHealthCompanion()
 	const [query, setQuery] = useState('')
-	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 	const [categoryFilter, setCategoryFilter] = useState('all')
+
+	const summaries = useMemo(() => buildReportSummaries(reports), [reports])
 
 	const categories = useMemo(() => {
 		const values = new Set<string>()
@@ -59,70 +44,74 @@ export function HealthReportsPage() {
 	const filteredReports = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase()
 
-		return reports.filter((report) => {
-			const parsed = getParsedHealthReport(report)
-			const title = getReportDisplayTitle(report).toLowerCase()
-			const lab = (parsed?.metadata.laboratory ?? '').toLowerCase()
-			const doctor = (parsed?.metadata.doctorName ?? '').toLowerCase()
-			const fileName = report.file_name.toLowerCase()
+		return summaries
+			.map((summary) => {
+				const source = reports.find((report) => report.id === summary.id)
 
-			if (statusFilter !== 'all') {
-				if (statusFilter === 'processing') {
-					if (report.status === 'completed' || report.status === 'failed') {
+				return {
+					summary,
+					relevance: source
+						? scoreReportSearchRelevance(source, normalizedQuery)
+						: 0,
+				}
+			})
+			.filter(({ summary, relevance }) => {
+				if (categoryFilter !== 'all') {
+					const source = reports.find((report) => report.id === summary.id)
+					const parsed = source ? getParsedHealthReport(source) : null
+
+					if (parsed?.metadata.reportType !== categoryFilter) {
 						return false
 					}
-				} else if (report.status !== statusFilter) {
-					return false
 				}
-			}
 
-			if (
-				categoryFilter !== 'all' &&
-				parsed?.metadata.reportType !== categoryFilter
-			) {
-				return false
-			}
+				if (!normalizedQuery) {
+					return true
+				}
 
-			if (!normalizedQuery) {
-				return true
-			}
+				const haystack = [
+					summary.title,
+					summary.hospital,
+					summary.doctor ?? '',
+					...summary.findings,
+				]
+					.join(' ')
+					.toLowerCase()
 
-			return (
-				title.includes(normalizedQuery) ||
-				lab.includes(normalizedQuery) ||
-				doctor.includes(normalizedQuery) ||
-				fileName.includes(normalizedQuery)
-			)
-		})
-	}, [reports, query, statusFilter, categoryFilter])
+				return haystack.includes(normalizedQuery) || relevance > 0
+			})
+			.sort((left, right) => {
+				if (normalizedQuery) {
+					return right.relevance - left.relevance
+				}
 
-	if (uploadedQuery.isLoading) {
-		return (
-			<DashboardEmptyState title="Loading reports…" message="" emoji="📄" />
-		)
+				return Date.parse(right.summary.date) - Date.parse(left.summary.date)
+			})
+			.map(({ summary }) => summary)
+	}, [summaries, reports, query, categoryFilter])
+
+	if (isLoading) {
+		return <ListSkeleton rows={4} />
 	}
 
-	if (uploadedQuery.isError) {
+	if (isError) {
 		return (
-			<DashboardEmptyState
-				title="Reports unavailable"
-				message="We couldn't load your reports. Pull to refresh or try again shortly."
-				emoji="📄"
-				actionLabel="Try again"
-				onAction={() => void uploadedQuery.refetch()}
+			<InlineErrorBanner
+				message="Could not load your medical records."
+				onRetry={() => void refetch()}
 			/>
 		)
 	}
 
-	if (reports.length === 0) {
+	if (!hasImportedReports) {
 		return (
 			<>
 				<HealthSetupGuide compact />
 				<DashboardEmptyState
-					title="No reports yet"
-					message="Connect Google Drive to bring medical reports into Health."
-					emoji="📄"
-					actionLabel="Open Health settings"
+					title="No medical records yet"
+					message="Add health reports and Chronicle will organize them like a personal medical file."
+					emoji="📋"
+					actionLabel="Add reports"
 					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>
@@ -131,6 +120,17 @@ export function HealthReportsPage() {
 
 	return (
 		<>
+			<div
+				style={{
+					fontSize: 14,
+					color: C.textSec,
+					marginBottom: 16,
+					lineHeight: 1.5,
+				}}
+			>
+				Your medical records — organized by visit, not by upload history.
+			</div>
+
 			<div
 				style={{
 					display: 'flex',
@@ -147,7 +147,8 @@ export function HealthReportsPage() {
 				<input
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search reports, hospital, doctor…"
+					placeholder="Search liver, hospital, doctor…"
+					aria-label="Search medical records"
 					style={{
 						flex: 1,
 						background: 'transparent',
@@ -158,41 +159,6 @@ export function HealthReportsPage() {
 						fontFamily: 'inherit',
 					}}
 				/>
-			</div>
-
-			<div
-				style={{
-					display: 'flex',
-					gap: 8,
-					overflowX: 'auto',
-					marginBottom: 10,
-					scrollbarWidth: 'none',
-				}}
-			>
-				{STATUS_FILTERS.map((filter) => (
-					<button
-						key={filter.value}
-						type="button"
-						onClick={() => setStatusFilter(filter.value)}
-						style={{
-							flexShrink: 0,
-							background: statusFilter === filter.value ? C.accent : C.card,
-							border:
-								statusFilter === filter.value
-									? 'none'
-									: `1px solid ${C.border}`,
-							borderRadius: 100,
-							padding: '6px 12px',
-							fontSize: 12,
-							fontWeight: 700,
-							color: statusFilter === filter.value ? C.white : C.textSec,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						{filter.label}
-					</button>
-				))}
 			</div>
 
 			{categories.length > 1 ? (
@@ -212,20 +178,22 @@ export function HealthReportsPage() {
 							onClick={() => setCategoryFilter(category)}
 							style={{
 								flexShrink: 0,
-								background:
-									categoryFilter === category ? C.card2 : 'transparent',
-								border: `1px solid ${C.border}`,
+								background: categoryFilter === category ? C.accent : C.card,
+								border:
+									categoryFilter === category
+										? 'none'
+										: `1px solid ${C.border}`,
 								borderRadius: 100,
 								padding: '6px 12px',
 								fontSize: 12,
-								fontWeight: 600,
-								color: C.textSec,
+								fontWeight: 700,
+								color: categoryFilter === category ? C.white : C.textSec,
 								cursor: 'pointer',
 								fontFamily: 'inherit',
 							}}
 						>
 							{category === 'all'
-								? 'All categories'
+								? 'All visits'
 								: formatReportTypeLabel(category)}
 						</button>
 					))}
@@ -234,95 +202,15 @@ export function HealthReportsPage() {
 
 			{filteredReports.length === 0 ? (
 				<DashboardEmptyState
-					title="No matching reports"
-					message="Try a different search or filter."
+					title="No matching records"
+					message="Try searching for a body area like liver, or a hospital name."
 					emoji="🔍"
 				/>
 			) : (
-				<div style={{ display: 'grid', gap: 10 }}>
-					{filteredReports.map((report) => {
-						const parsed = getParsedHealthReport(report)
-						const title = getReportDisplayTitle(report)
-						const date = getReportDisplayDate(report, parsed)
-						const lab = parsed?.metadata.laboratory ?? 'Unknown lab'
-						const doctor = parsed?.metadata.doctorName
-						const category = parsed
-							? formatReportTypeLabel(parsed.metadata.reportType)
-							: 'General'
-						const source = reportSourceLabel(report)
-
-						return (
-							<button
-								key={report.id}
-								type="button"
-								onClick={() => navigate(healthReportPath(report.id))}
-								style={{
-									background: C.card,
-									border: `1px solid ${C.border}`,
-									borderRadius: 16,
-									padding: '14px 16px',
-									display: 'flex',
-									alignItems: 'center',
-									gap: 12,
-									cursor: 'pointer',
-									fontFamily: 'inherit',
-									textAlign: 'left',
-									width: '100%',
-								}}
-							>
-								<div style={{ flex: 1, minWidth: 0 }}>
-									<div
-										style={{
-											fontSize: 11,
-											color: C.textMuted,
-											marginBottom: 4,
-											fontWeight: 600,
-										}}
-									>
-										{date} · {category}
-									</div>
-									<div
-										style={{
-											fontSize: 15,
-											fontWeight: 600,
-											color: C.text,
-											marginBottom: 4,
-										}}
-									>
-										{title}
-									</div>
-									<div
-										style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}
-									>
-										{lab}
-										{doctor ? ` · Dr. ${doctor}` : ''}
-									</div>
-									<div
-										style={{
-											display: 'flex',
-											gap: 6,
-											flexWrap: 'wrap',
-											alignItems: 'center',
-										}}
-									>
-										<ReportStatusBadge status={report.status} />
-										<span
-											style={{
-												fontSize: 11,
-												color: C.textMuted,
-												background: C.card2,
-												borderRadius: 100,
-												padding: '3px 9px',
-											}}
-										>
-											{source}
-										</span>
-									</div>
-								</div>
-								<ChevronRight size={18} color={C.textMuted} />
-							</button>
-						)
-					})}
+				<div style={{ display: 'grid', gap: 12 }}>
+					{filteredReports.map((report) => (
+						<HealthReportRecordCard key={report.id} report={report} />
+					))}
 				</div>
 			)}
 		</>

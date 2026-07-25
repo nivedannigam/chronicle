@@ -358,11 +358,23 @@ export function generateHealthInsights(input: {
 export function insightsForAskIntent(
 	insights: ChronicleInsight[],
 	intent: string,
+	categoryId?: string,
 ): ChronicleInsight[] {
+	const scoped = categoryId
+		? insights.filter(
+				(item) =>
+					item.categoryId === categoryId ||
+					item.title.toLowerCase().includes(categoryId) ||
+					item.summary.toLowerCase().includes(categoryId),
+			)
+		: insights
+
 	switch (intent) {
+		case 'organ_status':
+			return scoped.length > 0 ? scoped.slice(0, 4) : []
 		case 'attention_summary':
 		case 'abnormal_reports':
-			return insights.filter(
+			return (categoryId ? scoped : insights).filter(
 				(item) =>
 					item.category === 'areas_to_watch' ||
 					item.category === 'recently_changed',
