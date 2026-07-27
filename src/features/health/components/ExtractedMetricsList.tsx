@@ -1,5 +1,6 @@
 import { C } from '@/constants/colors'
 import type { HealthMetric, MetricStatus } from '@/features/health/types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 function statusColor(status: MetricStatus): string {
 	switch (status) {
@@ -33,30 +34,14 @@ interface ExtractedMetricsListProps {
 export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 	if (metrics.length === 0) {
 		return (
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '16px',
-					fontSize: 14,
-					color: C.textMuted,
-				}}
-			>
+			<FigmaCard style={{ padding: '16px', fontSize: 14, color: C.textMuted }}>
 				No results available for this visit yet.
-			</div>
+			</FigmaCard>
 		)
 	}
 
 	return (
-		<div
-			style={{
-				background: C.card,
-				border: `1px solid ${C.border}`,
-				borderRadius: 18,
-				overflow: 'hidden',
-			}}
-		>
+		<FigmaCard>
 			{metrics.map((metric, index) => {
 				const color = statusColor(metric.status)
 				const isAbnormal = metric.status !== 'normal'
@@ -102,7 +87,6 @@ export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 								alignItems: 'baseline',
 								justifyContent: 'space-between',
 								gap: 12,
-								marginBottom: 6,
 							}}
 						>
 							<span
@@ -124,6 +108,6 @@ export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 					</div>
 				)
 			})}
-		</div>
+		</FigmaCard>
 	)
 }

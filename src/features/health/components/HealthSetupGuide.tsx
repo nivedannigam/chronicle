@@ -15,6 +15,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
 
 const STEPS = [
 	{
@@ -129,41 +130,32 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 	const stepIndex = STEPS.findIndex((step) => step.id === setup.currentStep)
 
 	return (
-		<div
+		<FigmaCard
 			style={{
-				background: C.card,
-				border: `1px solid ${C.border}`,
-				borderRadius: 20,
 				padding: compact ? '16px' : '20px 18px',
 				marginBottom: compact ? 16 : 24,
 			}}
 		>
-			<div style={{ marginBottom: 16 }}>
-				<div
-					style={{
-						fontSize: 11,
-						fontWeight: 600,
-						letterSpacing: '0.09em',
-						textTransform: 'uppercase',
-						color: C.textMuted,
-						marginBottom: 6,
-					}}
-				>
-					Get started
-				</div>
-				<div
-					style={{
-						fontSize: compact ? 18 : 22,
-						fontWeight: 800,
-						letterSpacing: '-0.03em',
-						marginBottom: 6,
-					}}
-				>
-					Complete Health for {selectedMember?.displayName ?? 'this member'}
-				</div>
-				<div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>
-					Connect Google Drive, choose a folder, and Chronicle handles the rest.
-				</div>
+			<FigmaSectionLabel>Get started</FigmaSectionLabel>
+			<div
+				style={{
+					fontSize: compact ? 18 : 22,
+					fontWeight: 800,
+					letterSpacing: '-0.03em',
+					marginBottom: 6,
+				}}
+			>
+				Complete Health for {selectedMember?.displayName ?? 'this member'}
+			</div>
+			<div
+				style={{
+					fontSize: 13,
+					color: C.textMuted,
+					lineHeight: 1.5,
+					marginBottom: 16,
+				}}
+			>
+				Connect Google Drive, choose a folder, and Chronicle handles the rest.
 			</div>
 
 			<div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
@@ -181,9 +173,9 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 								gap: 12,
 								padding: '12px 14px',
 								borderRadius: 14,
-								background: active ? `${C.accent}12` : C.card2,
+								background: active ? `${C.accentBlue}12` : C.card2,
 								border: active
-									? `1px solid ${C.accent}44`
+									? `1px solid ${C.accentBlue}44`
 									: `1px solid ${C.border}`,
 							}}
 						>
@@ -203,7 +195,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 								{completed ? (
 									<Check size={16} color={C.greenAlt} />
 								) : (
-									<Icon size={16} color={active ? C.accent : C.textMuted} />
+									<Icon size={16} color={active ? C.accentBlue : C.textMuted} />
 								)}
 							</div>
 							<div style={{ flex: 1 }}>
@@ -268,7 +260,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 						alignItems: 'center',
 						justifyContent: 'center',
 						gap: 8,
-						background: C.accent,
+						background: C.accentBlue,
 						color: C.white,
 						border: 'none',
 						borderRadius: 100,
@@ -278,6 +270,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 						cursor: isScanning || setup.isLoading ? 'not-allowed' : 'pointer',
 						fontFamily: 'inherit',
 						opacity: isScanning || setup.isLoading ? 0.7 : 1,
+						minHeight: 44,
 					}}
 				>
 					{isScanning ? (
@@ -290,6 +283,6 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 					{!isScanning ? <ChevronRight size={16} /> : null}
 				</button>
 			) : null}
-		</div>
+		</FigmaCard>
 	)
 }

@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
-import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthNarrativeInsights } from '@/features/health/components/companion/HealthNarrativeInsights'
@@ -9,6 +8,7 @@ import {
 	DashboardSkeleton,
 } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
+import { HealthPageIntro } from '@/ui/figma/health/health-ui'
 
 export function HealthInsightsPage() {
 	const navigate = useNavigate()
@@ -44,16 +44,7 @@ export function HealthInsightsPage() {
 
 	return (
 		<>
-			<div
-				style={{
-					fontSize: 14,
-					color: C.textSec,
-					marginBottom: 20,
-					lineHeight: 1.5,
-				}}
-			>
-				{HEALTH_COPY.insightsIntro}
-			</div>
+			<HealthPageIntro>{HEALTH_COPY.insightsIntro}</HealthPageIntro>
 
 			<HealthNarrativeInsights paragraphs={companion.narrative} />
 		</>

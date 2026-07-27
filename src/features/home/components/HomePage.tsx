@@ -1,5 +1,5 @@
-import { CommandCenterPage } from '@/features/command-center'
+import { FigmaHomeScreen } from '@/ui/figma/screens/FigmaHomeScreen'
 
 export function HomePage() {
-	return <CommandCenterPage />
+	return <FigmaHomeScreen />
 }

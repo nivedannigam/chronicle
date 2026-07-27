@@ -1,8 +1,9 @@
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { getDocument } from '@/features/documents/services/document.service'
 import { getDocumentSignedUrl } from '@/features/documents/services/document-upload.service'
 import {
@@ -10,6 +11,13 @@ import {
 	getDocumentSubCategory,
 } from '@/features/documents/types/document-categories'
 import { queryKeys } from '@/lib/query-keys'
+import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import {
+	HealthActionChip,
+	HealthMetaGrid,
+	HealthScreen,
+	HealthSubpageHeader,
+} from '@/ui/figma/health/health-ui'
 
 function formatDate(value: string | null): string {
 	if (!value) {
@@ -25,6 +33,7 @@ function formatDate(value: string | null): string {
 
 export function DocumentDetailPage() {
 	const { documentId = '' } = useParams()
+	const navigate = useNavigate()
 
 	const documentQuery = useQuery({
 		queryKey: queryKeys.documents.detail(documentId),
@@ -45,11 +54,28 @@ export function DocumentDetailPage() {
 	const signedUrl = signedUrlQuery.data ?? null
 
 	if (documentQuery.isLoading) {
-		return <div style={{ color: C.textMuted }}>Loading document…</div>
+		return (
+			<HealthScreen>
+				<ListSkeleton rows={4} />
+			</HealthScreen>
+		)
 	}
 
 	if (!document) {
-		return <div style={{ color: C.textMuted }}>Document not found.</div>
+		return (
+			<HealthScreen>
+				<FigmaCard
+					style={{
+						padding: '24px 16px',
+						fontSize: 14,
+						color: C.textMuted,
+						textAlign: 'center',
+					}}
+				>
+					Document not found.
+				</FigmaCard>
+			</HealthScreen>
+		)
 	}
 
 	const category = getDocumentCategory(document.category_id)
@@ -58,108 +84,52 @@ export function DocumentDetailPage() {
 		: undefined
 
 	return (
-		<div style={{ padding: '18px 18px 24px', color: C.text }}>
-			<Link
-				to={ROUTES.documents}
-				style={{
-					display: 'inline-flex',
-					alignItems: 'center',
-					gap: 6,
-					color: C.textSec,
-					textDecoration: 'none',
-					marginBottom: 18,
-					fontSize: 14,
-				}}
-			>
-				<ArrowLeft size={18} />
-				Documents
-			</Link>
+		<HealthScreen padding="0 18px 20px">
+			<HealthSubpageHeader
+				backLabel="Documents"
+				onBack={() => navigate(ROUTES.documents)}
+				title={document.title}
+				subtitle={sub?.label ?? category?.label ?? document.category_id}
+			/>
 
-			<div
-				style={{
-					fontSize: 28,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
-					marginBottom: 8,
-				}}
-			>
-				{document.title}
-			</div>
-			<div style={{ fontSize: 14, color: C.textMuted, marginBottom: 20 }}>
-				{sub?.label ?? category?.label ?? document.category_id}
-			</div>
-
-			<div
-				style={{
-					display: 'grid',
-					gap: 10,
-					marginBottom: 20,
-					padding: '14px 16px',
-					borderRadius: 16,
-					background: C.card,
-					border: `1px solid ${C.border}`,
-				}}
-			>
-				<DetailRow label="Document number" value={document.document_number} />
-				<DetailRow label="Issuer" value={document.issuer} />
-				<DetailRow label="Issue date" value={formatDate(document.issue_date)} />
-				<DetailRow
-					label="Expiry date"
-					value={formatDate(document.expiry_date)}
-				/>
-				<DetailRow label="Source" value={document.source} />
-				<DetailRow label="File" value={document.file_name} />
-			</div>
+			<HealthMetaGrid
+				rows={[
+					{ label: 'Document number', value: document.document_number ?? '—' },
+					{ label: 'Issuer', value: document.issuer ?? '—' },
+					{ label: 'Issue date', value: formatDate(document.issue_date) },
+					{ label: 'Expiry date', value: formatDate(document.expiry_date) },
+					{ label: 'Source', value: document.source ?? '—' },
+					{ label: 'File', value: document.file_name ?? '—' },
+				]}
+			/>
 
 			{signedUrl ? (
-				<a
-					href={signedUrl}
-					target="_blank"
-					rel="noreferrer"
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 6,
-						color: C.accentBlue,
-						fontWeight: 700,
-						fontSize: 14,
-						textDecoration: 'none',
-					}}
-				>
-					Open secure copy
-					<ExternalLink size={16} />
-				</a>
+				<div style={{ marginBottom: 20 }}>
+					<HealthActionChip
+						icon={ExternalLink}
+						label="Open secure copy"
+						onClick={() =>
+							window.open(signedUrl, '_blank', 'noopener,noreferrer')
+						}
+					/>
+				</div>
 			) : null}
 
 			{document.notes ? (
-				<div style={{ marginTop: 20, fontSize: 14, color: C.textSec }}>
-					{document.notes}
-				</div>
+				<section>
+					<FigmaSectionLabel>Notes</FigmaSectionLabel>
+					<FigmaCard
+						style={{
+							padding: '14px 16px',
+							fontSize: 14,
+							color: C.textSec,
+							lineHeight: 1.65,
+						}}
+					>
+						{document.notes}
+					</FigmaCard>
+				</section>
 			) : null}
-		</div>
-	)
-}
-
-function DetailRow({
-	label,
-	value,
-}: {
-	label: string
-	value: string | null | undefined
-}) {
-	return (
-		<div
-			style={{
-				display: 'flex',
-				justifyContent: 'space-between',
-				gap: 12,
-				fontSize: 13,
-			}}
-		>
-			<span style={{ color: C.textMuted }}>{label}</span>
-			<span style={{ color: C.textSec, textAlign: 'right' }}>
-				{value ?? '—'}
-			</span>
-		</div>
+		</HealthScreen>
 	)
 }

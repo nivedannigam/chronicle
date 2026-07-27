@@ -1,15 +1,17 @@
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
-import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthJourneyTimeline } from '@/features/health/components/companion/HealthJourneyTimeline'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
+import { useHealthMemberCopy } from '@/features/health/hooks/useHealthMemberCopy'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
+import { HealthPageIntro } from '@/ui/figma/health/health-ui'
 
 export function HealthTimelinePage() {
 	const navigate = useNavigate()
+	const memberCopy = useHealthMemberCopy()
 	const { companion, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 
@@ -42,17 +44,10 @@ export function HealthTimelinePage() {
 
 	return (
 		<>
-			<div
-				style={{
-					fontSize: 14,
-					color: C.textSec,
-					marginBottom: 20,
-					lineHeight: 1.5,
-				}}
-			>
-				A readable story of checkups, findings, and improvements — not file
-				uploads.
-			</div>
+			<HealthPageIntro>
+				A readable story of {memberCopy.yourOrTheir} checkups, findings, and
+				improvements — not file uploads.
+			</HealthPageIntro>
 
 			<HealthJourneyTimeline events={companion.journeyEvents} />
 		</>

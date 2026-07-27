@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
-import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthReportRecordCard } from '@/features/health/components/companion/HealthReportRecordCard'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
+import { useHealthMemberCopy } from '@/features/health/hooks/useHealthMemberCopy'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import {
 	buildReportSummaries,
@@ -17,9 +16,15 @@ import {
 	formatReportTypeLabel,
 	getParsedHealthReport,
 } from '@/features/health/services/health-parsed-report.service'
+import {
+	HealthFilterChip,
+	HealthPageIntro,
+	HealthSearchField,
+} from '@/ui/figma/health/health-ui'
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
+	const memberCopy = useHealthMemberCopy()
 	const { reports, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 	const [query, setQuery] = useState('')
@@ -119,46 +124,17 @@ export function HealthReportsPage() {
 
 	return (
 		<>
-			<div
-				style={{
-					fontSize: 14,
-					color: C.textSec,
-					marginBottom: 16,
-					lineHeight: 1.5,
-				}}
-			>
-				Your medical records — organized by visit, not by upload history.
-			</div>
+			<HealthPageIntro>
+				{memberCopy.possessive} medical records — organized by visit, not by
+				upload history.
+			</HealthPageIntro>
 
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: 10,
-					padding: '10px 14px',
-					borderRadius: 14,
-					border: `1px solid ${C.border}`,
-					background: C.card,
-					marginBottom: 12,
-				}}
-			>
-				<Search size={16} color={C.textMuted} />
-				<input
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search liver, hospital, doctor…"
-					aria-label="Search medical records"
-					style={{
-						flex: 1,
-						background: 'transparent',
-						border: 'none',
-						outline: 'none',
-						color: C.text,
-						fontSize: 14,
-						fontFamily: 'inherit',
-					}}
-				/>
-			</div>
+			<HealthSearchField
+				value={query}
+				onChange={setQuery}
+				placeholder="Search liver, hospital, doctor…"
+				ariaLabel="Search medical records"
+			/>
 
 			{categories.length > 1 ? (
 				<div
@@ -171,30 +147,16 @@ export function HealthReportsPage() {
 					}}
 				>
 					{categories.map((category) => (
-						<button
+						<HealthFilterChip
 							key={category}
-							type="button"
+							label={
+								category === 'all'
+									? 'All visits'
+									: formatReportTypeLabel(category)
+							}
+							active={categoryFilter === category}
 							onClick={() => setCategoryFilter(category)}
-							style={{
-								flexShrink: 0,
-								background: categoryFilter === category ? C.accent : C.card,
-								border:
-									categoryFilter === category
-										? 'none'
-										: `1px solid ${C.border}`,
-								borderRadius: 100,
-								padding: '6px 12px',
-								fontSize: 12,
-								fontWeight: 700,
-								color: categoryFilter === category ? C.white : C.textSec,
-								cursor: 'pointer',
-								fontFamily: 'inherit',
-							}}
-						>
-							{category === 'all'
-								? 'All visits'
-								: formatReportTypeLabel(category)}
-						</button>
+						/>
 					))}
 				</div>
 			) : null}

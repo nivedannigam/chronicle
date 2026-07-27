@@ -129,6 +129,7 @@ export const MODULE_ROUTES: Partial<Record<string, string>> = {
 	health: ROUTES.health,
 	documents: ROUTES.documents,
 	family: ROUTES.family,
+	timeline: ROUTES.timeline,
 }
 
 export function getModuleById(id: string): ModuleDefinition | undefined {
@@ -136,7 +137,15 @@ export function getModuleById(id: string): ModuleDefinition | undefined {
 }
 
 export function getModuleByTab(tab: Tab): ModuleDefinition | undefined {
-	return getModuleById(tab)
+	const tabModuleIds: Record<Tab, string> = {
+		home: 'home',
+		ask: 'ask',
+		mail: 'mail',
+		tasks: 'tasks',
+		more: 'more',
+	}
+
+	return getModuleById(tabModuleIds[tab])
 }
 
 export const EXPLORE_CAPABILITY_IDS = [

@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 import { C } from '@/constants/colors'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
@@ -9,6 +9,12 @@ import type {
 	TimelineImportance,
 	TimelineModule,
 } from '@/features/timeline/types/timeline.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import {
+	HealthFilterChip,
+	HealthSearchField,
+} from '@/ui/figma/health/health-ui'
+import { healthPrimaryButtonStyle } from '@/ui/figma/health/health-ui.styles'
 
 const PAGE_SIZE = 20
 
@@ -22,7 +28,7 @@ const IMPORTANCE_OPTIONS: Array<{
 	id: TimelineImportance | 'all'
 	label: string
 }> = [
-	{ id: 'all', label: 'All importance' },
+	{ id: 'all', label: 'All' },
 	{ id: 'high', label: 'High' },
 	{ id: 'medium', label: 'Medium' },
 	{ id: 'low', label: 'Low' },
@@ -44,64 +50,52 @@ export function TimelineFiltersBar({
 	onImportanceChange: (value: TimelineImportance | 'all') => void
 }) {
 	return (
-		<div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
-			<input
-				type="search"
+		<div style={{ marginBottom: 18 }}>
+			<HealthSearchField
 				value={searchQuery}
-				onChange={(event) => onSearchChange(event.target.value)}
+				onChange={onSearchChange}
 				placeholder="Search your timeline…"
-				style={{
-					width: '100%',
-					padding: '12px 14px',
-					borderRadius: 14,
-					border: `1px solid ${C.border}`,
-					background: C.card,
-					color: C.text,
-					fontFamily: 'inherit',
-					fontSize: 14,
-				}}
+				ariaLabel="Search timeline"
 			/>
-			<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-				<select
-					value={moduleFilter}
-					onChange={(event) =>
-						onModuleChange(event.target.value as TimelineModule | 'all')
-					}
-					style={filterSelectStyle}
-				>
-					{MODULE_OPTIONS.map((option) => (
-						<option key={option.id} value={option.id}>
-							{option.label}
-						</option>
-					))}
-				</select>
-				<select
-					value={importanceFilter}
-					onChange={(event) =>
-						onImportanceChange(event.target.value as TimelineImportance | 'all')
-					}
-					style={filterSelectStyle}
-				>
-					{IMPORTANCE_OPTIONS.map((option) => (
-						<option key={option.id} value={option.id}>
-							{option.label}
-						</option>
-					))}
-				</select>
+
+			<div
+				style={{
+					display: 'flex',
+					gap: 8,
+					overflowX: 'auto',
+					scrollbarWidth: 'none',
+					marginBottom: 8,
+				}}
+			>
+				{MODULE_OPTIONS.map((option) => (
+					<HealthFilterChip
+						key={option.id}
+						label={option.label}
+						active={moduleFilter === option.id}
+						onClick={() => onModuleChange(option.id)}
+					/>
+				))}
+			</div>
+
+			<div
+				style={{
+					display: 'flex',
+					gap: 8,
+					overflowX: 'auto',
+					scrollbarWidth: 'none',
+				}}
+			>
+				{IMPORTANCE_OPTIONS.map((option) => (
+					<HealthFilterChip
+						key={option.id}
+						label={option.label}
+						active={importanceFilter === option.id}
+						onClick={() => onImportanceChange(option.id)}
+					/>
+				))}
 			</div>
 		</div>
 	)
-}
-
-const filterSelectStyle: CSSProperties = {
-	padding: '8px 12px',
-	borderRadius: 12,
-	border: `1px solid ${C.border}`,
-	background: C.card,
-	color: C.textSec,
-	fontFamily: 'inherit',
-	fontSize: 12,
-	fontWeight: 600,
 }
 
 export function TimelineFeed() {
@@ -167,32 +161,26 @@ export function TimelineFeed() {
 			{timeline.isLoading ? (
 				<ListSkeleton rows={5} height={64} />
 			) : timeline.totalCount === 0 ? (
-				<div
+				<FigmaCard
 					style={{
-						padding: '24px 16px',
-						borderRadius: 16,
 						border: `1px dashed ${C.border}`,
+						padding: '24px 16px',
 						color: C.textMuted,
 						fontSize: 14,
 						lineHeight: 1.55,
+						textAlign: 'center',
 					}}
 				>
+					<div style={{ fontSize: 28, marginBottom: 8 }}>🕐</div>
 					Your life timeline will grow as Chronicle learns from health reports,
 					documents, and future capabilities.
-				</div>
+				</FigmaCard>
 			) : (
-				<div style={{ display: 'grid', gap: 8 }}>
+				<div style={{ display: 'grid', gap: 12 }}>
 					{visibleGroups.map((group) => (
 						<section key={group.key}>
 							<TimelineGroupHeader label={group.label} />
-							<div
-								style={{
-									background: C.card,
-									border: `1px solid ${C.border}`,
-									borderRadius: 18,
-									overflow: 'hidden',
-								}}
-							>
+							<FigmaCard>
 								{group.events.map((event, index) => (
 									<div
 										key={event.id}
@@ -206,7 +194,7 @@ export function TimelineFeed() {
 										<TimelineEventRow event={event} />
 									</div>
 								))}
-							</div>
+							</FigmaCard>
 						</section>
 					))}
 
@@ -215,17 +203,11 @@ export function TimelineFeed() {
 							type="button"
 							onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
 							style={{
-								marginTop: 8,
+								...healthPrimaryButtonStyle,
 								width: '100%',
+								justifyContent: 'center',
 								padding: '12px 16px',
-								borderRadius: 14,
-								border: `1px solid ${C.border}`,
-								background: C.card,
-								color: C.accent,
-								fontWeight: 700,
 								fontSize: 13,
-								cursor: 'pointer',
-								fontFamily: 'inherit',
 							}}
 						>
 							Load more

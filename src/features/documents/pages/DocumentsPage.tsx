@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Upload } from 'lucide-react'
+import { ChevronRight, FileText, Upload } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { documentPath } from '@/constants/routes'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
@@ -11,6 +11,8 @@ import {
 	getDocumentCategory,
 	getDocumentSubCategory,
 } from '@/features/documents/types/document-categories'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import { HealthPageIntro } from '@/ui/figma/health/health-ui'
 
 function formatDate(value: string | null): string {
 	if (!value) {
@@ -41,22 +43,12 @@ export function DocumentsPage() {
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'space-between',
-					marginBottom: 16,
+					gap: 12,
+					marginBottom: 12,
 				}}
 			>
-				<div
-					style={{
-						flex: 1,
-						minWidth: 0,
-						fontSize: 14,
-						color: C.textSec,
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap',
-					}}
-				>
-					{documents.length} document{documents.length === 1 ? '' : 's'} in your
-					library
+				<div style={{ fontSize: 14, fontWeight: 600, color: C.textSec }}>
+					{documents.length} document{documents.length === 1 ? '' : 's'}
 				</div>
 				<button
 					type="button"
@@ -66,17 +58,18 @@ export function DocumentsPage() {
 						display: 'inline-flex',
 						alignItems: 'center',
 						gap: 6,
-						background: C.accent,
+						background: C.accentBlue,
 						color: C.white,
 						border: 'none',
-						borderRadius: 12,
-						padding: '8px 12px',
+						borderRadius: 100,
+						padding: '10px 14px',
 						fontSize: 13,
 						fontWeight: 700,
 						cursor: uploadDocument.isPending ? 'not-allowed' : 'pointer',
 						fontFamily: 'inherit',
 						flexShrink: 0,
 						opacity: uploadDocument.isPending ? 0.65 : 1,
+						minHeight: 36,
 					}}
 				>
 					<Upload size={16} />
@@ -99,6 +92,11 @@ export function DocumentsPage() {
 				/>
 			</div>
 
+			<HealthPageIntro>
+				Passports, insurance policies, property papers, and other important
+				documents — searchable in Ask.
+			</HealthPageIntro>
+
 			{uploadDocument.isError ? (
 				<div style={{ color: C.orange, fontSize: 13, marginBottom: 12 }}>
 					{uploadDocument.error instanceof Error
@@ -117,22 +115,23 @@ export function DocumentsPage() {
 			{isLoading ? (
 				<ListSkeleton rows={4} />
 			) : documents.length === 0 ? (
-				<div
+				<FigmaCard
 					style={{
-						padding: '24px 16px',
-						borderRadius: 16,
 						border: `1px dashed ${C.border}`,
-						color: C.textMuted,
+						padding: '24px 16px',
 						fontSize: 14,
-						lineHeight: 1.5,
+						color: C.textMuted,
+						lineHeight: 1.55,
+						textAlign: 'center',
 					}}
 				>
+					<div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
 					Upload passports, insurance policies, property papers, and other
 					important documents. Chronicle will extract metadata and make them
 					searchable in Ask.
-				</div>
+				</FigmaCard>
 			) : (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+				<div style={{ display: 'grid', gap: 10 }}>
 					{documents.map((document) => {
 						const category = getDocumentCategory(document.category_id)
 						const sub = document.sub_category_id
@@ -143,60 +142,62 @@ export function DocumentsPage() {
 							: undefined
 
 						return (
-							<Link
-								key={document.id}
-								to={documentPath(document.id)}
-								style={{
-									display: 'flex',
-									gap: 12,
-									padding: '14px 16px',
-									borderRadius: 16,
-									background: C.card,
-									border: `1px solid ${C.border}`,
-									textDecoration: 'none',
-									color: C.text,
-								}}
-							>
-								<div
+							<FigmaCard key={document.id}>
+								<Link
+									to={documentPath(document.id)}
 									style={{
-										width: 40,
-										height: 40,
-										borderRadius: 12,
-										background: C.accentBlueDim,
 										display: 'flex',
 										alignItems: 'center',
-										justifyContent: 'center',
-										flexShrink: 0,
+										gap: 12,
+										padding: '14px 16px',
+										textDecoration: 'none',
+										color: C.text,
 									}}
 								>
-									<FileText size={18} color={C.accentBlue} />
-								</div>
-								<div style={{ flex: 1, minWidth: 0 }}>
 									<div
 										style={{
-											fontSize: 15,
-											fontWeight: 700,
-											marginBottom: 4,
-											overflow: 'hidden',
-											textOverflow: 'ellipsis',
-											whiteSpace: 'nowrap',
+											width: 40,
+											height: 40,
+											borderRadius: 12,
+											background: `${C.accentBlue}18`,
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											flexShrink: 0,
 										}}
 									>
-										{document.title}
+										<FileText size={18} color={C.accentBlue} />
 									</div>
-									<div style={{ fontSize: 12, color: C.textMuted }}>
-										{sub?.label ?? category?.label ?? document.category_id}
-										{document.document_number
-											? ` · ${document.document_number}`
-											: ''}
+									<div style={{ flex: 1, minWidth: 0 }}>
+										<div
+											style={{
+												fontSize: 15,
+												fontWeight: 700,
+												marginBottom: 4,
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												whiteSpace: 'nowrap',
+											}}
+										>
+											{document.title}
+										</div>
+										<div style={{ fontSize: 12, color: C.textMuted }}>
+											{sub?.label ?? category?.label ?? document.category_id}
+											{document.document_number
+												? ` · ${document.document_number}`
+												: ''}
+										</div>
+										<div
+											style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}
+										>
+											{document.expiry_date
+												? `Expires ${formatDate(document.expiry_date)}`
+												: `Added ${formatDate(document.uploaded_at)}`}
+										</div>
 									</div>
-									<div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
-										{document.expiry_date
-											? `Expires ${formatDate(document.expiry_date)}`
-											: `Added ${formatDate(document.uploaded_at)}`}
-									</div>
-								</div>
-							</Link>
+									<ChevronRight size={16} color={C.textMuted} />
+								</Link>
+							</FigmaCard>
 						)
 					})}
 				</div>

@@ -1,8 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { C } from '@/constants/colors'
 import { familyMemberPath, ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import {
 	FamilyMemberForm,
 	type FamilyMemberFormValues,
@@ -18,6 +17,8 @@ import {
 import { invalidateFamilyQueries } from '@/lib/query-invalidation'
 import { queryClient } from '@/lib/query-client'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import { SettingsPageShell } from '@/ui/figma/settings/settings-ui'
 
 export function FamilyMemberFormPage() {
 	const navigate = useNavigate()
@@ -80,59 +81,30 @@ export function FamilyMemberFormPage() {
 	}
 
 	return (
-		<div style={{ padding: '18px 18px 24px', color: C.text }}>
-			<button
-				type="button"
-				onClick={() =>
-					navigate(isEdit ? familyMemberPath(memberId!) : ROUTES.family)
-				}
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: 6,
-					background: 'none',
-					border: 'none',
-					padding: 0,
-					marginBottom: 18,
-					cursor: 'pointer',
-					color: C.textSec,
-					fontFamily: 'inherit',
-					fontSize: 14,
-				}}
-			>
-				<ArrowLeft size={18} />
-				Back
-			</button>
-
-			<div
-				style={{
-					fontSize: 28,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
-					marginBottom: 20,
-				}}
-			>
-				{isEdit ? 'Edit member' : 'Add member'}
-			</div>
-
+		<SettingsPageShell
+			backLabel={isEdit ? 'Member' : 'Family'}
+			onBack={() =>
+				navigate(isEdit ? familyMemberPath(memberId!) : ROUTES.family)
+			}
+			title={isEdit ? 'Edit member' : 'Add member'}
+			subtitle={
+				isEdit
+					? 'Update profile details and health aliases.'
+					: 'Add someone to your family workspace.'
+			}
+		>
 			{isEdit && memberQuery.isLoading ? (
-				<div
-					style={{
-						height: 320,
-						borderRadius: 18,
-						background: C.card,
-						border: `1px solid ${C.border}`,
-						opacity: 0.6,
-					}}
-				/>
+				<ListSkeleton rows={4} height={72} />
 			) : (
-				<FamilyMemberForm
-					initial={memberQuery.data ?? undefined}
-					submitLabel={isEdit ? 'Save changes' : 'Add member'}
-					disableOwnerRole
-					onSubmit={handleSubmit}
-				/>
+				<FigmaCard style={{ padding: '16px' }}>
+					<FamilyMemberForm
+						initial={memberQuery.data ?? undefined}
+						submitLabel={isEdit ? 'Save changes' : 'Add member'}
+						disableOwnerRole
+						onSubmit={handleSubmit}
+					/>
+				</FigmaCard>
 			)}
-		</div>
+		</SettingsPageShell>
 	)
 }

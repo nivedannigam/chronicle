@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import {
 	Bell,
-	ChevronRight,
 	Code2,
 	Heart,
 	Link2,
@@ -19,22 +18,21 @@ import { UserAvatar } from '@/components/ui/UserAvatar'
 import { signOut } from '@/features/auth'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useUser } from '@/features/user/hooks/useUser'
-
-interface MenuItem {
-	icon: typeof User
-	label: string
-	hint?: string
-	path?: string
-	destructive?: boolean
-	onClick?: () => void
-}
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import { HealthScreen } from '@/ui/figma/health/health-ui'
+import {
+	SettingsDestructiveButton,
+	SettingsMenuGroup,
+	type SettingsMenuItem,
+} from '@/ui/figma/settings/settings-ui'
+import { SettingsSectionLabel } from '@/ui/figma/settings/settings-section-label'
 
 export function ProfilePage() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { profile } = useUser()
 
-	const accountItems: MenuItem[] = [
+	const accountItems: SettingsMenuItem[] = [
 		{
 			icon: User,
 			label: 'Account',
@@ -55,7 +53,7 @@ export function ProfilePage() {
 		},
 	]
 
-	const connectionItems: MenuItem[] = [
+	const connectionItems: SettingsMenuItem[] = [
 		{
 			icon: Link2,
 			label: 'Connected Accounts',
@@ -70,7 +68,7 @@ export function ProfilePage() {
 		},
 	]
 
-	const appItems: MenuItem[] = [
+	const appItems: SettingsMenuItem[] = [
 		{
 			icon: Heart,
 			label: 'Health Preferences',
@@ -97,7 +95,7 @@ export function ProfilePage() {
 		},
 	]
 
-	const developerItems: MenuItem[] = import.meta.env.DEV
+	const developerItems: SettingsMenuItem[] = import.meta.env.DEV
 		? [
 				{
 					icon: Code2,
@@ -109,15 +107,13 @@ export function ProfilePage() {
 		: []
 
 	return (
-		<div style={{ padding: '18px 18px 24px', color: C.text }}>
-			<div
+		<HealthScreen padding="0 18px 20px">
+			<FigmaCard
 				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
+					padding: '20px 16px',
+					marginBottom: 24,
+					marginTop: 8,
 					textAlign: 'center',
-					marginBottom: 28,
-					paddingTop: 8,
 				}}
 			>
 				<UserAvatar
@@ -140,155 +136,28 @@ export function ProfilePage() {
 						{user.email}
 					</div>
 				) : null}
-			</div>
+			</FigmaCard>
 
-			<SectionLabel>Profile</SectionLabel>
-			<MenuGroup items={accountItems} onNavigate={navigate} />
+			<SettingsSectionLabel>Profile</SettingsSectionLabel>
+			<SettingsMenuGroup items={accountItems} onNavigate={navigate} />
 
-			<SectionLabel>Connections</SectionLabel>
-			<MenuGroup items={connectionItems} onNavigate={navigate} />
+			<SettingsSectionLabel>Connections</SettingsSectionLabel>
+			<SettingsMenuGroup items={connectionItems} onNavigate={navigate} />
 
-			<SectionLabel>App</SectionLabel>
-			<MenuGroup items={appItems} onNavigate={navigate} />
+			<SettingsSectionLabel>App</SettingsSectionLabel>
+			<SettingsMenuGroup items={appItems} onNavigate={navigate} />
 
 			{developerItems.length > 0 ? (
 				<>
-					<SectionLabel>Developer</SectionLabel>
-					<MenuGroup items={developerItems} onNavigate={navigate} />
+					<SettingsSectionLabel>Developer</SettingsSectionLabel>
+					<SettingsMenuGroup items={developerItems} onNavigate={navigate} />
 				</>
 			) : null}
 
-			<button
-				type="button"
-				onClick={() => void signOut()}
-				style={{
-					width: '100%',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					gap: 8,
-					padding: '14px 16px',
-					marginTop: 8,
-					borderRadius: 16,
-					border: `1px solid rgba(255,69,58,0.25)`,
-					background: 'rgba(255,69,58,0.08)',
-					color: C.red,
-					fontSize: 15,
-					fontWeight: 700,
-					cursor: 'pointer',
-					fontFamily: 'inherit',
-				}}
-			>
+			<SettingsDestructiveButton onClick={() => void signOut()}>
 				<LogOut size={18} />
 				Logout
-			</button>
-		</div>
-	)
-}
-
-function SectionLabel({ children }: { children: string }) {
-	return (
-		<div
-			style={{
-				fontSize: 11,
-				fontWeight: 600,
-				letterSpacing: '0.09em',
-				textTransform: 'uppercase',
-				color: C.textMuted,
-				marginBottom: 10,
-				marginTop: 4,
-			}}
-		>
-			{children}
-		</div>
-	)
-}
-
-function MenuGroup({
-	items,
-	onNavigate,
-}: {
-	items: MenuItem[]
-	onNavigate: (path: string) => void
-}) {
-	return (
-		<div
-			style={{
-				background: C.card,
-				border: `1px solid ${C.border}`,
-				borderRadius: 16,
-				overflow: 'hidden',
-				marginBottom: 14,
-			}}
-		>
-			{items.map((item, index) => (
-				<MenuRow
-					key={item.label}
-					item={item}
-					isLast={index === items.length - 1}
-					onNavigate={onNavigate}
-				/>
-			))}
-		</div>
-	)
-}
-
-function MenuRow({
-	item,
-	isLast,
-	onNavigate,
-}: {
-	item: MenuItem
-	isLast: boolean
-	onNavigate: (path: string) => void
-}) {
-	const { icon: Icon, label, hint, path, destructive = false, onClick } = item
-
-	return (
-		<button
-			type="button"
-			onClick={() => {
-				if (onClick) {
-					onClick()
-					return
-				}
-
-				if (path) {
-					onNavigate(path)
-				}
-			}}
-			style={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: 12,
-				width: '100%',
-				padding: '14px 16px',
-				background: 'transparent',
-				border: 'none',
-				borderBottom: isLast ? 'none' : `1px solid ${C.border}`,
-				cursor: 'pointer',
-				fontFamily: 'inherit',
-				textAlign: 'left',
-			}}
-		>
-			<Icon size={18} color={destructive ? C.red : C.textSec} />
-			<div style={{ flex: 1, minWidth: 0 }}>
-				<div
-					style={{
-						fontSize: 15,
-						fontWeight: 600,
-						color: destructive ? C.red : C.text,
-					}}
-				>
-					{label}
-				</div>
-				{hint ? (
-					<div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
-						{hint}
-					</div>
-				) : null}
-			</div>
-			<ChevronRight size={16} color={C.textMuted} />
-		</button>
+			</SettingsDestructiveButton>
+		</HealthScreen>
 	)
 }

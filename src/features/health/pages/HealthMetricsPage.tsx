@@ -1,17 +1,19 @@
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
-import { C } from '@/constants/colors'
 import { healthMetricPath, ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { HealthMetricInsightGroups } from '@/features/health/components/companion/HealthMetricInsightGroups'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { TrendChartGrid } from '@/features/health/components/TrendChart'
+import { useHealthMemberCopy } from '@/features/health/hooks/useHealthMemberCopy'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthPageIntro } from '@/ui/figma/health/health-ui'
 
 export function HealthMetricsPage() {
 	const navigate = useNavigate()
+	const memberCopy = useHealthMemberCopy()
 	const {
 		companion,
 		trendSeries,
@@ -50,16 +52,10 @@ export function HealthMetricsPage() {
 
 	return (
 		<>
-			<div
-				style={{
-					fontSize: 14,
-					color: C.textSec,
-					marginBottom: 20,
-					lineHeight: 1.5,
-				}}
-			>
-				Start with what matters — then explore the trends behind each number.
-			</div>
+			<HealthPageIntro>
+				Start with what matters for {memberCopy.object} — then explore the
+				trends behind each number.
+			</HealthPageIntro>
 
 			<HealthMetricInsightGroups groups={companion.metricGroups} />
 

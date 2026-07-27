@@ -1,4 +1,5 @@
 import { C } from '@/constants/colors'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface DashboardEmptyStateProps {
 	title: string
@@ -16,12 +17,10 @@ export function DashboardEmptyState({
 	onAction,
 }: DashboardEmptyStateProps) {
 	return (
-		<div
+		<FigmaCard
 			style={{
-				background: C.card,
 				border: `1px dashed ${C.border}`,
-				borderRadius: 16,
-				padding: '20px 16px',
+				padding: '24px 16px',
 				textAlign: 'center',
 			}}
 		>
@@ -65,7 +64,7 @@ export function DashboardEmptyState({
 					{actionLabel}
 				</button>
 			) : null}
-		</div>
+		</FigmaCard>
 	)
 }
 

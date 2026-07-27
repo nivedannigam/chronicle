@@ -1,5 +1,6 @@
 import { C } from '@/constants/colors'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface HealthNarrativeInsightsProps {
 	paragraphs: string[]
@@ -15,16 +16,7 @@ export function HealthNarrativeInsights({
 	return (
 		<section>
 			<HealthSectionLabel>What you should know</HealthSectionLabel>
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '18px 16px',
-					display: 'grid',
-					gap: 14,
-				}}
-			>
+			<FigmaCard style={{ padding: '18px 16px', display: 'grid', gap: 14 }}>
 				{paragraphs.map((paragraph, index) => (
 					<p
 						key={index}
@@ -38,7 +30,7 @@ export function HealthNarrativeInsights({
 						{paragraph}
 					</p>
 				))}
-			</div>
+			</FigmaCard>
 		</section>
 	)
 }

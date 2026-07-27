@@ -1,6 +1,8 @@
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { C } from '@/constants/colors'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { HealthAttentionItem } from '@/features/health/types/health-companion.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface HealthAttentionListProps {
 	items: HealthAttentionItem[]
@@ -13,7 +15,7 @@ function severityColor(severity: HealthAttentionItem['severity']): string {
 		case 'medium':
 			return C.orange
 		default:
-			return C.textMuted
+			return C.accentBlue
 	}
 }
 
@@ -24,31 +26,40 @@ export function HealthAttentionList({ items }: HealthAttentionListProps) {
 
 	return (
 		<section style={{ marginBottom: 24 }}>
-			<SectionLabel>Needs your attention</SectionLabel>
-			<div style={{ display: 'grid', gap: 8 }}>
-				{items.map((item) => (
+			<HealthSectionLabel>Needs your attention</HealthSectionLabel>
+			<FigmaCard style={{ padding: 16 }}>
+				{items.map((item, index) => (
 					<div
 						key={item.id}
 						style={{
 							display: 'flex',
-							gap: 12,
-							padding: '14px 16px',
-							borderRadius: 16,
-							background: `${severityColor(item.severity)}10`,
-							border: `1px solid ${severityColor(item.severity)}33`,
+							alignItems: 'center',
+							gap: 11,
+							marginBottom: index < items.length - 1 ? 12 : 0,
 						}}
 					>
-						<AlertTriangle
-							size={18}
-							color={severityColor(item.severity)}
-							style={{ flexShrink: 0, marginTop: 2 }}
-						/>
+						<div
+							style={{
+								width: 32,
+								height: 32,
+								borderRadius: 10,
+								background: `${severityColor(item.severity)}18`,
+								border: `1px solid ${severityColor(item.severity)}28`,
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								flexShrink: 0,
+							}}
+						>
+							<AlertTriangle size={14} color={severityColor(item.severity)} />
+						</div>
 						<div style={{ flex: 1, minWidth: 0 }}>
 							<div
 								style={{
-									fontSize: 14,
+									fontSize: 13,
 									fontWeight: 700,
-									marginBottom: 4,
+									marginBottom: 2,
+									color: C.text,
 								}}
 							>
 								{item.title}
@@ -63,28 +74,10 @@ export function HealthAttentionList({ items }: HealthAttentionListProps) {
 								{item.detail}
 							</div>
 						</div>
+						<ChevronRight size={13} color={C.textMuted} />
 					</div>
 				))}
-			</div>
+			</FigmaCard>
 		</section>
 	)
 }
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-	return (
-		<div
-			style={{
-				fontSize: 11,
-				fontWeight: 700,
-				letterSpacing: '0.08em',
-				textTransform: 'uppercase',
-				color: C.textMuted,
-				marginBottom: 10,
-			}}
-		>
-			{children}
-		</div>
-	)
-}
-
-export { SectionLabel as HealthSectionLabel }

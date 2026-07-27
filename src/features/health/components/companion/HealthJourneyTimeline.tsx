@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
 import { healthReportPath } from '@/constants/routes'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { HealthJourneyEvent } from '@/features/health/types/health-companion.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface HealthJourneyTimelineProps {
 	events: HealthJourneyEvent[]
@@ -31,8 +32,8 @@ export function HealthJourneyTimeline({ events }: HealthJourneyTimelineProps) {
 	return (
 		<section>
 			<HealthSectionLabel>Your health journey</HealthSectionLabel>
-			<div style={{ display: 'grid', gap: 10 }}>
-				{events.map((event) => (
+			<FigmaCard style={{ padding: '16px 16px 8px' }}>
+				{events.map((event, index) => (
 					<button
 						key={event.id}
 						type="button"
@@ -43,28 +44,49 @@ export function HealthJourneyTimeline({ events }: HealthJourneyTimelineProps) {
 						}}
 						style={{
 							display: 'flex',
-							gap: 12,
-							padding: '14px 16px',
-							borderRadius: 16,
-							background: C.card,
-							border: `1px solid ${C.border}`,
+							gap: 14,
+							padding: '0 0 16px',
+							background: 'transparent',
+							border: 'none',
 							cursor: event.reportId ? 'pointer' : 'default',
 							fontFamily: 'inherit',
 							textAlign: 'left',
 							width: '100%',
+							position: 'relative',
 						}}
 					>
 						<div
 							style={{
-								width: 10,
-								height: 10,
-								borderRadius: '50%',
-								background: eventColor(event.kind),
-								marginTop: 5,
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
 								flexShrink: 0,
+								width: 12,
 							}}
-						/>
-						<div style={{ flex: 1, minWidth: 0 }}>
+						>
+							<div
+								style={{
+									width: 10,
+									height: 10,
+									borderRadius: '50%',
+									background: eventColor(event.kind),
+									boxShadow: `0 0 0 3px ${eventColor(event.kind)}22`,
+									marginTop: 5,
+								}}
+							/>
+							{index < events.length - 1 ? (
+								<div
+									style={{
+										flex: 1,
+										width: 2,
+										marginTop: 6,
+										background: `linear-gradient(180deg, ${C.border} 0%, transparent 100%)`,
+										minHeight: 36,
+									}}
+								/>
+							) : null}
+						</div>
+						<div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
 							<div
 								style={{
 									fontSize: 11,
@@ -96,7 +118,7 @@ export function HealthJourneyTimeline({ events }: HealthJourneyTimelineProps) {
 						</div>
 					</button>
 				))}
-			</div>
+			</FigmaCard>
 		</section>
 	)
 }

@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { healthMetricPath } from '@/constants/routes'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { MetricInsightGroup } from '@/features/health/types/health-companion.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface HealthMetricInsightGroupsProps {
 	groups: MetricInsightGroup[]
@@ -52,14 +53,7 @@ export function HealthMetricInsightGroups({
 							{statusLabel(group.status)}
 						</span>
 					</div>
-					<div
-						style={{
-							background: C.card,
-							border: `1px solid ${C.border}`,
-							borderRadius: 18,
-							overflow: 'hidden',
-						}}
-					>
+					<FigmaCard>
 						{group.metrics.map((metric, index) => (
 							<button
 								key={metric.id}
@@ -99,7 +93,7 @@ export function HealthMetricInsightGroups({
 								<ChevronRight size={16} color={C.textMuted} />
 							</button>
 						))}
-					</div>
+					</FigmaCard>
 				</section>
 			))}
 		</div>

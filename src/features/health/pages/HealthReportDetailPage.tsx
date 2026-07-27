@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { Download, Loader2, RefreshCw, Trash2 } from 'lucide-react'
+import { Download, RefreshCw, Trash2 } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { USER_VOCAB, formatReportStatus } from '@/constants/user-vocabulary'
 import { ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { ExtractedMetricsList } from '@/features/health/components/ExtractedMetricsList'
-import { HealthSectionHeader } from '@/features/health/components/HealthSectionHeader'
+import { ReportStatusBadge } from '@/features/health/components/ReportStatusBadge'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import { useHealthReportDetail } from '@/features/health/hooks/useHealthReportDetail'
 import {
 	getReportDisplayDate,
@@ -18,6 +20,14 @@ import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
 import { supabase } from '@/lib/supabase'
 import { HEALTH_REPORTS_BUCKET } from '@/features/health/types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import {
+	HealthActionChip,
+	HealthAlertBanner,
+	HealthMetaGrid,
+	HealthScreen,
+	HealthSubpageHeader,
+} from '@/ui/figma/health/health-ui'
 
 function reportSourceLabel(report: {
 	source?: string
@@ -40,9 +50,9 @@ export function HealthReportDetailPage() {
 
 	if (detail.isLoading) {
 		return (
-			<div style={{ padding: '18px', color: C.textMuted, fontSize: 14 }}>
-				Loading report…
-			</div>
+			<HealthScreen>
+				<ListSkeleton rows={4} />
+			</HealthScreen>
 		)
 	}
 
@@ -53,6 +63,12 @@ export function HealthReportDetailPage() {
 	const uploaded = detail.source.report
 	const parsed = detail.parsed
 	const showFailedBanner = uploaded.status === 'failed'
+	const subtitle = [
+		getReportDisplayDate(uploaded, parsed),
+		parsed ? formatReportTypeLabel(parsed.metadata.reportType) : null,
+	]
+		.filter(Boolean)
+		.join(' · ')
 
 	const handleReprocess = async () => {
 		if (!reportId) {
@@ -120,103 +136,49 @@ export function HealthReportDetailPage() {
 	}
 
 	return (
-		<div style={{ padding: '18px 18px 20px', color: C.text }}>
-			<button
-				type="button"
-				onClick={() => navigate(ROUTES.healthReports)}
-				style={{
-					background: 'none',
-					border: 'none',
-					padding: 0,
-					marginBottom: 20,
-					cursor: 'pointer',
-					color: C.textSec,
-					fontFamily: 'inherit',
-					fontSize: 14,
-				}}
-			>
-				← Back to Reports
-			</button>
+		<HealthScreen padding="0 18px 20px">
+			<HealthSubpageHeader
+				backLabel="Reports"
+				onBack={() => navigate(ROUTES.healthReports)}
+				title={getReportDisplayTitle(uploaded)}
+				subtitle={subtitle}
+				badge={<ReportStatusBadge status={uploaded.status} />}
+			/>
 
 			{showFailedBanner && uploaded.processing_error ? (
-				<div
-					style={{
-						background: 'rgba(255,69,58,0.08)',
-						border: '1px solid rgba(255,69,58,0.2)',
-						borderRadius: 14,
-						padding: '12px 14px',
-						fontSize: 13,
-						color: C.red,
-						lineHeight: 1.5,
-						marginBottom: 16,
-					}}
-				>
-					Import failed — {uploaded.processing_error}
-					<button
-						type="button"
-						onClick={() => void handleReprocess()}
-						disabled={isReprocessing}
-						style={{
-							display: 'block',
-							marginTop: 10,
-							background: C.red,
-							color: C.white,
-							border: 'none',
-							borderRadius: 100,
-							padding: '8px 12px',
-							fontSize: 12,
-							fontWeight: 700,
-							cursor: isReprocessing ? 'not-allowed' : 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						{isReprocessing ? 'Trying again…' : USER_VOCAB.actions.retryImport}
-					</button>
-				</div>
+				<HealthAlertBanner
+					message={`Import failed — ${uploaded.processing_error}`}
+					actionLabel={
+						isReprocessing
+							? USER_VOCAB.actions.reprocessing
+							: USER_VOCAB.actions.retryImport
+					}
+					onAction={() => void handleReprocess()}
+					disabled={isReprocessing}
+				/>
 			) : null}
 
-			<div
-				style={{
-					fontSize: 28,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
-					marginBottom: 8,
-				}}
-			>
-				{getReportDisplayTitle(uploaded)}
-			</div>
-
-			<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 12 }}>
-				{getReportDisplayDate(uploaded, parsed)}
-				{parsed
-					? ` · ${formatReportTypeLabel(parsed.metadata.reportType)}`
-					: ''}
-			</div>
+			<HealthMetaGrid
+				rows={[
+					{
+						label: 'Hospital / Lab',
+						value: parsed?.metadata.laboratory ?? '—',
+					},
+					{ label: 'Doctor', value: parsed?.metadata.doctorName ?? '—' },
+					{ label: 'Source', value: reportSourceLabel(uploaded) },
+					{ label: 'Status', value: formatReportStatus(uploaded.status) },
+				]}
+			/>
 
 			<div
-				style={{
-					display: 'grid',
-					gap: 8,
-					marginBottom: 20,
-					fontSize: 13,
-					color: C.textSec,
-				}}
+				style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}
 			>
-				<div>Hospital / Lab: {parsed?.metadata.laboratory ?? '—'}</div>
-				<div>Doctor: {parsed?.metadata.doctorName ?? '—'}</div>
-				<div>Source: {reportSourceLabel(uploaded)}</div>
-				<div>Status: {formatReportStatus(uploaded.status)}</div>
-			</div>
-
-			<div
-				style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}
-			>
-				<ActionButton
+				<HealthActionChip
 					icon={Download}
 					label="Download original"
 					onClick={() => void handleDownload()}
 				/>
-				<ActionButton
+				<HealthActionChip
 					icon={RefreshCw}
 					label={
 						isReprocessing
@@ -226,7 +188,7 @@ export function HealthReportDetailPage() {
 					onClick={() => void handleReprocess()}
 					disabled={isReprocessing}
 				/>
-				<ActionButton
+				<HealthActionChip
 					icon={Trash2}
 					label={isDeleting ? 'Deleting…' : 'Delete'}
 					onClick={() => void handleDelete()}
@@ -236,20 +198,17 @@ export function HealthReportDetailPage() {
 			</div>
 
 			{actionError ? (
-				<div style={{ fontSize: 13, color: C.red, marginBottom: 16 }}>
-					{actionError}
-				</div>
+				<HealthAlertBanner message={actionError} tone="error" />
 			) : null}
 
 			{parsed ? (
 				<>
-					<HealthSectionHeader title={USER_VOCAB.sections.reportDetails} />
-					<div
+					<HealthSectionLabel>
+						{USER_VOCAB.sections.reportDetails}
+					</HealthSectionLabel>
+					<FigmaCard
 						style={{
-							background: C.card,
-							border: `1px solid ${C.border}`,
-							borderRadius: 18,
-							padding: '16px',
+							padding: '14px 16px',
 							marginBottom: 24,
 							fontSize: 13,
 							color: C.textSec,
@@ -266,19 +225,18 @@ export function HealthReportDetailPage() {
 							{parsed.metrics.length} result
 							{parsed.metrics.length === 1 ? '' : 's'} from this visit.
 						</div>
-					</div>
+					</FigmaCard>
 
-					<HealthSectionHeader title={USER_VOCAB.sections.extractedMetrics} />
+					<HealthSectionLabel>
+						{USER_VOCAB.sections.extractedMetrics}
+					</HealthSectionLabel>
 					<div style={{ marginBottom: 24 }}>
 						<ExtractedMetricsList metrics={detail.uiMetrics ?? []} />
 					</div>
 				</>
 			) : (
-				<div
+				<FigmaCard
 					style={{
-						background: C.card,
-						border: `1px solid ${C.border}`,
-						borderRadius: 18,
 						padding: '16px',
 						fontSize: 14,
 						color: C.textMuted,
@@ -287,52 +245,8 @@ export function HealthReportDetailPage() {
 					{uploaded.status === 'completed'
 						? 'No structured metrics were found in this report.'
 						: 'Report is still processing. Check back shortly.'}
-				</div>
+				</FigmaCard>
 			)}
-		</div>
-	)
-}
-
-function ActionButton({
-	icon: Icon,
-	label,
-	onClick,
-	disabled = false,
-	destructive = false,
-}: {
-	icon: typeof Download
-	label: string
-	onClick: () => void
-	disabled?: boolean
-	destructive?: boolean
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
-			style={{
-				display: 'inline-flex',
-				alignItems: 'center',
-				gap: 6,
-				background: destructive ? `${C.red}18` : C.card2,
-				border: `1px solid ${destructive ? `${C.red}44` : C.border}`,
-				borderRadius: 100,
-				padding: '8px 14px',
-				fontSize: 12,
-				fontWeight: 700,
-				color: destructive ? C.red : C.textSec,
-				cursor: disabled ? 'not-allowed' : 'pointer',
-				fontFamily: 'inherit',
-				opacity: disabled ? 0.7 : 1,
-			}}
-		>
-			{disabled && label.includes('…') ? (
-				<Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-			) : (
-				<Icon size={14} />
-			)}
-			{label}
-		</button>
+		</HealthScreen>
 	)
 }

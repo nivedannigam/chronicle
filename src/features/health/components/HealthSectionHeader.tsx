@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { sectionLabelStyle } from '@/features/health/types/health.types'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 
 interface HealthSectionHeaderProps {
 	title: string
 }
 
 export function HealthSectionHeader({ title }: HealthSectionHeaderProps) {
-	return <div style={sectionLabelStyle}>{title}</div>
+	return <HealthSectionLabel>{title}</HealthSectionLabel>
 }
 
 export function HealthSubsection({

@@ -1,7 +1,8 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { HealthChangeItem } from '@/features/health/types/health-companion.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
 
 interface HealthChangesListProps {
 	items: HealthChangeItem[]
@@ -31,14 +32,7 @@ export function HealthChangesList({ items }: HealthChangesListProps) {
 	return (
 		<section style={{ marginBottom: 24 }}>
 			<HealthSectionLabel>What changed</HealthSectionLabel>
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					overflow: 'hidden',
-				}}
-			>
+			<FigmaCard>
 				{items.map((item, index) => (
 					<div
 						key={item.id}
@@ -62,7 +56,7 @@ export function HealthChangesList({ items }: HealthChangesListProps) {
 						</div>
 					</div>
 				))}
-			</div>
+			</FigmaCard>
 		</section>
 	)
 }

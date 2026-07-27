@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { C } from '@/constants/colors'
+import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth'
 import { useUser } from '@/features/user/hooks/useUser'
 import { supabase } from '@/lib/supabase'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import {
+	SettingsPageShell,
+	SettingsPrimaryButton,
+} from '@/ui/figma/settings/settings-ui'
 
 export function SettingsAccountPage() {
 	const navigate = useNavigate()
@@ -61,41 +67,13 @@ export function SettingsAccountPage() {
 	}
 
 	return (
-		<div style={{ padding: '18px 18px 20px', color: C.text }}>
-			<button
-				type="button"
-				onClick={() => navigate(-1)}
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: 6,
-					background: 'none',
-					border: 'none',
-					padding: 0,
-					marginBottom: 16,
-					cursor: 'pointer',
-					color: C.textSec,
-					fontFamily: 'inherit',
-					fontSize: 14,
-				}}
-			>
-				<ArrowLeft size={18} />
-				Back
-			</button>
-
-			<div style={{ fontSize: 28, fontWeight: 800, marginBottom: 18 }}>
-				Account
-			</div>
-
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 16,
-					padding: 16,
-					marginBottom: 12,
-				}}
-			>
+		<SettingsPageShell
+			backLabel="Profile"
+			onBack={() => navigate(ROUTES.profile)}
+			title="Account"
+			subtitle="Name, email, and security"
+		>
+			<FigmaCard style={{ padding: 16 }}>
 				<label style={{ display: 'block', marginBottom: 14 }}>
 					<div style={{ fontSize: 11, color: C.textMuted, marginBottom: 6 }}>
 						Display name
@@ -125,26 +103,28 @@ export function SettingsAccountPage() {
 					</div>
 				) : null}
 
-				<button
-					type="button"
+				<SettingsPrimaryButton
 					onClick={() => void handleSave()}
 					disabled={isSaving}
-					style={{
-						width: '100%',
-						padding: '12px 16px',
-						borderRadius: 12,
-						border: 'none',
-						background: C.accent,
-						color: C.white,
-						fontSize: 14,
-						fontWeight: 700,
-						cursor: isSaving ? 'wait' : 'pointer',
-						fontFamily: 'inherit',
-						opacity: isSaving ? 0.7 : 1,
-					}}
 				>
-					{isSaving ? 'Saving…' : 'Save changes'}
-				</button>
+					{isSaving ? (
+						<span
+							style={{
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: 8,
+							}}
+						>
+							<Loader2
+								size={16}
+								style={{ animation: 'spin 1s linear infinite' }}
+							/>
+							Saving…
+						</span>
+					) : (
+						'Save changes'
+					)}
+				</SettingsPrimaryButton>
 
 				{saved ? (
 					<div
@@ -163,8 +143,8 @@ export function SettingsAccountPage() {
 						Saved successfully
 					</div>
 				) : null}
-			</div>
-		</div>
+			</FigmaCard>
+		</SettingsPageShell>
 	)
 }
 

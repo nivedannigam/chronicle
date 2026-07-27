@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Cloud, Loader2, RefreshCw, Shield } from 'lucide-react'
+import { Cloud, RefreshCw, Shield } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -15,7 +15,10 @@ import type {
 	ImportJourneyPhase,
 	ImportJourneyResult,
 } from '@/features/health-import/types/health-import-journey.types'
+import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import { HealthPageIntro, HealthSettingRow } from '@/ui/figma/health/health-ui'
 
 export function HealthSettingsPage() {
 	const navigate = useNavigate()
@@ -53,6 +56,7 @@ export function HealthSettingsPage() {
 		),
 	]
 	const status = importStatus.data
+	const showSetupGuide = setup.currentStep !== 'ready'
 
 	const handleScanNow = async () => {
 		if (folderIds.length === 0) {
@@ -99,8 +103,15 @@ export function HealthSettingsPage() {
 
 	return (
 		<div>
-			<Section title="Connected Drive">
-				<SettingRow
+			<HealthPageIntro>
+				Connect Drive, assign folders, and control how Chronicle imports medical
+				reports for <strong style={{ color: C.text }}>{memberLabel}</strong>.
+			</HealthPageIntro>
+
+			{showSetupGuide ? <HealthSetupGuide compact /> : null}
+
+			<SettingsSection title="Connected Drive">
+				<HealthSettingRow
 					icon={Cloud}
 					label="Google Drive"
 					value={setup.driveConnected ? 'Connected' : 'Not connected'}
@@ -108,55 +119,48 @@ export function HealthSettingsPage() {
 					actionLabel={setup.driveConnected ? 'Manage' : 'Connect'}
 					onAction={() => navigate(ROUTES.settingsConnectorsDrive)}
 				/>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Assigned Folder">
-				<div
-					style={{
-						fontSize: 13,
-						color: C.textMuted,
-						marginBottom: 14,
-						lineHeight: 1.5,
-					}}
-				>
-					Medical PDFs in assigned folders are scanned for{' '}
-					<strong style={{ color: C.text }}>{memberLabel}</strong>.
-				</div>
-
+			<SettingsSection title="Assigned Folder">
 				{isLoading ? (
 					<div style={{ fontSize: 13, color: C.textMuted }}>Loading…</div>
 				) : memberAssignments.length === 0 ? (
-					<HealthFolderAssignmentCard
-						memberLabel={memberLabel}
-						folderName=""
-						status="not_configured"
-						onSelectFolder={() => navigate(ROUTES.settingsConnectorsDrive)}
-					/>
+					<FigmaCard style={{ padding: '4px 16px' }}>
+						<HealthFolderAssignmentCard
+							memberLabel={memberLabel}
+							folderName=""
+							status="not_configured"
+							onSelectFolder={() => navigate(ROUTES.settingsConnectorsDrive)}
+						/>
+					</FigmaCard>
 				) : (
-					memberAssignments.map((assignment) => {
-						const folderStatus = status?.folders.find(
-							(folder) => folder.assignmentId === assignment.id,
-						)
+					<div style={{ display: 'grid', gap: 10 }}>
+						{memberAssignments.map((assignment) => {
+							const folderStatus = status?.folders.find(
+								(folder) => folder.assignmentId === assignment.id,
+							)
 
-						return (
-							<HealthFolderAssignmentCard
-								key={assignment.id}
-								memberLabel={memberLabel}
-								folderName={assignment.folderName}
-								assignedAt={assignment.assignedAt}
-								status={isScanning ? 'scanning' : 'configured'}
-								documentsScanned={folderStatus?.documentsScanned ?? 0}
-								medicalReports={folderStatus?.medicalReports ?? 0}
-								lastScanAt={folderStatus?.lastScanAt ?? null}
-								onChange={() => navigate(ROUTES.settingsConnectorsDrive)}
-							/>
-						)
-					})
+							return (
+								<FigmaCard key={assignment.id} style={{ padding: '4px 16px' }}>
+									<HealthFolderAssignmentCard
+										memberLabel={memberLabel}
+										folderName={assignment.folderName}
+										assignedAt={assignment.assignedAt}
+										status={isScanning ? 'scanning' : 'configured'}
+										documentsScanned={folderStatus?.documentsScanned ?? 0}
+										medicalReports={folderStatus?.medicalReports ?? 0}
+										lastScanAt={folderStatus?.lastScanAt ?? null}
+										onChange={() => navigate(ROUTES.settingsConnectorsDrive)}
+									/>
+								</FigmaCard>
+							)
+						})}
+					</div>
 				)}
-			</Section>
+			</SettingsSection>
 
-			<Section title="Import Behaviour">
-				<SettingRow
+			<SettingsSection title="Import Behaviour">
+				<HealthSettingRow
 					icon={RefreshCw}
 					label="Scan for new reports"
 					value={
@@ -178,8 +182,8 @@ export function HealthSettingsPage() {
 							marginTop: 10,
 							background: `${C.orange}18`,
 							border: `1px solid ${C.orange}44`,
-							borderRadius: 14,
-							padding: '12px 16px',
+							borderRadius: 18,
+							padding: '14px 16px',
 							fontSize: 14,
 							fontWeight: 600,
 							color: C.orange,
@@ -219,40 +223,38 @@ export function HealthSettingsPage() {
 						/>
 					</div>
 				) : null}
-			</Section>
+			</SettingsSection>
 
-			<Section title="Extraction Preferences">
-				<div
-					style={{
-						padding: '14px 16px',
-						borderRadius: 14,
-						border: `1px solid ${C.border}`,
-						background: C.card,
-						fontSize: 13,
-						color: C.textSec,
-						lineHeight: 1.55,
-					}}
-				>
-					Chronicle automatically runs OCR and extracts structured metrics from
-					imported PDFs. Open any report to reprocess if extraction needs a
-					refresh.
-				</div>
-			</Section>
+			<SettingsSection title="Extraction Preferences">
+				<FigmaCard style={{ padding: '14px 16px' }}>
+					<div
+						style={{
+							fontSize: 13,
+							color: C.textSec,
+							lineHeight: 1.55,
+						}}
+					>
+						Chronicle automatically runs OCR and extracts structured metrics
+						from imported PDFs. Open any report to reprocess if extraction needs
+						a refresh.
+					</div>
+				</FigmaCard>
+			</SettingsSection>
 
-			<Section title="Privacy">
-				<SettingRow
+			<SettingsSection title="Privacy">
+				<HealthSettingRow
 					icon={Shield}
 					label="Health data"
 					value="Stored securely in your account"
 					actionLabel="Manage data"
 					onAction={() => navigate(ROUTES.settingsData)}
 				/>
-			</Section>
+			</SettingsSection>
 		</div>
 	)
 }
 
-function Section({
+function SettingsSection({
 	title,
 	children,
 }: {
@@ -260,102 +262,9 @@ function Section({
 	children: React.ReactNode
 }) {
 	return (
-		<section style={{ marginBottom: 28 }}>
-			<div
-				style={{
-					fontSize: 11,
-					fontWeight: 600,
-					letterSpacing: '0.09em',
-					textTransform: 'uppercase',
-					color: C.textMuted,
-					marginBottom: 12,
-				}}
-			>
-				{title}
-			</div>
-			{children}
+		<section style={{ marginBottom: 24 }}>
+			<FigmaSectionLabel>{title}</FigmaSectionLabel>
+			<div style={{ display: 'grid', gap: 10 }}>{children}</div>
 		</section>
-	)
-}
-
-function SettingRow({
-	icon: Icon,
-	label,
-	value,
-	actionLabel,
-	onAction,
-	disabled = false,
-	tone = 'muted',
-}: {
-	icon: typeof Cloud
-	label: string
-	value: string
-	actionLabel: string
-	onAction: () => void
-	disabled?: boolean
-	tone?: 'success' | 'muted'
-}) {
-	return (
-		<div
-			style={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: 12,
-				padding: '14px 16px',
-				borderRadius: 14,
-				border: `1px solid ${C.border}`,
-				background: C.card,
-			}}
-		>
-			<div
-				style={{
-					width: 40,
-					height: 40,
-					borderRadius: 12,
-					background: C.card2,
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-				}}
-			>
-				<Icon size={18} color={tone === 'success' ? C.greenAlt : C.textSec} />
-			</div>
-			<div style={{ flex: 1 }}>
-				<div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
-				<div
-					style={{
-						fontSize: 12,
-						color: tone === 'success' ? C.greenAlt : C.textMuted,
-					}}
-				>
-					{value}
-				</div>
-			</div>
-			<button
-				type="button"
-				onClick={onAction}
-				disabled={disabled}
-				style={{
-					background: C.accentDim,
-					border: 'none',
-					borderRadius: 100,
-					padding: '8px 12px',
-					fontSize: 12,
-					fontWeight: 700,
-					color: C.accent,
-					cursor: disabled ? 'not-allowed' : 'pointer',
-					fontFamily: 'inherit',
-					opacity: disabled ? 0.6 : 1,
-					display: 'inline-flex',
-					alignItems: 'center',
-					gap: 6,
-				}}
-			>
-				{disabled && actionLabel.includes('…') ? (
-					<Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-				) : null}
-				{actionLabel}
-			</button>
-		</div>
 	)
 }

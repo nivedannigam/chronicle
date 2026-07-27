@@ -1,5 +1,4 @@
 export { TimelinePage } from '@/features/timeline/pages/TimelinePage'
-export { HomeLifeTimeline } from '@/features/timeline/components/HomeLifeTimeline'
 export { TimelineEventRow } from '@/features/timeline/components/TimelineEventRow'
 export {
 	useTimelineEvents,

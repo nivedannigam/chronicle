@@ -2,8 +2,10 @@ import { useNavigate } from 'react-router-dom'
 import { MessageCircle, ChevronRight } from 'lucide-react'
 import { C } from '@/constants/colors'
 import { healthReportPath, ROUTES } from '@/constants/routes'
-import { HealthSectionLabel } from '@/features/health/components/companion/HealthAttentionList'
+import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { HealthReportSummary } from '@/features/health/types/health-companion.types'
+import { FigmaCard } from '@/ui/figma/components/primitives'
+import { healthPrimaryButtonStyle } from '@/ui/figma/health/health-ui.styles'
 
 interface HealthReportRecordCardProps {
 	report: HealthReportSummary
@@ -17,14 +19,7 @@ export function HealthReportRecordCard({
 	const navigate = useNavigate()
 
 	return (
-		<div
-			style={{
-				background: C.card,
-				border: `1px solid ${C.border}`,
-				borderRadius: 18,
-				padding: '16px',
-			}}
-		>
+		<FigmaCard style={{ padding: 16 }}>
 			<div
 				style={{
 					fontSize: 11,
@@ -93,11 +88,11 @@ export function HealthReportRecordCard({
 			) : null}
 
 			{showActions ? (
-				<div style={{ display: 'flex', gap: 8 }}>
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					<button
 						type="button"
 						onClick={() => navigate(healthReportPath(report.id))}
-						style={actionButtonStyle}
+						style={healthPrimaryButtonStyle}
 					>
 						View details
 						<ChevronRight size={14} />
@@ -109,14 +104,14 @@ export function HealthReportRecordCard({
 								`${ROUTES.ask}?q=${encodeURIComponent(`Summarize my ${report.title.toLowerCase()}`)}`,
 							)
 						}
-						style={actionButtonStyle}
+						style={healthPrimaryButtonStyle}
 					>
 						<MessageCircle size={14} />
 						Ask Chronicle
 					</button>
 				</div>
 			) : null}
-		</div>
+		</FigmaCard>
 	)
 }
 
@@ -152,21 +147,6 @@ export function HealthRecentReportsList({
 			) : null}
 		</section>
 	)
-}
-
-const actionButtonStyle: React.CSSProperties = {
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: 5,
-	fontSize: 12,
-	fontWeight: 700,
-	color: C.accent,
-	background: C.accentDim,
-	border: `1px solid ${C.accent}33`,
-	borderRadius: 100,
-	padding: '8px 12px',
-	cursor: 'pointer',
-	fontFamily: 'inherit',
 }
 
 const linkButtonStyle: React.CSSProperties = {
