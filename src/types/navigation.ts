@@ -1,4 +1,4 @@
-export type Tab = 'home' | 'ask' | 'mail' | 'tasks' | 'more'
+export type Tab = 'home' | 'health' | 'ask' | 'more' | 'profile'
 
 export type MailFilter = 'All' | 'Critical' | 'Reply' | 'Finance' | 'Travel'
 

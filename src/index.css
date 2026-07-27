@@ -23,5 +23,43 @@ body {
 }
 
 input::placeholder {
-	color: rgba(255, 255, 255, 0.35);
+	color: rgba(255, 255, 255, 0.2);
+}
+
+textarea::placeholder {
+	color: rgba(255, 255, 255, 0.2);
+}
+
+button {
+	transition:
+		transform 0.12s ease,
+		opacity 0.12s ease;
+	font-family: inherit;
+}
+
+button:active {
+	transform: scale(0.96);
+	transition: transform 0.08s ease;
+}
+
+@keyframes figma-pulse {
+	0%,
+	100% {
+		opacity: 0.25;
+		transform: scale(0.8);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes figma-gradient-shift {
+	0%,
+	100% {
+		filter: hue-rotate(0deg) brightness(1);
+	}
+	50% {
+		filter: hue-rotate(18deg) brightness(1.06);
+	}
 }

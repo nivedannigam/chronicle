@@ -1,315 +1,299 @@
 import { useNavigate } from 'react-router-dom'
 import {
-	Activity,
-	Calendar,
 	ChevronRight,
-	DollarSign,
+	Diamond,
 	FileText,
-	Globe,
-	Heart,
-	Image,
-	Mail,
+	GraduationCap,
+	Landmark,
 	Plane,
-	User,
+	Shield,
 } from 'lucide-react'
-import { C } from '@/constants/colors'
-import {
-	getModuleById,
-	getMoreComingSoonModules,
-	MODULE_ROUTES,
-	MODULE_REGISTRY,
-} from '@/constants/modules'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/features/auth'
-import { useUser } from '@/features/user/hooks/useUser'
-import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import { FC, FigmaLbl, figmaScreenTitleStyle } from '@/ui/figma/v2/atoms'
 
-const MORE_MODULE_ICONS: Record<
-	string,
-	{ Icon: typeof DollarSign; color: string }
-> = {
-	finance: { Icon: DollarSign, color: C.greenAlt },
-	travel: { Icon: Plane, color: C.orange },
-	documents: { Icon: FileText, color: C.accent },
-	health: { Icon: Heart, color: C.teal },
-	photos: { Icon: Image, color: '#E879F9' },
-	calendar: { Icon: Calendar, color: C.accentBlue },
-	mail: { Icon: Mail, color: C.accentBlue },
+const COMING_SOON_MODULES = [
+	{
+		label: 'Finance',
+		icon: <Landmark size={28} color={FC.green} strokeWidth={1.5} />,
+		grad: 'linear-gradient(145deg,rgba(16,185,129,0.16),rgba(16,185,129,0.06))',
+		border: 'rgba(16,185,129,0.22)',
+		color: FC.green,
+		preview: 'finance' as const,
+	},
+	{
+		label: 'Insurance',
+		icon: <Shield size={28} color={FC.blue} strokeWidth={1.5} />,
+		grad: 'linear-gradient(145deg,rgba(59,130,246,0.16),rgba(59,130,246,0.06))',
+		border: 'rgba(59,130,246,0.22)',
+		color: FC.blue,
+		preview: 'insurance' as const,
+	},
+	{
+		label: 'Travel',
+		icon: <Plane size={28} color={FC.amber} strokeWidth={1.5} />,
+		grad: 'linear-gradient(145deg,rgba(245,158,11,0.16),rgba(245,158,11,0.06))',
+		border: 'rgba(245,158,11,0.22)',
+		color: FC.amber,
+		preview: 'travel' as const,
+	},
+	{
+		label: 'Education',
+		icon: <GraduationCap size={28} color={FC.teal} strokeWidth={1.5} />,
+		grad: 'linear-gradient(145deg,rgba(6,182,212,0.16),rgba(6,182,212,0.06))',
+		border: 'rgba(6,182,212,0.22)',
+		color: FC.teal,
+		preview: 'education' as const,
+	},
+	{
+		label: 'Assets',
+		icon: <Diamond size={28} color={FC.pink} strokeWidth={1.5} />,
+		grad: 'linear-gradient(145deg,rgba(236,72,153,0.16),rgba(236,72,153,0.06))',
+		border: 'rgba(236,72,153,0.22)',
+		color: FC.pink,
+		preview: 'assets' as const,
+	},
+	{
+		label: 'Property',
+		icon: <span style={{ fontSize: 28 }}>🏠</span>,
+		grad: 'linear-gradient(145deg,rgba(249,115,22,0.16),rgba(249,115,22,0.06))',
+		border: 'rgba(249,115,22,0.22)',
+		color: FC.orange,
+		preview: 'property' as const,
+	},
+]
+
+function ModulePreviewSvg({
+	preview,
+	color,
+}: {
+	preview: (typeof COMING_SOON_MODULES)[number]['preview']
+	color: string
+}) {
+	return (
+		<svg
+			width={80}
+			height={48}
+			style={{ position: 'absolute', right: -4, bottom: -4, opacity: 0.12 }}
+			aria-hidden
+		>
+			{preview === 'finance' &&
+				[20, 32, 24, 40, 28, 36].map((height, index) => (
+					<rect
+						key={index}
+						x={index * 12 + 2}
+						y={48 - height}
+						width={8}
+						height={height}
+						rx={2}
+						fill={color}
+					/>
+				))}
+			{preview === 'insurance' && (
+				<path
+					d="M40 4 L68 14 L68 32 Q68 44 40 48 Q12 44 12 32 L12 14 Z"
+					fill="none"
+					stroke={color}
+					strokeWidth={3}
+				/>
+			)}
+			{preview === 'travel' && (
+				<>
+					<path
+						d="M8 40 Q40 4 72 40"
+						fill="none"
+						stroke={color}
+						strokeWidth={2.5}
+						strokeDasharray="4 3"
+					/>
+					<circle cx={72} cy={40} r={4} fill={color} />
+					<circle cx={8} cy={40} r={4} fill={color} />
+				</>
+			)}
+			{preview === 'education' &&
+				[8, 16, 24, 32, 40].map((y, index) => (
+					<line
+						key={y}
+						x1={10}
+						y1={y}
+						x2={index % 2 === 0 ? 60 : 50}
+						y2={y}
+						stroke={color}
+						strokeWidth={2.5}
+						strokeLinecap="round"
+					/>
+				))}
+			{preview === 'assets' && (
+				<path
+					d="M40 4 L72 28 L40 48 L8 28 Z"
+					fill="none"
+					stroke={color}
+					strokeWidth={2.5}
+				/>
+			)}
+			{preview === 'property' && (
+				<path
+					d="M40 6 L70 28 L64 28 L64 46 L16 46 L16 28 L10 28 Z"
+					fill="none"
+					stroke={color}
+					strokeWidth={2.5}
+					strokeLinejoin="round"
+				/>
+			)}
+		</svg>
+	)
 }
 
 export function FigmaMoreScreen() {
 	const navigate = useNavigate()
-	const { user } = useAuth()
-	const { profile } = useUser()
-
-	const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'You'
-	const email = user?.email ?? ''
-	const initial = displayName.charAt(0).toUpperCase()
-
-	const enabledModules = MODULE_REGISTRY.filter(
-		(module) =>
-			module.enabled &&
-			!module.comingSoon &&
-			['health', 'documents', 'family', 'timeline'].includes(module.id),
-	)
-
-	const comingSoon = getMoreComingSoonModules()
 
 	return (
-		<div style={{ padding: '18px 18px 20px', color: C.text }}>
-			<FigmaCard style={{ padding: '16px', marginBottom: 28 }}>
+		<div style={{ padding: '4px 22px 24px' }}>
+			<h1 style={{ ...figmaScreenTitleStyle, marginBottom: 6 }}>More</h1>
+			<p
+				style={{
+					color: FC.mid,
+					fontSize: 15,
+					lineHeight: 1.55,
+					marginBottom: 22,
+					marginTop: 0,
+				}}
+			>
+				Modules coming to Chronicle
+			</p>
+
+			<div style={{ marginBottom: 22 }}>
+				<div style={{ marginBottom: 12 }}>
+					<FigmaLbl>Available Now</FigmaLbl>
+				</div>
 				<button
 					type="button"
-					onClick={() => navigate(ROUTES.profile)}
+					onClick={() => navigate(ROUTES.documents)}
 					style={{
+						width: '100%',
+						background:
+							'linear-gradient(145deg,rgba(139,92,246,0.16),rgba(139,92,246,0.07))',
+						border: '1px solid rgba(139,92,246,0.28)',
+						borderRadius: 26,
+						padding: '22px 22px',
 						display: 'flex',
 						alignItems: 'center',
-						gap: 14,
-						width: '100%',
-						background: 'none',
-						border: 'none',
-						padding: 0,
+						gap: 18,
 						cursor: 'pointer',
+						boxShadow:
+							'0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
 						fontFamily: 'inherit',
-						textAlign: 'left',
 					}}
 				>
 					<div
 						style={{
-							width: 52,
-							height: 52,
-							borderRadius: 16,
-							background: C.accent,
+							width: 58,
+							height: 58,
+							borderRadius: 18,
+							background: 'rgba(139,92,246,0.2)',
+							border: '1px solid rgba(139,92,246,0.3)',
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							fontSize: 22,
-							fontWeight: 700,
-							color: '#fff',
-							flexShrink: 0,
 						}}
 					>
-						{initial}
+						<FileText size={28} color={FC.purple} strokeWidth={1.5} />
 					</div>
-					<div style={{ flex: 1 }}>
-						<div
+					<div style={{ flex: 1, textAlign: 'left' }}>
+						<p
 							style={{
-								fontSize: 17,
+								color: FC.fg,
+								fontSize: 20,
 								fontWeight: 700,
-								color: C.text,
-								marginBottom: 3,
-								letterSpacing: '-0.01em',
+								letterSpacing: -0.6,
+								marginBottom: 5,
+								marginTop: 0,
 							}}
 						>
-							{displayName}
-						</div>
-						<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 6 }}>
-							{email}
-						</div>
-						<div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-							<div
-								style={{
-									width: 7,
-									height: 7,
-									borderRadius: '50%',
-									background: C.greenAlt,
-								}}
-							/>
-							<span
-								style={{ fontSize: 12, color: C.greenAlt, fontWeight: 600 }}
-							>
-								Chronicle Active
-							</span>
-						</div>
-					</div>
-					<ChevronRight size={18} color={C.textMuted} />
-				</button>
-			</FigmaCard>
-
-			<FigmaSectionLabel>All Modules</FigmaSectionLabel>
-			<div
-				style={{
-					display: 'grid',
-					gridTemplateColumns: '1fr 1fr 1fr',
-					gap: 10,
-					marginBottom: 28,
-				}}
-			>
-				{enabledModules.map((module) => {
-					const iconMeta = MORE_MODULE_ICONS[module.id] ?? {
-						Icon: Activity,
-						color: module.color ?? C.accent,
-					}
-					const path =
-						MODULE_ROUTES[module.id] ??
-						(module.id === 'timeline' ? ROUTES.timeline : undefined)
-
-					return (
-						<button
-							key={module.id}
-							type="button"
-							onClick={() => path && navigate(path)}
-							disabled={!path}
+							Documents
+						</p>
+						<p
 							style={{
-								background: C.card,
-								border: `1px solid ${C.border}`,
-								borderRadius: 20,
-								padding: '18px 0',
-								aspectRatio: '1',
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: 10,
-								cursor: path ? 'pointer' : 'default',
-								fontFamily: 'inherit',
+								color: FC.purple,
+								fontSize: 12,
+								fontWeight: 600,
+								letterSpacing: '0.07em',
+								textTransform: 'uppercase',
+								margin: 0,
 							}}
 						>
-							<div
-								style={{
-									width: 42,
-									height: 42,
-									borderRadius: 14,
-									background: `${iconMeta.color}18`,
-									border: `1px solid ${iconMeta.color}25`,
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-								}}
-							>
-								<iconMeta.Icon
-									size={22}
-									color={iconMeta.color}
-									strokeWidth={1.7}
-								/>
-							</div>
-							<span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>
-								{module.name}
-							</span>
-						</button>
-					)
-				})}
+							Open
+						</p>
+					</div>
+					<ChevronRight size={20} color={FC.mid} />
+				</button>
 			</div>
 
-			{comingSoon.length > 0 ? (
-				<>
-					<FigmaSectionLabel>Coming Soon</FigmaSectionLabel>
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'flex-start',
-							gap: 18,
-							marginBottom: 28,
-							flexWrap: 'wrap',
-						}}
-					>
-						{comingSoon.map((module) => {
-							const def = getModuleById(module.id)
-							const Icon = def?.icon ?? Activity
-
-							return (
-								<div
-									key={module.id}
-									style={{
-										display: 'flex',
-										flexDirection: 'column',
-										alignItems: 'center',
-										gap: 8,
-										opacity: 0.35,
-									}}
-								>
-									<div
-										style={{
-											width: 52,
-											height: 52,
-											borderRadius: 16,
-											background: C.card,
-											border: `1px solid ${C.border}`,
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-										}}
-									>
-										<Icon size={22} color={C.textMuted} strokeWidth={1.5} />
-									</div>
-									<span style={{ fontSize: 12, color: C.textMuted }}>
-										{module.name}
-									</span>
-								</div>
-							)
-						})}
-					</div>
-				</>
-			) : null}
-
-			<FigmaSectionLabel>Settings</FigmaSectionLabel>
-			<FigmaCard>
-				{[
-					{
-						Icon: User,
-						label: 'Account',
-						sub: email,
-						path: ROUTES.settingsAccount,
-					},
-					{
-						Icon: Globe,
-						label: 'Connected Services',
-						sub: 'Google Drive & integrations',
-						path: ROUTES.integrations,
-					},
-				].map((row, index, rows) => (
-					<button
-						key={row.label}
-						type="button"
-						onClick={() => navigate(row.path)}
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 14,
-							padding: '14px 16px',
-							borderBottom:
-								index < rows.length - 1 ? `1px solid ${C.border}` : 'none',
-							width: '100%',
-							background: 'none',
-							borderLeft: 'none',
-							borderRight: 'none',
-							borderTop: 'none',
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-							textAlign: 'left',
-						}}
-					>
+			<div style={{ marginBottom: 22 }}>
+				<div style={{ marginBottom: 12 }}>
+					<FigmaLbl>Coming Soon</FigmaLbl>
+				</div>
+				<div
+					style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+				>
+					{COMING_SOON_MODULES.map((module) => (
 						<div
+							key={module.label}
 							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 11,
-								background: 'rgba(255,255,255,0.06)',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								flexShrink: 0,
+								position: 'relative',
+								overflow: 'hidden',
+								background: module.grad,
+								border: `1px solid ${module.border}`,
+								borderRadius: 24,
+								padding: '20px 16px 16px',
 							}}
 						>
-							<row.Icon size={18} color={C.textSec} strokeWidth={1.6} />
-						</div>
-						<div style={{ flex: 1 }}>
-							<div
+							<ModulePreviewSvg preview={module.preview} color={module.color} />
+							<div style={{ marginBottom: 14 }}>{module.icon}</div>
+							<p
 								style={{
+									color: FC.fg,
 									fontSize: 15,
-									fontWeight: 600,
-									color: C.text,
-									marginBottom: 2,
+									fontWeight: 700,
+									letterSpacing: -0.3,
+									marginBottom: 5,
+									marginTop: 0,
 								}}
 							>
-								{row.label}
+								{module.label}
+							</p>
+							<div
+								style={{
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 5,
+									background: 'rgba(0,0,0,0.2)',
+									borderRadius: 8,
+									padding: '3px 8px',
+								}}
+							>
+								<div
+									style={{
+										width: 5,
+										height: 5,
+										borderRadius: 3,
+										background: module.color,
+									}}
+								/>
+								<span
+									style={{
+										color: module.color,
+										fontSize: 10,
+										fontWeight: 600,
+										letterSpacing: '0.06em',
+									}}
+								>
+									COMING SOON
+								</span>
 							</div>
-							<div style={{ fontSize: 12, color: C.textMuted }}>{row.sub}</div>
 						</div>
-						<ChevronRight size={16} color={C.textMuted} />
-					</button>
-				))}
-			</FigmaCard>
+					))}
+				</div>
+			</div>
 		</div>
 	)
 }

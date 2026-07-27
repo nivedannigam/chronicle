@@ -1,19 +1,16 @@
-import { useCallback, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, FileText, Send, Sparkles } from 'lucide-react'
-import { isAskAiProviderConfigured } from '@/config/ask-ai'
-import { C } from '@/constants/colors'
-import { ASK_COPY } from '@/constants/product-copy'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { ChevronRight, Sparkles } from 'lucide-react'
 import { useAuth } from '@/features/auth'
 import { AskErrorBanner } from '@/features/ask/components/AskErrorBanner'
 import { ConversationThread } from '@/features/ask/components/ConversationThread'
-import { buildDynamicSuggestionChips } from '@/features/ask/services/dynamic-suggestions.service'
 import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
+import { buildDynamicSuggestionChips } from '@/features/ask/services/dynamic-suggestions.service'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
-import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import { FigmaAskComposer, FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function FigmaAskScreen() {
 	const { user } = useAuth()
@@ -23,8 +20,8 @@ export function FigmaAskScreen() {
 	const uploadedQuery = useMemberHealthReports()
 	const documentsQuery = useMemberDocuments()
 	const driveConnector = useGoogleDriveConnector(userId)
-	const [query, setQuery] = useState('')
-	const [expandedRecent, setExpandedRecent] = useState<number | null>(0)
+	const [input, setInput] = useState('')
+	const taRef = useRef<HTMLTextAreaElement>(null)
 
 	const memberContext = useMemo(
 		() => ({
@@ -45,7 +42,6 @@ export function FigmaAskScreen() {
 		pendingTurn,
 		error,
 		regeneratingTurnId,
-		recentQuestions,
 	} = useAskChronicle(
 		userId,
 		uploadedQuery.data ?? [],
@@ -55,346 +51,335 @@ export function FigmaAskScreen() {
 		documentsQuery.data ?? [],
 	)
 
-	const prompts = useMemo(
+	const chips = useMemo(
 		() =>
 			buildDynamicSuggestionChips({
 				uploadedReports: uploadedQuery.data ?? [],
 				documents: documentsQuery.data ?? [],
 				memberName: selectedMember?.displayName ?? null,
-			}).slice(0, 5),
+			}).map((chip) => chip.label),
 		[documentsQuery.data, selectedMember?.displayName, uploadedQuery.data],
 	)
 
-	const handleSubmit = useCallback(async () => {
-		const question = query.trim()
-		if (!question || isLoading) return
-		setQuery('')
-		await ask(question)
-	}, [ask, isLoading, query])
+	const contextChips = useMemo(() => {
+		const items: { label: string; color: string }[] = []
+		const reportCount = uploadedQuery.data?.length ?? 0
+		const documentCount = documentsQuery.data?.length ?? 0
+
+		if (reportCount > 0) {
+			items.push({
+				label:
+					reportCount === 1
+						? 'Health records'
+						: `${reportCount} health records`,
+				color: FC.green,
+			})
+		} else {
+			items.push({ label: 'Health records', color: FC.green })
+		}
+
+		if (documentCount > 0) {
+			items.push({
+				label:
+					documentCount === 1 ? '1 document' : `${documentCount} documents`,
+				color: FC.blue,
+			})
+		}
+
+		if (members.length > 0) {
+			items.push({
+				label: `Family · ${members.length}`,
+				color: FC.purple,
+			})
+		}
+
+		return items
+	}, [documentsQuery.data, members.length, uploadedQuery.data])
+
+	const resize = useCallback(() => {
+		const element = taRef.current
+		if (!element) return
+		element.style.height = 'auto'
+		element.style.height = `${Math.min(element.scrollHeight, 140)}px`
+	}, [])
+
+	const send = useCallback(
+		(text = input) => {
+			const question = text.trim()
+			if (!question || isLoading) return
+			setInput('')
+			if (taRef.current) {
+				taRef.current.style.height = 'auto'
+			}
+			void ask(question)
+		},
+		[ask, input, isLoading],
+	)
 
 	const hasConversation = turns.length > 0 || Boolean(pendingTurn)
-	const recents = recentQuestions.slice(0, 3).map((entry, index) => ({
-		q: entry.question,
-		when: index === 0 ? 'Recent' : '',
-		answer:
-			entry.turn?.answer ??
-			turns.find((turn) => turn.question === entry.question)?.answer ??
-			'',
-	}))
 
-	if (hasConversation) {
-		return (
+	return (
+		<div
+			style={{
+				flex: 1,
+				display: 'flex',
+				flexDirection: 'column',
+				overflow: 'hidden',
+				minHeight: 0,
+			}}
+		>
 			<div
 				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					height: '100%',
-					minHeight: 0,
-					color: C.text,
+					padding: '0 20px 14px',
+					flexShrink: 0,
+					borderBottom: '1px solid rgba(255,255,255,0.05)',
 				}}
 			>
-				<div style={{ padding: '18px 18px 12px', flexShrink: 0 }}>
-					<div
-						style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}
-					>
-						Ask Chronicle
-					</div>
-				</div>
-				{error ? (
-					<div style={{ padding: '0 18px 8px' }}>
-						<AskErrorBanner
-							kind={error.kind}
-							message={error.message}
-							onDismiss={dismissError}
-						/>
-					</div>
-				) : null}
-				<div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-					<ConversationThread
-						turns={turns}
-						streamingTurn={pendingTurn}
-						isTyping={isLoading}
-						onRegenerateTurn={regenerateTurn}
-						onContinueTurn={continueTurn}
-						regeneratingTurnId={regeneratingTurnId}
-						onFollowUpSelect={(question) => void ask(question)}
-					/>
-				</div>
+				<p style={{ color: FC.dim, fontSize: 12, marginBottom: 8 }}>
+					Chronicle has context for
+				</p>
 				<div
 					style={{
-						padding: '12px 18px calc(12px + env(safe-area-inset-bottom))',
+						display: 'flex',
+						gap: 7,
+						overflowX: 'auto',
+						scrollbarWidth: 'none',
+					}}
+				>
+					{contextChips.map((chip) => (
+						<div
+							key={chip.label}
+							style={{
+								flexShrink: 0,
+								background: `${chip.color}12`,
+								border: `1px solid ${chip.color}25`,
+								borderRadius: 20,
+								padding: '5px 12px',
+							}}
+						>
+							<span
+								style={{ color: chip.color, fontSize: 12, fontWeight: 500 }}
+							>
+								{chip.label}
+							</span>
+						</div>
+					))}
+				</div>
+			</div>
+
+			{error ? (
+				<div style={{ padding: '10px 20px 0' }}>
+					<AskErrorBanner
+						kind={error.kind}
+						message={error.message}
+						onDismiss={dismissError}
+					/>
+				</div>
+			) : null}
+
+			<div
+				style={{
+					flex: 1,
+					overflowY: 'auto',
+					padding: '18px 20px 20px',
+					scrollbarWidth: 'none',
+				}}
+			>
+				{!hasConversation ? (
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+						<div
+							style={{
+								background:
+									'linear-gradient(160deg,rgba(99,102,241,0.14) 0%,rgba(59,130,246,0.08) 50%,rgba(139,92,246,0.1) 100%)',
+								border: '1px solid rgba(99,102,241,0.22)',
+								borderRadius: 26,
+								padding: '24px 22px',
+								boxShadow:
+									'0 4px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+								animation: 'figma-gradient-shift 6s ease infinite',
+							}}
+						>
+							<div
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 14,
+									marginBottom: 14,
+								}}
+							>
+								<div
+									style={{
+										width: 46,
+										height: 46,
+										borderRadius: 15,
+										background: `linear-gradient(135deg,${FC.indigo},${FC.purple})`,
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										flexShrink: 0,
+									}}
+								>
+									<Sparkles size={22} color="#fff" />
+								</div>
+								<div>
+									<h2
+										style={{
+											color: FC.fg,
+											fontSize: 20,
+											fontWeight: 700,
+											letterSpacing: -0.7,
+											lineHeight: 1.2,
+											marginBottom: 4,
+											marginTop: 0,
+										}}
+									>
+										Ask anything about your family.
+									</h2>
+									<p
+										style={{
+											color: FC.mid,
+											fontSize: 13,
+											lineHeight: 1.5,
+											margin: 0,
+										}}
+									>
+										Health records · Documents · Context
+									</p>
+								</div>
+							</div>
+						</div>
+
+						<FigmaAskComposer
+							taRef={taRef}
+							input={input}
+							setInput={setInput}
+							thinking={isLoading}
+							resize={resize}
+							send={send}
+						/>
+
+						{chips.length > 0 ? (
+							<div>
+								<p
+									style={{
+										color: 'rgba(255,255,255,0.22)',
+										fontSize: 11,
+										fontWeight: 600,
+										letterSpacing: '0.07em',
+										textTransform: 'uppercase',
+										marginBottom: 10,
+									}}
+								>
+									Try asking
+								</p>
+								<div
+									style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+								>
+									{chips.slice(0, 4).map((chip) => (
+										<button
+											key={chip}
+											type="button"
+											onClick={() => send(chip)}
+											style={{
+												...figmaCardStyle,
+												borderRadius: 16,
+												padding: '13px 16px',
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'space-between',
+												cursor: 'pointer',
+												textAlign: 'left',
+												fontFamily: 'inherit',
+											}}
+										>
+											<span
+												style={{
+													color: 'rgba(255,255,255,0.72)',
+													fontSize: 14,
+												}}
+											>
+												{chip}
+											</span>
+											<ChevronRight size={14} color="rgba(255,255,255,0.2)" />
+										</button>
+									))}
+								</div>
+							</div>
+						) : null}
+					</div>
+				) : (
+					<div style={{ minHeight: '100%' }}>
+						<ConversationThread
+							turns={turns}
+							streamingTurn={pendingTurn}
+							isTyping={isLoading}
+							onRegenerateTurn={regenerateTurn}
+							onContinueTurn={continueTurn}
+							regeneratingTurnId={regeneratingTurnId}
+							onFollowUpSelect={(question) => void ask(question)}
+						/>
+						{!isLoading && chips.length > 0 ? (
+							<div
+								style={{
+									display: 'flex',
+									flexWrap: 'wrap',
+									gap: 8,
+									paddingTop: 12,
+								}}
+							>
+								{chips.slice(0, 2).map((chip) => (
+									<button
+										key={chip}
+										type="button"
+										onClick={() => send(chip)}
+										style={{
+											background: FC.surface,
+											border: `1px solid ${FC.line}`,
+											borderRadius: 20,
+											padding: '7px 14px',
+											cursor: 'pointer',
+											fontFamily: 'inherit',
+										}}
+									>
+										<span style={{ color: FC.mid, fontSize: 12.5 }}>
+											{chip}
+										</span>
+									</button>
+								))}
+							</div>
+						) : null}
+					</div>
+				)}
+			</div>
+
+			{hasConversation ? (
+				<div
+					style={{
+						padding: '10px 18px 14px',
+						borderTop: '1px solid rgba(255,255,255,0.05)',
 						flexShrink: 0,
 					}}
 				>
-					<div
+					<FigmaAskComposer
+						taRef={taRef}
+						input={input}
+						setInput={setInput}
+						thinking={isLoading}
+						resize={resize}
+						send={send}
+					/>
+					<p
 						style={{
-							background: C.card,
-							border: `1px solid ${C.border}`,
-							borderRadius: 18,
-							padding: '12px 52px 12px 14px',
-							position: 'relative',
+							color: 'rgba(255,255,255,0.15)',
+							fontSize: 11,
+							textAlign: 'center',
+							marginTop: 8,
+							marginBottom: 0,
 						}}
 					>
-						<input
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === 'Enter') void handleSubmit()
-							}}
-							placeholder={ASK_COPY.placeholder}
-							style={{
-								width: '100%',
-								background: 'none',
-								border: 'none',
-								outline: 'none',
-								fontSize: 15,
-								color: C.text,
-								fontFamily: 'inherit',
-							}}
-						/>
-						<button
-							type="button"
-							onClick={() => void handleSubmit()}
-							disabled={isLoading || !query.trim()}
-							style={{
-								position: 'absolute',
-								bottom: 10,
-								right: 10,
-								width: 36,
-								height: 36,
-								borderRadius: '50%',
-								background: C.accent,
-								border: 'none',
-								cursor: isLoading ? 'not-allowed' : 'pointer',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								opacity: isLoading || !query.trim() ? 0.5 : 1,
-							}}
-						>
-							<Send size={16} color="white" strokeWidth={2} />
-						</button>
-					</div>
+						Chronicle can make mistakes. Verify important information.
+					</p>
 				</div>
-			</div>
-		)
-	}
-
-	return (
-		<div style={{ padding: '22px 18px 20px', color: C.text }}>
-			<div
-				style={{
-					width: 52,
-					height: 52,
-					borderRadius: 16,
-					background: C.accentDim,
-					border: `1px solid rgba(108,111,255,0.25)`,
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					marginBottom: 18,
-					boxShadow: `0 0 24px rgba(108,111,255,0.20)`,
-				}}
-			>
-				<Sparkles size={26} color={C.accent} />
-			</div>
-
-			<div
-				style={{
-					fontSize: 34,
-					fontWeight: 800,
-					letterSpacing: '-0.03em',
-					lineHeight: 1.05,
-					marginBottom: 8,
-				}}
-			>
-				Ask Chronicle
-			</div>
-			<div
-				style={{
-					fontSize: 15,
-					color: C.textSec,
-					marginBottom: 28,
-					lineHeight: 1.5,
-				}}
-			>
-				Your <em style={{ fontStyle: 'italic', color: C.text }}>life</em>, one
-				question away.
-				{isAskAiProviderConfigured()
-					? ` ${ASK_COPY.capabilityNoticeEnhanced}`
-					: ` ${ASK_COPY.capabilityNotice}`}
-			</div>
-
-			<div
-				style={{
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 18,
-					padding: '14px 14px 12px',
-					marginBottom: 20,
-					position: 'relative',
-					minHeight: 100,
-				}}
-			>
-				<textarea
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					onKeyDown={(event) => {
-						if (event.key === 'Enter' && !event.shiftKey) {
-							event.preventDefault()
-							void handleSubmit()
-						}
-					}}
-					placeholder="Ask about your health records, documents, and family..."
-					style={{
-						width: '100%',
-						background: 'none',
-						border: 'none',
-						outline: 'none',
-						fontSize: 15,
-						color: C.text,
-						fontFamily: 'inherit',
-						resize: 'none',
-						minHeight: 72,
-						lineHeight: 1.55,
-					}}
-				/>
-				<button
-					type="button"
-					onClick={() => void handleSubmit()}
-					disabled={isLoading || !query.trim()}
-					style={{
-						position: 'absolute',
-						bottom: 12,
-						right: 12,
-						width: 36,
-						height: 36,
-						borderRadius: '50%',
-						background: C.accent,
-						border: 'none',
-						cursor: isLoading ? 'not-allowed' : 'pointer',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						boxShadow: `0 4px 16px rgba(108,111,255,0.35)`,
-						opacity: isLoading || !query.trim() ? 0.5 : 1,
-					}}
-				>
-					<Send size={16} color="white" strokeWidth={2} />
-				</button>
-			</div>
-
-			<div
-				style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 30 }}
-			>
-				{prompts.map((chip) => (
-					<button
-						key={chip.id}
-						type="button"
-						onClick={() => {
-							setQuery(chip.label)
-							void ask(chip.label)
-						}}
-						style={{
-							background: 'none',
-							border: `1px solid ${C.border}`,
-							borderRadius: 100,
-							padding: '8px 15px',
-							fontSize: 13,
-							color: C.textSec,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						{chip.label}
-					</button>
-				))}
-			</div>
-
-			{recents.length > 0 ? (
-				<>
-					<FigmaSectionLabel>Recent</FigmaSectionLabel>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-						{recents.map((recent, index) => (
-							<FigmaCard key={recent.q}>
-								<div
-									role="button"
-									tabIndex={0}
-									onClick={() =>
-										setExpandedRecent(expandedRecent === index ? null : index)
-									}
-									onKeyDown={() => {}}
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										padding: '14px 16px',
-										cursor: 'pointer',
-										gap: 12,
-									}}
-								>
-									<span
-										style={{
-											fontSize: 15,
-											fontWeight: 600,
-											color: C.text,
-											flex: 1,
-										}}
-									>
-										{recent.q}
-									</span>
-									{recent.when ? (
-										<span
-											style={{
-												fontSize: 12,
-												color: C.textMuted,
-												flexShrink: 0,
-											}}
-										>
-											{recent.when}
-										</span>
-									) : null}
-									{expandedRecent === index ? (
-										<ChevronUp size={16} color={C.textMuted} />
-									) : (
-										<ChevronDown size={16} color={C.textMuted} />
-									)}
-								</div>
-								{expandedRecent === index && recent.answer ? (
-									<div
-										style={{
-											padding: '0 16px 14px',
-											borderTop: `1px solid ${C.border}`,
-											paddingTop: 12,
-										}}
-									>
-										<div
-											style={{
-												display: 'flex',
-												alignItems: 'flex-start',
-												gap: 8,
-											}}
-										>
-											<FileText
-												size={14}
-												color={C.accentBlue}
-												style={{ flexShrink: 0, marginTop: 2 }}
-											/>
-											<span
-												style={{
-													fontSize: 13,
-													color: C.textSec,
-													lineHeight: 1.6,
-												}}
-											>
-												{recent.answer}
-											</span>
-										</div>
-									</div>
-								) : null}
-							</FigmaCard>
-						))}
-					</div>
-				</>
 			) : null}
 		</div>
 	)

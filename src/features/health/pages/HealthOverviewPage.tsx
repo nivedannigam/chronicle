@@ -1,11 +1,7 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { ImportNotifications } from '@/features/health-import/components/ImportNotifications'
-import { HealthAttentionList } from '@/features/health/components/companion/HealthAttentionList'
-import { HealthChangesList } from '@/features/health/components/companion/HealthChangesList'
-import { HealthNextStepsList } from '@/features/health/components/companion/HealthNextStepsList'
-import { HealthRecentReportsList } from '@/features/health/components/companion/HealthReportRecordCard'
-import { HealthStatusHero } from '@/features/health/components/companion/HealthStatusHero'
 import {
 	DashboardEmptyState,
 	DashboardSkeleton,
@@ -13,12 +9,45 @@ import {
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { ROUTES } from '@/constants/routes'
+import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
+import { FigmaHealthOverviewView } from '@/ui/figma/health/figma-health-views'
+
+function buildMetricSparklines(
+	graph: HealthKnowledgeGraph | null | undefined,
+): Record<string, number[]> {
+	if (!graph) return {}
+
+	const map: Record<string, number[]> = {}
+
+	for (const history of graph.profile.metricHistories) {
+		const values = history.observations
+			.map((observation) => observation.numericValue)
+			.filter((value): value is number => value !== null)
+
+		if (values.length >= 2) {
+			map[history.canonicalMetricId] = values.slice(-6)
+		}
+	}
+
+	return map
+}
 
 export function HealthOverviewPage() {
 	const navigate = useNavigate()
 	const { selectedMember } = useFamilyContext()
-	const { companion, hasImportedReports, isLoading, isError, refetch } =
-		useHealthCompanion()
+	const {
+		companion,
+		hasImportedReports,
+		isLoading,
+		isError,
+		refetch,
+		knowledgeGraph,
+	} = useHealthCompanion()
+
+	const metricSparklines = useMemo(
+		() => buildMetricSparklines(knowledgeGraph),
+		[knowledgeGraph],
+	)
 
 	if (isLoading) {
 		return <DashboardSkeleton />
@@ -45,6 +74,7 @@ export function HealthOverviewPage() {
 					title="Your health story starts here"
 					message={`When reports are added for ${selectedMember?.displayName ?? 'this member'}, Chronicle will show how they are doing, what changed, and what needs attention.`}
 					emoji="💚"
+					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			</>
 		)
@@ -53,21 +83,10 @@ export function HealthOverviewPage() {
 	return (
 		<>
 			<ImportNotifications />
-
-			<HealthStatusHero
-				status={companion.status}
-				detail={companion.statusDetail}
-				score={companion.score}
+			<FigmaHealthOverviewView
+				companion={companion}
 				memberName={selectedMember?.displayName ?? null}
-			/>
-
-			<HealthAttentionList items={companion.attention} />
-			<HealthChangesList items={companion.changes} />
-			<HealthNextStepsList items={companion.nextSteps} />
-			<HealthRecentReportsList
-				reports={companion.recentReports}
-				limit={3}
-				onViewAll={() => navigate(ROUTES.healthReports)}
+				metricSparklines={metricSparklines}
 			/>
 		</>
 	)

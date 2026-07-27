@@ -1,37 +1,19 @@
-import { CheckSquare, Home, Mail, Settings2, Sparkles } from 'lucide-react'
-import { C } from '@/constants/colors'
+import { FileText, Heart, Home, Sparkles, User } from 'lucide-react'
 import { useActiveTab } from '@/hooks/useActiveTab'
-import { FigmaNavBadge } from '@/ui/figma/components/primitives'
+import { FC } from '@/ui/figma/tokens/figma-v2-tokens'
 import type { Tab } from '@/types/navigation'
-import { emails } from '@/features/mail/constants/mock-data'
-import { pendingTasks } from '@/features/tasks/constants/mock-data'
 
 const NAV_ITEMS: {
 	id: Tab
 	Icon: typeof Home
 	label: string
-	badge?: string
+	center?: boolean
 }[] = [
 	{ id: 'home', Icon: Home, label: 'Home' },
-	{ id: 'ask', Icon: Sparkles, label: 'Ask' },
-	{
-		id: 'mail',
-		Icon: Mail,
-		label: 'Mail',
-		badge:
-			emails.filter((email) => email.unread).length > 9
-				? '9+'
-				: emails.filter((email) => email.unread).length > 0
-					? String(emails.filter((email) => email.unread).length)
-					: undefined,
-	},
-	{
-		id: 'tasks',
-		Icon: CheckSquare,
-		label: 'Tasks',
-		badge: pendingTasks.length > 0 ? String(pendingTasks.length) : undefined,
-	},
-	{ id: 'more', Icon: Settings2, label: 'More' },
+	{ id: 'health', Icon: Heart, label: 'Health' },
+	{ id: 'ask', Icon: Sparkles, label: 'Ask', center: true },
+	{ id: 'more', Icon: FileText, label: 'More' },
+	{ id: 'profile', Icon: User, label: 'Profile' },
 ]
 
 export function FigmaBottomNav() {
@@ -41,21 +23,59 @@ export function FigmaBottomNav() {
 		<div
 			style={{
 				position: 'absolute',
-				bottom: 0,
-				left: 0,
-				right: 0,
-				background: 'rgba(12,12,18,0.92)',
-				backdropFilter: 'blur(20px)',
-				WebkitBackdropFilter: 'blur(20px)',
-				borderTop: `1px solid ${C.border}`,
-				padding: '10px 4px calc(24px + env(safe-area-inset-bottom))',
+				bottom: 22,
+				left: 14,
+				right: 14,
+				background: 'rgba(10,10,14,0.94)',
+				backdropFilter: 'blur(32px)',
+				WebkitBackdropFilter: 'blur(32px)',
+				border: '1px solid rgba(255,255,255,0.08)',
+				borderRadius: 36,
+				padding: '8px 4px calc(8px + env(safe-area-inset-bottom))',
 				display: 'flex',
+				alignItems: 'center',
 				justifyContent: 'space-around',
+				boxShadow:
+					'0 16px 56px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.05)',
 				zIndex: 50,
 			}}
 		>
-			{NAV_ITEMS.map(({ id, Icon, label, badge }) => {
+			{NAV_ITEMS.map(({ id, Icon, label, center }) => {
 				const active = tab === id
+
+				if (center) {
+					return (
+						<button
+							key={id}
+							type="button"
+							onClick={() => setTab(id)}
+							aria-label={label}
+							style={{
+								width: 54,
+								height: 54,
+								borderRadius: 20,
+								cursor: 'pointer',
+								background: active
+									? `linear-gradient(145deg,${FC.blue},${FC.indigo})`
+									: `linear-gradient(145deg,rgba(59,130,246,0.2),rgba(99,102,241,0.12))`,
+								border: `1px solid ${active ? 'rgba(99,102,241,0.55)' : 'rgba(59,130,246,0.22)'}`,
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								transform: 'translateY(-6px)',
+								boxShadow: active
+									? '0 8px 24px rgba(59,130,246,0.45)'
+									: '0 4px 14px rgba(0,0,0,0.4)',
+							}}
+						>
+							<Icon
+								size={22}
+								color={active ? '#fff' : FC.blue}
+								strokeWidth={active ? 2 : 1.8}
+							/>
+						</button>
+					)
+				}
 
 				return (
 					<button
@@ -66,46 +86,53 @@ export function FigmaBottomNav() {
 							display: 'flex',
 							flexDirection: 'column',
 							alignItems: 'center',
-							gap: 3,
+							gap: 4,
+							padding: '4px 14px',
 							background: 'none',
 							border: 'none',
 							cursor: 'pointer',
-							padding: '2px 10px',
-							borderRadius: 12,
 							position: 'relative',
-							minWidth: 56,
-							minHeight: 44,
-							fontFamily: 'inherit',
 						}}
 					>
 						{active ? (
 							<div
 								style={{
 									position: 'absolute',
-									inset: 0,
-									background: C.accentDim,
-									borderRadius: 12,
+									top: 0,
+									left: '50%',
+									transform: 'translateX(-50%)',
+									width: 36,
+									height: 28,
+									borderRadius: 10,
+									background: `${FC.blue}18`,
+									boxShadow: `0 0 12px ${FC.blue}30`,
 								}}
 							/>
 						) : null}
-						<div style={{ position: 'relative' }}>
-							<Icon
-								size={22}
-								color={active ? C.accent : C.textMuted}
-								strokeWidth={active ? 2.2 : 1.6}
-							/>
-							{badge ? <FigmaNavBadge count={badge} /> : null}
-						</div>
+						<Icon
+							size={21}
+							color={active ? FC.blue : 'rgba(255,255,255,0.28)'}
+							strokeWidth={active ? 2.2 : 1.7}
+						/>
 						<span
 							style={{
+								color: active ? FC.blue : 'rgba(255,255,255,0.28)',
 								fontSize: 10,
-								fontWeight: active ? 700 : 400,
-								color: active ? C.accent : C.textMuted,
-								letterSpacing: '-0.01em',
+								fontWeight: active ? 600 : 400,
+								letterSpacing: 0.1,
 							}}
 						>
 							{label}
 						</span>
+						<div
+							style={{
+								width: 3,
+								height: 3,
+								borderRadius: 1.5,
+								background: active ? FC.blue : 'transparent',
+								marginTop: 0,
+							}}
+						/>
 					</button>
 				)
 			})}

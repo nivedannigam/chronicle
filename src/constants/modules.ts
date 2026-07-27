@@ -139,10 +139,10 @@ export function getModuleById(id: string): ModuleDefinition | undefined {
 export function getModuleByTab(tab: Tab): ModuleDefinition | undefined {
 	const tabModuleIds: Record<Tab, string> = {
 		home: 'home',
+		health: 'health',
 		ask: 'ask',
-		mail: 'mail',
-		tasks: 'tasks',
 		more: 'more',
+		profile: 'profile',
 	}
 
 	return getModuleById(tabModuleIds[tab])

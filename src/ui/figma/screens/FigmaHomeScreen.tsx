@@ -1,43 +1,184 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-	Activity,
-	ChevronRight,
-	FileText,
-	Heart,
-	Mail,
-	Plane,
-	Sparkles,
-} from 'lucide-react'
-import { C } from '@/constants/colors'
+import { ChevronRight, Search, Sparkles } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useCommandCenter } from '@/features/command-center/hooks/useCommandCenter'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
+import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
 import { OnboardingFlow, useOnboarding } from '@/features/onboarding'
-import { TimelineEventRow } from '@/features/timeline/components/TimelineEventRow'
-import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import { memberFirstName, memberInitial } from '@/ui/figma/home/home-ui'
+import { FigmaHomeLabel } from '@/ui/figma/home/home-ui'
+import {
+	FC,
+	MEMBER_COLORS,
+	figmaCardStyle,
+} from '@/ui/figma/tokens/figma-v2-tokens'
 
-function toneColor(tone: AttentionItem['tone']) {
-	switch (tone) {
+function attentionForMember(
+	items: AttentionItem[],
+	memberId: string | null,
+): AttentionItem[] {
+	return items.filter(
+		(item) => !item.memberId || !memberId || item.memberId === memberId,
+	)
+}
+
+function attentionCountForMember(
+	items: AttentionItem[],
+	memberId: string,
+): number {
+	return items.filter((item) => !item.memberId || item.memberId === memberId)
+		.length
+}
+
+function attentionColor(item: AttentionItem): string {
+	switch (item.tone) {
 		case 'warning':
-			return C.red
+			return FC.red
 		case 'attention':
-			return C.orange
+			return FC.amber
 		default:
-			return C.accentBlue
+			return FC.blue
 	}
 }
 
-function toneIcon(item: AttentionItem) {
-	if (item.module === 'health') return Heart
-	if (item.module === 'documents') return FileText
-	if (item.module === 'family') return Activity
-	return Mail
+function attentionIcon(item: AttentionItem): string {
+	const title = item.title.toLowerCase()
+	if (title.includes('credit') || title.includes('payment')) return '💳'
+	if (title.includes('passport') || title.includes('visa')) return '🛂'
+	if (item.module === 'health') return '❤️'
+	if (item.module === 'documents') return '📄'
+	if (item.module === 'family') return '👨‍👩‍👧'
+	return '⚡'
+}
+
+function attentionCta(item: AttentionItem): string {
+	if (item.title.toLowerCase().includes('credit')) return 'Pay'
+	if (item.title.toLowerCase().includes('passport')) return 'Renew'
+	if (item.module === 'health') return 'Review'
+	if (item.module === 'documents') return 'View'
+	return 'Open'
+}
+
+function moduleTagLabel(module: string): string {
+	return module.charAt(0).toUpperCase() + module.slice(1)
+}
+
+function timeGreeting(): string {
+	const hour = new Date().getHours()
+	if (hour < 12) return 'Good morning'
+	if (hour < 17) return 'Good afternoon'
+	return 'Good evening'
+}
+
+function parseScheduleTime(timestamp: string): number | null {
+	const date = new Date(timestamp)
+	if (Number.isNaN(date.getTime())) return null
+	return date.getHours() * 60 + date.getMinutes()
+}
+
+function formatScheduleClock(timestamp: string): string {
+	const date = new Date(timestamp)
+	if (Number.isNaN(date.getTime())) return '—'
+	return date.toLocaleTimeString('en-US', {
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: false,
+	})
+}
+
+function StoriesAvatar({
+	name,
+	initial,
+	color,
+	selected,
+	alertCount,
+	onClick,
+}: {
+	name: string
+	initial: string
+	color: string
+	selected: boolean
+	alertCount: number
+	onClick: () => void
+}) {
+	const ringSize = 52
+	const pad = 3
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				alignItems: 'center',
+				gap: 7,
+				background: 'none',
+				border: 'none',
+				cursor: 'pointer',
+				fontFamily: 'inherit',
+			}}
+		>
+			<div style={{ position: 'relative', width: ringSize, height: ringSize }}>
+				<svg
+					width={ringSize}
+					height={ringSize}
+					style={{
+						position: 'absolute',
+						inset: 0,
+						transform: 'rotate(-90deg)',
+						opacity: selected ? 1 : alertCount > 0 ? 0.55 : 0.15,
+					}}
+				>
+					<circle
+						cx={ringSize / 2}
+						cy={ringSize / 2}
+						r={ringSize / 2 - 2}
+						fill="none"
+						stroke={alertCount > 0 ? FC.amber : color}
+						strokeWidth={selected ? 2.5 : 1.5}
+						strokeDasharray={alertCount > 0 ? '4 3' : 'none'}
+						strokeLinecap="round"
+					/>
+				</svg>
+				<div
+					style={{
+						position: 'absolute',
+						inset: pad + 2,
+						borderRadius: '50%',
+						overflow: 'hidden',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						background: `linear-gradient(135deg,${color}28,${color}14)`,
+						boxShadow: selected ? `0 0 16px ${color}40` : 'none',
+					}}
+				>
+					<span style={{ color, fontSize: 17, fontWeight: 700 }}>
+						{initial}
+					</span>
+				</div>
+			</div>
+			<span
+				style={{
+					color: selected ? color : 'rgba(255,255,255,0.38)',
+					fontSize: 11,
+					fontWeight: selected ? 700 : 400,
+					letterSpacing: selected ? -0.2 : 0,
+				}}
+			>
+				{name}
+			</span>
+		</button>
+	)
 }
 
 export function FigmaHomeScreen() {
 	const briefing = useCommandCenter()
 	const navigate = useNavigate()
+	const { members, selectedMemberId, setSelectedMemberId } = useFamilyContext()
 	const { isVisible, completeStep, dismiss } = useOnboarding()
 
 	const showSkeleton =
@@ -46,63 +187,49 @@ export function FigmaHomeScreen() {
 		briefing.loading.documents &&
 		!briefing.hasAnyData
 
+	const selectedMember = useMemo(
+		() => members.find((member) => member.id === selectedMemberId) ?? null,
+		[members, selectedMemberId],
+	)
+
+	const selectedName =
+		selectedMember?.displayName ?? memberFirstName(briefing.greetingName)
+
+	const memberItems = useMemo(
+		() => attentionForMember(briefing.attentionItems, selectedMemberId),
+		[briefing.attentionItems, selectedMemberId],
+	)
+
+	const nowMins = (() => {
+		const now = new Date()
+		return now.getHours() * 60 + now.getMinutes()
+	})()
+
+	const todaySchedule = useMemo(() => {
+		const today = new Date().toDateString()
+		return briefing.timelinePreview
+			.filter((event) => {
+				const date = new Date(event.timestamp)
+				return !Number.isNaN(date.getTime()) && date.toDateString() === today
+			})
+			.slice(0, 5)
+			.map((event) => ({
+				time: formatScheduleClock(event.timestamp),
+				timeMins: parseScheduleTime(event.timestamp),
+				label: event.familyMemberName
+					? `${event.familyMemberName} — ${event.title}`
+					: event.title,
+				tag: moduleTagLabel(event.sourceModule),
+			}))
+	}, [briefing.timelinePreview])
+
 	if (showSkeleton) {
 		return <HomePageSkeleton />
 	}
 
-	const brief = briefing.attentionItems.slice(0, 4)
-	const intelligenceTitle = briefing.attentionItems.length
-		? 'A few things need your attention.'
-		: briefing.hasAnyData
-			? 'You are up to date.'
-			: 'Welcome to Chronicle.'
-
-	const world = [
-		{
-			Icon: Heart,
-			label: 'Health',
-			title:
-				briefing.healthSnapshot.reportCount > 0
-					? briefing.healthSnapshot.status
-					: 'Set up',
-			sub:
-				briefing.healthSnapshot.reportCount > 0
-					? `${briefing.healthSnapshot.reportCount} reports`
-					: 'Connect records',
-			color: C.teal,
-			path: ROUTES.health,
-		},
-		{
-			Icon: FileText,
-			label: 'Docs',
-			title:
-				briefing.documentCount > 0
-					? `${briefing.documentCount} saved`
-					: 'Add docs',
-			sub:
-				briefing.expiringDocuments.length > 0
-					? `${briefing.expiringDocuments.length} expiring`
-					: 'Upload documents',
-			color: C.accent,
-			path: ROUTES.documents,
-		},
-		{
-			Icon: Activity,
-			label: 'Family',
-			title: `${briefing.memberSummaries.length} members`,
-			sub: briefing.familyName,
-			color: C.accentBlue,
-			path: ROUTES.family,
-		},
-		{
-			Icon: Plane,
-			label: 'Timeline',
-			title: briefing.timelinePreview.length > 0 ? 'Recent' : 'Empty',
-			sub: 'Life events',
-			color: C.green,
-			path: ROUTES.timeline,
-		},
-	]
+	const statusOk = memberItems.length === 0
+	const greet = timeGreeting()
+	const firstName = memberFirstName(briefing.greetingName)
 
 	return (
 		<>
@@ -110,261 +237,513 @@ export function FigmaHomeScreen() {
 				<OnboardingFlow onCompleteStep={completeStep} onDismiss={dismiss} />
 			) : null}
 
-			<div style={{ padding: '16px 18px 20px', color: C.text }}>
-				<div style={{ marginBottom: 22 }}>
-					<div style={{ fontSize: 13, color: C.textMuted, marginBottom: 5 }}>
-						{briefing.dateLabel}
-					</div>
-					<div
-						style={{
-							fontSize: 32,
-							fontWeight: 700,
-							letterSpacing: '-0.03em',
-							lineHeight: 1.1,
-						}}
-					>
-						{briefing.greeting},
-						<br />
-						{briefing.greetingName}.
-					</div>
-				</div>
-
-				<button
-					type="button"
-					onClick={() => navigate(ROUTES.ask)}
+			<div style={{ padding: '4px 26px 22px' }}>
+				<p
+					style={{ color: FC.dim, fontSize: 14, marginBottom: 5, marginTop: 0 }}
+				>
+					{briefing.dateLabel}
+				</p>
+				<div
 					style={{
-						width: '100%',
-						background: C.card,
-						border: `1px solid rgba(108,111,255,0.25)`,
-						borderRadius: 16,
-						padding: '12px 14px',
 						display: 'flex',
-						alignItems: 'center',
-						gap: 10,
-						marginBottom: 26,
-						boxShadow: `0 0 28px rgba(108,111,255,0.12)`,
-						cursor: 'pointer',
-						fontFamily: 'inherit',
-						textAlign: 'left',
+						justifyContent: 'space-between',
+						alignItems: 'flex-start',
 					}}
 				>
-					<Sparkles size={18} color={C.accent} />
-					<span style={{ fontSize: 14, color: C.textMuted, flex: 1 }}>
-						Ask Chronicle anything...
-					</span>
-				</button>
-
-				<div style={{ marginBottom: 26 }}>
-					<FigmaSectionLabel>Today&apos;s Intelligence</FigmaSectionLabel>
-					<FigmaCard style={{ padding: 16 }}>
-						<div
+					<div>
+						<h1
 							style={{
-								fontSize: 15,
+								color: FC.fg,
+								fontSize: 38,
 								fontWeight: 700,
-								color: C.text,
-								marginBottom: 14,
-								letterSpacing: '-0.01em',
+								letterSpacing: -2,
+								lineHeight: 1.05,
+								marginBottom: 10,
+								marginTop: 0,
 							}}
 						>
-							{intelligenceTitle}
+							{greet},
+							<br />
+							{firstName}.
+						</h1>
+						<div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+							<div
+								style={{
+									width: 7,
+									height: 7,
+									borderRadius: 4,
+									flexShrink: 0,
+									background: statusOk ? FC.green : FC.amber,
+									boxShadow: statusOk
+										? `0 0 8px ${FC.green}90`
+										: `0 0 8px ${FC.amber}90`,
+								}}
+							/>
+							<p
+								style={{
+									color: statusOk ? FC.green : FC.amber,
+									fontSize: 15,
+									fontWeight: 500,
+									letterSpacing: -0.2,
+									margin: 0,
+								}}
+							>
+								{statusOk
+									? 'Everything looks clear.'
+									: `${memberItems.length} things need you.`}
+							</p>
 						</div>
-						{brief.length === 0 ? (
-							<div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.5 }}>
-								{briefing.todaySummary}
-							</div>
-						) : (
-							brief.map((item, index) => {
-								const Icon = toneIcon(item)
-								const color = toneColor(item.tone)
-
-								return (
-									<button
-										key={item.id}
-										type="button"
-										onClick={() => navigate(item.path)}
-										style={{
-											display: 'flex',
-											alignItems: 'center',
-											gap: 11,
-											marginBottom: index < brief.length - 1 ? 12 : 0,
-											width: '100%',
-											background: 'none',
-											border: 'none',
-											padding: 0,
-											cursor: 'pointer',
-											fontFamily: 'inherit',
-											textAlign: 'left',
-										}}
-									>
-										<div
-											style={{
-												width: 32,
-												height: 32,
-												borderRadius: 10,
-												background: `${color}18`,
-												border: `1px solid ${color}28`,
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												flexShrink: 0,
-											}}
-										>
-											<Icon size={14} color={color} />
-										</div>
-										<span
-											style={{
-												fontSize: 13,
-												color: C.textSec,
-												flex: 1,
-												lineHeight: 1.45,
-											}}
-										>
-											{item.title}
-											{item.description ? ` — ${item.description}` : ''}
-										</span>
-										<ChevronRight size={13} color={C.textMuted} />
-									</button>
-								)
-							})
-						)}
-					</FigmaCard>
+					</div>
+					<button
+						type="button"
+						onClick={() => navigate(ROUTES.ask)}
+						aria-label="Search"
+						style={{
+							marginTop: 4,
+							width: 38,
+							height: 38,
+							borderRadius: 13,
+							background: FC.surface,
+							border: `1px solid ${FC.line}`,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							cursor: 'pointer',
+						}}
+					>
+						<Search size={18} color={FC.dim} strokeWidth={1.8} />
+					</button>
 				</div>
+			</div>
 
-				<div style={{ marginBottom: 26 }}>
-					<FigmaSectionLabel>Your World</FigmaSectionLabel>
+			<div style={{ padding: '0 20px 22px' }}>
+				<div
+					style={{
+						background:
+							'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(59,130,246,0.06))',
+						border: '1px solid rgba(99,102,241,0.2)',
+						borderRadius: 24,
+						padding: '20px 22px',
+						boxShadow:
+							'0 4px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+					}}
+				>
 					<div
 						style={{
 							display: 'flex',
-							gap: 10,
-							overflowX: 'auto',
-							marginLeft: -18,
-							paddingLeft: 18,
-							marginRight: -18,
-							paddingRight: 18,
-							paddingBottom: 4,
-							scrollbarWidth: 'none',
+							alignItems: 'center',
+							gap: 8,
+							marginBottom: 12,
 						}}
 					>
-						{world.map((card) => (
-							<button
-								key={card.label}
-								type="button"
-								onClick={() => navigate(card.path)}
-								style={{
-									background: C.card,
-									border: `1px solid ${C.border}`,
-									borderRadius: 20,
-									padding: '14px 14px',
-									minWidth: 120,
-									flexShrink: 0,
-									cursor: 'pointer',
-									fontFamily: 'inherit',
-									textAlign: 'left',
-								}}
-							>
-								<div
-									style={{
-										width: 36,
-										height: 36,
-										borderRadius: 12,
-										background: `${card.color}18`,
-										border: `1px solid ${card.color}22`,
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										marginBottom: 12,
-									}}
-								>
-									<card.Icon size={17} color={card.color} />
-								</div>
-								<div
-									style={{
-										fontSize: 10,
-										color: C.textMuted,
-										marginBottom: 3,
-										letterSpacing: '0.04em',
-									}}
-								>
-									{card.label}
-								</div>
-								<div
-									style={{
-										fontSize: 16,
-										fontWeight: 700,
-										color: C.text,
-										letterSpacing: '-0.02em',
-										marginBottom: 2,
-									}}
-								>
-									{card.title}
-								</div>
-								<div style={{ fontSize: 11, color: card.color }}>
-									{card.sub}
-								</div>
-							</button>
-						))}
+						<Sparkles size={13} color={FC.blue} />
+						<span
+							style={{
+								color: FC.blue,
+								fontSize: 11,
+								fontWeight: 600,
+								letterSpacing: '0.08em',
+								textTransform: 'uppercase',
+							}}
+						>
+							Chronicle AI
+						</span>
 					</div>
-				</div>
-
-				<FigmaSectionLabel>Today&apos;s Timeline</FigmaSectionLabel>
-				{briefing.timelinePreview.length === 0 ? (
-					<div
+					<p
 						style={{
-							fontSize: 13,
-							color: C.textMuted,
-							lineHeight: 1.5,
-							paddingBottom: 8,
+							color: 'rgba(255,255,255,0.78)',
+							fontSize: 15,
+							lineHeight: 1.7,
+							letterSpacing: -0.1,
+							margin: 0,
 						}}
 					>
-						Events will appear as you add health records and documents.
-					</div>
-				) : (
-					<div
-						style={{
-							background: C.card,
-							border: `1px solid ${C.border}`,
-							borderRadius: 18,
-							overflow: 'hidden',
-							marginBottom: 8,
-						}}
-					>
-						{briefing.timelinePreview.map((event, index) => (
-							<div
-								key={event.id}
-								style={{
-									borderBottom:
-										index === briefing.timelinePreview.length - 1
-											? 'none'
-											: `1px solid ${C.border}`,
-								}}
-							>
-								<TimelineEventRow event={event} />
-							</div>
-						))}
-					</div>
-				)}
-
-				{!briefing.hasAnyData ? (
+						{briefing.todaySummary}
+					</p>
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.healthSettings)}
+						onClick={() => navigate(ROUTES.ask)}
 						style={{
-							marginTop: 16,
-							width: '100%',
-							minHeight: 44,
-							borderRadius: 14,
+							marginTop: 14,
+							display: 'flex',
+							alignItems: 'center',
+							gap: 6,
+							background: 'none',
 							border: 'none',
-							background: C.accent,
-							color: C.text,
-							fontWeight: 700,
-							fontSize: 14,
 							cursor: 'pointer',
-							fontFamily: 'inherit',
+							padding: 0,
 						}}
 					>
-						Connect health records
+						<span style={{ color: FC.blue, fontSize: 13, fontWeight: 500 }}>
+							Ask a follow-up
+						</span>
+						<ChevronRight size={13} color={FC.blue} />
 					</button>
-				) : null}
+				</div>
+			</div>
+
+			{members.length > 0 ? (
+				<div style={{ padding: '0 20px 22px' }}>
+					<div
+						style={{
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							marginBottom: 14,
+						}}
+					>
+						<FigmaHomeLabel>Family</FigmaHomeLabel>
+						<button
+							type="button"
+							onClick={() => navigate(ROUTES.profile)}
+							style={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: 3,
+								background: 'none',
+								border: 'none',
+								cursor: 'pointer',
+								padding: 0,
+							}}
+						>
+							<span style={{ color: FC.dim, fontSize: 12 }}>Manage</span>
+							<ChevronRight size={12} color={FC.dim} />
+						</button>
+					</div>
+					<div style={{ display: 'flex', gap: 18 }}>
+						{members.map((member, index) => {
+							const color =
+								MEMBER_COLORS[index % MEMBER_COLORS.length] ?? FC.blue
+							return (
+								<StoriesAvatar
+									key={member.id}
+									name={memberFirstName(member.displayName)}
+									initial={memberInitial(member.displayName)}
+									color={color}
+									selected={member.id === selectedMemberId}
+									alertCount={attentionCountForMember(
+										briefing.attentionItems,
+										member.id,
+									)}
+									onClick={() => setSelectedMemberId(member.id)}
+								/>
+							)
+						})}
+					</div>
+				</div>
+			) : null}
+
+			{memberItems.length === 0 ? (
+				<div style={{ padding: '0 20px 20px' }}>
+					<div
+						style={{
+							background:
+								'linear-gradient(135deg,rgba(16,185,129,0.09),rgba(16,185,129,0.04))',
+							border: '1px solid rgba(16,185,129,0.18)',
+							borderRadius: 22,
+							padding: '18px 20px',
+							display: 'flex',
+							alignItems: 'center',
+							gap: 14,
+						}}
+					>
+						<div
+							style={{
+								width: 40,
+								height: 40,
+								borderRadius: 14,
+								flexShrink: 0,
+								background: 'rgba(16,185,129,0.15)',
+								border: '1px solid rgba(16,185,129,0.25)',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+							}}
+						>
+							<span style={{ fontSize: 20 }}>✓</span>
+						</div>
+						<div>
+							<p
+								style={{
+									color: FC.green,
+									fontSize: 14.5,
+									fontWeight: 600,
+									marginBottom: 3,
+									marginTop: 0,
+								}}
+							>
+								All clear for {selectedName}
+							</p>
+							<p
+								style={{
+									color: 'rgba(255,255,255,0.38)',
+									fontSize: 12.5,
+									lineHeight: 1.4,
+									margin: 0,
+								}}
+							>
+								No pending actions or upcoming deadlines.
+							</p>
+						</div>
+					</div>
+				</div>
+			) : (
+				<div style={{ padding: '0 20px 20px' }}>
+					<div style={{ marginBottom: 10 }}>
+						<FigmaHomeLabel>Needs Attention — {selectedName}</FigmaHomeLabel>
+					</div>
+					<div
+						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
+					>
+						{memberItems.map((item, index) => {
+							const color = attentionColor(item)
+							return (
+								<div
+									key={item.id}
+									style={{
+										display: 'flex',
+										alignItems: 'center',
+										gap: 13,
+										padding: '15px 18px',
+										borderBottom:
+											index < memberItems.length - 1
+												? '1px solid rgba(255,255,255,0.05)'
+												: 'none',
+									}}
+								>
+									<div
+										style={{
+											width: 8,
+											height: 8,
+											borderRadius: 4,
+											background: color,
+											flexShrink: 0,
+											boxShadow: `0 0 8px ${color}60`,
+										}}
+									/>
+									<span style={{ fontSize: 19, flexShrink: 0, lineHeight: 1 }}>
+										{attentionIcon(item)}
+									</span>
+									<div style={{ flex: 1, minWidth: 0 }}>
+										<p
+											style={{
+												color: FC.fg,
+												fontSize: 14,
+												fontWeight: 500,
+												letterSpacing: -0.2,
+												marginBottom: 2,
+												marginTop: 0,
+											}}
+										>
+											{item.title}
+										</p>
+										<p
+											style={{
+												color: 'rgba(255,255,255,0.38)',
+												fontSize: 12,
+												margin: 0,
+											}}
+										>
+											{item.description}
+										</p>
+									</div>
+									<button
+										type="button"
+										onClick={() => navigate(item.path)}
+										style={{
+											background: 'none',
+											border: 'none',
+											cursor: 'pointer',
+											padding: '4px 8px',
+										}}
+									>
+										<span style={{ color, fontSize: 12.5, fontWeight: 600 }}>
+											{attentionCta(item)} →
+										</span>
+									</button>
+								</div>
+							)
+						})}
+					</div>
+				</div>
+			)}
+
+			<div style={{ padding: '0 20px 20px' }}>
+				<div style={{ marginBottom: 12 }}>
+					<FigmaHomeLabel>Today</FigmaHomeLabel>
+				</div>
+				<div
+					style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
+				>
+					{todaySchedule.length === 0 ? (
+						<div
+							style={{
+								padding: '14px 18px',
+								color: FC.dim,
+								fontSize: 13,
+								lineHeight: 1.5,
+							}}
+						>
+							No events scheduled for today yet.
+						</div>
+					) : (
+						todaySchedule.map((event, index) => {
+							const isPast =
+								event.timeMins !== null && nowMins > event.timeMins + 60
+							const isNow =
+								event.timeMins !== null &&
+								nowMins >= event.timeMins &&
+								nowMins <= event.timeMins + 60
+
+							return (
+								<div
+									key={`${event.time}-${event.label}`}
+									style={{
+										display: 'flex',
+										alignItems: 'center',
+										gap: 12,
+										padding: '14px 18px',
+										borderBottom:
+											index < todaySchedule.length - 1
+												? '1px solid rgba(255,255,255,0.05)'
+												: 'none',
+										opacity: isPast ? 0.38 : 1,
+										background: isNow ? `${FC.blue}05` : 'none',
+									}}
+								>
+									<div
+										style={{
+											width: 6,
+											height: 6,
+											borderRadius: 3,
+											flexShrink: 0,
+											background: isNow
+												? FC.blue
+												: isPast
+													? 'rgba(255,255,255,0.08)'
+													: 'rgba(255,255,255,0.15)',
+											boxShadow: isNow ? `0 0 7px ${FC.blue}90` : 'none',
+										}}
+									/>
+									<span
+										style={{
+											color: isNow ? FC.blue : FC.dim,
+											fontSize: 13,
+											fontWeight: isNow ? 600 : 500,
+											width: 36,
+											fontVariantNumeric: 'tabular-nums',
+											flexShrink: 0,
+										}}
+									>
+										{event.time}
+									</span>
+									<p
+										style={{
+											flex: 1,
+											color: isPast ? FC.dim : FC.fg,
+											fontSize: 14,
+											fontWeight: 500,
+											letterSpacing: -0.2,
+											margin: 0,
+										}}
+									>
+										{event.label}
+									</p>
+									<div
+										style={{
+											background: isNow ? `${FC.blue}15` : FC.ghost,
+											border: isNow ? `1px solid ${FC.blue}25` : 'none',
+											borderRadius: 8,
+											padding: '3px 9px',
+										}}
+									>
+										<span
+											style={{
+												color: isNow ? FC.blue : FC.dim,
+												fontSize: 11,
+											}}
+										>
+											{event.tag}
+										</span>
+									</div>
+								</div>
+							)
+						})
+					)}
+				</div>
+			</div>
+
+			<div style={{ padding: '0 20px 24px' }}>
+				<div
+					style={{
+						display: 'flex',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						marginBottom: 12,
+					}}
+				>
+					<FigmaHomeLabel>Explore</FigmaHomeLabel>
+					<button
+						type="button"
+						onClick={() => navigate(ROUTES.more)}
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 3,
+							background: 'none',
+							border: 'none',
+							cursor: 'pointer',
+							padding: 0,
+						}}
+					>
+						<span style={{ color: FC.dim, fontSize: 12 }}>All modules</span>
+						<ChevronRight size={12} color={FC.dim} />
+					</button>
+				</div>
+				<div
+					style={{
+						display: 'grid',
+						gridTemplateColumns: '1fr 1fr 1fr',
+						gap: 10,
+					}}
+				>
+					{[
+						{ emoji: '❤️', label: 'Health', path: ROUTES.health },
+						{ emoji: '📄', label: 'Docs', path: ROUTES.documents },
+						{ emoji: '🤖', label: 'Ask AI', path: ROUTES.ask },
+					].map((module) => (
+						<button
+							key={module.label}
+							type="button"
+							onClick={() => navigate(module.path)}
+							style={{
+								background: FC.surface,
+								border: `1px solid ${FC.line}`,
+								borderRadius: 20,
+								padding: '16px 12px',
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'flex-start',
+								gap: 8,
+								cursor: 'pointer',
+								boxShadow: `0 2px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)`,
+								textAlign: 'left',
+							}}
+						>
+							<span style={{ fontSize: 24 }}>{module.emoji}</span>
+							<p
+								style={{
+									color: FC.fg,
+									fontSize: 13,
+									fontWeight: 600,
+									margin: 0,
+								}}
+							>
+								{module.label}
+							</p>
+						</button>
+					))}
+				</div>
 			</div>
 		</>
 	)

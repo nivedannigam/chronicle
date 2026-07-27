@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Cloud, RefreshCw, Shield } from 'lucide-react'
-import { C } from '@/constants/colors'
+import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
-import { HealthFolderAssignmentCard } from '@/features/family/components/HealthFolderAssignmentCard'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { ImportJourneyStep } from '@/features/health-import/components/ImportJourneyStep'
@@ -17,8 +15,8 @@ import type {
 } from '@/features/health-import/types/health-import-journey.types'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
-import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
-import { HealthPageIntro, HealthSettingRow } from '@/ui/figma/health/health-ui'
+import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
+import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function HealthSettingsPage() {
 	const navigate = useNavigate()
@@ -103,168 +101,365 @@ export function HealthSettingsPage() {
 
 	return (
 		<div>
-			<HealthPageIntro>
-				Connect Drive, assign folders, and control how Chronicle imports medical
-				reports for <strong style={{ color: C.text }}>{memberLabel}</strong>.
-			</HealthPageIntro>
-
 			{showSetupGuide ? <HealthSetupGuide compact /> : null}
 
-			<SettingsSection title="Connected Drive">
-				<HealthSettingRow
-					icon={Cloud}
-					label="Google Drive"
-					value={setup.driveConnected ? 'Connected' : 'Not connected'}
-					tone={setup.driveConnected ? 'success' : 'muted'}
-					actionLabel={setup.driveConnected ? 'Manage' : 'Connect'}
-					onAction={() => navigate(ROUTES.settingsConnectorsDrive)}
-				/>
-			</SettingsSection>
+			<div style={{ marginBottom: 12 }}>
+				<FigmaHealthSectionLabel>Connected Drive</FigmaHealthSectionLabel>
+			</div>
+			<div
+				style={{
+					...figmaCardStyle,
+					borderRadius: 20,
+					padding: '16px 18px',
+					display: 'flex',
+					alignItems: 'center',
+					gap: 13,
+					marginBottom: 24,
+				}}
+			>
+				<FigmaIconBox
+					color={setup.driveConnected ? FC.green : FC.amber}
+					size={42}
+				>
+					<Cloud
+						size={18}
+						color={setup.driveConnected ? FC.green : FC.amber}
+						strokeWidth={1.8}
+					/>
+				</FigmaIconBox>
+				<div style={{ flex: 1 }}>
+					<p
+						style={{
+							color: FC.fg,
+							fontSize: 14.5,
+							fontWeight: 600,
+							marginBottom: 3,
+							marginTop: 0,
+						}}
+					>
+						Google Drive
+					</p>
+					<p
+						style={{
+							color: setup.driveConnected ? FC.green : FC.amber,
+							fontSize: 13,
+							fontWeight: 500,
+							margin: 0,
+						}}
+					>
+						{setup.driveConnected
+							? `Connected · ${memberAssignments.length} folder${memberAssignments.length === 1 ? '' : 's'}`
+							: 'Not connected'}
+					</p>
+				</div>
+				<button
+					type="button"
+					onClick={() => navigate(ROUTES.settingsConnectorsDrive)}
+					style={{
+						background: FC.ghost,
+						border: `1px solid ${FC.line}`,
+						borderRadius: 12,
+						padding: '7px 15px',
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					<span style={{ color: FC.mid, fontSize: 13 }}>
+						{setup.driveConnected ? 'Manage' : 'Connect'}
+					</span>
+				</button>
+			</div>
 
-			<SettingsSection title="Assigned Folder">
-				{isLoading ? (
-					<div style={{ fontSize: 13, color: C.textMuted }}>Loading…</div>
-				) : memberAssignments.length === 0 ? (
-					<FigmaCard style={{ padding: '4px 16px' }}>
-						<HealthFolderAssignmentCard
-							memberLabel={memberLabel}
-							folderName=""
-							status="not_configured"
-							onSelectFolder={() => navigate(ROUTES.settingsConnectorsDrive)}
-						/>
-					</FigmaCard>
-				) : (
-					<div style={{ display: 'grid', gap: 10 }}>
-						{memberAssignments.map((assignment) => {
-							const folderStatus = status?.folders.find(
-								(folder) => folder.assignmentId === assignment.id,
-							)
-
-							return (
-								<FigmaCard key={assignment.id} style={{ padding: '4px 16px' }}>
-									<HealthFolderAssignmentCard
-										memberLabel={memberLabel}
-										folderName={assignment.folderName}
-										assignedAt={assignment.assignedAt}
-										status={isScanning ? 'scanning' : 'configured'}
-										documentsScanned={folderStatus?.documentsScanned ?? 0}
-										medicalReports={folderStatus?.medicalReports ?? 0}
-										lastScanAt={folderStatus?.lastScanAt ?? null}
-										onChange={() => navigate(ROUTES.settingsConnectorsDrive)}
-									/>
-								</FigmaCard>
-							)
-						})}
-					</div>
-				)}
-			</SettingsSection>
-
-			<SettingsSection title="Import Behaviour">
-				<HealthSettingRow
-					icon={RefreshCw}
-					label="Scan for new reports"
-					value={
-						folderIds.length > 0
-							? `${folderIds.length} folder${folderIds.length === 1 ? '' : 's'} ready`
-							: 'Assign a folder first'
-					}
-					actionLabel={isScanning ? 'Scanning…' : 'Scan now'}
-					onAction={() => void handleScanNow()}
-					disabled={isScanning || folderIds.length === 0}
-				/>
-
-				{setup.needsReview > 0 ? (
+			<div style={{ marginBottom: 12 }}>
+				<FigmaHealthSectionLabel>Assigned Folder</FigmaHealthSectionLabel>
+			</div>
+			{isLoading ? (
+				<div style={{ color: FC.dim, fontSize: 13, marginBottom: 24 }}>
+					Loading…
+				</div>
+			) : memberAssignments.length === 0 ? (
+				<div
+					style={{
+						...figmaCardStyle,
+						borderRadius: 20,
+						padding: '16px 18px',
+						marginBottom: 24,
+						color: FC.mid,
+						fontSize: 14,
+						lineHeight: 1.5,
+					}}
+				>
+					No folder assigned for {memberLabel} yet.
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.healthImportReview)}
+						onClick={() => navigate(ROUTES.settingsConnectorsDrive)}
 						style={{
-							width: '100%',
-							marginTop: 10,
-							background: `${C.orange}18`,
-							border: `1px solid ${C.orange}44`,
-							borderRadius: 18,
-							padding: '14px 16px',
-							fontSize: 14,
-							fontWeight: 600,
-							color: C.orange,
+							display: 'block',
+							marginTop: 12,
+							background: FC.blue,
+							color: '#fff',
+							border: 'none',
+							borderRadius: 12,
+							padding: '8px 14px',
 							cursor: 'pointer',
 							fontFamily: 'inherit',
-							textAlign: 'left',
+							fontWeight: 600,
+							fontSize: 13,
 						}}
 					>
+						Assign folder
+					</button>
+				</div>
+			) : (
+				<div style={{ display: 'grid', gap: 12, marginBottom: 24 }}>
+					{memberAssignments.map((assignment) => {
+						const folderStatus = status?.folders.find(
+							(folder) => folder.assignmentId === assignment.id,
+						)
+
+						return (
+							<div
+								key={assignment.id}
+								style={{
+									...figmaCardStyle,
+									borderRadius: 20,
+									padding: '16px 18px',
+								}}
+							>
+								<div
+									style={{ display: 'flex', alignItems: 'flex-start', gap: 13 }}
+								>
+									<FigmaIconBox color={FC.blue} size={40}>
+										<Folder size={17} color={FC.blue} strokeWidth={1.8} />
+									</FigmaIconBox>
+									<div style={{ flex: 1 }}>
+										<p
+											style={{
+												color: FC.fg,
+												fontSize: 14.5,
+												fontWeight: 600,
+												marginBottom: 8,
+												marginTop: 0,
+											}}
+										>
+											{memberLabel}
+										</p>
+										<p
+											style={{ color: FC.dim, fontSize: 12, margin: '0 0 2px' }}
+										>
+											{assignment.folderName}
+										</p>
+										<p
+											style={{ color: FC.dim, fontSize: 12, margin: '0 0 2px' }}
+										>
+											{folderStatus?.medicalReports ?? 0} reports ·{' '}
+											{folderStatus?.documentsScanned ?? 0} documents
+										</p>
+										<div
+											style={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 5,
+												marginTop: 10,
+											}}
+										>
+											<div
+												style={{
+													width: 6,
+													height: 6,
+													borderRadius: 3,
+													background: FC.green,
+												}}
+											/>
+											<span
+												style={{
+													color: FC.green,
+													fontSize: 12,
+													fontWeight: 500,
+												}}
+											>
+												{isScanning ? 'Scanning…' : 'Configured'}
+											</span>
+										</div>
+									</div>
+									<button
+										type="button"
+										onClick={() => navigate(ROUTES.settingsConnectorsDrive)}
+										style={{
+											background: FC.ghost,
+											border: `1px solid ${FC.line}`,
+											borderRadius: 10,
+											padding: '6px 12px',
+											cursor: 'pointer',
+											flexShrink: 0,
+											fontFamily: 'inherit',
+										}}
+									>
+										<span style={{ color: FC.mid, fontSize: 12 }}>Change</span>
+									</button>
+								</div>
+							</div>
+						)
+					})}
+				</div>
+			)}
+
+			<div style={{ marginBottom: 12 }}>
+				<FigmaHealthSectionLabel>Import</FigmaHealthSectionLabel>
+			</div>
+			<div
+				style={{
+					...figmaCardStyle,
+					borderRadius: 20,
+					padding: '16px 18px',
+					display: 'flex',
+					alignItems: 'center',
+					gap: 13,
+					marginBottom: 12,
+				}}
+			>
+				<FigmaIconBox color={FC.blue} size={40}>
+					<RefreshCw size={17} color={FC.blue} strokeWidth={1.8} />
+				</FigmaIconBox>
+				<div style={{ flex: 1 }}>
+					<p
+						style={{
+							color: FC.fg,
+							fontSize: 14.5,
+							fontWeight: 600,
+							marginBottom: 3,
+							marginTop: 0,
+						}}
+					>
+						Scan for new reports
+					</p>
+					<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
+						{folderIds.length > 0
+							? `${folderIds.length} folder${folderIds.length === 1 ? '' : 's'} ready`
+							: 'Assign a folder first'}
+					</p>
+				</div>
+				<button
+					type="button"
+					onClick={() => void handleScanNow()}
+					disabled={isScanning || folderIds.length === 0}
+					style={{
+						background: FC.blue,
+						borderRadius: 12,
+						padding: '7px 16px',
+						cursor:
+							isScanning || folderIds.length === 0 ? 'default' : 'pointer',
+						border: 'none',
+						opacity: isScanning || folderIds.length === 0 ? 0.5 : 1,
+						fontFamily: 'inherit',
+					}}
+				>
+					<span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
+						{isScanning ? 'Scanning…' : 'Scan now'}
+					</span>
+				</button>
+			</div>
+
+			{setup.needsReview > 0 ? (
+				<button
+					type="button"
+					onClick={() => navigate(ROUTES.healthImportReview)}
+					style={{
+						width: '100%',
+						background: 'rgba(245,158,11,0.09)',
+						border: '1px solid rgba(245,158,11,0.22)',
+						borderRadius: 18,
+						padding: '15px 20px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						cursor: 'pointer',
+						marginBottom: 24,
+						fontFamily: 'inherit',
+					}}
+				>
+					<span style={{ color: FC.amber, fontSize: 14, fontWeight: 600 }}>
 						Review {setup.needsReview} pending report
 						{setup.needsReview === 1 ? '' : 's'}
-					</button>
-				) : null}
+					</span>
+				</button>
+			) : null}
 
-				{journeyResult || journeyError || isScanning ? (
-					<div style={{ marginTop: 14 }}>
-						<ImportJourneyStep
-							successInfo={{
-								memberLabels: [memberLabel],
-								folderName:
-									memberAssignments[0]?.folderName ?? 'Assigned folders',
-								externalFolderId: folderIds[0] ?? '',
-							}}
-							phase={journeyPhase}
-							phasesCompleted={journeyPhasesCompleted}
-							phasesSucceeded={journeyPhasesSucceeded}
-							result={journeyResult}
-							isRunning={isScanning}
-							errorMessage={journeyError}
-							onRetry={() => void handleScanNow()}
-							onChooseDifferentFolder={() =>
-								navigate(ROUTES.settingsConnectorsDrive)
-							}
-							onClose={() => {
-								setJourneyResult(null)
-								setJourneyError(null)
-							}}
-						/>
-					</div>
-				) : null}
-			</SettingsSection>
+			{journeyResult || journeyError || isScanning ? (
+				<div style={{ marginBottom: 24 }}>
+					<ImportJourneyStep
+						successInfo={{
+							memberLabels: [memberLabel],
+							folderName:
+								memberAssignments[0]?.folderName ?? 'Assigned folders',
+							externalFolderId: folderIds[0] ?? '',
+						}}
+						phase={journeyPhase}
+						phasesCompleted={journeyPhasesCompleted}
+						phasesSucceeded={journeyPhasesSucceeded}
+						result={journeyResult}
+						isRunning={isScanning}
+						errorMessage={journeyError}
+						onRetry={() => void handleScanNow()}
+						onChooseDifferentFolder={() =>
+							navigate(ROUTES.settingsConnectorsDrive)
+						}
+						onClose={() => {
+							setJourneyResult(null)
+							setJourneyError(null)
+						}}
+					/>
+				</div>
+			) : null}
 
-			<SettingsSection title="Extraction Preferences">
-				<FigmaCard style={{ padding: '14px 16px' }}>
-					<div
+			<div style={{ marginBottom: 12 }}>
+				<FigmaHealthSectionLabel>Privacy</FigmaHealthSectionLabel>
+			</div>
+			<div
+				style={{
+					...figmaCardStyle,
+					borderRadius: 20,
+					padding: '16px 18px',
+					display: 'flex',
+					alignItems: 'center',
+					gap: 13,
+					marginBottom: 20,
+				}}
+			>
+				<FigmaIconBox color={FC.purple} size={40}>
+					<Eye size={17} color={FC.purple} strokeWidth={1.8} />
+				</FigmaIconBox>
+				<div style={{ flex: 1 }}>
+					<p
 						style={{
-							fontSize: 13,
-							color: C.textSec,
-							lineHeight: 1.55,
+							color: FC.fg,
+							fontSize: 14.5,
+							fontWeight: 600,
+							marginBottom: 3,
+							marginTop: 0,
 						}}
 					>
-						Chronicle automatically runs OCR and extracts structured metrics
-						from imported PDFs. Open any report to reprocess if extraction needs
-						a refresh.
-					</div>
-				</FigmaCard>
-			</SettingsSection>
-
-			<SettingsSection title="Privacy">
-				<HealthSettingRow
-					icon={Shield}
-					label="Health data"
-					value="Stored securely in your account"
-					actionLabel="Manage data"
-					onAction={() => navigate(ROUTES.settingsData)}
-				/>
-			</SettingsSection>
+						Health data
+					</p>
+					<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
+						Stored securely in your account
+					</p>
+				</div>
+				<button
+					type="button"
+					onClick={() => navigate(ROUTES.settingsData)}
+					style={{
+						background: FC.ghost,
+						border: `1px solid ${FC.line}`,
+						borderRadius: 10,
+						padding: '6px 12px',
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					<span style={{ color: FC.mid, fontSize: 12 }}>Manage</span>
+				</button>
+			</div>
 		</div>
-	)
-}
-
-function SettingsSection({
-	title,
-	children,
-}: {
-	title: string
-	children: React.ReactNode
-}) {
-	return (
-		<section style={{ marginBottom: 24 }}>
-			<FigmaSectionLabel>{title}</FigmaSectionLabel>
-			<div style={{ display: 'grid', gap: 10 }}>{children}</div>
-		</section>
 	)
 }

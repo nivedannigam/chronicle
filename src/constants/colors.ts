@@ -1,6 +1,6 @@
 export const C = {
-	bg: '#0C0C12',
-	card: '#141419',
+	bg: '#09090B',
+	card: '#141418',
 	card2: '#1A1A24',
 	border: 'rgba(255,255,255,0.07)',
 	borderFaint: 'rgba(255,255,255,0.04)',
@@ -65,7 +65,7 @@ export const phoneFrameStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom: 90,
+		paddingBottom: 110,
 	},
 }
 
@@ -93,7 +93,7 @@ export const standaloneLayoutStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom: 'calc(90px + env(safe-area-inset-bottom))',
+		paddingBottom: 'calc(110px + env(safe-area-inset-bottom))',
 	} as const,
 }
 
