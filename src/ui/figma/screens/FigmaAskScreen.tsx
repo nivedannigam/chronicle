@@ -186,9 +186,11 @@ export function FigmaAskScreen() {
 			<div
 				style={{
 					flex: 1,
+					minHeight: 0,
 					overflowY: 'auto',
 					padding: '0 22px 20px',
 					scrollbarWidth: 'none',
+					WebkitOverflowScrolling: 'touch',
 				}}
 			>
 				{!hasConversation ? (

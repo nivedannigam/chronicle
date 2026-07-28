@@ -147,9 +147,11 @@ export function FigmaSearchScreen() {
 			<div
 				style={{
 					flex: 1,
+					minHeight: 0,
 					overflowY: 'auto',
 					padding: '0 22px 24px',
 					scrollbarWidth: 'none',
+					WebkitOverflowScrolling: 'touch',
 				}}
 			>
 				{isLoading && hasActiveQuery ? (

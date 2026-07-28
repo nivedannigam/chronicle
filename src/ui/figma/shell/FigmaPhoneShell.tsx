@@ -8,6 +8,8 @@ import {
 	shouldShowDecorativeStatusBar,
 	shouldShowPhoneFrame,
 	shellNavDockStyle,
+	shellScrollContentStyle,
+	NAV_DOCK_CONTENT_INSET,
 	standaloneLayoutStyle,
 } from '@/constants/colors'
 import { BrowserInstallBanner } from '@/ui/figma/shell/BrowserInstallBanner'
@@ -35,6 +37,18 @@ export function FigmaPhoneShell({ children }: { children?: ReactNode }) {
 	const outerStyle: CSSProperties = {
 		...layout.outer,
 		['--mobile-browser-chrome' as string]: browserChromeInset,
+		...(usePhoneFrame
+			? {}
+			: {
+					flex: 1,
+					minHeight: 0,
+					width: '100%',
+				}),
+	}
+
+	const contentStyle: CSSProperties = {
+		...shellScrollContentStyle,
+		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	}
 
 	const navDockStyle: CSSProperties = shellNavDockStyle(usePhoneFrame)
@@ -44,7 +58,7 @@ export function FigmaPhoneShell({ children }: { children?: ReactNode }) {
 			<div style={layout.inner}>
 				{showDecorativeStatusBar ? <FigmaStatusBar /> : null}
 				<BrowserInstallBanner />
-				<div style={layout.content}>{children ?? <Outlet />}</div>
+				<div style={contentStyle}>{children ?? <Outlet />}</div>
 				<div style={navDockStyle}>
 					<FigmaBottomNav />
 				</div>

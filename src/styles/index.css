@@ -21,8 +21,8 @@ body {
 	margin: 0;
 	padding: 0;
 	background: #050507;
-	min-height: 100vh;
 	height: 100%;
+	min-height: 100dvh;
 	overflow: hidden;
 }
 
@@ -49,8 +49,10 @@ input::placeholder {
 	}
 
 	#root {
-		@apply min-h-dvh;
-		height: 100%;
+		display: flex;
+		flex-direction: column;
+		height: 100dvh;
+		min-height: 100dvh;
 		overflow: hidden;
 	}
 }

@@ -59,6 +59,16 @@ export function shouldShowDecorativeStatusBar(): boolean {
 	return shouldShowPhoneFrame()
 }
 
+/** Shared scroll panel inside the app shell (requires flex parent with minHeight: 0). */
+export const shellScrollContentStyle = {
+	flex: 1,
+	minHeight: 0,
+	overflowY: 'auto' as const,
+	overflowX: 'hidden' as const,
+	scrollbarWidth: 'none' as const,
+	WebkitOverflowScrolling: 'touch' as const,
+}
+
 /** Floating bottom nav dock — pinned above scrollable content. */
 export function shellNavDockStyle(usePhoneFrame: boolean) {
 	return {
@@ -103,10 +113,7 @@ export const phoneFrameStyle = {
 		flexDirection: 'column' as const,
 	},
 	content: {
-		flex: 1,
-		overflowY: 'auto' as const,
-		overflowX: 'hidden' as const,
-		scrollbarWidth: 'none' as const,
+		...shellScrollContentStyle,
 		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	},
 }
@@ -118,7 +125,9 @@ export function mobileBrowserChromeInset(): string {
 
 export const standaloneLayoutStyle = {
 	outer: {
-		minHeight: '100dvh',
+		flex: 1,
+		minHeight: 0,
+		height: '100dvh',
 		background: C.bg,
 		display: 'flex',
 		flexDirection: 'column' as const,
@@ -126,21 +135,19 @@ export const standaloneLayoutStyle = {
 			'-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
 		WebkitFontSmoothing: 'antialiased' as const,
 		paddingTop: 'env(safe-area-inset-top)',
+		overflow: 'hidden' as const,
 	} as const,
 	inner: {
 		flex: 1,
+		minHeight: 0,
 		display: 'flex',
 		flexDirection: 'column' as const,
-		minHeight: '100dvh',
 		background: C.bg,
 		position: 'relative' as const,
 		overflow: 'hidden' as const,
 	} as const,
 	content: {
-		flex: 1,
-		overflowY: 'auto' as const,
-		overflowX: 'hidden' as const,
-		scrollbarWidth: 'none' as const,
+		...shellScrollContentStyle,
 		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	} as const,
 }
