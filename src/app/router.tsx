@@ -17,6 +17,7 @@ import {
 	HealthReportDetailPage,
 	HealthReportsPage,
 	HealthSettingsPage,
+	HealthFolderSetupPage,
 	HealthTimelinePage,
 } from '@/features/health'
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
@@ -177,7 +178,7 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.connectorsGoogleDrive}
-						element={<Navigate to={ROUTES.profileConnectionsDrive} replace />}
+						element={<Navigate to={ROUTES.healthFolderSetup} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImport}
@@ -199,6 +200,10 @@ export function AppRouter() {
 						<Route path="metrics" element={<HealthMetricsPage />} />
 						<Route path="insights" element={<HealthInsightsPage />} />
 						<Route path="settings" element={<HealthSettingsPage />} />
+						<Route
+							path="settings/folders"
+							element={<HealthFolderSetupPage />}
+						/>
 					</Route>
 
 					<Route

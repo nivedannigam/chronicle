@@ -27,7 +27,7 @@ export interface VerifyGoogleDriveConnectionResult {
 }
 
 export async function connectGoogleDriveIncremental(): Promise<void> {
-	const redirectTo = buildAppUrl(ROUTES.connectorsGoogleDrive)
+	const redirectTo = buildAppUrl(ROUTES.profileConnectionsDrive)
 
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider: 'google',

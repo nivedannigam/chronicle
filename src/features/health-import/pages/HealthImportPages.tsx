@@ -65,7 +65,7 @@ export function ImportCenterPage() {
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.connectorsGoogleDrive)}
+				onClick={() => navigate(ROUTES.healthFolderSetup)}
 				style={backButtonStyle}
 			>
 				<ArrowLeft size={18} />

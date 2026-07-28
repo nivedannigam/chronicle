@@ -152,7 +152,7 @@ export function ImportJourneyStep({
 					}}
 					onReconnect={() => {
 						onClose()
-						navigate(ROUTES.connectorsGoogleDrive)
+						navigate(ROUTES.profileConnectionsDrive)
 					}}
 					onRetry={onRetry}
 					onChooseDifferentFolder={onChooseDifferentFolder}

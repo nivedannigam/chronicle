@@ -143,6 +143,7 @@ async function importRegistryRecord(
 		external_file_id: registry.external_file_id,
 		external_modified_at: registry.external_modified_at,
 		connector_id: 'google-drive',
+		family_member_id: (registry.family_member_id as string | null) ?? null,
 		...(download.sha256Checksum ? { file_hash: download.sha256Checksum } : {}),
 	}
 

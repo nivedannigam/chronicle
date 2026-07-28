@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
 import {
 	FigmaHeaderSearchButton,
 	FigmaScreenHeader,
@@ -95,7 +96,10 @@ export function HealthLayout() {
 			<FigmaScreenHeader
 				title="Health"
 				actions={
-					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+						<FamilyMemberSwitcher />
+						<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+					</div>
 				}
 				paddingBottom={0}
 			>

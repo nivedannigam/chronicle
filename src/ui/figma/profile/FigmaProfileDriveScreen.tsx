@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
+import { FolderOpen, type LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ConnectorSettingsPanel } from '@/features/connectors/google-drive/components/ConnectorSettingsPanel'
@@ -132,15 +132,9 @@ export function FigmaProfileDriveScreen() {
 								}}
 							>
 								<ActionButton
-									icon={RefreshCw}
-									label={connector.isSyncing ? 'Syncing…' : 'Rescan now'}
-									disabled={connector.isSyncing}
-									onClick={() => void connector.sync('manual')}
-								/>
-								<ActionButton
-									label="Manage folders"
-									tone="secondary"
-									onClick={() => navigate(ROUTES.healthSettings)}
+									icon={FolderOpen}
+									label="Assign health folders"
+									onClick={() => navigate(ROUTES.healthFolderSetup)}
 								/>
 							</div>
 						</div>
@@ -222,7 +216,7 @@ function ActionButton({
 	onClick: () => void
 	disabled?: boolean
 	tone?: 'primary' | 'secondary'
-	icon?: typeof RefreshCw
+	icon?: LucideIcon
 }) {
 	return (
 		<button

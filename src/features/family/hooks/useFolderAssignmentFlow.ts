@@ -31,6 +31,7 @@ interface UseFolderAssignmentFlowOptions {
 	folderName: string
 	members: FamilyMemberWithAliases[]
 	assignments: HealthSourceAssignment[]
+	preferredMemberId?: string | null
 	onRefresh: () => Promise<void>
 	onJourneyComplete?: (result: ImportJourneyResult) => void
 }
@@ -41,6 +42,7 @@ export function useFolderAssignmentFlow({
 	folderName,
 	members,
 	assignments,
+	preferredMemberId,
 	onRefresh,
 	onJourneyComplete,
 }: UseFolderAssignmentFlowOptions) {
@@ -107,6 +109,16 @@ export function useFolderAssignmentFlow({
 				currentFolderAssignments.map((a) => a.familyMemberId),
 			)
 			setStep('pick')
+		} else if (
+			preferredMemberId &&
+			uniqueMembers.some((member) => member.id === preferredMemberId)
+		) {
+			setSelectedMemberIds([preferredMemberId])
+			if (suggestion?.memberId === preferredMemberId) {
+				setStep('suggest')
+			} else {
+				setStep('pick')
+			}
 		} else if (suggestion) {
 			setSelectedMemberIds([suggestion.memberId])
 			setStep('suggest')
@@ -115,7 +127,13 @@ export function useFolderAssignmentFlow({
 		}
 
 		setIsOpen(true)
-	}, [currentFolderAssignments, resetState, suggestion])
+	}, [
+		currentFolderAssignments,
+		preferredMemberId,
+		resetState,
+		suggestion,
+		uniqueMembers,
+	])
 
 	const close = useCallback(() => {
 		if (isSaving || isJourneyRunning) {

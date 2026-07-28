@@ -25,6 +25,7 @@ export const ROUTES = {
 	healthMetrics: '/health/metrics',
 	healthInsights: '/health/insights',
 	healthSettings: '/health/settings',
+	healthFolderSetup: '/health/settings/folders',
 	healthTrends: '/health/metrics',
 	healthCompare: '/health/compare',
 	healthReport: '/health/reports/:reportId',

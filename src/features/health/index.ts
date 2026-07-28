@@ -11,6 +11,7 @@ export {
 } from '@/features/health/pages/HealthMetricsPage'
 export { HealthInsightsPage } from '@/features/health/pages/HealthInsightsPage'
 export { HealthSettingsPage } from '@/features/health/pages/HealthSettingsPage'
+export { HealthFolderSetupPage } from '@/features/health/pages/HealthFolderSetupPage'
 export { HealthReportDetailPage } from '@/features/health/pages/HealthReportDetailPage'
 export { HealthComparePage } from '@/features/health/pages/HealthComparePage'
 export { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'

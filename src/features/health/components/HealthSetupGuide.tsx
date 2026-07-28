@@ -60,6 +60,29 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 	const [scanDetail, setScanDetail] = useState<string | null>(null)
 	const [scanError, setScanError] = useState<string | null>(null)
 
+	const handleStepNavigation = (stepId: (typeof STEPS)[number]['id']) => {
+		switch (stepId) {
+			case 'connect_drive':
+				navigate(ROUTES.profileConnectionsDrive)
+				return
+			case 'assign_folder':
+				navigate(ROUTES.healthFolderSetup)
+				return
+			case 'scan_import':
+				if (setup.memberAssignments.length === 0) {
+					navigate(ROUTES.healthFolderSetup)
+					return
+				}
+				void handlePrimaryAction()
+				return
+			case 'review_imports':
+				navigate(ROUTES.healthImportReview)
+				return
+			default:
+				return
+		}
+	}
+
 	const handlePrimaryAction = async () => {
 		if (!user?.id) {
 			return
@@ -67,10 +90,10 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 
 		switch (setup.currentStep) {
 			case 'connect_drive':
-				navigate(ROUTES.healthSettings)
+				navigate(ROUTES.profileConnectionsDrive)
 				return
 			case 'assign_folder':
-				navigate(ROUTES.healthSettings)
+				navigate(ROUTES.healthFolderSetup)
 				return
 			case 'review_imports':
 				navigate(ROUTES.healthImportReview)
@@ -81,7 +104,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				)
 
 				if (folderIds.length === 0) {
-					navigate(ROUTES.healthSettings)
+					navigate(ROUTES.healthFolderSetup)
 					return
 				}
 
@@ -165,8 +188,15 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 					const active = step.id === setup.currentStep
 
 					return (
-						<div
+						<button
 							key={step.id}
+							type="button"
+							onClick={() => {
+								if (completed || active) {
+									handleStepNavigation(step.id)
+								}
+							}}
+							disabled={!completed && !active}
 							style={{
 								display: 'flex',
 								alignItems: 'flex-start',
@@ -177,6 +207,11 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 								border: active
 									? `1px solid ${C.accentBlue}44`
 									: `1px solid ${C.border}`,
+								cursor: completed || active ? 'pointer' : 'default',
+								textAlign: 'left',
+								width: '100%',
+								fontFamily: 'inherit',
+								opacity: !completed && !active ? 0.72 : 1,
 							}}
 						>
 							<div
@@ -215,7 +250,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 									{step.description}
 								</div>
 							</div>
-						</div>
+						</button>
 					)
 				})}
 			</div>

@@ -17,7 +17,7 @@ export function ConnectorDebugPage() {
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.connectorsGoogleDrive)}
+				onClick={() => navigate(ROUTES.healthFolderSetup)}
 				style={{
 					background: 'none',
 					border: 'none',

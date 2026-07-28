@@ -4,6 +4,7 @@ import { C } from '@/constants/colors'
 import { FolderAssignmentBadge } from '@/features/family/components/FolderAssignmentBadge'
 import { FolderAssignmentSheet } from '@/features/family/components/FolderAssignmentSheet'
 import { useFamilyMembers } from '@/features/family/hooks/useFamilyMembers'
+import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useFolderAssignmentFlow } from '@/features/family/hooks/useFolderAssignmentFlow'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { useDriveBrowser } from '@/features/connectors/google-drive/hooks/useDriveBrowser'
@@ -17,6 +18,7 @@ interface DriveBrowserProps {
 
 export function DriveBrowser({ userId }: DriveBrowserProps) {
 	const { profile } = useUser()
+	const { selectedMemberId } = useFamilyContext()
 	const browser = useDriveBrowser(userId)
 	const { members } = useFamilyMembers(userId, profile?.name ?? 'Me')
 	const { assignments, refresh } = useHealthSources(userId)
@@ -29,6 +31,7 @@ export function DriveBrowser({ userId }: DriveBrowserProps) {
 		folderName: browser.currentFolderName,
 		members,
 		assignments,
+		preferredMemberId: selectedMemberId,
 		onRefresh: async () => {
 			await refresh()
 		},

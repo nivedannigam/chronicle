@@ -222,9 +222,7 @@ export function HealthSourcesPage() {
 						isRunning={isScanning}
 						errorMessage={journeyError}
 						onRetry={() => void handleScanNow()}
-						onChooseDifferentFolder={() =>
-							navigate(ROUTES.connectorsGoogleDrive)
-						}
+						onChooseDifferentFolder={() => navigate(ROUTES.healthFolderSetup)}
 						onClose={() => setJourneyResult(null)}
 					/>
 				</div>
@@ -336,7 +334,7 @@ export function HealthSourcesPage() {
 					</div>
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.connectorsGoogleDrive)}
+						onClick={() => navigate(ROUTES.healthFolderSetup)}
 						style={{
 							background: C.accent,
 							border: 'none',
@@ -394,9 +392,7 @@ export function HealthSourcesPage() {
 											memberLabel={memberLabel}
 											folderName=""
 											status="not_configured"
-											onSelectFolder={() =>
-												navigate(ROUTES.connectorsGoogleDrive)
-											}
+											onSelectFolder={() => navigate(ROUTES.healthFolderSetup)}
 										/>
 									</div>
 								)
@@ -428,7 +424,7 @@ export function HealthSourcesPage() {
 											nextScheduledScanAt={
 												folderStatus?.nextScheduledScanAt ?? null
 											}
-											onChange={() => navigate(ROUTES.connectorsGoogleDrive)}
+											onChange={() => navigate(ROUTES.healthFolderSetup)}
 											onRemove={() =>
 												void handleRemoveAssignment(
 													assignment.id,

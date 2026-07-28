@@ -211,7 +211,7 @@ export function HealthSettingsPage() {
 					No folder assigned for {memberLabel} yet.
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.profileConnectionsDrive)}
+						onClick={() => navigate(ROUTES.healthFolderSetup)}
 						style={{
 							display: 'block',
 							marginTop: 12,
@@ -303,7 +303,7 @@ export function HealthSettingsPage() {
 									</div>
 									<button
 										type="button"
-										onClick={() => navigate(ROUTES.profileConnectionsDrive)}
+										onClick={() => navigate(ROUTES.healthFolderSetup)}
 										style={{
 											background: FC.ghost,
 											border: `1px solid ${FC.line}`,
@@ -420,9 +420,7 @@ export function HealthSettingsPage() {
 						isRunning={isScanning}
 						errorMessage={journeyError}
 						onRetry={() => void handleScanNow()}
-						onChooseDifferentFolder={() =>
-							navigate(ROUTES.profileConnectionsDrive)
-						}
+						onChooseDifferentFolder={() => navigate(ROUTES.healthFolderSetup)}
 						onClose={() => {
 							setJourneyResult(null)
 							setJourneyError(null)
