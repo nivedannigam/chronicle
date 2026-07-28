@@ -18,12 +18,12 @@ export interface DuplicateCheckResult {
 }
 
 export class DuplicateHealthReportError extends Error {
-	constructor(
-		message: string,
-		public existingReportId: string,
-	) {
+	existingReportId: string
+
+	constructor(message: string, existingReportId: string) {
 		super(message)
 		this.name = 'DuplicateHealthReportError'
+		this.existingReportId = existingReportId
 	}
 }
 

@@ -8,7 +8,8 @@ export type HealthCategoryId =
 	| 'blood-count'
 	| 'general'
 
-export type MetricStatus = 'normal' | 'low' | 'high' | 'critical'
+export type MetricStatus =
+	'normal' | 'low' | 'high' | 'critical' | 'borderline' | 'unknown'
 
 export type SnapshotTrend = 'improving' | 'stable' | 'declining' | 'attention'
 

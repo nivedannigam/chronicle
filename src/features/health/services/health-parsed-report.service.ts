@@ -184,7 +184,7 @@ export function parseStoredHealthReport(
 				? data.createdAt
 				: new Date().toISOString(),
 		debug: isRecord(data.debug)
-			? (data.debug as DomainHealthReport['debug'])
+			? (data.debug as unknown as DomainHealthReport['debug'])
 			: undefined,
 	}
 }

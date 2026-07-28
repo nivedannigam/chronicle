@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { FC } from '@/ui/figma/tokens/figma-v2-tokens'
+import { figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function FigmaHealthRing({
 	score,
