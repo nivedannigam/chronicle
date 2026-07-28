@@ -2,6 +2,7 @@ export const ROUTES = {
 	root: '/',
 	login: '/login',
 	authCallback: '/auth/callback',
+	search: '/search',
 	home: '/home',
 	homeActivity: '/home/activity',
 	timeline: '/timeline',

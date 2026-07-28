@@ -170,7 +170,7 @@ export function FigmaDocumentsScreen() {
 			<div style={{ padding: '4px 0 18px' }}>
 				<button
 					type="button"
-					onClick={() => navigate(ROUTES.ask)}
+					onClick={() => navigate(ROUTES.search)}
 					style={{
 						width: '100%',
 						background: FC.surface,

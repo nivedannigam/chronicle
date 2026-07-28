@@ -119,7 +119,7 @@ export function HealthLayout() {
 					<div style={{ display: 'flex', gap: 10 }}>
 						<button
 							type="button"
-							onClick={() => navigate(ROUTES.ask)}
+							onClick={() => navigate(ROUTES.search)}
 							aria-label="Search"
 							style={{
 								width: 36,

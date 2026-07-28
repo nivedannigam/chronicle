@@ -20,6 +20,7 @@ const MORE_MODULE_PREFIXES = [
 	ROUTES.settingsConnectorsDrive,
 	ROUTES.settingsNotifications,
 	ROUTES.settingsAppearance,
+	ROUTES.search,
 	ROUTES.timeline,
 	ROUTES.mail,
 	ROUTES.tasks,

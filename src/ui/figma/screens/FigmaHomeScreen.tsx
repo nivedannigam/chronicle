@@ -296,7 +296,7 @@ export function FigmaHomeScreen() {
 					</div>
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.ask)}
+						onClick={() => navigate(ROUTES.search)}
 						aria-label="Search"
 						style={{
 							marginTop: 4,

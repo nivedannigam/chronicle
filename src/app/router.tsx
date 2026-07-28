@@ -49,9 +49,10 @@ import {
 	DocumentsPage,
 } from '@/features/documents'
 import { TimelinePage } from '@/features/timeline'
+import { SearchPage } from '@/features/search'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
-import { NotFoundPage } from '@/pages/NotFound/NotFoundPage'
+import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
 
 export function AppRouter() {
 	const isDev = import.meta.env.DEV
@@ -104,6 +105,7 @@ export function AppRouter() {
 						element={<SettingsAppearancePage />}
 					/>
 					<Route path={ROUTES.ask} element={<AskPage />} />
+					<Route path={ROUTES.search} element={<SearchPage />} />
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
 					<Route path={ROUTES.more} element={<MorePage />} />
@@ -241,10 +243,9 @@ export function AppRouter() {
 							/>
 						</>
 					)}
+					<Route path="*" element={<FigmaNotFoundScreen />} />
 				</Route>
 			</Route>
-
-			<Route path="*" element={<NotFoundPage />} />
 		</Routes>
 	)
 }
