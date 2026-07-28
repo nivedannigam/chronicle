@@ -22,6 +22,8 @@ body {
 	padding: 0;
 	background: #050507;
 	min-height: 100vh;
+	height: 100%;
+	overflow: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -48,6 +50,8 @@ input::placeholder {
 
 	#root {
 		@apply min-h-dvh;
+		height: 100%;
+		overflow: hidden;
 	}
 }
 

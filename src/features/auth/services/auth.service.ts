@@ -1,4 +1,5 @@
 import { ROUTES } from '@/constants/routes'
+import { clearAllAskSessionsForUser } from '@/features/ask/services/ask-session.service'
 import { buildAppUrl } from '@/lib/app-url'
 import { supabase } from '@/lib/supabase'
 
@@ -25,6 +26,14 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
+	const {
+		data: { user },
+	} = await supabase.auth.getUser()
+
+	if (user?.id) {
+		clearAllAskSessionsForUser(user.id)
+	}
+
 	const { error } = await supabase.auth.signOut()
 
 	if (error) {

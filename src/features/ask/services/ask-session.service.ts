@@ -201,6 +201,35 @@ export function deleteAskSession(sessionId: string): void {
 	}
 }
 
+/** Remove all Ask sessions for a user from browser storage. */
+export function clearAllAskSessionsForUser(userId: string): void {
+	if (typeof window === 'undefined' || !userId) {
+		return
+	}
+
+	const sessions = readIndex().filter((session) =>
+		session.id.startsWith(`${userId}:`),
+	)
+
+	for (const session of sessions) {
+		try {
+			window.localStorage.removeItem(sessionDataKey(session.id))
+		} catch {
+			// Ignore.
+		}
+	}
+
+	writeIndex(
+		readIndex().filter((session) => !session.id.startsWith(`${userId}:`)),
+	)
+
+	try {
+		window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+	} catch {
+		// Ignore.
+	}
+}
+
 /** Migrate legacy per-member session keys into indexed sessions once. */
 export function migrateLegacySessions(userId: string): void {
 	if (typeof window === 'undefined') {

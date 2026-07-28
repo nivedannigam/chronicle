@@ -18,39 +18,30 @@ const NAV_ITEMS: {
 
 const TAB_TRANSITION = 'all 0.28s cubic-bezier(0.34, 1.2, 0.64, 1)'
 
-export function FigmaBottomNav({
-	browserChromeInset = '0px',
-}: {
-	browserChromeInset?: string
-}) {
+export function FigmaBottomNav() {
 	const { tab, setTab } = useActiveTab()
 
 	return (
 		<nav
 			aria-label="Primary navigation"
 			style={{
-				position: 'absolute',
-				bottom: `calc(14px + env(safe-area-inset-bottom, 0px) + ${browserChromeInset})`,
-				left: 16,
-				right: 16,
-				zIndex: 100,
-				pointerEvents: 'none',
+				width: '100%',
+				pointerEvents: 'auto',
 			}}
 		>
 			<div
 				style={{
-					pointerEvents: 'auto',
-					background: 'rgba(18,18,22,0.78)',
+					background: 'rgba(18,18,22,0.82)',
 					backdropFilter: 'blur(40px) saturate(180%)',
 					WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-					border: '1px solid rgba(255,255,255,0.1)',
+					border: '1px solid rgba(255,255,255,0.12)',
 					borderRadius: 28,
 					padding: '10px 8px',
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'space-around',
 					boxShadow:
-						'0 12px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.07)',
+						'0 16px 48px rgba(0,0,0,0.62), 0 4px 12px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.08)',
 				}}
 			>
 				{NAV_ITEMS.map(({ id, Icon, label, center }) => {

@@ -59,6 +59,24 @@ export function shouldShowDecorativeStatusBar(): boolean {
 	return shouldShowPhoneFrame()
 }
 
+/** Floating bottom nav dock — pinned above scrollable content. */
+export function shellNavDockStyle(usePhoneFrame: boolean) {
+	return {
+		position: (usePhoneFrame ? 'absolute' : 'fixed') as 'absolute' | 'fixed',
+		left: 0,
+		right: 0,
+		bottom: 0,
+		zIndex: 200,
+		pointerEvents: 'none' as const,
+		padding: `0 20px calc(22px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-chrome, 0px))`,
+		background:
+			'linear-gradient(to top, rgba(9,9,11,0.94) 0%, rgba(9,9,11,0.55) 52%, transparent 100%)',
+	}
+}
+
+export const NAV_DOCK_CONTENT_INSET =
+	'calc(128px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-chrome, 0px))'
+
 export const phoneFrameStyle = {
 	outer: {
 		minHeight: '100vh',
@@ -89,7 +107,7 @@ export const phoneFrameStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom: 118,
+		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	},
 }
 
@@ -123,8 +141,7 @@ export const standaloneLayoutStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom:
-			'calc(118px + env(safe-area-inset-bottom) + var(--mobile-browser-chrome, 0px))',
+		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	} as const,
 }
 
