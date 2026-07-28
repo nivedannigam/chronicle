@@ -1,5 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { LoginPage, ProtectedRoute, PublicRoute } from '@/features/auth'
+import {
+	LoginPage,
+	ProtectedRoute,
+	PublicRoute,
+	AuthCallbackPage,
+} from '@/features/auth'
 import { AskPage } from '@/features/ask'
 import {
 	ConnectorDebugPage,
@@ -60,6 +65,7 @@ export function AppRouter() {
 
 			<Route element={<PublicRoute />}>
 				<Route path={ROUTES.login} element={<LoginPage />} />
+				<Route path={ROUTES.authCallback} element={<AuthCallbackPage />} />
 			</Route>
 
 			<Route element={<ProtectedRoute />}>

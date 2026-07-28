@@ -1,16 +1,38 @@
-import { C } from '@/constants/colors'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { C, isMobileDevice, isStandaloneDisplayMode } from '@/constants/colors'
 import { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton'
 
 export function LoginPage() {
+	const [searchParams] = useSearchParams()
+	const authError = searchParams.get('error')
+	const isCompact = isStandaloneDisplayMode() || isMobileDevice()
+
+	const shellStyle = useMemo(
+		() =>
+			isCompact
+				? {
+						minHeight: '100dvh',
+						background: C.bg,
+						padding: '32px 24px',
+						paddingTop: 'calc(32px + env(safe-area-inset-top))',
+						paddingBottom: 'calc(32px + env(safe-area-inset-bottom))',
+					}
+				: {
+						minHeight: '100vh',
+						background: C.outerBg,
+						padding: '32px 16px',
+					},
+		[isCompact],
+	)
+
 	return (
 		<div
 			style={{
-				minHeight: '100vh',
-				background: C.outerBg,
+				...shellStyle,
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'center',
-				padding: '32px 16px',
 				fontFamily:
 					'-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
 				WebkitFontSmoothing: 'antialiased',
@@ -68,14 +90,46 @@ export function LoginPage() {
 					style={{
 						fontSize: 15,
 						color: C.textSec,
-						margin: '0 0 40px',
+						margin: '0 0 24px',
 						lineHeight: 1.5,
 					}}
 				>
 					Your family health and documents — organized, searchable, and private.
 				</p>
 
+				{!isStandaloneDisplayMode() && isMobileDevice() ? (
+					<p
+						style={{
+							fontSize: 13,
+							color: C.textMuted,
+							margin: '0 0 20px',
+							lineHeight: 1.5,
+							maxWidth: 300,
+						}}
+					>
+						For the best experience, tap Share →{' '}
+						<strong style={{ color: C.textSec, fontWeight: 600 }}>
+							Add to Home Screen
+						</strong>{' '}
+						after signing in.
+					</p>
+				) : null}
+
 				<GoogleSignInButton />
+
+				{authError ? (
+					<p
+						style={{
+							marginTop: 16,
+							fontSize: 13,
+							color: C.red,
+							lineHeight: 1.5,
+							maxWidth: 320,
+						}}
+					>
+						{authError}
+					</p>
+				) : null}
 			</div>
 		</div>
 	)

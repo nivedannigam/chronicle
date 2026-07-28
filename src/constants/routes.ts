@@ -1,6 +1,7 @@
 export const ROUTES = {
 	root: '/',
 	login: '/login',
+	authCallback: '/auth/callback',
 	home: '/home',
 	homeActivity: '/home/activity',
 	timeline: '/timeline',

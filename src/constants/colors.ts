@@ -29,10 +29,34 @@ export function isStandaloneDisplayMode(): boolean {
 
 	return (
 		window.matchMedia('(display-mode: standalone)').matches ||
-		// iOS Safari
+		window.matchMedia('(display-mode: fullscreen)').matches ||
+		window.matchMedia('(display-mode: minimal-ui)').matches ||
+		// iOS Safari — added to Home Screen
 		(window.navigator as Navigator & { standalone?: boolean }).standalone ===
 			true
 	)
+}
+
+/** True on phones/tablets — not the desktop dev preview frame. */
+export function isMobileDevice(): boolean {
+	if (typeof window === 'undefined') {
+		return false
+	}
+
+	return (
+		window.matchMedia('(max-width: 768px)').matches ||
+		/iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent)
+	)
+}
+
+/** Decorative phone frame only on desktop browser tabs. */
+export function shouldShowPhoneFrame(): boolean {
+	return !isStandaloneDisplayMode() && !isMobileDevice()
+}
+
+/** Fake iOS status bar only inside the desktop phone-frame preview. */
+export function shouldShowDecorativeStatusBar(): boolean {
+	return shouldShowPhoneFrame()
 }
 
 export const phoneFrameStyle = {
@@ -78,6 +102,7 @@ export const standaloneLayoutStyle = {
 		fontFamily:
 			'-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
 		WebkitFontSmoothing: 'antialiased' as const,
+		paddingTop: 'env(safe-area-inset-top)',
 	} as const,
 	inner: {
 		flex: 1,
@@ -96,6 +121,9 @@ export const standaloneLayoutStyle = {
 		paddingBottom: 'calc(110px + env(safe-area-inset-bottom))',
 	} as const,
 }
+
+/** Full-viewport layout for mobile Safari / Chrome (not the desktop preview frame). */
+export const mobileBrowserLayoutStyle = standaloneLayoutStyle
 
 export const pagePadding = {
 	home: '16px 18px 20px',

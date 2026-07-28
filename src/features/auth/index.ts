@@ -1,3 +1,4 @@
+export { AuthCallbackPage } from '@/features/auth/components/AuthCallbackPage'
 export { AuthProvider } from '@/features/auth/components/AuthProvider'
 export { AuthLoadingScreen } from '@/features/auth/components/AuthLoadingScreen'
 export { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton'
