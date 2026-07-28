@@ -1,15 +1,13 @@
 import { ROUTES } from '@/constants/routes'
+import { buildAppUrl } from '@/lib/app-url'
 import { supabase } from '@/lib/supabase'
-
-function authRedirectUrl(path = ROUTES.authCallback): string {
-	return `${window.location.origin}${path}`
-}
 
 export async function signInWithGoogle() {
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
-			redirectTo: authRedirectUrl(),
+			// Always return to the canonical domain so OAuth does not hop between Vercel aliases.
+			redirectTo: buildAppUrl(ROUTES.authCallback),
 			queryParams: {
 				prompt: 'select_account',
 			},

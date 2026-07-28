@@ -4,6 +4,7 @@
 interface ImportMetaEnv {
 	readonly VITE_SUPABASE_URL: string
 	readonly VITE_SUPABASE_ANON_KEY: string
+	readonly VITE_APP_URL?: string
 	readonly VITE_OCR_PROVIDER?: 'google' | 'azure'
 	readonly VITE_OCR_TIMEOUT_MS?: string
 	readonly VITE_OCR_MIN_CONFIDENCE?: string

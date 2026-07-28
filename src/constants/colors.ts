@@ -93,6 +93,11 @@ export const phoneFrameStyle = {
 	},
 }
 
+/** Extra bottom inset when Safari/Chrome browser chrome is visible. */
+export function mobileBrowserChromeInset(): string {
+	return isMobileDevice() && !isStandaloneDisplayMode() ? '52px' : '0px'
+}
+
 export const standaloneLayoutStyle = {
 	outer: {
 		minHeight: '100dvh',
@@ -118,7 +123,8 @@ export const standaloneLayoutStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom: 'calc(110px + env(safe-area-inset-bottom))',
+		paddingBottom:
+			'calc(110px + env(safe-area-inset-bottom) + var(--mobile-browser-chrome, 0px))',
 	} as const,
 }
 

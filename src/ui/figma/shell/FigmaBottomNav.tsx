@@ -16,14 +16,18 @@ const NAV_ITEMS: {
 	{ id: 'profile', Icon: User, label: 'Profile' },
 ]
 
-export function FigmaBottomNav() {
+export function FigmaBottomNav({
+	browserChromeInset = '0px',
+}: {
+	browserChromeInset?: string
+}) {
 	const { tab, setTab } = useActiveTab()
 
 	return (
 		<div
 			style={{
 				position: 'absolute',
-				bottom: 22,
+				bottom: `calc(22px + ${browserChromeInset})`,
 				left: 14,
 				right: 14,
 				background: 'rgba(10,10,14,0.94)',

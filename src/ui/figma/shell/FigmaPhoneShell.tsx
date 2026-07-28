@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
 import {
 	isStandaloneDisplayMode,
+	mobileBrowserChromeInset,
 	mobileBrowserLayoutStyle,
 	phoneFrameStyle,
 	shouldShowDecorativeStatusBar,
 	shouldShowPhoneFrame,
 	standaloneLayoutStyle,
 } from '@/constants/colors'
+import { BrowserInstallBanner } from '@/ui/figma/shell/BrowserInstallBanner'
 import { FigmaBottomNav } from '@/ui/figma/shell/FigmaBottomNav'
 import { FigmaStatusBar } from '@/ui/figma/shell/StatusBar'
 
@@ -26,13 +28,20 @@ function resolveShellLayout() {
 export function FigmaPhoneShell({ children }: { children?: ReactNode }) {
 	const layout = resolveShellLayout()
 	const showDecorativeStatusBar = shouldShowDecorativeStatusBar()
+	const browserChromeInset = mobileBrowserChromeInset()
+
+	const outerStyle: CSSProperties = {
+		...layout.outer,
+		['--mobile-browser-chrome' as string]: browserChromeInset,
+	}
 
 	return (
-		<div style={layout.outer}>
+		<div style={outerStyle}>
 			<div style={layout.inner}>
 				{showDecorativeStatusBar ? <FigmaStatusBar /> : null}
+				<BrowserInstallBanner />
 				<div style={layout.content}>{children ?? <Outlet />}</div>
-				<FigmaBottomNav />
+				<FigmaBottomNav browserChromeInset={browserChromeInset} />
 			</div>
 		</div>
 	)

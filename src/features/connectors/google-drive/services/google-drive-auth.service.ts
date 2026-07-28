@@ -1,4 +1,5 @@
 import { ROUTES } from '@/constants/routes'
+import { buildAppUrl } from '@/lib/app-url'
 import { logConnectorRequest } from '@/features/connectors/services/connector-request-logger'
 import { supabase } from '@/lib/supabase'
 
@@ -26,7 +27,7 @@ export interface VerifyGoogleDriveConnectionResult {
 }
 
 export async function connectGoogleDriveIncremental(): Promise<void> {
-	const redirectTo = `${window.location.origin}${ROUTES.connectorsGoogleDrive}`
+	const redirectTo = buildAppUrl(ROUTES.connectorsGoogleDrive)
 
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider: 'google',
