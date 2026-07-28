@@ -41,6 +41,7 @@ export interface DiscoveryRunSummary {
 	medicalCount: number
 	reviewCount: number
 	ignoredCount: number
+	duplicateCount: number
 	errorMessage: string | null
 }
 

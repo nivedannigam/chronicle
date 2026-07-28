@@ -5,7 +5,10 @@ import {
 	listRegistryRecords,
 	updateRegistryRecord,
 } from '@/features/connectors/services/connector-store.service'
-import { checkForDuplicate } from '@/features/health-import/services/duplicate-detection.service'
+import {
+	checkForDuplicate,
+	duplicateSkipMessage,
+} from '@/features/health-import/services/duplicate-detection.service'
 import {
 	formatFileTooLargeError,
 	HEALTH_REPORT_MAX_FILE_SIZE_BYTES,
@@ -173,7 +176,9 @@ export async function queueApprovedImports(
 			if (duplicate.isDuplicate && duplicate.existing) {
 				await updateRegistryRecord(row.id as string, {
 					importStatus: 'skipped',
-					errorMessage: 'Duplicate file',
+					errorMessage: duplicate.reason
+						? duplicateSkipMessage(duplicate.reason)
+						: 'Duplicate file',
 				})
 				summary.duplicates += 1
 				summary.skipped += 1

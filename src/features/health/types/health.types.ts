@@ -149,6 +149,7 @@ export interface UploadedHealthReport {
 	external_file_id?: string | null
 	external_modified_at?: string | null
 	connector_id?: string | null
+	file_hash?: string | null
 }
 
 export interface HealthReportProcessingQueueItem {

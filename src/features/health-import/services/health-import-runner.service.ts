@@ -143,6 +143,7 @@ async function importRegistryRecord(
 		external_file_id: registry.external_file_id,
 		external_modified_at: registry.external_modified_at,
 		connector_id: 'google-drive',
+		...(download.sha256Checksum ? { file_hash: download.sha256Checksum } : {}),
 	}
 
 	const { data: existingReport } = await supabase

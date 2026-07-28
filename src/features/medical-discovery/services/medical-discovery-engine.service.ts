@@ -2,7 +2,11 @@ import { supabase } from '@/lib/supabase'
 import { discoverDriveFiles } from '@/features/connectors/google-drive/services/google-drive-api.service'
 import { findRegistryByExternalFileId } from '@/features/connectors/services/connector-store.service'
 import { listHealthSourceAssignments } from '@/features/family/services/health-sources.service'
-import { shouldPreserveImportStatus } from '@/features/health-import/services/duplicate-detection.service'
+import {
+	checkDiscoveryDuplicate,
+	duplicateSkipMessage,
+	shouldPreserveImportStatus,
+} from '@/features/health-import/services/duplicate-detection.service'
 import { scoreMedicalFile } from '@/features/medical-discovery/services/medical-scoring.service'
 import type {
 	DiscoveryDashboardStats,
@@ -23,6 +27,7 @@ function mapDiscoveryRun(row: Record<string, unknown>): DiscoveryRunSummary {
 		medicalCount: Number(row.medical_count ?? 0),
 		reviewCount: Number(row.review_count ?? 0),
 		ignoredCount: Number(row.ignored_count ?? 0),
+		duplicateCount: Number(row.duplicate_count ?? 0),
 		errorMessage: (row.error_message as string | null) ?? null,
 	}
 }
@@ -45,6 +50,7 @@ async function completeDiscoveryRun(
 	runId: string,
 	summary: Partial<DiscoveryRunSummary> & {
 		status: DiscoveryRunSummary['status']
+		duplicateCount?: number
 	},
 ) {
 	const { error } = await supabase
@@ -57,6 +63,7 @@ async function completeDiscoveryRun(
 			medical_count: summary.medicalCount,
 			review_count: summary.reviewCount,
 			ignored_count: summary.ignoredCount,
+			duplicate_count: summary.duplicateCount ?? 0,
 			error_message: summary.errorMessage ?? null,
 		})
 		.eq('id', runId)
@@ -114,10 +121,68 @@ export async function runMedicalDiscovery(input: {
 		let medicalCount = 0
 		let reviewCount = 0
 		let ignoredCount = 0
+		let duplicateCount = 0
 
 		const assignedFolderIds = new Set(folderIds)
 
 		for (const [index, item] of response.items.entries()) {
+			const existing = await findRegistryByExternalFileId(
+				input.userId,
+				'google-drive',
+				item.externalFileId,
+			)
+
+			const duplicate = await checkDiscoveryDuplicate({
+				userId: input.userId,
+				item,
+			})
+
+			if (duplicate.isDuplicate) {
+				duplicateCount += 1
+
+				const assignment = assignments.find(
+					(a) => a.externalFolderId === item.folderExternalId,
+				)
+				const familyMemberIds = membersByFolder.get(item.folderExternalId) ?? []
+				const primaryMemberId = familyMemberIds[0] ?? null
+
+				await supabase.from('connector_document_registry').upsert(
+					{
+						user_id: input.userId,
+						connector_id: 'google-drive',
+						external_file_id: item.externalFileId,
+						file_name: item.fileName,
+						mime_type: item.mimeType,
+						checksum: item.checksum,
+						file_size: item.fileSize,
+						external_created_at: item.externalCreatedAt,
+						external_modified_at: item.externalModifiedAt,
+						folder_id: assignment?.folderId ?? null,
+						family_member_id: primaryMemberId,
+						folder_path: item.folderPath ?? null,
+						discovery_category: 'ignored',
+						discovery_confidence: 0,
+						discovery_reason: duplicateSkipMessage(
+							duplicate.reason ?? 'unchanged',
+						),
+						approval_status: 'rejected',
+						import_status: 'skipped',
+						registry_status: existing?.registryStatus ?? 'discovered',
+						error_message: duplicateSkipMessage(
+							duplicate.reason ?? 'unchanged',
+						),
+						health_report_id:
+							duplicate.existingReportId ?? existing?.healthReportId ?? null,
+						last_sync_at: new Date().toISOString(),
+						updated_at: new Date().toISOString(),
+					},
+					{ onConflict: 'user_id,connector_id,external_file_id' },
+				)
+
+				input.onProgress?.({ scanned: index + 1, total: response.items.length })
+				continue
+			}
+
 			const score = scoreMedicalFile({
 				fileName: item.fileName,
 				mimeType: item.mimeType,
@@ -154,12 +219,6 @@ export async function runMedicalDiscovery(input: {
 
 			const assignment = assignments.find(
 				(a) => a.externalFolderId === item.folderExternalId,
-			)
-
-			const existing = await findRegistryByExternalFileId(
-				input.userId,
-				'google-drive',
-				item.externalFileId,
 			)
 
 			const approvalStatus =
@@ -209,10 +268,11 @@ export async function runMedicalDiscovery(input: {
 		await completeDiscoveryRun(run.id, {
 			status: 'completed',
 			foldersScanned: folderIds.length,
-			filesScanned: scoredFiles.length,
+			filesScanned: scoredFiles.length + duplicateCount,
 			medicalCount,
 			reviewCount,
 			ignoredCount,
+			duplicateCount,
 		})
 
 		return {
@@ -221,10 +281,11 @@ export async function runMedicalDiscovery(input: {
 				status: 'completed',
 				completedAt: new Date().toISOString(),
 				foldersScanned: folderIds.length,
-				filesScanned: scoredFiles.length,
+				filesScanned: scoredFiles.length + duplicateCount,
 				medicalCount,
 				reviewCount,
 				ignoredCount,
+				duplicateCount,
 			},
 			files: scoredFiles,
 		}

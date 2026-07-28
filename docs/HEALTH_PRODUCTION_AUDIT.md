@@ -163,7 +163,19 @@ Run `scripts/health-demo-cleanup.sql` after reviewing counts. Removes mock-OCR r
 
 ---
 
-## Reimport Validation Checklist
+## Duplicate Detection (Scan + Upload)
+
+| Stage             | Behavior                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| **Drive scan**    | `checkDiscoveryDuplicate` skips unchanged/completed files; marks registry `skipped` |
+| **Import queue**  | `checkForDuplicate` skips before download                                           |
+| **Import load**   | Skips re-download/OCR if `health_reports.status = completed`                        |
+| **Manual upload** | SHA-256 `file_hash` dedupe per user + family member                                 |
+| **Database**      | Unique `(user_id, external_file_id)` on Drive imports                               |
+
+Migration: `20260735120000_health_reports_file_hash.sql`
+
+---
 
 After cleanup, re-upload one known lab PDF and verify:
 

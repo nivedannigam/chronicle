@@ -1,5 +1,10 @@
 import { HEALTH_REPORT_MAX_FILE_SIZE_BYTES } from '@/features/health-import/constants/import-limits'
+import {
+	checkForDuplicateManualUpload,
+	DuplicateHealthReportError,
+} from '@/features/health-import/services/duplicate-detection.service'
 import { supabase } from '@/lib/supabase'
+import { computeFileSha256 } from '@/lib/file-hash'
 import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
@@ -42,6 +47,32 @@ export async function uploadHealthReport(
 		throw new Error(`File must be ${limitMb} MB or smaller.`)
 	}
 
+	const fileHash = await computeFileSha256(file)
+	const duplicate = await checkForDuplicateManualUpload({
+		userId,
+		fileHash,
+		familyMemberId,
+	})
+
+	if (duplicate.isDuplicate && duplicate.existingReport) {
+		const existing = duplicate.existingReport
+		const uploadedDate = new Date(existing.uploaded_at).toLocaleDateString(
+			'en-US',
+			{
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric',
+			},
+		)
+
+		throw new DuplicateHealthReportError(
+			existing.status === 'completed'
+				? `This report was already uploaded as “${existing.file_name}” on ${uploadedDate}.`
+				: `This report is already being processed as “${existing.file_name}”.`,
+			existing.id,
+		)
+	}
+
 	const reportId = crypto.randomUUID()
 	const storagePath = `${userId}/${reportId}_${sanitizeFileName(file.name)}`
 
@@ -66,6 +97,7 @@ export async function uploadHealthReport(
 			report_date: new Date().toISOString().slice(0, 10),
 			report_type: 'general',
 			status: 'uploaded',
+			file_hash: fileHash,
 		})
 		.select('*')
 		.single()

@@ -102,6 +102,7 @@ export async function runHealthImportJourney(
 		const medicalReports = run.medicalCount
 		const needsReview = run.reviewCount
 		const skippedIgnored = run.ignoredCount
+		const duplicatesSkipped = run.duplicateCount
 		const importCandidates = medicalReports + needsReview
 		const documentsScanned = importCandidates
 
@@ -116,8 +117,10 @@ export async function runHealthImportJourney(
 			phasesCompleted,
 			phasesSucceeded,
 			importCandidates > 0
-				? `Found ${importCandidates} import candidate${importCandidates === 1 ? '' : 's'}`
-				: 'No import candidates detected',
+				? `Found ${importCandidates} import candidate${importCandidates === 1 ? '' : 's'}${duplicatesSkipped > 0 ? ` · ${duplicatesSkipped} duplicate${duplicatesSkipped === 1 ? '' : 's'} skipped` : ''}`
+				: duplicatesSkipped > 0
+					? `${duplicatesSkipped} duplicate file${duplicatesSkipped === 1 ? '' : 's'} skipped — nothing new to import`
+					: 'No import candidates detected',
 		)
 
 		if (importCandidates === 0) {
