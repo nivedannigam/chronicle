@@ -50,7 +50,7 @@ export function FamilyMemberDetailPage() {
 					</p>
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.family)}
+						onClick={() => navigate(ROUTES.profileFamily)}
 						style={{
 							...healthPrimaryButtonStyle,
 							margin: '0 auto',
@@ -67,7 +67,7 @@ export function FamilyMemberDetailPage() {
 		<HealthScreen padding="0 18px 20px">
 			<HealthSubpageHeader
 				backLabel="Family"
-				onBack={() => navigate(ROUTES.family)}
+				onBack={() => navigate(ROUTES.profileFamily)}
 				title={member.displayName}
 				subtitle={member.relationship}
 				badge={

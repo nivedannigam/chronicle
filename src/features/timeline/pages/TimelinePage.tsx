@@ -1,69 +1,49 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { C, screenTitleStyle } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
 import { TimelineFeed } from '@/features/timeline/components/TimelineFilters'
-import { HealthPageIntro } from '@/ui/figma/health/health-ui'
+import {
+	FigmaHeaderSearchButton,
+	FigmaScreenHeader,
+} from '@/ui/figma/shell/FigmaScreenHeader'
 
 export function TimelinePage() {
 	const navigate = useNavigate()
 
 	return (
-		<div style={{ color: C.text, padding: '0 18px' }}>
+		<div
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				minHeight: 0,
+				flex: 1,
+			}}
+		>
+			<FigmaScreenHeader
+				title="Timeline"
+				subtitle="One story across health, documents, and family life"
+				actions={
+					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+				}
+			/>
+
 			<div
 				style={{
-					position: 'sticky',
-					top: 0,
-					zIndex: 10,
-					background: C.bg,
-					paddingTop: 4,
-					paddingBottom: 14,
-					marginBottom: 4,
-					borderBottom: `1px solid ${C.border}`,
+					padding: '0 22px 12px',
+					flexShrink: 0,
 				}}
 			>
-				<button
-					type="button"
-					onClick={() => navigate(ROUTES.more)}
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 6,
-						background: 'none',
-						border: 'none',
-						padding: '0 0 12px',
-						cursor: 'pointer',
-						color: C.textSec,
-						fontFamily: 'inherit',
-						fontSize: 14,
-					}}
-				>
-					<ArrowLeft size={18} />
-					Back
-				</button>
-
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: 12,
-					}}
-				>
-					<div style={{ ...screenTitleStyle, flex: 1, minWidth: 0 }}>
-						Life Timeline
-					</div>
-					<FamilyMemberSwitcher />
-				</div>
+				<FamilyMemberSwitcher />
 			</div>
 
-			<div style={{ padding: '8px 0 20px' }}>
-				<HealthPageIntro>
-					One chronological story across health, documents, and everything
-					Chronicle learns about your family.
-				</HealthPageIntro>
-
+			<div
+				style={{
+					flex: 1,
+					overflowY: 'auto',
+					padding: '0 22px 24px',
+					scrollbarWidth: 'none',
+				}}
+			>
 				<TimelineFeed />
 			</div>
 		</div>

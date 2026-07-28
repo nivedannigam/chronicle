@@ -11,13 +11,7 @@ const TAB_ROUTES: Record<Tab, string> = {
 
 const MORE_MODULE_PREFIXES = [
 	ROUTES.documents,
-	ROUTES.family,
 	ROUTES.settings,
-	ROUTES.preferences,
-	ROUTES.integrations,
-	ROUTES.settingsAccount,
-	ROUTES.settingsData,
-	ROUTES.settingsConnectorsDrive,
 	ROUTES.settingsNotifications,
 	ROUTES.settingsAppearance,
 	ROUTES.search,
@@ -31,7 +25,8 @@ export function tabFromPath(pathname: string): Tab {
 	if (pathname.startsWith(ROUTES.health)) return 'health'
 	if (
 		pathname.startsWith(ROUTES.profile) ||
-		pathname.startsWith(ROUTES.settings)
+		pathname.startsWith(ROUTES.settings) ||
+		pathname.startsWith(ROUTES.family)
 	) {
 		return 'profile'
 	}

@@ -5,14 +5,14 @@ import {
 	LayoutGrid,
 	Lightbulb,
 	ScrollText,
-	Search,
 	SlidersHorizontal,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/features/auth/hooks/useAuth'
-import { useUser } from '@/features/user/hooks/useUser'
-import { memberInitial } from '@/ui/figma/home/home-ui'
+import {
+	FigmaHeaderSearchButton,
+	FigmaScreenHeader,
+} from '@/ui/figma/shell/FigmaScreenHeader'
 import { FC } from '@/ui/figma/tokens/figma-v2-tokens'
 
 const HEALTH_TABS: {
@@ -82,10 +82,6 @@ function isTabActive(
 export function HealthLayout() {
 	const navigate = useNavigate()
 	const location = useLocation()
-	const { user } = useAuth()
-	const { profile } = useUser()
-	const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'You'
-	const initial = memberInitial(displayName)
 
 	return (
 		<div
@@ -96,68 +92,13 @@ export function HealthLayout() {
 				flex: 1,
 			}}
 		>
-			<div style={{ padding: '0 22px 0', flexShrink: 0 }}>
-				<div
-					style={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						marginBottom: 18,
-					}}
-				>
-					<h1
-						style={{
-							color: FC.fg,
-							fontSize: 34,
-							fontWeight: 700,
-							letterSpacing: -1.6,
-							margin: 0,
-						}}
-					>
-						Health
-					</h1>
-					<div style={{ display: 'flex', gap: 10 }}>
-						<button
-							type="button"
-							onClick={() => navigate(ROUTES.search)}
-							aria-label="Search"
-							style={{
-								width: 36,
-								height: 36,
-								borderRadius: 12,
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							<Search size={20} color={FC.dim} strokeWidth={1.8} />
-						</button>
-						<button
-							type="button"
-							onClick={() => navigate(ROUTES.profile)}
-							aria-label="Profile"
-							style={{
-								width: 34,
-								height: 34,
-								borderRadius: 17,
-								background: `linear-gradient(135deg,${FC.blue},${FC.indigo})`,
-								border: 'none',
-								cursor: 'pointer',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							<span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>
-								{initial}
-							</span>
-						</button>
-					</div>
-				</div>
-
+			<FigmaScreenHeader
+				title="Health"
+				actions={
+					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+				}
+				paddingBottom={0}
+			>
 				<div
 					style={{
 						display: 'flex',
@@ -167,6 +108,7 @@ export function HealthLayout() {
 						border: `1px solid ${FC.line}`,
 						borderRadius: 26,
 						padding: '5px 6px',
+						marginTop: 18,
 						marginBottom: 20,
 						overflowX: 'auto',
 						scrollbarWidth: 'none',
@@ -218,7 +160,7 @@ export function HealthLayout() {
 						)
 					})}
 				</div>
-			</div>
+			</FigmaScreenHeader>
 
 			<div
 				style={{

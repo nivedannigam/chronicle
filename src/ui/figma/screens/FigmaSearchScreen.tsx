@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, FileText, Search, X } from 'lucide-react'
+import { Clock, FileText, Search, Sparkles, X } from 'lucide-react'
 import { documentPath, healthReportPath, ROUTES } from '@/constants/routes'
+import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { getRecentQuestions } from '@/features/ask/services/ask-history.service'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
@@ -11,6 +12,7 @@ import {
 } from '@/features/search/services/global-search.service'
 import { useGlobalSearch } from '@/features/search/hooks/useGlobalSearch'
 import type { SemanticSearchHit } from '@/features/intelligence/types/intelligence.types'
+import { FigmaScreenHeader } from '@/ui/figma/shell/FigmaScreenHeader'
 import { FC, FigmaIconBox, FigmaLbl, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 const BROWSE_CATEGORIES = [
@@ -48,7 +50,7 @@ function hitPath(hit: SemanticSearchHit): string | null {
 export function FigmaSearchScreen() {
 	const navigate = useNavigate()
 	const [query, setQuery] = useState('')
-	const { results } = useGlobalSearch(query)
+	const { results, isLoading } = useGlobalSearch(query)
 	const { data: documents = [] } = useMemberDocuments()
 	const { data: reports = [] } = useMemberHealthReports()
 
@@ -59,6 +61,10 @@ export function FigmaSearchScreen() {
 				.map((item) => item.question),
 		[],
 	)
+
+	const trimmedQuery = query.trim()
+	const hasActiveQuery = trimmedQuery.length > 0
+	const showEmptyResults = hasActiveQuery && !isLoading && results.length === 0
 
 	const browse = useMemo(
 		() =>
@@ -84,37 +90,14 @@ export function FigmaSearchScreen() {
 				minHeight: 0,
 			}}
 		>
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: 10,
-					padding: '14px 20px 4px',
-					flexShrink: 0,
-				}}
-			>
-				<button
-					type="button"
-					onClick={() => navigate(-1)}
-					aria-label="Go back"
-					style={{
-						width: 36,
-						height: 36,
-						borderRadius: 12,
-						background: FC.surface,
-						border: `1px solid ${FC.line}`,
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						cursor: 'pointer',
-						flexShrink: 0,
-					}}
-				>
-					<ArrowLeft size={17} color={FC.mid} />
-				</button>
-			</div>
+			<FigmaScreenHeader
+				title="Search"
+				onBack={() => navigate(-1)}
+				backLabel="Back"
+				paddingBottom={12}
+			/>
 
-			<div style={{ padding: '4px 20px 14px', flexShrink: 0 }}>
+			<div style={{ padding: '0 22px 14px', flexShrink: 0 }}>
 				<div
 					style={{
 						background: FC.surface,
@@ -165,11 +148,13 @@ export function FigmaSearchScreen() {
 				style={{
 					flex: 1,
 					overflowY: 'auto',
-					padding: '0 20px 24px',
+					padding: '0 22px 24px',
 					scrollbarWidth: 'none',
 				}}
 			>
-				{results.length > 0 ? (
+				{isLoading && hasActiveQuery ? (
+					<ListSkeleton rows={4} height={56} />
+				) : results.length > 0 ? (
 					<div
 						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
 					>
@@ -232,6 +217,61 @@ export function FigmaSearchScreen() {
 								</button>
 							)
 						})}
+					</div>
+				) : showEmptyResults ? (
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 22,
+							padding: '28px 20px',
+							textAlign: 'center',
+						}}
+					>
+						<Search size={28} color={FC.dim} style={{ marginBottom: 12 }} />
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 15,
+								fontWeight: 600,
+								margin: '0 0 8px',
+							}}
+						>
+							No results for "{trimmedQuery}"
+						</p>
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 13.5,
+								lineHeight: 1.55,
+								margin: '0 0 16px',
+							}}
+						>
+							Try different keywords, or ask Chronicle to interpret your
+							question.
+						</p>
+						<button
+							type="button"
+							onClick={() =>
+								navigate(`${ROUTES.ask}?q=${encodeURIComponent(trimmedQuery)}`)
+							}
+							style={{
+								background: `${FC.indigo}14`,
+								border: `1px solid ${FC.indigo}33`,
+								borderRadius: 100,
+								padding: '10px 18px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								color: FC.indigo,
+								fontSize: 13,
+								fontWeight: 600,
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: 8,
+							}}
+						>
+							<Sparkles size={14} />
+							Ask Chronicle
+						</button>
 					</div>
 				) : (
 					<>

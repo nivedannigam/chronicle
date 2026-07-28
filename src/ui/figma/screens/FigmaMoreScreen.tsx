@@ -9,7 +9,8 @@ import {
 	Shield,
 } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { FC, FigmaLbl, figmaScreenTitleStyle } from '@/ui/figma/v2/atoms'
+import { FigmaScreenHeader } from '@/ui/figma/shell/FigmaScreenHeader'
+import { FC, FigmaLbl } from '@/ui/figma/v2/atoms'
 
 const COMING_SOON_MODULES = [
 	{
@@ -147,19 +148,12 @@ export function FigmaMoreScreen() {
 	const navigate = useNavigate()
 
 	return (
-		<div style={{ padding: '4px 22px 24px' }}>
-			<h1 style={{ ...figmaScreenTitleStyle, marginBottom: 6 }}>More</h1>
-			<p
-				style={{
-					color: FC.mid,
-					fontSize: 15,
-					lineHeight: 1.55,
-					marginBottom: 22,
-					marginTop: 0,
-				}}
-			>
-				Modules coming to Chronicle
-			</p>
+		<div style={{ padding: '0 22px 24px' }}>
+			<FigmaScreenHeader
+				title="More"
+				subtitle="Modules coming to Chronicle"
+				paddingBottom={22}
+			/>
 
 			<div style={{ marginBottom: 22 }}>
 				<div style={{ marginBottom: 12 }}>

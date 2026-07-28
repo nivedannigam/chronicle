@@ -22,3 +22,8 @@ export type {
 	TimelineCardData,
 	TrendCardData,
 } from '@/features/ask/types/ask.types'
+export type {
+	AskVoiceSessionConfig,
+	AskVoiceTurn,
+	StructuredAskResponse,
+} from '@/features/ask/types/structured-response.types'

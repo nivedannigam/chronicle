@@ -42,6 +42,7 @@ export const ROUTES = {
 	healthOcrPreview: '/health/reports/:reportId/ocr',
 	documents: '/documents',
 	documentsExpiring: '/documents/expiring',
+	documentsCategory: '/documents/category/:categoryId',
 	documentDetail: '/documents/:documentId',
 	settingsAccount: '/settings/account',
 	settingsHealthSources: '/settings/health-sources',
@@ -49,6 +50,12 @@ export const ROUTES = {
 	settingsImport: '/settings/import',
 	settingsData: '/settings/data',
 	profile: '/profile',
+	profilePersonal: '/profile/personal',
+	profileFamily: '/profile/family',
+	profileConnections: '/profile/connections',
+	profileConnectionsDrive: '/profile/connections/drive',
+	profilePreferences: '/profile/preferences',
+	profileSecurity: '/profile/security',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
@@ -77,4 +84,8 @@ export function healthOcrPreviewPath(reportId: string) {
 
 export function documentPath(documentId: string) {
 	return `/documents/${documentId}`
+}
+
+export function documentsCategoryPath(categoryId: string) {
+	return `/documents/category/${categoryId}`
 }

@@ -28,7 +28,7 @@ export function ConnectedServicesPanel() {
 
 	const handleServiceClick = (serviceId: string) => {
 		if (serviceId === 'google-drive') {
-			navigate(ROUTES.settingsConnectorsDrive)
+			navigate(ROUTES.profileConnectionsDrive)
 		}
 	}
 

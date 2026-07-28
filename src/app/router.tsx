@@ -6,10 +6,7 @@ import {
 	AuthCallbackPage,
 } from '@/features/auth'
 import { AskPage } from '@/features/ask'
-import {
-	ConnectorDebugPage,
-	GoogleDriveConnectorPage,
-} from '@/features/connectors'
+import { ConnectorDebugPage } from '@/features/connectors'
 import '@/features/connectors/services/connector-bootstrap'
 import {
 	HealthComparePage,
@@ -31,14 +28,15 @@ import {
 	FamilyMemberFormPage,
 	FamilyOverviewPage,
 } from '@/features/family'
-import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage'
 import { MorePage } from '@/features/more'
 import {
 	SettingsAccountPage,
 	SettingsAppearancePage,
-	SettingsDataPage,
 	SettingsNotificationsPage,
 	ProfilePage,
+	ProfileConnectionsPage,
+	ProfileDrivePage,
+	ProfileSecurityPage,
 	PreferencesPage,
 } from '@/features/settings'
 import { TasksPage } from '@/features/tasks'
@@ -48,6 +46,7 @@ import {
 	DocumentsLayout,
 	DocumentsPage,
 } from '@/features/documents'
+import { DocumentsCategoryPage } from '@/features/documents/pages/DocumentsCategoryPage'
 import { TimelinePage } from '@/features/timeline'
 import { SearchPage } from '@/features/search'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -77,7 +76,10 @@ export function AppRouter() {
 						element={<Navigate to={ROUTES.timeline} replace />}
 					/>
 					<Route path={ROUTES.timeline} element={<TimelinePage />} />
-					<Route path={ROUTES.family} element={<FamilyOverviewPage />} />
+					<Route
+						path={ROUTES.family}
+						element={<Navigate to={ROUTES.profileFamily} replace />}
+					/>
 					<Route
 						path={ROUTES.familyMemberNew}
 						element={<FamilyMemberFormPage />}
@@ -90,12 +92,18 @@ export function AppRouter() {
 						path={ROUTES.familyMember}
 						element={<FamilyMemberDetailPage />}
 					/>
-					<Route path={ROUTES.integrations} element={<IntegrationsPage />} />
+					<Route
+						path={ROUTES.integrations}
+						element={<Navigate to={ROUTES.profileConnections} replace />}
+					/>
 					<Route
 						path={ROUTES.settings}
 						element={<Navigate to={ROUTES.profile} replace />}
 					/>
-					<Route path={ROUTES.preferences} element={<PreferencesPage />} />
+					<Route
+						path={ROUTES.preferences}
+						element={<Navigate to={ROUTES.profilePreferences} replace />}
+					/>
 					<Route
 						path={ROUTES.settingsNotifications}
 						element={<SettingsNotificationsPage />}
@@ -112,6 +120,10 @@ export function AppRouter() {
 					<Route path={ROUTES.documents} element={<DocumentsLayout />}>
 						<Route index element={<DocumentsPage />} />
 						<Route path="expiring" element={<DocumentsExpiringPage />} />
+						<Route
+							path="category/:categoryId"
+							element={<DocumentsCategoryPage />}
+						/>
 					</Route>
 					<Route
 						path={ROUTES.documentDetail}
@@ -127,13 +139,37 @@ export function AppRouter() {
 					/>
 					<Route path={ROUTES.profile} element={<ProfilePage />} />
 					<Route
-						path={ROUTES.settingsAccount}
+						path={ROUTES.profilePersonal}
 						element={<SettingsAccountPage />}
 					/>
-					<Route path={ROUTES.settingsData} element={<SettingsDataPage />} />
+					<Route path={ROUTES.profileFamily} element={<FamilyOverviewPage />} />
+					<Route
+						path={ROUTES.profileConnections}
+						element={<ProfileConnectionsPage />}
+					/>
+					<Route
+						path={ROUTES.profileConnectionsDrive}
+						element={<ProfileDrivePage />}
+					/>
+					<Route
+						path={ROUTES.profilePreferences}
+						element={<PreferencesPage />}
+					/>
+					<Route
+						path={ROUTES.profileSecurity}
+						element={<ProfileSecurityPage />}
+					/>
+					<Route
+						path={ROUTES.settingsAccount}
+						element={<Navigate to={ROUTES.profilePersonal} replace />}
+					/>
+					<Route
+						path={ROUTES.settingsData}
+						element={<Navigate to={ROUTES.profileSecurity} replace />}
+					/>
 					<Route
 						path={ROUTES.settingsConnectorsDrive}
-						element={<GoogleDriveConnectorPage />}
+						element={<Navigate to={ROUTES.profileConnectionsDrive} replace />}
 					/>
 					<Route
 						path={ROUTES.settingsImport}
@@ -141,7 +177,7 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.connectorsGoogleDrive}
-						element={<Navigate to={ROUTES.settingsConnectorsDrive} replace />}
+						element={<Navigate to={ROUTES.profileConnectionsDrive} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImport}

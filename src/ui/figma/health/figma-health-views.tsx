@@ -1,23 +1,42 @@
+import type { ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, FileText, Sparkles } from 'lucide-react'
-import { healthReportPath, ROUTES } from '@/constants/routes'
+import {
+	AlertCircle,
+	ArrowRight,
+	Check,
+	ChevronRight,
+	FileText,
+	Minus,
+	TrendingDown,
+	TrendingUp,
+} from 'lucide-react'
+import { healthMetricPath, healthReportPath, ROUTES } from '@/constants/routes'
 import type {
 	HealthAttentionItem,
+	HealthChangeItem,
 	HealthCompanionView,
+	HealthInsightGroup,
 	HealthJourneyEvent,
 	HealthReportSummary,
+	HealthScoreReason,
+	HealthTrendHighlight,
 } from '@/features/health/types/health-companion.types'
+import { scoreReportSearchRelevance } from '@/features/health/services/health-companion.service'
+import type { UploadedHealthReport } from '@/features/health/types'
 import {
 	FigmaHealthRing,
 	FigmaHealthSectionLabel,
-	FigmaMiniHealthRing,
-	FigmaSparkline,
 	figmaHealthScoreColor,
 	figmaHealthStatusHeadline,
 	figmaJourneyEventColor,
 	figmaMetricStatusColor,
-	figmaMetricStatusLabel,
 } from '@/ui/figma/health/figma-health-primitives'
+import {
+	HealthAiActionRow,
+	HealthAiBadge,
+} from '@/ui/figma/health/health-ai-actions'
+import { HealthSearchField } from '@/ui/figma/health/health-ui'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 function attentionColor(item: HealthAttentionItem): string {
@@ -26,68 +45,143 @@ function attentionColor(item: HealthAttentionItem): string {
 	return FC.blue
 }
 
+function trendStatusColor(status: HealthTrendHighlight['status']): string {
+	switch (status) {
+		case 'improving':
+			return FC.green
+		case 'needs_attention':
+		case 'new_finding':
+			return FC.amber
+		default:
+			return FC.mid
+	}
+}
+
+function trendStatusLabel(status: HealthTrendHighlight['status']): string {
+	switch (status) {
+		case 'improving':
+			return 'Improving'
+		case 'needs_attention':
+			return 'Needs attention'
+		case 'new_finding':
+			return 'New finding'
+		default:
+			return 'Stable'
+	}
+}
+
+function changeIcon(direction: HealthChangeItem['direction']) {
+	if (direction === 'improved' || direction === 'resolved') {
+		return TrendingUp
+	}
+
+	if (direction === 'worsened') {
+		return TrendingDown
+	}
+
+	return Minus
+}
+
+function ScoreReasonIcon({ kind }: { kind: HealthScoreReason['kind'] }) {
+	if (kind === 'warning') {
+		return <AlertCircle size={14} color={FC.amber} />
+	}
+
+	return <Check size={14} color={FC.green} />
+}
+
+function SectionBlock({
+	label,
+	children,
+	actionLabel,
+	onAction,
+}: {
+	label: string
+	children: ReactNode
+	actionLabel?: string
+	onAction?: () => void
+}) {
+	return (
+		<div style={{ marginBottom: 22 }}>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					marginBottom: 12,
+				}}
+			>
+				<FigmaHealthSectionLabel>{label}</FigmaHealthSectionLabel>
+				{actionLabel && onAction ? (
+					<button
+						type="button"
+						onClick={onAction}
+						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: 3,
+							background: 'none',
+							border: 'none',
+							cursor: 'pointer',
+							padding: 0,
+							fontFamily: 'inherit',
+						}}
+					>
+						<span style={{ color: FC.dim, fontSize: 12 }}>{actionLabel}</span>
+						<ChevronRight size={12} color={FC.dim} />
+					</button>
+				) : null}
+			</div>
+			{children}
+		</div>
+	)
+}
+
 export function FigmaHealthOverviewView({
 	companion,
 	memberName,
-	familyRings = [],
-	metricSparklines = {},
 }: {
 	companion: HealthCompanionView
 	memberName: string | null
-	familyRings?: Array<{ name: string; score: number; color: string }>
-	metricSparklines?: Record<string, number[]>
 }) {
 	const navigate = useNavigate()
 	const score = companion.score ?? 0
 	const ringColor = figmaHealthScoreColor(companion.score)
-	const vitals = companion.metricGroups
-		.flatMap((group) => group.metrics)
-		.slice(0, 5)
+	const latestReport = companion.recentReports[0]
 
 	return (
 		<div>
 			<div
 				style={{
-					background:
-						'linear-gradient(135deg,rgba(16,185,129,0.07),rgba(16,185,129,0.03))',
-					border: '1px solid rgba(16,185,129,0.14)',
-					borderRadius: 28,
-					padding: '22px 22px 18px',
+					...figmaCardStyle,
+					borderRadius: 26,
+					padding: '20px 20px 18px',
 					marginBottom: 22,
 				}}
 			>
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 22,
-						marginBottom: familyRings.length > 0 ? 18 : 0,
-					}}
-				>
+				<div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
 					<FigmaHealthRing score={score} color={ringColor} />
-					<div style={{ flex: 1, minWidth: 0 }}>
+					<div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
 						<p
 							style={{
-								color: 'rgba(255,255,255,0.32)',
+								color: FC.dim,
 								fontSize: 11,
 								fontWeight: 600,
 								letterSpacing: '0.08em',
 								textTransform: 'uppercase',
-								marginBottom: 8,
-								marginTop: 0,
+								margin: '0 0 6px',
 							}}
 						>
-							{memberName ?? 'You'}
+							{memberName ?? 'Your health'}
 						</p>
 						<h2
 							style={{
 								color: FC.fg,
-								fontSize: 22,
+								fontSize: 20,
 								fontWeight: 700,
-								letterSpacing: -0.8,
-								lineHeight: 1.2,
-								marginBottom: 8,
-								marginTop: 0,
+								letterSpacing: -0.6,
+								lineHeight: 1.25,
+								margin: '0 0 6px',
 							}}
 						>
 							{figmaHealthStatusHeadline(companion.status)}
@@ -95,7 +189,7 @@ export function FigmaHealthOverviewView({
 						<p
 							style={{
 								color: FC.mid,
-								fontSize: 13.5,
+								fontSize: 13,
 								lineHeight: 1.5,
 								margin: 0,
 							}}
@@ -104,34 +198,55 @@ export function FigmaHealthOverviewView({
 						</p>
 					</div>
 				</div>
-				{familyRings.length > 0 ? (
+
+				{companion.scoreReasons.length > 0 ? (
 					<div
 						style={{
-							borderTop: '1px solid rgba(255,255,255,0.06)',
-							paddingTop: 14,
-							display: 'flex',
-							justifyContent: 'space-around',
+							borderTop: `1px solid ${FC.line}`,
+							marginTop: 18,
+							paddingTop: 16,
 						}}
 					>
-						{familyRings.map((member) => (
-							<FigmaMiniHealthRing
-								key={member.name}
-								score={member.score}
-								color={member.color}
-								label={member.name}
-							/>
-						))}
+						<p
+							style={{
+								color: FC.dim,
+								fontSize: 11,
+								fontWeight: 600,
+								letterSpacing: '0.08em',
+								textTransform: 'uppercase',
+								margin: '0 0 10px',
+							}}
+						>
+							Because
+						</p>
+						<div style={{ display: 'grid', gap: 8 }}>
+							{companion.scoreReasons.map((reason) => (
+								<div
+									key={reason.id}
+									style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+								>
+									<ScoreReasonIcon kind={reason.kind} />
+									<span
+										style={{
+											color:
+												reason.kind === 'warning'
+													? FC.fg
+													: 'rgba(255,255,255,0.62)',
+											fontSize: 13.5,
+											lineHeight: 1.4,
+										}}
+									>
+										{reason.label}
+									</span>
+								</div>
+							))}
+						</div>
 					</div>
 				) : null}
 			</div>
 
 			{companion.attention.length > 0 ? (
-				<div style={{ marginBottom: 22 }}>
-					<div style={{ marginBottom: 12 }}>
-						<FigmaHealthSectionLabel>
-							Needs Your Attention
-						</FigmaHealthSectionLabel>
-					</div>
+				<SectionBlock label="Needs attention">
 					{companion.attention.map((item) => {
 						const color = attentionColor(item)
 
@@ -140,8 +255,8 @@ export function FigmaHealthOverviewView({
 								key={item.id}
 								style={{
 									...figmaCardStyle,
-									borderRadius: 20,
-									padding: '18px 20px',
+									borderRadius: 18,
+									padding: '16px 18px',
 									marginBottom: 10,
 									borderLeft: `3px solid ${color}`,
 								}}
@@ -151,9 +266,7 @@ export function FigmaHealthOverviewView({
 										color: FC.fg,
 										fontSize: 14.5,
 										fontWeight: 600,
-										letterSpacing: -0.3,
-										marginBottom: 7,
-										marginTop: 0,
+										margin: '0 0 6px',
 									}}
 								>
 									{item.title}
@@ -161,136 +274,335 @@ export function FigmaHealthOverviewView({
 								<p
 									style={{
 										color: FC.mid,
-										fontSize: 13.5,
-										lineHeight: 1.6,
-										marginBottom: 12,
-										marginTop: 0,
+										fontSize: 13,
+										lineHeight: 1.55,
+										margin: '0 0 12px',
 									}}
 								>
 									{item.detail}
 								</p>
-								<div style={{ display: 'flex', gap: 10 }}>
-									{item.metricId ? (
-										<button
-											type="button"
-											onClick={() =>
-												navigate(`${ROUTES.healthMetrics}#${item.metricId}`)
-											}
-											style={{
-												flex: 1,
-												background: `${color}10`,
-												border: `1px solid ${color}22`,
-												borderRadius: 12,
-												padding: '8px 0',
-												cursor: 'pointer',
-												fontFamily: 'inherit',
-											}}
-										>
-											<span style={{ color, fontSize: 13, fontWeight: 600 }}>
-												Track
-											</span>
-										</button>
-									) : null}
-									<button
-										type="button"
-										onClick={() =>
-											navigate(
-												item.reportId
-													? healthReportPath(item.reportId)
-													: `${ROUTES.ask}?q=${encodeURIComponent(item.title)}`,
-											)
-										}
-										style={{
-											flex: 1,
-											background: FC.ghost,
-											borderRadius: 12,
-											padding: '8px 0',
-											cursor: 'pointer',
-											border: 'none',
-											fontFamily: 'inherit',
-										}}
-									>
-										<span
-											style={{ color: FC.mid, fontSize: 13, fontWeight: 500 }}
-										>
-											Ask Chronicle
-										</span>
-									</button>
-								</div>
+								<HealthAiActionRow
+									query={item.title}
+									reportId={item.reportId}
+									compact
+								/>
 							</div>
 						)
 					})}
-				</div>
-			) : null}
-
-			{vitals.length > 0 ? (
-				<div style={{ marginBottom: 22 }}>
-					<div style={{ marginBottom: 12 }}>
-						<FigmaHealthSectionLabel>Key Vitals</FigmaHealthSectionLabel>
-					</div>
+				</SectionBlock>
+			) : (
+				<SectionBlock label="Needs attention">
 					<div
-						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
+						style={{
+							...figmaCardStyle,
+							borderRadius: 18,
+							padding: '16px 18px',
+						}}
 					>
-						{vitals.map((vital, index) => {
-							const statusColor = figmaMetricStatusColor(vital.status)
-							const spark = metricSparklines[vital.id]
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 14,
+								margin: 0,
+								lineHeight: 1.5,
+							}}
+						>
+							No significant issues detected. Your latest results look steady.
+						</p>
+					</div>
+				</SectionBlock>
+			)}
+
+			<SectionBlock label="Changes since last report">
+				{companion.changes.length > 0 ? (
+					<div
+						style={{ ...figmaCardStyle, borderRadius: 18, overflow: 'hidden' }}
+					>
+						{companion.changes.map((change, index) => {
+							const Icon = changeIcon(change.direction)
+							const color =
+								change.direction === 'worsened'
+									? FC.amber
+									: change.direction === 'improved' ||
+										  change.direction === 'resolved'
+										? FC.green
+										: FC.mid
 
 							return (
 								<div
-									key={vital.id}
+									key={change.id}
 									style={{
 										display: 'flex',
-										alignItems: 'center',
-										gap: 10,
-										padding: '13px 20px',
+										alignItems: 'flex-start',
+										gap: 12,
+										padding: '14px 18px',
 										borderBottom:
-											index < vitals.length - 1
-												? '1px solid rgba(255,255,255,0.05)'
+											index < companion.changes.length - 1
+												? `1px solid ${FC.line}`
 												: 'none',
 									}}
 								>
-									<span
-										style={{
-											flex: 1,
-											color: 'rgba(255,255,255,0.5)',
-											fontSize: 13.5,
-										}}
-									>
-										{vital.name}
-									</span>
-									{spark && spark.length >= 2 ? (
-										<FigmaSparkline data={spark} color={statusColor} />
-									) : null}
-									<div style={{ textAlign: 'right', minWidth: 72 }}>
+									<Icon size={16} color={color} style={{ marginTop: 2 }} />
+									<div>
 										<p
 											style={{
 												color: FC.fg,
-												fontSize: 15,
-												fontWeight: 700,
-												letterSpacing: -0.4,
-												marginBottom: 1,
-												marginTop: 0,
+												fontSize: 14,
+												fontWeight: 600,
+												margin: '0 0 4px',
 											}}
 										>
-											{vital.value}
+											{change.label}
 										</p>
-										<p
-											style={{
-												color: statusColor,
-												fontSize: 11,
-												fontWeight: 500,
-												margin: 0,
-											}}
-										>
-											{figmaMetricStatusLabel(vital.status, vital.trendLabel)}
-										</p>
+										{change.detail ? (
+											<p
+												style={{
+													color: FC.mid,
+													fontSize: 12.5,
+													margin: 0,
+													lineHeight: 1.45,
+												}}
+											>
+												{change.detail}
+											</p>
+										) : null}
 									</div>
 								</div>
 							)
 						})}
 					</div>
-				</div>
+				) : (
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 18,
+							padding: '16px 18px',
+						}}
+					>
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 14,
+								margin: 0,
+								lineHeight: 1.5,
+							}}
+						>
+							No significant changes detected since your previous report.
+						</p>
+					</div>
+				)}
+			</SectionBlock>
+
+			{latestReport ? (
+				<SectionBlock
+					label="Latest report"
+					actionLabel="All reports"
+					onAction={() => navigate(ROUTES.healthReports)}
+				>
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 20,
+							padding: '18px 18px 16px',
+						}}
+					>
+						<div
+							style={{
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'flex-start',
+								gap: 10,
+								marginBottom: 10,
+							}}
+						>
+							<div>
+								<p
+									style={{
+										color: FC.fg,
+										fontSize: 16,
+										fontWeight: 700,
+										margin: '0 0 4px',
+									}}
+								>
+									{latestReport.title}
+								</p>
+								<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
+									{latestReport.hospital} · {latestReport.displayDate}
+								</p>
+							</div>
+							<HealthAiBadge />
+						</div>
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 13.5,
+								lineHeight: 1.55,
+								margin: '0 0 10px',
+							}}
+						>
+							{latestReport.summary}
+						</p>
+						{latestReport.findings.length > 0 ? (
+							<div
+								style={{
+									display: 'flex',
+									flexWrap: 'wrap',
+									gap: 6,
+									marginBottom: 14,
+								}}
+							>
+								{latestReport.findings.slice(0, 3).map((finding) => (
+									<span
+										key={finding}
+										style={{
+											background: 'rgba(245,158,11,0.1)',
+											border: '1px solid rgba(245,158,11,0.2)',
+											borderRadius: 100,
+											padding: '4px 10px',
+											color: FC.amber,
+											fontSize: 11.5,
+											fontWeight: 600,
+										}}
+									>
+										{finding}
+									</span>
+								))}
+							</div>
+						) : null}
+						<HealthAiActionRow
+							query={`Explain my latest health report: ${latestReport.title}`}
+							reportId={latestReport.id}
+						/>
+						<button
+							type="button"
+							onClick={() => navigate(healthReportPath(latestReport.id))}
+							style={{
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: 6,
+								width: '100%',
+								marginTop: 12,
+								background: FC.ghost,
+								border: `1px solid ${FC.line}`,
+								borderRadius: 14,
+								padding: '11px 0',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							<span style={{ color: FC.fg, fontSize: 13, fontWeight: 600 }}>
+								Open report
+							</span>
+							<ArrowRight size={14} color={FC.mid} />
+						</button>
+					</div>
+				</SectionBlock>
 			) : null}
+
+			{companion.trendHighlights.length > 0 ? (
+				<SectionBlock
+					label="Meaningful trends"
+					actionLabel="All metrics"
+					onAction={() => navigate(ROUTES.healthMetrics)}
+				>
+					<div style={{ display: 'grid', gap: 8 }}>
+						{companion.trendHighlights.map((trend) => {
+							const color = trendStatusColor(trend.status)
+
+							return (
+								<button
+									key={trend.id}
+									type="button"
+									onClick={() =>
+										trend.metricId
+											? navigate(`${ROUTES.healthMetrics}#${trend.metricId}`)
+											: navigate(ROUTES.healthMetrics)
+									}
+									style={{
+										...figmaCardStyle,
+										borderRadius: 16,
+										padding: '14px 16px',
+										display: 'flex',
+										alignItems: 'center',
+										gap: 12,
+										cursor: 'pointer',
+										width: '100%',
+										textAlign: 'left',
+										fontFamily: 'inherit',
+										border: `1px solid ${color}22`,
+									}}
+								>
+									<div style={{ flex: 1, minWidth: 0 }}>
+										<p
+											style={{
+												color: FC.fg,
+												fontSize: 14,
+												fontWeight: 600,
+												margin: '0 0 3px',
+											}}
+										>
+											{trend.label}
+										</p>
+										<p
+											style={{
+												color: FC.mid,
+												fontSize: 12.5,
+												margin: 0,
+												lineHeight: 1.4,
+											}}
+										>
+											{trend.detail}
+										</p>
+									</div>
+									<span
+										style={{
+											color,
+											fontSize: 11,
+											fontWeight: 700,
+											flexShrink: 0,
+										}}
+									>
+										{trendStatusLabel(trend.status)}
+									</span>
+								</button>
+							)
+						})}
+					</div>
+				</SectionBlock>
+			) : null}
+
+			<SectionBlock label="Explore">
+				<div
+					style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+				>
+					{[
+						{ label: 'Reports', path: ROUTES.healthReports },
+						{ label: 'Timeline', path: ROUTES.healthTimeline },
+						{ label: 'Insights', path: ROUTES.healthInsights },
+						{ label: 'Metrics', path: ROUTES.healthMetrics },
+					].map((item) => (
+						<button
+							key={item.path}
+							type="button"
+							onClick={() => navigate(item.path)}
+							style={{
+								...figmaCardStyle,
+								borderRadius: 16,
+								padding: '16px 14px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								textAlign: 'left',
+								border: 'none',
+							}}
+						>
+							<span style={{ color: FC.fg, fontSize: 14, fontWeight: 600 }}>
+								{item.label}
+							</span>
+						</button>
+					))}
+				</div>
+			</SectionBlock>
 		</div>
 	)
 }
@@ -298,35 +610,62 @@ export function FigmaHealthOverviewView({
 export function FigmaHealthReportsView({
 	reports,
 	needsReview,
-	memberName,
+	rawReports = [],
 }: {
 	reports: HealthReportSummary[]
 	needsReview: number
-	memberName: string | null
+	rawReports?: UploadedHealthReport[]
 }) {
 	const navigate = useNavigate()
+	const [query, setQuery] = useState('')
+
+	const filtered = useMemo(() => {
+		const normalized = query.trim().toLowerCase()
+		if (!normalized) return reports
+
+		const ranked = rawReports
+			.map((report) => ({
+				report,
+				score: scoreReportSearchRelevance(report, normalized),
+			}))
+			.filter((item) => item.score > 0)
+			.sort((a, b) => b.score - a.score)
+
+		const ids = new Set(ranked.map((item) => item.report.id))
+		return reports.filter((report) => ids.has(report.id))
+	}, [query, reports, rawReports])
 
 	return (
 		<div>
+			<HealthSearchField
+				value={query}
+				onChange={setQuery}
+				placeholder="Search reports, labs, doctors, tests…"
+			/>
+
 			{needsReview > 0 ? (
 				<div
 					style={{
 						background: 'rgba(245,158,11,0.07)',
 						border: '1px solid rgba(245,158,11,0.2)',
-						borderRadius: 20,
-						padding: '14px 20px',
+						borderRadius: 18,
+						padding: '14px 16px',
 						display: 'flex',
 						alignItems: 'center',
 						gap: 12,
-						marginBottom: 20,
+						marginBottom: 16,
 					}}
 				>
 					<AlertCircle size={18} color={FC.amber} />
 					<span
-						style={{ flex: 1, color: FC.amber, fontSize: 14, fontWeight: 500 }}
+						style={{
+							flex: 1,
+							color: FC.amber,
+							fontSize: 13.5,
+							fontWeight: 500,
+						}}
 					>
-						{needsReview} report{needsReview === 1 ? '' : 's'} pending your
-						review
+						{needsReview} report{needsReview === 1 ? '' : 's'} awaiting review
 					</span>
 					<button
 						type="button"
@@ -334,7 +673,7 @@ export function FigmaHealthReportsView({
 						style={{
 							background: FC.amber,
 							borderRadius: 10,
-							padding: '5px 14px',
+							padding: '6px 12px',
 							cursor: 'pointer',
 							border: 'none',
 							fontFamily: 'inherit',
@@ -347,24 +686,367 @@ export function FigmaHealthReportsView({
 				</div>
 			) : null}
 
-			<div style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}>
-				{reports.map((report, index) => {
-					const ok = report.findings.length === 0
-					const color = ok ? FC.green : FC.amber
+			{filtered.length === 0 ? (
+				<div
+					style={{
+						...figmaCardStyle,
+						borderRadius: 18,
+						padding: '24px 18px',
+						textAlign: 'center',
+					}}
+				>
+					<p style={{ color: FC.mid, fontSize: 14, margin: 0 }}>
+						No reports match your search.
+					</p>
+				</div>
+			) : (
+				<div style={{ display: 'grid', gap: 12 }}>
+					{filtered.map((report) => {
+						const hasFindings = report.findings.length > 0
+						const statusColor = hasFindings ? FC.amber : FC.green
 
-					return (
+						return (
+							<div
+								key={report.id}
+								style={{
+									...figmaCardStyle,
+									borderRadius: 20,
+									padding: '18px 18px 16px',
+								}}
+							>
+								<div
+									style={{
+										display: 'flex',
+										alignItems: 'flex-start',
+										gap: 12,
+										marginBottom: 12,
+									}}
+								>
+									<FigmaIconBox color={statusColor} size={40}>
+										<FileText size={17} color={statusColor} strokeWidth={1.8} />
+									</FigmaIconBox>
+									<div style={{ flex: 1, minWidth: 0 }}>
+										<div
+											style={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 8,
+												marginBottom: 4,
+												flexWrap: 'wrap',
+											}}
+										>
+											<p
+												style={{
+													color: FC.fg,
+													fontSize: 15,
+													fontWeight: 600,
+													margin: 0,
+												}}
+											>
+												{report.title}
+											</p>
+											<HealthAiBadge />
+										</div>
+										<p
+											style={{
+												color: FC.mid,
+												fontSize: 12.5,
+												margin: '0 0 2px',
+											}}
+										>
+											{report.hospital}
+											{report.doctor ? ` · ${report.doctor}` : ''}
+										</p>
+										<p style={{ color: FC.dim, fontSize: 12, margin: 0 }}>
+											{report.displayDate}
+										</p>
+									</div>
+									<span
+										style={{
+											background: `${statusColor}14`,
+											border: `1px solid ${statusColor}28`,
+											borderRadius: 100,
+											padding: '4px 10px',
+											color: statusColor,
+											fontSize: 11,
+											fontWeight: 700,
+											flexShrink: 0,
+										}}
+									>
+										{hasFindings ? 'Review' : 'Normal'}
+									</span>
+								</div>
+
+								<p
+									style={{
+										color: FC.mid,
+										fontSize: 13,
+										lineHeight: 1.55,
+										margin: '0 0 10px',
+									}}
+								>
+									{report.summary}
+								</p>
+
+								{hasFindings ? (
+									<div
+										style={{
+											display: 'flex',
+											flexWrap: 'wrap',
+											gap: 6,
+											marginBottom: 12,
+										}}
+									>
+										{report.findings.map((finding) => (
+											<span
+												key={finding}
+												style={{
+													background: 'rgba(245,158,11,0.1)',
+													borderRadius: 100,
+													padding: '4px 10px',
+													color: FC.amber,
+													fontSize: 11.5,
+													fontWeight: 600,
+												}}
+											>
+												{finding}
+											</span>
+										))}
+									</div>
+								) : null}
+
+								<HealthAiActionRow
+									query={`Summarize ${report.title} from ${report.hospital}`}
+									reportId={report.id}
+									compact
+								/>
+
+								<button
+									type="button"
+									onClick={() => navigate(healthReportPath(report.id))}
+									style={{
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										gap: 6,
+										width: '100%',
+										marginTop: 10,
+										background: FC.ghost,
+										border: `1px solid ${FC.line}`,
+										borderRadius: 12,
+										padding: '10px 0',
+										cursor: 'pointer',
+										fontFamily: 'inherit',
+									}}
+								>
+									<span style={{ color: FC.fg, fontSize: 13, fontWeight: 600 }}>
+										Open report
+									</span>
+								</button>
+							</div>
+						)
+					})}
+				</div>
+			)}
+		</div>
+	)
+}
+
+export function FigmaHealthTimelineView({
+	events,
+}: {
+	events: HealthJourneyEvent[]
+}) {
+	const navigate = useNavigate()
+
+	const grouped = useMemo(() => {
+		const map = new Map<string, HealthJourneyEvent[]>()
+
+		for (const event of events) {
+			const monthKey = new Date(event.date).toLocaleDateString('en-US', {
+				month: 'long',
+				year: 'numeric',
+			})
+
+			const existing = map.get(monthKey) ?? []
+			existing.push(event)
+			map.set(monthKey, existing)
+		}
+
+		return [...map.entries()]
+	}, [events])
+
+	return (
+		<div>
+			{grouped.map(([month, monthEvents]) => (
+				<div key={month} style={{ marginBottom: 28 }}>
+					<p
+						style={{
+							color: FC.dim,
+							fontSize: 12,
+							fontWeight: 700,
+							letterSpacing: '0.06em',
+							textTransform: 'uppercase',
+							margin: '0 0 14px',
+						}}
+					>
+						{month}
+					</p>
+
+					<div style={{ position: 'relative', paddingLeft: 22 }}>
+						<div
+							style={{
+								position: 'absolute',
+								left: 7,
+								top: 6,
+								bottom: 6,
+								width: 1,
+								background: FC.line,
+							}}
+						/>
+
+						{monthEvents.map((event, index) => {
+							const color = figmaJourneyEventColor(event.kind)
+							const isCheckup = event.kind === 'checkup'
+
+							return (
+								<div
+									key={event.id}
+									style={{
+										position: 'relative',
+										marginBottom: index < monthEvents.length - 1 ? 16 : 0,
+									}}
+								>
+									<div
+										style={{
+											position: 'absolute',
+											left: -18,
+											top: 8,
+											width: 8,
+											height: 8,
+											borderRadius: 4,
+											background: color,
+											boxShadow: `0 0 0 3px ${color}20`,
+										}}
+									/>
+
+									<div
+										style={{
+											...figmaCardStyle,
+											borderRadius: 16,
+											padding: isCheckup ? '16px 16px 14px' : '14px 16px',
+											marginLeft: 8,
+											borderLeft: isCheckup ? `3px solid ${color}` : undefined,
+										}}
+									>
+										<p
+											style={{
+												color: FC.fg,
+												fontSize: isCheckup ? 15 : 14,
+												fontWeight: 600,
+												margin: '0 0 4px',
+											}}
+										>
+											{event.title}
+										</p>
+										<p
+											style={{
+												color: FC.mid,
+												fontSize: 13,
+												lineHeight: 1.5,
+												margin: '0 0 10px',
+											}}
+										>
+											{event.summary}
+										</p>
+										{event.reportId ? (
+											<button
+												type="button"
+												onClick={() =>
+													navigate(healthReportPath(event.reportId!))
+												}
+												style={{
+													background: 'none',
+													border: 'none',
+													padding: 0,
+													cursor: 'pointer',
+													fontFamily: 'inherit',
+													color: FC.blue,
+													fontSize: 12.5,
+													fontWeight: 600,
+												}}
+											>
+												View report
+											</button>
+										) : null}
+									</div>
+								</div>
+							)
+						})}
+					</div>
+				</div>
+			))}
+		</div>
+	)
+}
+
+export function FigmaHealthMetricsView({
+	companion,
+}: {
+	companion: HealthCompanionView
+}) {
+	const navigate = useNavigate()
+
+	const sections = useMemo(() => {
+		const all = companion.metricGroups.flatMap((group) =>
+			group.metrics.map((metric) => ({
+				...metric,
+				groupLabel: group.label,
+				groupStatus: group.status,
+			})),
+		)
+
+		return {
+			attention: all.filter(
+				(item) =>
+					item.groupStatus === 'needs_attention' ||
+					item.status === 'high' ||
+					item.status === 'low' ||
+					item.status === 'critical' ||
+					item.status === 'borderline',
+			),
+			improving: all.filter((item) => item.groupStatus === 'improving'),
+			stable: all.filter(
+				(item) =>
+					item.groupStatus === 'stable' &&
+					!['high', 'low', 'critical', 'borderline'].includes(item.status),
+			),
+		}
+	}, [companion.metricGroups])
+
+	const renderSection = (label: string, items: typeof sections.attention) => {
+		if (items.length === 0) return null
+
+		return (
+			<div style={{ marginBottom: 20 }}>
+				<div style={{ marginBottom: 10 }}>
+					<FigmaHealthSectionLabel>{label}</FigmaHealthSectionLabel>
+				</div>
+				<div
+					style={{ ...figmaCardStyle, borderRadius: 18, overflow: 'hidden' }}
+				>
+					{items.slice(0, 8).map((metric, index) => (
 						<button
-							key={report.id}
+							key={metric.id}
 							type="button"
-							onClick={() => navigate(healthReportPath(report.id))}
+							onClick={() => navigate(healthMetricPath(metric.id))}
 							style={{
 								display: 'flex',
 								alignItems: 'center',
-								gap: 13,
-								padding: '15px 20px',
+								padding: '14px 18px',
 								borderBottom:
-									index < reports.length - 1
-										? '1px solid rgba(255,255,255,0.05)'
+									index < Math.min(items.length, 8) - 1
+										? `1px solid ${FC.line}`
 										: 'none',
 								width: '100%',
 								background: 'none',
@@ -376,319 +1058,198 @@ export function FigmaHealthReportsView({
 								textAlign: 'left',
 							}}
 						>
-							<FigmaIconBox color={color} size={40}>
-								<FileText size={17} color={color} strokeWidth={1.8} />
-							</FigmaIconBox>
-							<div style={{ flex: 1 }}>
-								<div
+							<div style={{ flex: 1, minWidth: 0 }}>
+								<p
 									style={{
-										display: 'flex',
-										gap: 7,
-										alignItems: 'center',
-										marginBottom: 3,
+										color: FC.fg,
+										fontSize: 14,
+										fontWeight: 600,
+										margin: '0 0 2px',
 									}}
 								>
-									<p
-										style={{
-											color: FC.fg,
-											fontSize: 14,
-											fontWeight: 500,
-											margin: 0,
-										}}
-									>
-										{report.title}
-									</p>
-									{!ok ? (
-										<div
-											style={{
-												width: 6,
-												height: 6,
-												borderRadius: 3,
-												background: FC.amber,
-											}}
-										/>
-									) : null}
-								</div>
-								<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
-									{report.displayDate}
+									{metric.name}
+								</p>
+								<p style={{ color: FC.dim, fontSize: 11.5, margin: 0 }}>
+									{metric.groupLabel}
 								</p>
 							</div>
-							<div
-								style={{
-									background: FC.ghost,
-									borderRadius: 8,
-									padding: '3px 9px',
-								}}
-							>
-								<span style={{ color: FC.dim, fontSize: 11 }}>
-									{memberName ?? 'Member'}
-								</span>
+							<div style={{ textAlign: 'right' }}>
+								<p
+									style={{
+										color: FC.fg,
+										fontSize: 15,
+										fontWeight: 700,
+										margin: '0 0 2px',
+									}}
+								>
+									{metric.value}
+								</p>
+								<p
+									style={{
+										color: figmaMetricStatusColor(metric.status),
+										fontSize: 11.5,
+										margin: 0,
+										fontWeight: 600,
+									}}
+								>
+									{metric.trendLabel}
+								</p>
 							</div>
 						</button>
-					)
-				})}
-			</div>
-		</div>
-	)
-}
-
-export function FigmaHealthTimelineView({
-	events,
-}: {
-	events: HealthJourneyEvent[]
-}) {
-	return (
-		<div style={{ position: 'relative' }}>
-			<div
-				style={{
-					position: 'absolute',
-					left: 42,
-					top: 8,
-					bottom: 8,
-					width: 1,
-					background:
-						'linear-gradient(to bottom,transparent,rgba(255,255,255,0.07) 15%,rgba(255,255,255,0.07) 85%,transparent)',
-				}}
-			/>
-			{events.map((event, index) => {
-				const color = figmaJourneyEventColor(event.kind)
-				const dateLabel = event.displayDate.replace(' ', '\n')
-
-				return (
-					<div
-						key={event.id}
-						style={{
-							display: 'flex',
-							gap: 14,
-							alignItems: 'flex-start',
-							marginBottom: index < events.length - 1 ? 20 : 0,
-						}}
-					>
-						<div
-							style={{
-								width: 30,
-								flexShrink: 0,
-								paddingTop: 2,
-								textAlign: 'right',
-							}}
-						>
-							<span
-								style={{
-									color: FC.ghost,
-									fontSize: 10,
-									fontWeight: 600,
-									letterSpacing: '0.04em',
-									lineHeight: 1.2,
-									whiteSpace: 'pre-line',
-								}}
-							>
-								{dateLabel}
-							</span>
-						</div>
-						<div
-							style={{
-								width: 16,
-								display: 'flex',
-								justifyContent: 'center',
-								flexShrink: 0,
-								paddingTop: 5,
-							}}
-						>
-							<div
-								style={{
-									width: 8,
-									height: 8,
-									borderRadius: 4,
-									background: color,
-									boxShadow: `0 0 0 3px ${color}20`,
-								}}
-							/>
-						</div>
-						<div
-							style={{
-								...figmaCardStyle,
-								flex: 1,
-								borderRadius: 18,
-								padding: '14px 16px',
-							}}
-						>
-							<p
-								style={{
-									color: FC.fg,
-									fontSize: 14,
-									fontWeight: 600,
-									letterSpacing: -0.3,
-									marginBottom: 4,
-									marginTop: 0,
-								}}
-							>
-								{event.title}
-							</p>
-							<p
-								style={{
-									color: FC.mid,
-									fontSize: 13,
-									lineHeight: 1.5,
-									margin: 0,
-								}}
-							>
-								{event.summary}
-							</p>
-						</div>
-					</div>
-				)
-			})}
-		</div>
-	)
-}
-
-export function FigmaHealthMetricsView({
-	companion,
-}: {
-	companion: HealthCompanionView
-}) {
-	const metrics = companion.metricGroups.flatMap((group) => group.metrics)
-
-	return (
-		<div style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}>
-			{metrics.map((metric, index) => (
-				<div
-					key={metric.id}
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						padding: '14px 20px',
-						borderBottom:
-							index < metrics.length - 1
-								? '1px solid rgba(255,255,255,0.05)'
-								: 'none',
-					}}
-				>
-					<span style={{ flex: 1, color: FC.mid, fontSize: 14 }}>
-						{metric.name}
-					</span>
-					<div style={{ textAlign: 'right' }}>
-						<p
-							style={{
-								color: FC.fg,
-								fontSize: 15,
-								fontWeight: 600,
-								letterSpacing: -0.3,
-								marginBottom: 2,
-								marginTop: 0,
-							}}
-						>
-							{metric.value}
-						</p>
-						<p
-							style={{
-								color: figmaMetricStatusColor(metric.status),
-								fontSize: 11.5,
-								margin: 0,
-							}}
-						>
-							{metric.trendLabel || figmaMetricStatusLabel(metric.status)}
-						</p>
-					</div>
+					))}
 				</div>
-			))}
+			</div>
+		)
+	}
+
+	return (
+		<div>
+			{renderSection('Needs attention', sections.attention)}
+			{renderSection('Recently changed', sections.improving)}
+			{renderSection('Stable & tracked', sections.stable)}
 		</div>
 	)
 }
-
-const INSIGHT_COLORS = [FC.amber, FC.green, FC.blue]
 
 export function FigmaHealthInsightsView({
-	paragraphs,
+	groups,
 }: {
-	paragraphs: string[]
+	groups: HealthInsightGroup[]
 }) {
 	const navigate = useNavigate()
 
 	return (
 		<div>
-			{paragraphs.map((paragraph, index) => {
-				const color = INSIGHT_COLORS[index % INSIGHT_COLORS.length] ?? FC.blue
-				const [headline, ...rest] = paragraph.split('. ')
-				const body = rest.join('. ')
+			{groups.map((group) => {
+				const trendColor =
+					group.trend === 'Needs attention'
+						? FC.amber
+						: group.trend === 'Improving'
+							? FC.green
+							: FC.mid
 
 				return (
 					<div
-						key={`${index}-${headline}`}
+						key={group.id}
 						style={{
 							...figmaCardStyle,
 							borderRadius: 22,
-							padding: '20px 20px',
+							padding: '18px 18px 16px',
 							marginBottom: 12,
+							borderLeft: `3px solid ${group.color}`,
 						}}
 					>
 						<div
 							style={{
 								display: 'flex',
-								gap: 10,
-								alignItems: 'flex-start',
+								justifyContent: 'space-between',
+								alignItems: 'center',
 								marginBottom: 10,
 							}}
 						>
-							<div
-								style={{
-									width: 10,
-									height: 10,
-									borderRadius: 5,
-									background: color,
-									flexShrink: 0,
-									marginTop: 4,
-								}}
-							/>
 							<p
 								style={{
 									color: FC.fg,
-									fontSize: 15,
-									fontWeight: 600,
-									letterSpacing: -0.3,
-									lineHeight: 1.3,
+									fontSize: 16,
+									fontWeight: 700,
 									margin: 0,
 								}}
 							>
-								{headline.endsWith('.') ? headline : `${headline}.`}
+								{group.label}
 							</p>
+							<span
+								style={{
+									color: trendColor,
+									fontSize: 11.5,
+									fontWeight: 700,
+								}}
+							>
+								{group.trend}
+							</span>
 						</div>
-						{body ? (
+
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 14,
+								lineHeight: 1.6,
+								margin: '0 0 12px',
+							}}
+						>
+							{group.summary}
+						</p>
+
+						<div
+							style={{
+								background: FC.raise,
+								borderRadius: 12,
+								padding: '10px 12px',
+								marginBottom: 10,
+							}}
+						>
+							<p
+								style={{
+									color: FC.dim,
+									fontSize: 10.5,
+									fontWeight: 700,
+									textTransform: 'uppercase',
+									letterSpacing: '0.06em',
+									margin: '0 0 4px',
+								}}
+							>
+								Evidence
+							</p>
 							<p
 								style={{
 									color: FC.mid,
-									fontSize: 13.5,
-									lineHeight: 1.65,
-									paddingLeft: 20,
-									marginBottom: 14,
-									marginTop: 0,
+									fontSize: 12.5,
+									margin: 0,
+									lineHeight: 1.45,
 								}}
 							>
-								{body}
+								{group.evidence}
 							</p>
-						) : null}
-						<button
-							type="button"
-							onClick={() =>
-								navigate(`${ROUTES.ask}?q=${encodeURIComponent(paragraph)}`)
-							}
+						</div>
+
+						<p
 							style={{
-								marginLeft: 20,
-								display: 'flex',
-								alignItems: 'center',
-								gap: 6,
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								padding: 0,
-								fontFamily: 'inherit',
+								color: FC.fg,
+								fontSize: 13,
+								lineHeight: 1.5,
+								margin: '0 0 14px',
 							}}
 						>
-							<Sparkles size={12} color={FC.blue} />
-							<span style={{ color: FC.blue, fontSize: 12.5, fontWeight: 500 }}>
-								Ask Chronicle about this
+							<span style={{ color: FC.dim, fontWeight: 600 }}>
+								Next step:{' '}
 							</span>
-						</button>
+							{group.nextStep}
+						</p>
+
+						<HealthAiActionRow
+							query={`Explain my ${group.label.toLowerCase()} health: ${group.summary}`}
+							reportId={group.reportId}
+							compact
+						/>
+
+						{group.metricId ? (
+							<button
+								type="button"
+								onClick={() => navigate(healthMetricPath(group.metricId!))}
+								style={{
+									marginTop: 10,
+									background: 'none',
+									border: 'none',
+									padding: 0,
+									cursor: 'pointer',
+									fontFamily: 'inherit',
+									color: FC.blue,
+									fontSize: 12.5,
+									fontWeight: 600,
+								}}
+							>
+								View metric trend
+							</button>
+						) : null}
 					</div>
 				)
 			})}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Search, Sparkles } from 'lucide-react'
+import { ChevronRight, Sparkles } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useCommandCenter } from '@/features/command-center/hooks/useCommandCenter'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
@@ -9,6 +9,7 @@ import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
 import { OnboardingFlow, useOnboarding } from '@/features/onboarding'
 import { memberFirstName, memberInitial } from '@/ui/figma/home/home-ui'
 import { FigmaHomeLabel } from '@/ui/figma/home/home-ui'
+import { FigmaHeaderSearchButton } from '@/ui/figma/shell/FigmaScreenHeader'
 import {
 	FC,
 	MEMBER_COLORS,
@@ -237,7 +238,7 @@ export function FigmaHomeScreen() {
 				<OnboardingFlow onCompleteStep={completeStep} onDismiss={dismiss} />
 			) : null}
 
-			<div style={{ padding: '4px 26px 22px' }}>
+			<div style={{ padding: '4px 22px 22px' }}>
 				<p
 					style={{ color: FC.dim, fontSize: 14, marginBottom: 5, marginTop: 0 }}
 				>
@@ -294,29 +295,11 @@ export function FigmaHomeScreen() {
 							</p>
 						</div>
 					</div>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.search)}
-						aria-label="Search"
-						style={{
-							marginTop: 4,
-							width: 38,
-							height: 38,
-							borderRadius: 13,
-							background: FC.surface,
-							border: `1px solid ${FC.line}`,
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							cursor: 'pointer',
-						}}
-					>
-						<Search size={18} color={FC.dim} strokeWidth={1.8} />
-					</button>
+					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
 				</div>
 			</div>
 
-			<div style={{ padding: '0 20px 22px' }}>
+			<div style={{ padding: '0 22px 22px' }}>
 				<div
 					style={{
 						background:
@@ -383,7 +366,7 @@ export function FigmaHomeScreen() {
 			</div>
 
 			{members.length > 0 ? (
-				<div style={{ padding: '0 20px 22px' }}>
+				<div style={{ padding: '0 22px 22px' }}>
 					<div
 						style={{
 							display: 'flex',
@@ -395,7 +378,7 @@ export function FigmaHomeScreen() {
 						<FigmaHomeLabel>Family</FigmaHomeLabel>
 						<button
 							type="button"
-							onClick={() => navigate(ROUTES.profile)}
+							onClick={() => navigate(ROUTES.profileFamily)}
 							style={{
 								display: 'flex',
 								alignItems: 'center',
@@ -434,7 +417,7 @@ export function FigmaHomeScreen() {
 			) : null}
 
 			{memberItems.length === 0 ? (
-				<div style={{ padding: '0 20px 20px' }}>
+				<div style={{ padding: '0 22px 20px' }}>
 					<div
 						style={{
 							background:
@@ -488,7 +471,7 @@ export function FigmaHomeScreen() {
 					</div>
 				</div>
 			) : (
-				<div style={{ padding: '0 20px 20px' }}>
+				<div style={{ padding: '0 22px 20px' }}>
 					<div style={{ marginBottom: 10 }}>
 						<FigmaHomeLabel>Needs Attention — {selectedName}</FigmaHomeLabel>
 					</div>
@@ -568,7 +551,7 @@ export function FigmaHomeScreen() {
 				</div>
 			)}
 
-			<div style={{ padding: '0 20px 20px' }}>
+			<div style={{ padding: '0 22px 20px' }}>
 				<div style={{ marginBottom: 12 }}>
 					<FigmaHomeLabel>Today</FigmaHomeLabel>
 				</div>
@@ -673,7 +656,7 @@ export function FigmaHomeScreen() {
 				</div>
 			</div>
 
-			<div style={{ padding: '0 20px 24px' }}>
+			<div style={{ padding: '0 22px 24px' }}>
 				<div
 					style={{
 						display: 'flex',

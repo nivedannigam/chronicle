@@ -89,7 +89,7 @@ export const phoneFrameStyle = {
 		overflowY: 'auto' as const,
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
-		paddingBottom: 110,
+		paddingBottom: 118,
 	},
 }
 
@@ -124,7 +124,7 @@ export const standaloneLayoutStyle = {
 		overflowX: 'hidden' as const,
 		scrollbarWidth: 'none' as const,
 		paddingBottom:
-			'calc(110px + env(safe-area-inset-bottom) + var(--mobile-browser-chrome, 0px))',
+			'calc(118px + env(safe-area-inset-bottom) + var(--mobile-browser-chrome, 0px))',
 	} as const,
 }
 

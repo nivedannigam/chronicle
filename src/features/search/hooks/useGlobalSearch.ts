@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useDeferredValue, useMemo } from 'react'
 import { useAuth } from '@/features/auth'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
@@ -8,6 +8,7 @@ import { searchChronicle } from '@/features/search/services/global-search.servic
 
 export function useGlobalSearch(query: string) {
 	const { user } = useAuth()
+	const deferredQuery = useDeferredValue(query)
 	const { selectedMemberId, selectedMember, members } = useFamilyContext()
 	const reportsQuery = useMemberHealthReports()
 	const documentsQuery = useMemberDocuments()
@@ -23,10 +24,10 @@ export function useGlobalSearch(query: string) {
 	)
 
 	const results = useMemo(() => {
-		if (!user?.id || !query.trim()) return []
+		if (!user?.id || !deferredQuery.trim()) return []
 
 		return searchChronicle({
-			query,
+			query: deferredQuery,
 			userId: user.id,
 			member: memberContext,
 			uploadedReports: reportsQuery.data ?? [],
@@ -34,16 +35,18 @@ export function useGlobalSearch(query: string) {
 			connectorDocuments: driveConnector.registry ?? [],
 		})
 	}, [
+		deferredQuery,
 		documentsQuery.data,
 		driveConnector.registry,
 		memberContext,
-		query,
 		reportsQuery.data,
 		user,
 	])
 
+	const isPending = query !== deferredQuery
+
 	return {
 		results,
-		isLoading: reportsQuery.isLoading || documentsQuery.isLoading,
+		isLoading: isPending || reportsQuery.isLoading || documentsQuery.isLoading,
 	}
 }

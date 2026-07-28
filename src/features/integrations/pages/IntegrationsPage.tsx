@@ -8,7 +8,7 @@ const INTEGRATION_ITEMS = [
 	{
 		title: 'Google Drive',
 		description: 'Bring documents and records from your Google account.',
-		path: ROUTES.settingsConnectorsDrive,
+		path: ROUTES.profileConnectionsDrive,
 		Icon: Cloud,
 	},
 	{

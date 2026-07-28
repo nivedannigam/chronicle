@@ -1,392 +1,278 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-	ChevronRight,
-	Diamond,
-	Eye,
-	Heart,
-	Link2,
-	Settings,
-	Sliders,
-	User,
-	Users,
-	type LucideIcon,
-} from 'lucide-react'
+import { HardDrive, Heart, Lock, Sliders, User, Users } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { signOut } from '@/features/auth'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
+import { FAMILY_ROLE_LABELS } from '@/features/family/constants/family-roles'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useUser } from '@/features/user/hooks/useUser'
 import {
-	FigmaMemberAvatar,
-	memberFirstName,
-	memberInitial,
-} from '@/ui/figma/home/home-ui'
-import { MEMBER_COLORS } from '@/ui/figma/tokens/figma-v2-tokens'
-import { FC, FigmaLbl, figmaCardStyle } from '@/ui/figma/v2/atoms'
+	ProfileAvatar,
+	ProfileConnectionChip,
+	ProfileNavRow,
+	ProfilePageShell,
+	ProfileSectionCard,
+	ProfileStatTile,
+} from '@/ui/figma/profile/profile-ui'
+import { FC } from '@/ui/figma/v2/atoms'
 
-interface ProfileRow {
-	icon: LucideIcon
-	label: string
-	subtitle: string
-	path: string
-	bg: string
+function formatMemberSince(isoDate: string | undefined): string {
+	if (!isoDate) return 'Recently joined'
+
+	const date = new Date(isoDate)
+	if (Number.isNaN(date.getTime())) return 'Recently joined'
+
+	return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-interface ProfileSection {
-	title: string
-	rows: ProfileRow[]
+function formatLastSync(isoDate: string | null | undefined): string {
+	if (!isoDate) return 'Never'
+
+	const date = new Date(isoDate)
+	if (Number.isNaN(date.getTime())) return 'Never'
+
+	const diffMs = Date.now() - date.getTime()
+	const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+
+	if (diffHours < 1) return 'Just now'
+	if (diffHours < 24) return `${diffHours}h ago`
+
+	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export function FigmaProfileScreen() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { profile } = useUser()
-	const { members } = useFamilyContext()
+	const { members, currentUserMember } = useFamilyContext()
 	const { allReports } = useMemberHealthReports()
 	const { data: documents = [] } = useMemberDocuments()
+	const drive = useGoogleDriveConnector(user?.id ?? '')
 
 	const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'You'
 	const email = user?.email ?? ''
-	const initial = memberInitial(displayName)
+	const roleLabel = currentUserMember
+		? FAMILY_ROLE_LABELS[currentUserMember.roleId]
+		: 'Account Owner'
+
+	const driveConnected = drive.connectionStatus === 'connected'
+	const lastSync = drive.latestSync?.completedAt ?? drive.latestSync?.startedAt
 
 	const stats = useMemo(
 		() => [
-			{ value: String(documents.length), label: 'Docs' },
-			{ value: String(allReports.length), label: 'Reports' },
-			{ value: String(members.length || 1), label: 'Members' },
+			{
+				value: String(allReports.length),
+				label: 'Health Reports',
+				accent: FC.green,
+				path: ROUTES.health,
+			},
+			{
+				value: String(documents.length),
+				label: 'Documents',
+				accent: FC.purple,
+				path: ROUTES.documents,
+			},
+			{
+				value: String(Math.max(members.length, 1)),
+				label: 'Family Members',
+				accent: FC.pink,
+				path: ROUTES.profileFamily,
+			},
+			{
+				value: formatLastSync(lastSync),
+				label: 'Last Sync',
+				accent: FC.blue,
+				path: ROUTES.profileConnectionsDrive,
+			},
 		],
-		[allReports.length, documents.length, members.length],
+		[allReports.length, documents.length, lastSync, members.length],
 	)
 
-	const sections: ProfileSection[] = [
-		{
-			title: 'Profile',
-			rows: [
-				{
-					icon: User,
-					label: 'Account',
-					subtitle: `${displayName}${email ? ` · ${email}` : ''}`,
-					path: ROUTES.settingsAccount,
-					bg: FC.blue,
-				},
-				{
-					icon: Users,
-					label: 'Family Management',
-					subtitle: `${members.length} member${members.length === 1 ? '' : 's'} · roles and health sources`,
-					path: ROUTES.family,
-					bg: FC.purple,
-				},
-				{
-					icon: Sliders,
-					label: 'Preferences',
-					subtitle: 'Family context and notification defaults',
-					path: ROUTES.preferences,
-					bg: FC.indigo,
-				},
-			],
-		},
-		{
-			title: 'Connections',
-			rows: [
-				{
-					icon: Link2,
-					label: 'Connected Accounts',
-					subtitle: 'Google Drive · sign-in providers',
-					path: ROUTES.settingsConnectorsDrive,
-					bg: FC.green,
-				},
-				{
-					icon: Settings,
-					label: 'Integrations',
-					subtitle: 'Connectors and data sources',
-					path: ROUTES.integrations,
-					bg: '#64748B',
-				},
-			],
-		},
-		{
-			title: 'App',
-			rows: [
-				{
-					icon: Heart,
-					label: 'Health Preferences',
-					subtitle: 'Import sources, folders, scan settings',
-					path: ROUTES.healthSettings,
-					bg: FC.red,
-				},
-				{
-					icon: Eye,
-					label: 'Privacy & Security',
-					subtitle: 'Data export and account security',
-					path: ROUTES.settingsData,
-					bg: FC.amber,
-				},
-			],
-		},
-		{
-			title: 'Subscription',
-			rows: [
-				{
-					icon: Diamond,
-					label: 'Chronicle Family',
-					subtitle: 'Family plan · manage subscription',
-					path: ROUTES.settingsAccount,
-					bg: FC.orange,
-				},
-			],
-		},
-	]
-
 	return (
-		<div style={{ padding: '0 22px 24px' }}>
+		<ProfilePageShell padding="0 22px 24px">
+			<div style={{ padding: '4px 0 8px' }}>
+				<h1
+					style={{
+						color: FC.fg,
+						fontSize: 34,
+						fontWeight: 700,
+						letterSpacing: -1.6,
+						margin: 0,
+					}}
+				>
+					Profile
+				</h1>
+			</div>
 			<div
 				style={{
-					padding: '8px 0 28px',
 					display: 'flex',
 					flexDirection: 'column',
 					alignItems: 'center',
-					gap: 14,
+					textAlign: 'center',
+					padding: '12px 0 24px',
+					gap: 10,
 				}}
 			>
-				<div
-					style={{
-						width: 86,
-						height: 86,
-						borderRadius: 43,
-						background: `linear-gradient(135deg,${FC.blue},${FC.indigo})`,
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						boxShadow: '0 10px 32px rgba(59,130,246,0.35)',
-					}}
-				>
-					<span style={{ color: '#fff', fontSize: 36, fontWeight: 700 }}>
-						{initial}
-					</span>
-				</div>
-				<div style={{ textAlign: 'center' }}>
-					<h2
+				<ProfileAvatar
+					name={displayName}
+					avatarUrl={profile?.avatarUrl}
+					size={96}
+				/>
+				<div>
+					<h1
 						style={{
 							color: FC.fg,
-							fontSize: 22,
+							fontSize: 26,
 							fontWeight: 700,
 							letterSpacing: -0.8,
-							marginBottom: 4,
-							marginTop: 0,
+							margin: '0 0 6px',
 						}}
 					>
 						{displayName}
-					</h2>
-					{email ? (
-						<p style={{ color: FC.mid, fontSize: 14, margin: 0 }}>{email}</p>
-					) : null}
-				</div>
-
-				{members.length > 0 ? (
-					<div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-						{members.map((member, index) => {
-							const color =
-								MEMBER_COLORS[index % MEMBER_COLORS.length] ?? FC.blue
-							return (
-								<div
-									key={member.id}
-									style={{
-										display: 'flex',
-										flexDirection: 'column',
-										alignItems: 'center',
-										gap: 5,
-									}}
-								>
-									<FigmaMemberAvatar
-										initial={memberInitial(member.displayName)}
-										color={color}
-										size={36}
-									/>
-									<span
-										style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}
-									>
-										{memberFirstName(member.displayName)}
-									</span>
-								</div>
-							)
-						})}
+					</h1>
+					<p style={{ color: FC.mid, fontSize: 14, margin: '0 0 8px' }}>
+						{email}
+					</p>
+					<div
+						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: 8,
+							flexWrap: 'wrap',
+							justifyContent: 'center',
+						}}
+					>
+						<span
+							style={{
+								background: 'rgba(59,130,246,0.12)',
+								border: '1px solid rgba(59,130,246,0.24)',
+								borderRadius: 20,
+								padding: '4px 12px',
+								color: FC.blue,
+								fontSize: 12,
+								fontWeight: 600,
+							}}
+						>
+							{roleLabel}
+						</span>
+						<span style={{ color: FC.dim, fontSize: 12 }}>
+							Member since {formatMemberSince(user?.created_at)}
+						</span>
 					</div>
-				) : null}
+				</div>
 
 				<div
 					style={{
 						display: 'flex',
-						gap: 0,
-						background: FC.surface,
-						border: `1px solid ${FC.line}`,
-						borderRadius: 18,
-						overflow: 'hidden',
-						width: '100%',
-						maxWidth: 280,
+						flexWrap: 'wrap',
+						gap: 8,
+						justifyContent: 'center',
+						marginTop: 6,
 					}}
 				>
-					{stats.map((stat, index) => (
-						<div
-							key={stat.label}
-							style={{
-								flex: 1,
-								padding: '10px 0',
-								textAlign: 'center',
-								borderRight:
-									index < stats.length - 1
-										? '1px solid rgba(255,255,255,0.06)'
-										: 'none',
-							}}
-						>
-							<p
-								style={{
-									color: FC.fg,
-									fontSize: 17,
-									fontWeight: 700,
-									letterSpacing: -0.5,
-									marginBottom: 2,
-									marginTop: 0,
-								}}
-							>
-								{stat.value}
-							</p>
-							<p
-								style={{
-									color: 'rgba(255,255,255,0.3)',
-									fontSize: 11,
-									margin: 0,
-								}}
-							>
-								{stat.label}
-							</p>
-						</div>
-					))}
-				</div>
-
-				<div
-					style={{
-						background: 'rgba(59,130,246,0.1)',
-						border: '1px solid rgba(59,130,246,0.22)',
-						borderRadius: 14,
-						padding: '6px 18px',
-					}}
-				>
-					<span style={{ color: FC.blue, fontSize: 12, fontWeight: 600 }}>
-						Chronicle Family Plan ✦
-					</span>
+					<ProfileConnectionChip
+						label="Google"
+						status="Signed in"
+						color={FC.green}
+					/>
+					<ProfileConnectionChip
+						label="Google Drive"
+						status={driveConnected ? 'Connected' : 'Not connected'}
+						color={driveConnected ? FC.green : FC.amber}
+					/>
 				</div>
 			</div>
 
-			{sections.map((section) => (
-				<div key={section.title} style={{ marginBottom: 20 }}>
-					<div style={{ marginBottom: 12 }}>
-						<FigmaLbl>{section.title}</FigmaLbl>
-					</div>
-					<div
-						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
-					>
-						{section.rows.map((row, index) => (
-							<button
-								key={row.label}
-								type="button"
-								onClick={() => navigate(row.path)}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: 13,
-									padding: '13px 18px',
-									borderBottom:
-										index < section.rows.length - 1
-											? '1px solid rgba(255,255,255,0.05)'
-											: 'none',
-									cursor: 'pointer',
-									width: '100%',
-									background: 'none',
-									borderLeft: 'none',
-									borderRight: 'none',
-									borderTop: 'none',
-									fontFamily: 'inherit',
-									textAlign: 'left',
-								}}
-							>
-								<div
-									style={{
-										width: 36,
-										height: 36,
-										borderRadius: 10,
-										flexShrink: 0,
-										background: row.bg,
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										boxShadow: `0 2px 8px ${row.bg}40`,
-									}}
-								>
-									<row.icon size={17} color="#fff" strokeWidth={2} />
-								</div>
-								<div style={{ flex: 1 }}>
-									<p
-										style={{
-											color: FC.fg,
-											fontSize: 14.5,
-											fontWeight: 500,
-											marginBottom: 2,
-											marginTop: 0,
-										}}
-									>
-										{row.label}
-									</p>
-									<p
-										style={{
-											color: 'rgba(255,255,255,0.35)',
-											fontSize: 12,
-											margin: 0,
-										}}
-									>
-										{row.subtitle}
-									</p>
-								</div>
-								<ChevronRight size={14} color="rgba(255,255,255,0.18)" />
-							</button>
-						))}
-					</div>
-				</div>
-			))}
-
-			<button
-				type="button"
-				onClick={() => void signOut()}
+			<div
 				style={{
-					width: '100%',
-					background: 'rgba(239,68,68,0.07)',
-					border: '1px solid rgba(239,68,68,0.18)',
-					borderRadius: 20,
-					padding: '16px 20px',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					cursor: 'pointer',
-					marginBottom: 24,
-					fontFamily: 'inherit',
+					display: 'grid',
+					gridTemplateColumns: '1fr 1fr',
+					gap: 10,
+					marginBottom: 22,
 				}}
 			>
-				<span style={{ color: FC.red, fontSize: 14, fontWeight: 500 }}>
-					Sign Out
-				</span>
-			</button>
+				{stats.map((stat) => (
+					<ProfileStatTile
+						key={stat.label}
+						value={stat.value}
+						label={stat.label}
+						accent={stat.accent}
+						onClick={() => navigate(stat.path)}
+					/>
+				))}
+			</div>
+
+			<ProfileSectionCard title="Account">
+				<ProfileNavRow
+					icon={User}
+					label="Personal"
+					subtitle="Name, email, language, timezone"
+					iconBg={FC.blue}
+					onClick={() => navigate(ROUTES.profilePersonal)}
+				/>
+				<ProfileNavRow
+					icon={Users}
+					label="Family"
+					subtitle={`${members.length} member${members.length === 1 ? '' : 's'} · permissions & sharing`}
+					iconBg={FC.purple}
+					onClick={() => navigate(ROUTES.profileFamily)}
+				/>
+				<ProfileNavRow
+					icon={HardDrive}
+					label="Connected Accounts"
+					subtitle={
+						driveConnected
+							? `Google Drive · synced ${formatLastSync(lastSync)}`
+							: 'Connect Google Drive and more'
+					}
+					iconBg={FC.green}
+					onClick={() => navigate(ROUTES.profileConnections)}
+				/>
+				<ProfileNavRow
+					icon={Sliders}
+					label="Preferences"
+					subtitle="Default member, AI style, notifications"
+					iconBg={FC.indigo}
+					onClick={() => navigate(ROUTES.profilePreferences)}
+					isLast
+				/>
+			</ProfileSectionCard>
+
+			<ProfileSectionCard title="Privacy & Security">
+				<ProfileNavRow
+					icon={Lock}
+					label="Security"
+					subtitle="Authentication, data, sign out"
+					iconBg={FC.amber}
+					onClick={() => navigate(ROUTES.profileSecurity)}
+					isLast
+				/>
+			</ProfileSectionCard>
+
+			<ProfileSectionCard title="Modules">
+				<ProfileNavRow
+					icon={Heart}
+					label="Health setup"
+					subtitle="Import sources, folders, scan settings"
+					iconBg={FC.red}
+					onClick={() => navigate(ROUTES.healthSettings)}
+					isLast
+				/>
+			</ProfileSectionCard>
+
 			<p
 				style={{
 					color: 'rgba(255,255,255,0.15)',
 					fontSize: 11.5,
 					textAlign: 'center',
-					marginBottom: 24,
+					marginTop: 8,
 				}}
 			>
-				Chronicle v2.0 · Family OS
+				Chronicle · Family OS
 			</p>
-		</div>
+		</ProfilePageShell>
 	)
 }

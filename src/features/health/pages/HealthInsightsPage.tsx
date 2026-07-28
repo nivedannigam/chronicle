@@ -27,7 +27,7 @@ export function HealthInsightsPage() {
 		)
 	}
 
-	if (!hasImportedReports || companion.narrative.length === 0) {
+	if (!hasImportedReports || companion.insightGroups.length === 0) {
 		return (
 			<DashboardEmptyState
 				title="Insights will appear here"
@@ -39,5 +39,5 @@ export function HealthInsightsPage() {
 		)
 	}
 
-	return <FigmaHealthInsightsView paragraphs={companion.narrative} />
+	return <FigmaHealthInsightsView groups={companion.insightGroups} />
 }

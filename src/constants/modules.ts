@@ -128,7 +128,7 @@ export const DASHBOARD_COMING_SOON_MODULE_IDS = MORE_COMING_SOON_MODULE_IDS
 export const MODULE_ROUTES: Partial<Record<string, string>> = {
 	health: ROUTES.health,
 	documents: ROUTES.documents,
-	family: ROUTES.family,
+	family: ROUTES.profileFamily,
 	timeline: ROUTES.timeline,
 }
 

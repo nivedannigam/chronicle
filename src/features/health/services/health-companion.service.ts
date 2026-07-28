@@ -12,10 +12,13 @@ import type {
 	HealthAttentionItem,
 	HealthChangeItem,
 	HealthCompanionView,
+	HealthInsightGroup,
 	HealthJourneyEvent,
 	HealthNextStep,
 	HealthReportSummary,
+	HealthScoreReason,
 	HealthStatusLabel,
+	HealthTrendHighlight,
 	MetricInsightGroup,
 } from '@/features/health/types/health-companion.types'
 import {
@@ -118,6 +121,201 @@ function deriveStatus(input: {
 	}
 }
 
+function humanMetricStatus(
+	displayName: string,
+	status: string,
+	trendDirection?: string,
+): string {
+	if (trendDirection === 'improving') {
+		return `${displayName} is improving`
+	}
+
+	if (status === 'low' || status === 'borderline') {
+		return `${displayName} remains slightly low`
+	}
+
+	if (status === 'high') {
+		return `${displayName} is slightly elevated`
+	}
+
+	if (status === 'critical') {
+		return `${displayName} is above the recommended range`
+	}
+
+	return `${displayName} is stable`
+}
+
+function buildScoreReasons(groups: MetricInsightGroup[]): HealthScoreReason[] {
+	const reasons: HealthScoreReason[] = []
+
+	for (const group of groups) {
+		if (group.status === 'needs_attention') {
+			const metric = group.metrics.find((item) => ABNORMAL.has(item.status))
+			reasons.push({
+				id: `warn-${group.id}`,
+				label: metric
+					? humanMetricStatus(metric.name, metric.status)
+					: `${group.label} needs monitoring`,
+				kind: 'warning',
+			})
+			continue
+		}
+
+		if (group.status === 'improving') {
+			reasons.push({
+				id: `pos-${group.id}`,
+				label: `${group.label} trending better`,
+				kind: 'positive',
+			})
+			continue
+		}
+
+		reasons.push({
+			id: `ok-${group.id}`,
+			label: `${group.label} stable`,
+			kind: 'positive',
+		})
+	}
+
+	const warnings = reasons.filter((item) => item.kind === 'warning')
+	const positives = reasons.filter((item) => item.kind === 'positive')
+
+	return [...warnings, ...positives].slice(0, 6)
+}
+
+function buildTrendHighlights(input: {
+	groups: MetricInsightGroup[]
+	changes: HealthChangeItem[]
+	graph: HealthKnowledgeGraph
+}): HealthTrendHighlight[] {
+	const highlights: HealthTrendHighlight[] = []
+
+	for (const change of input.changes) {
+		if (change.direction === 'improved' || change.direction === 'resolved') {
+			highlights.push({
+				id: change.id,
+				label: change.label,
+				detail: change.detail ?? 'Compared with your previous report',
+				status: 'improving',
+			})
+		} else if (change.direction === 'worsened') {
+			highlights.push({
+				id: change.id,
+				label: change.label,
+				detail: change.detail ?? 'Changed since your last report',
+				status: 'needs_attention',
+			})
+		}
+	}
+
+	for (const group of input.groups) {
+		for (const metric of group.metrics) {
+			if (highlights.length >= 6) break
+
+			if (group.status === 'needs_attention' && ABNORMAL.has(metric.status)) {
+				if (highlights.some((item) => item.label.includes(metric.name))) {
+					continue
+				}
+
+				highlights.push({
+					id: `trend-${metric.id}`,
+					label: metric.name,
+					detail: humanMetricStatus(metric.name, metric.status),
+					status: 'needs_attention',
+					metricId: metric.id,
+					categoryId: group.id,
+				})
+			} else if (group.status === 'improving') {
+				highlights.push({
+					id: `trend-${metric.id}`,
+					label: metric.name,
+					detail: 'Improving across recent reports',
+					status: 'improving',
+					metricId: metric.id,
+					categoryId: group.id,
+				})
+			}
+		}
+	}
+
+	for (const history of input.graph.profile.metricHistories) {
+		if (highlights.length >= 6) break
+
+		if (
+			history.trend.direction === 'stable' &&
+			history.observations.length >= 2 &&
+			!highlights.some((item) => item.metricId === history.canonicalMetricId)
+		) {
+			highlights.push({
+				id: `stable-${history.canonicalMetricId}`,
+				label: history.displayName,
+				detail: `Holding steady at ${history.baseline.latestValueLabel}`,
+				status: 'stable',
+				metricId: history.canonicalMetricId,
+				categoryId: history.categoryId,
+			})
+		}
+	}
+
+	const priority = {
+		needs_attention: 0,
+		new_finding: 1,
+		improving: 2,
+		stable: 3,
+	}
+
+	return highlights
+		.sort((a, b) => priority[a.status] - priority[b.status])
+		.slice(0, 4)
+}
+
+function buildInsightGroups(input: {
+	groups: MetricInsightGroup[]
+	insights: ChronicleInsight[]
+}): HealthInsightGroup[] {
+	const result: HealthInsightGroup[] = []
+
+	for (const group of input.groups) {
+		const primaryMetric = group.metrics[0]
+		const relatedInsight = input.insights.find(
+			(item) => item.categoryId === group.id,
+		)
+
+		const trend =
+			group.status === 'improving'
+				? 'Improving'
+				: group.status === 'needs_attention'
+					? 'Needs attention'
+					: 'Stable'
+
+		result.push({
+			id: group.id,
+			label: group.label,
+			color: group.color,
+			summary:
+				relatedInsight?.summary ??
+				(group.status === 'needs_attention'
+					? `${group.label} markers need monitoring based on your latest results.`
+					: `${group.label} markers look steady across recent reports.`),
+			trend,
+			evidence:
+				relatedInsight?.why ??
+				(primaryMetric
+					? `Latest: ${primaryMetric.name} ${primaryMetric.value}`
+					: 'Based on your imported lab reports'),
+			nextStep:
+				group.status === 'needs_attention'
+					? 'Discuss these results with your doctor at your next visit.'
+					: 'Continue regular checkups to track changes over time.',
+			categoryId: group.id,
+			metricId: primaryMetric?.id,
+			reportId: relatedInsight?.evidence[0]?.reportId,
+		})
+	}
+
+	return result.slice(0, 9)
+}
+
 function buildAttention(input: {
 	graph: HealthKnowledgeGraph
 	insights: ChronicleInsight[]
@@ -144,8 +342,12 @@ function buildAttention(input: {
 
 		items.push({
 			id: `attention-${history.canonicalMetricId}`,
-			title: `${history.displayName} ${latest.status === 'low' ? 'low' : 'elevated'}`,
-			detail: `Latest: ${latest.value} from ${latest.reportTitle}`,
+			title: humanMetricStatus(
+				history.displayName,
+				latest.status,
+				history.trend.direction === 'improving' ? 'improving' : undefined,
+			),
+			detail: `Latest result: ${latest.value}. Detected in ${latest.reportTitle}.`,
 			severity: latest.status === 'critical' ? 'high' : 'medium',
 			categoryId: history.categoryId,
 			metricId: history.canonicalMetricId,
@@ -176,7 +378,7 @@ function buildAttention(input: {
 		})
 	}
 
-	return items.slice(0, 5)
+	return items.slice(0, 4)
 }
 
 function buildChanges(input: {
@@ -202,21 +404,7 @@ function buildChanges(input: {
 		detail: `${change.previousValue ?? '—'} → ${change.currentValue}`,
 	}))
 
-	for (const history of input.graph.profile.metricHistories) {
-		if (
-			history.trend.direction === 'stable' &&
-			history.observations.length >= 2
-		) {
-			items.push({
-				id: `stable-${history.canonicalMetricId}`,
-				label: `${history.displayName} stable`,
-				direction: 'stable',
-				detail: `Holding at ${history.baseline.latestValueLabel}`,
-			})
-		}
-	}
-
-	return items.slice(0, 6)
+	return items.slice(0, 4)
 }
 
 function buildNextSteps(input: {
@@ -293,9 +481,10 @@ export function buildReportSummaries(
 				doctor: parsed?.metadata.doctorName ?? undefined,
 				date: getReportDisplayDate(report, parsed),
 				displayDate: formatDisplayDate(getReportDisplayDate(report, parsed)),
-				summary: parsed
-					? `${parsed.metrics.length} results reviewed from this visit.`
-					: 'Report imported and ready to review.',
+				summary:
+					abnormal.length > 0
+						? `${abnormal.length} finding${abnormal.length === 1 ? '' : 's'} noted · ${parsed?.metrics.length ?? 0} results reviewed`
+						: `All reviewed markers within expected range · ${parsed?.metrics.length ?? 0} results`,
 				findings: abnormal,
 				status: report.status,
 				isReady: report.status === 'completed',
@@ -462,6 +651,7 @@ export function buildHealthCompanionView(input: {
 		graph: input.graph,
 		uploadedReports: input.uploadedReports,
 	})
+	const metricGroups = buildMetricGroups(input.graph)
 	const recentReports = buildReportSummaries(input.uploadedReports)
 	const journeyEvents = buildJourneyEvents({
 		reports: input.uploadedReports,
@@ -473,12 +663,22 @@ export function buildHealthCompanionView(input: {
 		status,
 		statusDetail: detail,
 		score,
+		scoreReasons: buildScoreReasons(metricGroups),
 		attention,
 		changes,
 		nextSteps: buildNextSteps({ attention, needsReview }),
 		recentReports,
 		journeyEvents,
-		metricGroups: buildMetricGroups(input.graph),
+		metricGroups,
+		trendHighlights: buildTrendHighlights({
+			groups: metricGroups,
+			changes,
+			graph: input.graph,
+		}),
+		insightGroups: buildInsightGroups({
+			groups: metricGroups,
+			insights: input.insights,
+		}),
 		narrative: buildNarrative(input.insights),
 	}
 }

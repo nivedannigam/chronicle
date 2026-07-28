@@ -84,7 +84,7 @@ export function FamilyMemberFormPage() {
 		<SettingsPageShell
 			backLabel={isEdit ? 'Member' : 'Family'}
 			onBack={() =>
-				navigate(isEdit ? familyMemberPath(memberId!) : ROUTES.family)
+				navigate(isEdit ? familyMemberPath(memberId!) : ROUTES.profileFamily)
 			}
 			title={isEdit ? 'Edit member' : 'Add member'}
 			subtitle={

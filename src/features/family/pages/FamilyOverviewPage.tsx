@@ -1,19 +1,24 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { C, screenTitleStyle } from '@/constants/colors'
 import { familyMemberPath, ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { FamilyMemberCard } from '@/features/family/components/FamilyMemberCard'
 import { InvitationsSection } from '@/features/family/components/InvitationsSection'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { listFamilyInvitations } from '@/features/family/services/family-platform.service'
-import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
-import { HealthPageIntro } from '@/ui/figma/health/health-ui'
+import {
+	ProfilePageShell,
+	ProfileSearchField,
+	ProfileSectionCard,
+} from '@/ui/figma/profile/profile-ui'
+import { FC } from '@/ui/figma/v2/atoms'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
 export function FamilyOverviewPage() {
 	const navigate = useNavigate()
+	const [search, setSearch] = useState('')
 	const { family, members, isLoading, selectedMemberId, setSelectedMemberId } =
 		useFamilyContext()
 
@@ -24,112 +29,102 @@ export function FamilyOverviewPage() {
 		staleTime: STALE_TIME.default,
 	})
 
+	const filteredMembers = useMemo(() => {
+		const query = search.trim().toLowerCase()
+		if (!query) return members
+
+		return members.filter((member) => {
+			const haystack = [
+				member.displayName,
+				member.relationship,
+				member.roleId,
+				...(member.aliases ?? []),
+			]
+				.join(' ')
+				.toLowerCase()
+
+			return haystack.includes(query)
+		})
+	}, [members, search])
+
 	return (
-		<div style={{ color: C.text, padding: '0 18px' }}>
+		<ProfilePageShell
+			title={family?.name ?? 'Family'}
+			subtitle={`${members.length} member${members.length === 1 ? '' : 's'} · permissions & sharing`}
+			backLabel="Profile"
+			onBack={() => navigate(ROUTES.profile)}
+		>
+			<div style={{ marginBottom: 16 }}>
+				<ProfileSearchField
+					value={search}
+					onChange={setSearch}
+					placeholder="Search family members"
+				/>
+			</div>
+
 			<div
 				style={{
-					position: 'sticky',
-					top: 0,
-					zIndex: 10,
-					background: C.bg,
-					paddingTop: 4,
-					paddingBottom: 14,
-					marginBottom: 4,
-					borderBottom: `1px solid ${C.border}`,
+					display: 'flex',
+					justifyContent: 'flex-end',
+					marginBottom: 16,
 				}}
 			>
 				<button
 					type="button"
-					onClick={() => navigate(ROUTES.more)}
+					onClick={() => navigate(ROUTES.familyMemberNew)}
+					aria-label="Add family member"
 					style={{
-						display: 'flex',
+						display: 'inline-flex',
 						alignItems: 'center',
+						justifyContent: 'center',
 						gap: 6,
-						background: 'none',
+						background: FC.blue,
+						color: '#fff',
 						border: 'none',
-						padding: '0 0 12px',
+						borderRadius: 100,
+						padding: '0 18px',
+						height: 44,
+						fontSize: 13,
+						fontWeight: 700,
 						cursor: 'pointer',
-						color: C.textSec,
 						fontFamily: 'inherit',
-						fontSize: 14,
 					}}
 				>
-					<ArrowLeft size={18} />
-					Back
+					<Plus size={16} />
+					Add member
 				</button>
-
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: 12,
-					}}
-				>
-					<div style={{ flex: 1, minWidth: 0 }}>
-						<div style={{ ...screenTitleStyle, marginBottom: 4 }}>
-							{family?.name ?? 'My Family'}
-						</div>
-						<div style={{ fontSize: 13, color: C.textMuted }}>
-							{members.length} member{members.length === 1 ? '' : 's'}
-						</div>
-					</div>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.familyMemberNew)}
-						style={{
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: 6,
-							background: C.accentBlue,
-							color: C.white,
-							border: 'none',
-							borderRadius: 100,
-							padding: '10px 14px',
-							fontSize: 12,
-							fontWeight: 700,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-							flexShrink: 0,
-							minHeight: 36,
-						}}
-					>
-						<Plus size={14} />
-						Add
-					</button>
-				</div>
 			</div>
 
-			<div style={{ padding: '8px 0 20px' }}>
-				<HealthPageIntro>
-					Organize health, documents, and more around the people who matter.
-				</HealthPageIntro>
-
-				<FigmaSectionLabel>Members</FigmaSectionLabel>
-
+			<ProfileSectionCard title="Members">
 				{isLoading ? (
-					<ListSkeleton rows={2} height={76} />
+					<div style={{ padding: 16 }}>
+						<ListSkeleton rows={2} height={76} />
+					</div>
 				) : members.length === 0 ? (
-					<FigmaCard
+					<div
 						style={{
-							border: `1px dashed ${C.border}`,
+							border: `1px dashed ${FC.line}`,
+							margin: 16,
 							padding: '28px 20px',
 							textAlign: 'center',
-							marginBottom: 24,
+							borderRadius: 18,
 						}}
 					>
-						<Users
-							size={28}
-							color={C.textMuted}
-							style={{ margin: '0 auto 12px' }}
-						/>
-						<div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+						<Users size={28} color={FC.dim} style={{ margin: '0 auto 12px' }} />
+						<div
+							style={{
+								fontSize: 16,
+								fontWeight: 700,
+								color: FC.fg,
+								marginBottom: 6,
+							}}
+						>
 							Start your family
 						</div>
 						<div
 							style={{
 								fontSize: 13,
-								color: C.textMuted,
+								color: FC.mid,
 								marginBottom: 16,
 								lineHeight: 1.5,
 							}}
@@ -141,8 +136,8 @@ export function FamilyOverviewPage() {
 							type="button"
 							onClick={() => navigate(ROUTES.familyMemberNew)}
 							style={{
-								background: C.accentBlue,
-								color: C.white,
+								background: FC.blue,
+								color: '#fff',
 								border: 'none',
 								borderRadius: 100,
 								padding: '10px 16px',
@@ -150,29 +145,44 @@ export function FamilyOverviewPage() {
 								fontWeight: 700,
 								cursor: 'pointer',
 								fontFamily: 'inherit',
+								minHeight: 44,
 							}}
 						>
 							Add first member
 						</button>
-					</FigmaCard>
+					</div>
+				) : filteredMembers.length === 0 ? (
+					<div style={{ padding: '20px 18px', color: FC.mid, fontSize: 14 }}>
+						No members match &ldquo;{search.trim()}&rdquo;
+					</div>
 				) : (
-					<div style={{ display: 'grid', gap: 10, marginBottom: 24 }}>
-						{members.map((member) => (
-							<FamilyMemberCard
+					<div style={{ display: 'grid', gap: 0 }}>
+						{filteredMembers.map((member, index) => (
+							<div
 								key={member.id}
-								member={member}
-								selected={member.id === selectedMemberId}
-								onClick={() => {
-									setSelectedMemberId(member.id)
-									navigate(familyMemberPath(member.id))
+								style={{
+									padding: '4px 12px',
+									borderBottom:
+										index === filteredMembers.length - 1
+											? 'none'
+											: `1px solid ${FC.line}`,
 								}}
-							/>
+							>
+								<FamilyMemberCard
+									member={member}
+									selected={member.id === selectedMemberId}
+									onClick={() => {
+										setSelectedMemberId(member.id)
+										navigate(familyMemberPath(member.id))
+									}}
+								/>
+							</div>
 						))}
 					</div>
 				)}
+			</ProfileSectionCard>
 
-				<InvitationsSection invitations={invitationsQuery.data ?? []} />
-			</div>
-		</div>
+			<InvitationsSection invitations={invitationsQuery.data ?? []} />
+		</ProfilePageShell>
 	)
 }

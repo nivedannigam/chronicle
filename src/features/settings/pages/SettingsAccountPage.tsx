@@ -1,16 +1,18 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Loader2 } from 'lucide-react'
-import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth'
 import { useUser } from '@/features/user/hooks/useUser'
 import { supabase } from '@/lib/supabase'
-import { FigmaCard } from '@/ui/figma/components/primitives'
 import {
-	SettingsPageShell,
-	SettingsPrimaryButton,
-} from '@/ui/figma/settings/settings-ui'
+	ProfileAvatar,
+	ProfilePageShell,
+	ProfileSectionCard,
+} from '@/ui/figma/profile/profile-ui'
+import { FC } from '@/ui/figma/v2/atoms'
+import { SettingsPrimaryButton } from '@/ui/figma/settings/settings-ui'
 
 export function SettingsAccountPage() {
 	const navigate = useNavigate()
@@ -66,97 +68,183 @@ export function SettingsAccountPage() {
 		}
 	}
 
+	const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'You'
+
 	return (
-		<SettingsPageShell
+		<ProfilePageShell
+			title="Personal"
+			subtitle="Your identity and regional preferences"
 			backLabel="Profile"
 			onBack={() => navigate(ROUTES.profile)}
-			title="Account"
-			subtitle="Name, email, and security"
 		>
-			<FigmaCard style={{ padding: 16 }}>
-				<label style={{ display: 'block', marginBottom: 14 }}>
-					<div style={{ fontSize: 11, color: C.textMuted, marginBottom: 6 }}>
-						Display name
-					</div>
-					<input
-						value={name}
-						onChange={(event) => setName(event.target.value)}
-						style={{
-							width: '100%',
-							background: C.card2,
-							border: `1px solid ${C.border}`,
-							borderRadius: 12,
-							padding: '12px 14px',
-							fontSize: 15,
-							fontWeight: 600,
-							color: C.text,
-							fontFamily: 'inherit',
-						}}
-					/>
-				</label>
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					padding: '8px 0 20px',
+				}}
+			>
+				<ProfileAvatar
+					name={displayName}
+					avatarUrl={profile?.avatarUrl}
+					size={72}
+				/>
+			</div>
 
-				<Row label="Email" value={user?.email ?? '—'} />
+			<ProfileSectionCard title="Identity">
+				<div style={{ padding: '14px 18px' }}>
+					<Field label="Display name">
+						<input
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							style={inputStyle}
+						/>
+					</Field>
+					<Field label="Email">
+						<ReadOnlyValue value={user?.email ?? '—'} />
+					</Field>
+					<Field label="Phone" isLast>
+						<ComingSoonValue />
+					</Field>
+				</div>
+			</ProfileSectionCard>
 
-				{error ? (
-					<div style={{ fontSize: 13, color: C.red, marginBottom: 10 }}>
-						{error}
-					</div>
-				) : null}
+			<ProfileSectionCard title="Details">
+				<div style={{ padding: '14px 18px' }}>
+					<Field label="Date of birth">
+						<ComingSoonValue />
+					</Field>
+					<Field label="Emergency contact" isLast>
+						<ComingSoonValue />
+					</Field>
+				</div>
+			</ProfileSectionCard>
 
-				<SettingsPrimaryButton
-					onClick={() => void handleSave()}
-					disabled={isSaving}
-				>
-					{isSaving ? (
-						<span
-							style={{
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: 8,
-							}}
-						>
-							<Loader2
-								size={16}
-								style={{ animation: 'spin 1s linear infinite' }}
-							/>
-							Saving…
-						</span>
-					) : (
-						'Save changes'
-					)}
-				</SettingsPrimaryButton>
+			<ProfileSectionCard title="Regional">
+				<div style={{ padding: '14px 18px' }}>
+					<Field label="Preferred language">
+						<ComingSoonValue detail="English (default)" />
+					</Field>
+					<Field label="Timezone" isLast>
+						<ComingSoonValue
+							detail={Intl.DateTimeFormat().resolvedOptions().timeZone}
+						/>
+					</Field>
+				</div>
+			</ProfileSectionCard>
 
-				{saved ? (
-					<div
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: 6,
-							marginTop: 10,
-							fontSize: 13,
-							fontWeight: 600,
-							color: C.greenAlt,
-						}}
+			{error ? (
+				<p style={{ color: FC.red, fontSize: 13, margin: '0 0 12px' }}>
+					{error}
+				</p>
+			) : null}
+
+			<SettingsPrimaryButton
+				onClick={() => void handleSave()}
+				disabled={isSaving}
+			>
+				{isSaving ? (
+					<span
+						style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
 					>
-						<Check size={16} />
-						Saved successfully
-					</div>
-				) : null}
-			</FigmaCard>
-		</SettingsPageShell>
+						<Loader2
+							size={16}
+							style={{ animation: 'spin 1s linear infinite' }}
+						/>
+						Saving…
+					</span>
+				) : (
+					'Save changes'
+				)}
+			</SettingsPrimaryButton>
+
+			{saved ? (
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: 6,
+						marginTop: 10,
+						fontSize: 13,
+						fontWeight: 600,
+						color: FC.green,
+					}}
+				>
+					<Check size={16} />
+					Saved successfully
+				</div>
+			) : null}
+		</ProfilePageShell>
 	)
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+const inputStyle = {
+	width: '100%',
+	boxSizing: 'border-box' as const,
+	background: FC.raise,
+	border: `1px solid ${FC.line}`,
+	borderRadius: 12,
+	padding: '12px 14px',
+	fontSize: 15,
+	fontWeight: 600,
+	color: FC.fg,
+	fontFamily: 'inherit',
+}
+
+function Field({
+	label,
+	children,
+	isLast = false,
+}: {
+	label: string
+	children: ReactNode
+	isLast?: boolean
+}) {
 	return (
-		<div style={{ marginBottom: 12 }}>
-			<div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>
+		<label
+			style={{
+				display: 'block',
+				marginBottom: isLast ? 0 : 14,
+				paddingBottom: isLast ? 0 : 14,
+				borderBottom: isLast ? 'none' : `1px solid ${FC.line}`,
+			}}
+		>
+			<div
+				style={{
+					fontSize: 11,
+					color: FC.dim,
+					marginBottom: 6,
+					fontWeight: 600,
+					textTransform: 'uppercase',
+					letterSpacing: '0.06em',
+				}}
+			>
 				{label}
 			</div>
-			<div style={{ fontSize: 15, fontWeight: 600, color: C.textSec }}>
-				{value}
+			{children}
+		</label>
+	)
+}
+
+function ReadOnlyValue({ value }: { value: string }) {
+	return (
+		<div style={{ fontSize: 15, fontWeight: 600, color: FC.mid }}>{value}</div>
+	)
+}
+
+function ComingSoonValue({ detail }: { detail?: string }) {
+	return (
+		<div>
+			<div style={{ fontSize: 15, fontWeight: 600, color: FC.mid }}>
+				{detail ?? 'Coming soon'}
 			</div>
+			{detail ? (
+				<div style={{ fontSize: 11, color: FC.dim, marginTop: 4 }}>
+					Editable in a future update
+				</div>
+			) : null}
 		</div>
 	)
 }

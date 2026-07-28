@@ -4,3 +4,6 @@ export { SettingsNotificationsPage } from '@/features/settings/pages/SettingsNot
 export { SettingsAppearancePage } from '@/features/settings/pages/SettingsAppearancePage'
 export { PreferencesPage } from '@/features/settings/pages/PreferencesPage'
 export { ProfilePage } from '@/features/settings/pages/ProfilePage'
+export { ProfileConnectionsPage } from '@/features/settings/pages/ProfileConnectionsPage'
+export { ProfileDrivePage } from '@/features/settings/pages/ProfileDrivePage'
+export { ProfileSecurityPage } from '@/features/settings/pages/ProfileSecurityPage'

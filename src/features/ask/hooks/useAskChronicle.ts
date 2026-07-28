@@ -16,6 +16,10 @@ import {
 	classifyAskError,
 	type AskErrorKind,
 } from '@/features/ask/components/AskErrorBanner'
+import {
+	addRecentQuestion,
+	syncRecentQuestionsFromTurns,
+} from '@/features/ask/services/ask-history.service'
 import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { aiService } from '@/features/ai/services/ai.service'
 import type { AskConversationTurn } from '@/features/ask/types'
@@ -226,6 +230,9 @@ export function useAskChronicle(
 				}
 
 				persistTurns(nextTurns)
+
+				syncRecentQuestionsFromTurns(nextTurns)
+				addRecentQuestion(question, result.turn)
 
 				setSessionState({
 					sessionKey,

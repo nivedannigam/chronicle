@@ -7,13 +7,11 @@ import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
-import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { buildReportSummaries } from '@/features/health/services/health-companion.service'
 import { FigmaHealthReportsView } from '@/ui/figma/health/figma-health-views'
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
-	const { selectedMember } = useFamilyContext()
 	const { reports, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 	const setup = useHealthMemberSetup()
@@ -49,7 +47,7 @@ export function HealthReportsPage() {
 		<FigmaHealthReportsView
 			reports={summaries}
 			needsReview={setup.needsReview}
-			memberName={selectedMember?.displayName ?? null}
+			rawReports={reports}
 		/>
 	)
 }

@@ -64,15 +64,46 @@ export interface HealthReportSummary {
 	isReady: boolean
 }
 
+export interface HealthScoreReason {
+	id: string
+	label: string
+	kind: 'positive' | 'warning' | 'neutral'
+}
+
+export interface HealthTrendHighlight {
+	id: string
+	label: string
+	detail: string
+	status: 'improving' | 'stable' | 'needs_attention' | 'new_finding'
+	metricId?: string
+	categoryId?: string
+}
+
+export interface HealthInsightGroup {
+	id: string
+	label: string
+	color: string
+	summary: string
+	trend: string
+	evidence: string
+	nextStep: string
+	metricId?: string
+	reportId?: string
+	categoryId?: string
+}
+
 export interface HealthCompanionView {
 	status: HealthStatusLabel
 	statusDetail: string
 	score: number | null
+	scoreReasons: HealthScoreReason[]
 	attention: HealthAttentionItem[]
 	changes: HealthChangeItem[]
 	nextSteps: HealthNextStep[]
 	recentReports: HealthReportSummary[]
 	journeyEvents: HealthJourneyEvent[]
 	metricGroups: MetricInsightGroup[]
+	trendHighlights: HealthTrendHighlight[]
+	insightGroups: HealthInsightGroup[]
 	narrative: string[]
 }
