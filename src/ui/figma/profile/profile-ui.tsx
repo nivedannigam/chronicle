@@ -178,31 +178,24 @@ export function ProfileNavRow({
 	icon: LucideIcon
 	label: string
 	subtitle?: string
-	onClick: () => void
+	onClick?: () => void
 	iconBg?: string
 	isLast?: boolean
 }) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			style={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: 13,
-				padding: '14px 18px',
-				borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
-				cursor: 'pointer',
-				width: '100%',
-				background: 'none',
-				borderLeft: 'none',
-				borderRight: 'none',
-				borderTop: 'none',
-				fontFamily: 'inherit',
-				textAlign: 'left',
-				minHeight: 56,
-			}}
-		>
+	const rowStyle = {
+		display: 'flex',
+		alignItems: 'center',
+		gap: 13,
+		padding: '14px 18px',
+		borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+		width: '100%',
+		fontFamily: 'inherit',
+		textAlign: 'left' as const,
+		minHeight: 56,
+	}
+
+	const content = (
+		<>
 			<div
 				style={{
 					width: 36,
@@ -243,7 +236,30 @@ export function ProfileNavRow({
 					</p>
 				) : null}
 			</div>
-			<ChevronRight size={15} color="rgba(255,255,255,0.18)" />
+			{onClick ? (
+				<ChevronRight size={15} color="rgba(255,255,255,0.18)" />
+			) : null}
+		</>
+	)
+
+	if (!onClick) {
+		return <div style={rowStyle}>{content}</div>
+	}
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			style={{
+				...rowStyle,
+				cursor: 'pointer',
+				background: 'none',
+				borderLeft: 'none',
+				borderRight: 'none',
+				borderTop: 'none',
+			}}
+		>
+			{content}
 		</button>
 	)
 }

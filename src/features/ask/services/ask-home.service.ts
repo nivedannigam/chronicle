@@ -134,7 +134,7 @@ export function buildAskHomeView(input: {
 			id: group.id,
 			label: group.label,
 			available: group.available,
-			questions: group.questions,
+			questions: [...group.questions],
 		})),
 		recentSessions,
 		quickActions: [

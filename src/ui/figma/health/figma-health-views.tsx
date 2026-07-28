@@ -641,6 +641,7 @@ export function FigmaHealthReportsView({
 				value={query}
 				onChange={setQuery}
 				placeholder="Search reports, labs, doctors, tests…"
+				ariaLabel="Search health reports"
 			/>
 
 			{needsReview > 0 ? (
