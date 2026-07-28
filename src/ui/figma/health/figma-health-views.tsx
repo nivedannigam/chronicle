@@ -27,6 +27,7 @@ import type { UploadedHealthReport } from '@/features/health/types'
 import {
 	FigmaHealthRing,
 	FigmaHealthSectionLabel,
+	FigmaHealthTrendChart,
 	figmaHealthScoreColor,
 	figmaHealthStatusHeadline,
 	figmaJourneyEventColor,
@@ -571,38 +572,6 @@ export function FigmaHealthOverviewView({
 					</div>
 				</SectionBlock>
 			) : null}
-
-			<SectionBlock label="Explore">
-				<div
-					style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
-				>
-					{[
-						{ label: 'Reports', path: ROUTES.healthReports },
-						{ label: 'Timeline', path: ROUTES.healthTimeline },
-						{ label: 'Insights', path: ROUTES.healthInsights },
-						{ label: 'Metrics', path: ROUTES.healthMetrics },
-					].map((item) => (
-						<button
-							key={item.path}
-							type="button"
-							onClick={() => navigate(item.path)}
-							style={{
-								...figmaCardStyle,
-								borderRadius: 16,
-								padding: '16px 14px',
-								cursor: 'pointer',
-								fontFamily: 'inherit',
-								textAlign: 'left',
-								border: 'none',
-							}}
-						>
-							<span style={{ color: FC.fg, fontSize: 14, fontWeight: 600 }}>
-								{item.label}
-							</span>
-						</button>
-					))}
-				</div>
-			</SectionBlock>
 		</div>
 	)
 }
@@ -1105,6 +1074,19 @@ export function FigmaHealthMetricsView({
 
 	return (
 		<div>
+			{companion.trendSeries.length > 0 ? (
+				<div style={{ marginBottom: 20 }}>
+					<div style={{ marginBottom: 10 }}>
+						<FigmaHealthSectionLabel>Trends over time</FigmaHealthSectionLabel>
+					</div>
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+						{companion.trendSeries.slice(0, 6).map((series) => (
+							<FigmaHealthTrendChart key={series.id} series={series} />
+						))}
+					</div>
+				</div>
+			) : null}
+
 			{renderSection('Needs attention', sections.attention)}
 			{renderSection('Recently changed', sections.improving)}
 			{renderSection('Stable & tracked', sections.stable)}

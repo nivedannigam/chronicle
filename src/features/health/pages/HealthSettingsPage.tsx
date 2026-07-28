@@ -13,6 +13,7 @@ import type {
 	ImportJourneyPhase,
 	ImportJourneyResult,
 } from '@/features/health-import/types/health-import-journey.types'
+import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
@@ -40,8 +41,26 @@ export function HealthSettingsPage() {
 		useState<ImportJourneyResult | null>(null)
 	const [journeyError, setJourneyError] = useState<string | null>(null)
 
-	if (!userId || !selectedMember) {
-		return null
+	if (!userId) {
+		return (
+			<DashboardEmptyState
+				title="Sign in to manage health setup"
+				message="Connect Google Drive and assign folders once you are signed in."
+				emoji="🔐"
+			/>
+		)
+	}
+
+	if (!selectedMember) {
+		return (
+			<DashboardEmptyState
+				title="Choose a family member"
+				message="Select who you are setting up health import for from the Family tab."
+				emoji="👨‍👩‍👧"
+				actionLabel="Go to Family"
+				onAction={() => navigate(ROUTES.profileFamily)}
+			/>
+		)
 	}
 
 	const memberLabel = formatMemberLabel(selectedMember)

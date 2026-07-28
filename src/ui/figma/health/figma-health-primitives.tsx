@@ -255,3 +255,126 @@ export function FigmaMiniHealthRing({
 		</div>
 	)
 }
+
+export function FigmaHealthTrendChart({
+	series,
+}: {
+	series: import('@/features/health/types').TrendSeries
+}) {
+	const points = series.values
+	if (points.length < 2) return null
+
+	const width = 280
+	const height = 72
+	const padding = 8
+	const values = points.map((point) => point.value)
+	const min = Math.min(...values)
+	const max = Math.max(...values)
+	const range = max - min || 1
+	const stepX = (width - padding * 2) / (points.length - 1)
+	const path = points
+		.map((point, index) => {
+			const x = padding + index * stepX
+			const y =
+				height -
+				padding -
+				((point.value - min) / range) * (height - padding * 2)
+			return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+		})
+		.join(' ')
+
+	const latest = points[points.length - 1]
+	const first = points[0]
+	const delta = latest.value - first.value
+	const trendColor =
+		series.color || (delta > 0 ? FC.orange : delta < 0 ? FC.green : FC.blue)
+
+	return (
+		<div style={{ ...figmaCardStyle, padding: '14px 16px' }}>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'flex-start',
+					justifyContent: 'space-between',
+					gap: 12,
+					marginBottom: 10,
+				}}
+			>
+				<div>
+					<p
+						style={{
+							margin: 0,
+							color: FC.fg,
+							fontSize: 14,
+							fontWeight: 600,
+						}}
+					>
+						{series.name}
+					</p>
+					<p
+						style={{
+							margin: '4px 0 0',
+							color: 'rgba(255,255,255,0.42)',
+							fontSize: 11.5,
+						}}
+					>
+						{points.length} readings · {series.unit}
+					</p>
+				</div>
+				<div style={{ textAlign: 'right' }}>
+					<p
+						style={{
+							margin: 0,
+							color: FC.fg,
+							fontSize: 16,
+							fontWeight: 700,
+						}}
+					>
+						{latest.value} {series.unit}
+					</p>
+					<p
+						style={{
+							margin: '2px 0 0',
+							color: trendColor,
+							fontSize: 11,
+							fontWeight: 600,
+						}}
+					>
+						{delta > 0 ? '+' : ''}
+						{delta.toFixed(1)} vs first
+					</p>
+				</div>
+			</div>
+			<svg
+				viewBox={`0 0 ${width} ${height}`}
+				style={{ width: '100%', height: 72, display: 'block' }}
+				aria-hidden
+			>
+				<path
+					d={path}
+					fill="none"
+					stroke={trendColor}
+					strokeWidth={2.5}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
+				{points.map((point, index) => {
+					const x = padding + index * stepX
+					const y =
+						height -
+						padding -
+						((point.value - min) / range) * (height - padding * 2)
+					return (
+						<circle
+							key={`${point.date}-${index}`}
+							cx={x}
+							cy={y}
+							r={3}
+							fill={trendColor}
+						/>
+					)
+				})}
+			</svg>
+		</div>
+	)
+}

@@ -1,6 +1,9 @@
 import { C } from '@/constants/colors'
 import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
-import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import {
+	getParsedHealthReport,
+	getReportDisplayTitle,
+} from '@/features/health/services/health-parsed-report.service'
 import { buildDerivedInsights } from '@/features/health-knowledge/engines/insights.engine'
 import {
 	calculateBaseline,
@@ -141,7 +144,7 @@ function observationsFromUploadedReports(
 			continue
 		}
 
-		for (const [index, metric] of parsed.metrics.entries()) {
+		for (const [index, metric] of (parsed.metrics ?? []).entries()) {
 			const canonicalMetricId =
 				metric.canonicalId ?? `raw:${slugifyMetricId(metric.rawName)}`
 
@@ -161,9 +164,9 @@ function observationsFromUploadedReports(
 					report.processed_at ??
 					report.uploaded_at,
 				reportId: report.id,
-				reportTitle: `${parsed.metadata.reportType} Report`,
+				reportTitle: getReportDisplayTitle(report),
 				laboratory: parsed.metadata.laboratory,
-				referenceRange: metric.referenceRange.rawText,
+				referenceRange: metric.referenceRange?.rawText ?? '',
 			})
 		}
 	}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
@@ -7,12 +8,41 @@ import {
 	DashboardSkeleton,
 } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
+import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { FigmaHealthInsightsView } from '@/ui/figma/health/figma-health-views'
+
+const PROCESSING_STATUSES = new Set([
+	'uploaded',
+	'queued',
+	'processing',
+	'parsed',
+])
 
 export function HealthInsightsPage() {
 	const navigate = useNavigate()
-	const { companion, hasImportedReports, isLoading, isError, refetch } =
-		useHealthCompanion()
+	const {
+		companion,
+		reports,
+		hasImportedReports,
+		isLoading,
+		isError,
+		refetch,
+	} = useHealthCompanion()
+
+	const pipelineState = useMemo(() => {
+		const processingCount = reports.filter((report) =>
+			PROCESSING_STATUSES.has(report.status),
+		).length
+		const hasExtractedMetrics = reports.some((report) => {
+			if (report.status !== 'completed') {
+				return false
+			}
+
+			return (getParsedHealthReport(report)?.metrics.length ?? 0) > 0
+		})
+
+		return { processingCount, hasExtractedMetrics }
+	}, [reports])
 
 	if (isLoading) {
 		return <DashboardSkeleton />
@@ -27,7 +57,11 @@ export function HealthInsightsPage() {
 		)
 	}
 
-	if (!hasImportedReports || companion.insightGroups.length === 0) {
+	if (companion.insightGroups.length > 0) {
+		return <FigmaHealthInsightsView groups={companion.insightGroups} />
+	}
+
+	if (!hasImportedReports && reports.length === 0) {
 		return (
 			<DashboardEmptyState
 				title="Insights will appear here"
@@ -39,5 +73,33 @@ export function HealthInsightsPage() {
 		)
 	}
 
-	return <FigmaHealthInsightsView groups={companion.insightGroups} />
+	if (pipelineState.processingCount > 0) {
+		return (
+			<DashboardEmptyState
+				title="Insights are on the way"
+				message="Reports are still being parsed. Guidance will appear here once lab numbers are extracted."
+				emoji="⏳"
+			/>
+		)
+	}
+
+	if (!pipelineState.hasExtractedMetrics) {
+		return (
+			<DashboardEmptyState
+				title="No insights yet"
+				message="Your reports are imported, but Chronicle needs structured lab numbers to generate guidance. Try reprocessing from the report detail screen."
+				emoji="✨"
+				actionLabel="View reports"
+				onAction={() => navigate(ROUTES.healthReports)}
+			/>
+		)
+	}
+
+	return (
+		<DashboardEmptyState
+			title="Insights will appear here"
+			message="Add more reports over time so Chronicle can spot trends and changes worth noting."
+			emoji="✨"
+		/>
+	)
 }

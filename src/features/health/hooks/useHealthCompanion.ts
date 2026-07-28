@@ -36,8 +36,15 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 				uploadedReports: reports,
 				insights: proactiveInsights,
 				needsReview: setup.needsReview,
+				trendSeries: dashboard.trendSeries,
 			}),
-		[dashboard.knowledgeGraph, reports, proactiveInsights, setup.needsReview],
+		[
+			dashboard.knowledgeGraph,
+			dashboard.trendSeries,
+			reports,
+			proactiveInsights,
+			setup.needsReview,
+		],
 	)
 
 	return {

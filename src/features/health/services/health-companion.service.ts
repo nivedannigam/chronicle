@@ -635,6 +635,7 @@ export function buildHealthCompanionView(input: {
 	uploadedReports: UploadedHealthReport[]
 	insights: ChronicleInsight[]
 	needsReview?: number
+	trendSeries?: import('@/features/health/types').TrendSeries[]
 }): HealthCompanionView {
 	const needsReview = input.needsReview ?? 0
 	const { status, detail, score } = deriveStatus({
@@ -670,6 +671,7 @@ export function buildHealthCompanionView(input: {
 		recentReports,
 		journeyEvents,
 		metricGroups,
+		trendSeries: input.trendSeries ?? [],
 		trendHighlights: buildTrendHighlights({
 			groups: metricGroups,
 			changes,

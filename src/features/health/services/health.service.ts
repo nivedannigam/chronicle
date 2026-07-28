@@ -1,3 +1,7 @@
+/**
+ * @deprecated Demo fixtures for mock Ask Chronicle only.
+ * Health UI reads production data via useHealthCompanion → useMemberHealthReports.
+ */
 import { C } from '@/constants/colors'
 import {
 	healthDashboard,

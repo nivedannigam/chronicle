@@ -92,6 +92,8 @@ export interface HealthInsightGroup {
 	categoryId?: string
 }
 
+import type { TrendSeries } from '@/features/health/types'
+
 export interface HealthCompanionView {
 	status: HealthStatusLabel
 	statusDetail: string
@@ -103,6 +105,7 @@ export interface HealthCompanionView {
 	recentReports: HealthReportSummary[]
 	journeyEvents: HealthJourneyEvent[]
 	metricGroups: MetricInsightGroup[]
+	trendSeries: TrendSeries[]
 	trendHighlights: HealthTrendHighlight[]
 	insightGroups: HealthInsightGroup[]
 	narrative: string[]
