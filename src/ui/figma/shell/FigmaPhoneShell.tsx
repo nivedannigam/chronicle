@@ -12,7 +12,7 @@ import {
 } from '@/constants/colors'
 import { BrowserInstallBanner } from '@/ui/figma/shell/BrowserInstallBanner'
 import { FigmaBottomNav } from '@/ui/figma/shell/FigmaBottomNav'
-import { FigmaStatusBar } from '@/ui/figma/shell/FigmaStatusBar'
+import { FigmaStatusBar } from '@/ui/figma/shell/StatusBar'
 
 function resolveShellLayout() {
 	if (isStandaloneDisplayMode()) {
