@@ -19,7 +19,7 @@ export function getCanonicalAppOrigin(): string {
 	return ''
 }
 
-export function buildAppUrl(path = ROUTES.root): string {
+export function buildAppUrl(path: string = ROUTES.root): string {
 	const origin = getCanonicalAppOrigin()
 	return `${origin}${path.startsWith('/') ? path : `/${path}`}`
 }
