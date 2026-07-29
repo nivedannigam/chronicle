@@ -37,6 +37,8 @@ export const queryKeys = {
 			['health-timeline', userId] as const,
 		sources: (userId: string | undefined) =>
 			['health-source-assignments', userId] as const,
+		workflow: (userId: string | undefined) =>
+			['health-workflow-projection', userId] as const,
 	},
 	discovery: {
 		stats: (userId: string | undefined) => ['discovery-stats', userId] as const,

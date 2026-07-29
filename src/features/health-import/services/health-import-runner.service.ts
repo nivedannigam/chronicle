@@ -9,6 +9,8 @@ import type {
 } from '@/features/health-import/types/import-runner.types'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
+import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
+import { transitionWorkflowItem } from '@/features/health/workflow'
 import {
 	completeSyncRun,
 	createSyncRun,
@@ -254,6 +256,25 @@ async function importRegistryRecord(
 	})
 	onImportPhase?.('ocr')
 
+	try {
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'IMPORTING',
+			context: {
+				userId,
+				reportId: report.id as string,
+				familyMemberId: (registry.family_member_id as string | null) ?? null,
+			},
+		})
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'PROCESSING',
+			context: { userId, reportId: report.id as string },
+		})
+	} catch {
+		// Workflow table may not exist until migration applied — legacy path continues
+	}
+
 	await enqueueHealthReportProcessing(userId, report.id as string)
 	await updateRegistryRecord(registryId, { importStatus: 'parsing' })
 	onImportPhase?.('metrics')
@@ -277,12 +298,36 @@ async function importRegistryRecord(
 
 		const familyMemberId = (registry.family_member_id as string | null) ?? null
 		await persistHealthKnowledgeGraph(userId, familyMemberId)
+
+		try {
+			await transitionWorkflowItem({
+				registryId,
+				toState: 'READY',
+				context: { userId, reportId: report.id as string },
+			})
+		} catch {
+			// Workflow optional until migration
+		}
 	} else {
 		await updateRegistryRecord(registryId, {
 			importStatus: 'failed',
 			registryStatus: 'failed',
 			errorMessage: processed.processing_error ?? 'Processing failed',
 		})
+
+		try {
+			await transitionWorkflowItem({
+				registryId,
+				toState: 'FAILED',
+				context: {
+					userId,
+					reportId: report.id as string,
+					failureReason: processed.processing_error ?? 'Processing failed',
+				},
+			})
+		} catch {
+			// Workflow optional until migration
+		}
 	}
 
 	importStartTimes.delete(registryId)
@@ -362,6 +407,8 @@ export async function processImportQueueWithProgress(
 
 		await options.onDocumentProgress?.()
 	}
+
+	invalidateAfterHealthImport(userId)
 
 	return runResult
 }

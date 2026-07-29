@@ -8,6 +8,10 @@ import {
 	shouldPreserveImportStatus,
 } from '@/features/health-import/services/duplicate-detection.service'
 import { scoreMedicalFile } from '@/features/medical-discovery/services/medical-scoring.service'
+import {
+	ensureWorkflowItemForRegistry,
+	transitionWorkflowItem,
+} from '@/features/health/workflow'
 import type {
 	DiscoveryDashboardStats,
 	DiscoveryRunMode,
@@ -258,9 +262,49 @@ export async function runMedicalDiscovery(input: {
 				upsertPayload.import_status = 'discovered'
 			}
 
-			await supabase.from('connector_document_registry').upsert(upsertPayload, {
-				onConflict: 'user_id,connector_id,external_file_id',
-			})
+			const { data: registryRow, error: registryError } = await supabase
+				.from('connector_document_registry')
+				.upsert(upsertPayload, {
+					onConflict: 'user_id,connector_id,external_file_id',
+				})
+				.select(
+					'id, discovery_category, file_name, external_file_id, family_member_id',
+				)
+				.single()
+
+			if (registryError) {
+				throw new Error(registryError.message)
+			}
+
+			if (registryRow) {
+				const workflowItem = await ensureWorkflowItemForRegistry({
+					userId: input.userId,
+					registryId: registryRow.id as string,
+					familyMemberId:
+						(registryRow.family_member_id as string | null) ?? null,
+					externalFileId: registryRow.external_file_id as string,
+					fileName: registryRow.file_name as string,
+					discoveryCategory: registryRow.discovery_category as string,
+				})
+
+				if (
+					score.category === 'needs_review' &&
+					workflowItem.currentState === 'DISCOVERED'
+				) {
+					await transitionWorkflowItem({
+						workflowItemId: workflowItem.id,
+						toState: 'PENDING_REVIEW',
+					})
+				}
+
+				if (score.category === 'ignored') {
+					await transitionWorkflowItem({
+						workflowItemId: workflowItem.id,
+						toState: 'SKIPPED',
+						approvalStatus: 'rejected',
+					})
+				}
+			}
 
 			input.onProgress?.({ scanned: index + 1, total: response.items.length })
 		}

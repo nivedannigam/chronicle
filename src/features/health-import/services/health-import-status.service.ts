@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getHealthWorkflowProjection } from '@/features/health/workflow'
 import { listHealthSourceAssignments } from '@/features/family/services/health-sources.service'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -45,29 +46,64 @@ function countByCategory(
 	return registry.filter((row) => row.discovery_category === category).length
 }
 
+function countPendingApproval(
+	registry: Array<{
+		discovery_category: string | null
+		approval_status: string | null
+		import_status: string | null
+	}>,
+) {
+	return registry.filter(
+		(row) =>
+			row.approval_status === 'pending' &&
+			row.discovery_category !== 'ignored' &&
+			row.import_status !== 'completed' &&
+			row.import_status !== 'skipped',
+	).length
+}
+
+function countPendingReviewCategory(
+	registry: Array<{
+		discovery_category: string | null
+		approval_status: string | null
+		import_status: string | null
+	}>,
+) {
+	return registry.filter(
+		(row) =>
+			row.discovery_category === 'needs_review' &&
+			row.approval_status === 'pending' &&
+			row.import_status !== 'completed' &&
+			row.import_status !== 'skipped',
+	).length
+}
+
 export async function fetchHealthImportStatus(
 	userId: string,
 ): Promise<HealthImportStatus> {
-	const [assignments, registryResult, reportsResult, lastRunResult] =
-		await Promise.all([
-			listHealthSourceAssignments(userId),
-			supabase
-				.from('connector_document_registry')
-				.select('folder_id, discovery_category, import_status')
-				.eq('user_id', userId)
-				.eq('connector_id', 'google-drive'),
-			supabase
-				.from('health_reports')
-				.select('id, status')
-				.eq('user_id', userId),
-			supabase
-				.from('health_discovery_runs')
-				.select('completed_at, started_at')
-				.eq('user_id', userId)
-				.order('started_at', { ascending: false })
-				.limit(1)
-				.maybeSingle(),
-		])
+	const [
+		assignments,
+		registryResult,
+		reportsResult,
+		lastRunResult,
+		workflowProjection,
+	] = await Promise.all([
+		listHealthSourceAssignments(userId),
+		supabase
+			.from('connector_document_registry')
+			.select('folder_id, discovery_category, import_status, approval_status')
+			.eq('user_id', userId)
+			.eq('connector_id', 'google-drive'),
+		supabase.from('health_reports').select('id, status').eq('user_id', userId),
+		supabase
+			.from('health_discovery_runs')
+			.select('completed_at, started_at')
+			.eq('user_id', userId)
+			.order('started_at', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		getHealthWorkflowProjection(userId).catch(() => null),
+	])
 
 	if (registryResult.error) {
 		throw new Error(registryResult.error.message)
@@ -88,9 +124,12 @@ export async function fetchHealthImportStatus(
 
 	const filesFound = registry.length
 	const medicalReportsCount = countByCategory(registry, 'likely_medical')
-	const needsReviewCount = countByCategory(registry, 'needs_review')
+	const needsReviewCount =
+		workflowProjection?.pendingReviewCount ?? countPendingApproval(registry)
+	const needsReviewCategoryCount = countPendingReviewCategory(registry)
 	const skippedIgnoredCount = countByCategory(registry, 'ignored')
-	const importCandidatesCount = medicalReportsCount + needsReviewCount
+	const importCandidatesCount =
+		countByCategory(registry, 'likely_medical') + needsReviewCategoryCount
 	const documentsScanned = importCandidatesCount
 	const failedImportsCount = registry.filter(
 		(row) => row.import_status === 'failed',
@@ -101,7 +140,7 @@ export async function fetchHealthImportStatus(
 			(row) => row.folder_id === assignment.folderId,
 		)
 		const folderMedical = countByCategory(folderDocs, 'likely_medical')
-		const folderNeedsReview = countByCategory(folderDocs, 'needs_review')
+		const folderNeedsReview = countPendingReviewCategory(folderDocs)
 		const folderCandidates = folderMedical + folderNeedsReview
 
 		return {

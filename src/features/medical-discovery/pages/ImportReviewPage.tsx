@@ -8,6 +8,7 @@ import { formatMemberLabel } from '@/features/family/services/folder-match.servi
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
 import { useImportReview } from '@/features/medical-discovery/hooks/useImportReview'
 import { processApprovedImports } from '@/features/medical-discovery/services/import-pipeline.service'
+import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import type { ReviewDocument } from '@/features/medical-discovery/types/medical-discovery.types'
 import { useUser } from '@/features/user/hooks/useUser'
 import { useMemo, useState } from 'react'
@@ -52,6 +53,7 @@ export function ImportReviewPage() {
 
 		try {
 			const summary = await processApprovedImports(userId)
+			invalidateAfterHealthImport(userId)
 			await review.refresh()
 
 			const detail =
@@ -240,9 +242,8 @@ export function ImportReviewPage() {
 						lineHeight: 1.6,
 					}}
 				>
-					No import candidates found. Assign a health folder and run a scan from
-					No reports found yet. Connect a health folder and scan from Setup
-					first.
+					No reports awaiting review. Connect a health folder and run a scan
+					from Health Setup first.
 				</div>
 			) : (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

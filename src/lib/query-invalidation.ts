@@ -76,12 +76,19 @@ export function invalidateConnectorQueries(userId: string | undefined) {
 	})
 }
 
+export function invalidateHealthWorkflowQueries(userId: string | undefined) {
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.health.workflow(userId),
+	})
+}
+
 export function invalidateAfterHealthImport(userId: string | undefined) {
 	invalidateHealthReportsQueries(userId)
 	invalidateHealthDashboardQueries(userId)
 	invalidateImportStatusQueries(userId)
 	invalidateConnectorRegistryQueries(userId)
 	invalidateImportReviewQueries(userId)
+	invalidateHealthWorkflowQueries(userId)
 }
 
 export function invalidateAfterFolderAssignment(userId: string | undefined) {
@@ -100,4 +107,7 @@ export function invalidateAfterImportReview(userId: string | undefined) {
 	invalidateImportReviewQueries(userId)
 	invalidateConnectorRegistryQueries(userId)
 	invalidateImportStatusQueries(userId)
+	invalidateHealthReportsQueries(userId)
+	invalidateHealthDashboardQueries(userId)
+	invalidateHealthWorkflowQueries(userId)
 }

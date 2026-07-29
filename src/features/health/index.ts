@@ -16,6 +16,7 @@ export { HealthReportDetailPage } from '@/features/health/pages/HealthReportDeta
 export { HealthComparePage } from '@/features/health/pages/HealthComparePage'
 export { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'
 export { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+export { useHealthWorkflowProjection } from '@/features/health/hooks/useHealthWorkflowProjection'
 export { useHealthReport } from '@/features/health/hooks/useHealthReport'
 export type {
 	HealthCategoryId,

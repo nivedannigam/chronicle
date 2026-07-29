@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
 	approveAllLikelyMedical,
-	approveDocument,
 	listReviewDocuments,
 	reassignDocument,
 	rejectDocument,
 } from '@/features/medical-discovery/services/import-review.service'
+import {
+	approveAndImportDocument,
+	processApprovedImports,
+} from '@/features/medical-discovery/services/import-pipeline.service'
 import type { ReviewDocument } from '@/features/medical-discovery/types/medical-discovery.types'
-import { invalidateAfterImportReview } from '@/lib/query-invalidation'
+import {
+	invalidateAfterHealthImport,
+	invalidateAfterImportReview,
+} from '@/lib/query-invalidation'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
 const REVIEW_SCOPE = 'actionable'
@@ -36,7 +42,13 @@ export function useImportReview(userId: string | undefined) {
 	}
 
 	const approveMutation = useMutation({
-		mutationFn: approveDocument,
+		mutationFn: async (registryId: string) => {
+			if (!userId) {
+				throw new Error('You must be signed in.')
+			}
+
+			return approveAndImportDocument(userId, registryId)
+		},
 		onMutate: async (registryId) => {
 			if (!userId) {
 				return
@@ -50,7 +62,16 @@ export function useImportReview(userId: string | undefined) {
 			)
 
 			updateDocumentsOptimistically((documents) =>
-				documents.filter((document) => document.registryId !== registryId),
+				documents.map((document) =>
+					document.registryId === registryId
+						? {
+								...document,
+								approvalStatus: 'approved' as const,
+								importStatus: 'queued',
+								errorMessage: null,
+							}
+						: document,
+				),
 			)
 
 			return { previous }
@@ -64,7 +85,7 @@ export function useImportReview(userId: string | undefined) {
 			}
 		},
 		onSettled: () => {
-			invalidateAfterImportReview(userId)
+			invalidateAfterHealthImport(userId)
 		},
 	})
 
@@ -119,10 +140,15 @@ export function useImportReview(userId: string | undefined) {
 				return 0
 			}
 
-			return approveAllLikelyMedical(userId)
+			const approvedCount = await approveAllLikelyMedical(userId)
+			if (approvedCount > 0) {
+				await processApprovedImports(userId)
+			}
+
+			return approvedCount
 		},
 		onSettled: () => {
-			invalidateAfterImportReview(userId)
+			invalidateAfterHealthImport(userId)
 		},
 	})
 

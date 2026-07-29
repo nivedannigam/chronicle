@@ -6,6 +6,8 @@ import {
 import { createKnowledgeItemFromHealthReport } from '@/features/knowledge/services/knowledge-health.service'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
+import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
+import { transitionWorkflowItem } from '@/features/health/workflow'
 import { serializeParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type {
 	HealthReportStatus,
@@ -75,11 +77,17 @@ export async function enqueueHealthReportProcessing(
 ) {
 	const { error } = await supabase
 		.from('health_report_processing_queue')
-		.insert({
-			report_id: reportId,
-			user_id: userId,
-			status: 'queued',
-		})
+		.upsert(
+			{
+				report_id: reportId,
+				user_id: userId,
+				status: 'queued',
+				started_at: null,
+				completed_at: null,
+				error_message: null,
+			},
+			{ onConflict: 'report_id' },
+		)
 
 	if (error) {
 		throw new Error(error.message)
@@ -175,6 +183,16 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
+		try {
+			await transitionWorkflowItem({
+				reportId,
+				toState: 'READY',
+				context: { userId: typedReport.user_id },
+			})
+		} catch {
+			// Workflow optional until migration
+		}
+
 		const completedReport: UploadedHealthReport = {
 			...typedReport,
 			status: 'completed',
@@ -194,6 +212,7 @@ export async function processHealthReport(
 		createKnowledgeItemFromHealthReport(completedReport)
 		invalidateHealthKnowledgeCache(completedReport.user_id)
 		await persistHealthKnowledgeGraph(completedReport.user_id, null)
+		invalidateAfterHealthImport(completedReport.user_id)
 
 		return completedReport
 	} catch (error) {
@@ -209,6 +228,19 @@ export async function processHealthReport(
 			completed_at: new Date().toISOString(),
 			error_message: message,
 		})
+
+		try {
+			await transitionWorkflowItem({
+				reportId,
+				toState: 'FAILED',
+				context: {
+					userId: typedReport.user_id,
+					failureReason: message,
+				},
+			})
+		} catch {
+			// Workflow optional until migration
+		}
 
 		throw new Error(message)
 	}
@@ -262,11 +294,11 @@ export function processPendingHealthReports(
 	return pending.reduce(async (chain, report) => {
 		await chain
 
-		if (report.status === 'uploaded') {
-			return
-		}
-
 		try {
+			if (report.status === 'uploaded') {
+				await enqueueHealthReportProcessing(report.user_id, report.id)
+			}
+
 			await processHealthReport(report.id)
 		} catch {
 			// Individual failures are persisted on the report row

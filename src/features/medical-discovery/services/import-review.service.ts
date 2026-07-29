@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { transitionWorkflowItem } from '@/features/health/workflow'
 import type {
 	ApprovalStatus,
 	DiscoveryCategory,
@@ -125,10 +126,30 @@ export async function updateDocumentApproval(
 
 export async function approveDocument(registryId: string) {
 	await updateDocumentApproval(registryId, 'approved')
+
+	try {
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'APPROVED',
+			approvalStatus: 'approved',
+		})
+	} catch {
+		// Workflow optional until migration
+	}
 }
 
 export async function rejectDocument(registryId: string) {
 	await updateDocumentApproval(registryId, 'rejected')
+
+	try {
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'REJECTED',
+			approvalStatus: 'rejected',
+		})
+	} catch {
+		// Workflow optional until migration
+	}
 }
 
 export async function reassignDocument(

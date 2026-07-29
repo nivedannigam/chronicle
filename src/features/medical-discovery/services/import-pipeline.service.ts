@@ -14,9 +14,19 @@ import {
 	HEALTH_REPORT_MAX_FILE_SIZE_BYTES,
 	isFileTooLargeError,
 } from '@/features/health-import/constants/import-limits'
-import { processImportQueueWithProgress } from '@/features/health-import/services/health-import-runner.service'
-import { listApprovedForImport } from '@/features/medical-discovery/services/import-review.service'
+import {
+	importRegistryRecord,
+	processImportQueueWithProgress,
+} from '@/features/health-import/services/health-import-runner.service'
+import {
+	approveDocument,
+	listApprovedForImport,
+} from '@/features/medical-discovery/services/import-review.service'
 import type { ImportPipelineSummary } from '@/features/medical-discovery/types/medical-discovery.types'
+import type { ImportPhase } from '@/features/health-import/types/import-runner.types'
+import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
+import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
+import { transitionWorkflowItem } from '@/features/health/workflow'
 
 function createEmptySummary(): ImportPipelineSummary {
 	return {
@@ -203,6 +213,42 @@ export async function queueApprovedImports(
 	return summary
 }
 
+export async function approveAndImportDocument(
+	userId: string,
+	registryId: string,
+	onImportPhase?: (phase: ImportPhase) => void,
+) {
+	await approveDocument(registryId)
+	await updateRegistryRecord(registryId, {
+		importStatus: 'queued',
+		errorMessage: null,
+	})
+
+	try {
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'APPROVED',
+			approvalStatus: 'approved',
+			context: { userId },
+		})
+		await transitionWorkflowItem({
+			registryId,
+			toState: 'QUEUED',
+			approvalStatus: 'approved',
+			context: { userId },
+		})
+	} catch {
+		// Workflow optional until migration
+	}
+
+	const result = await importRegistryRecord(userId, registryId, onImportPhase)
+
+	invalidateHealthKnowledgeCache(userId)
+	invalidateAfterHealthImport(userId)
+
+	return result
+}
+
 export async function processApprovedImports(
 	userId: string,
 	options: {
@@ -231,6 +277,9 @@ export async function processApprovedImports(
 		(record) => record.importStatus === 'failed',
 	)
 	enrichSummaryFromRegistry(summary, failedRecords)
+
+	invalidateHealthKnowledgeCache(userId)
+	invalidateAfterHealthImport(userId)
 
 	return summary
 }
