@@ -3,6 +3,7 @@ import {
 	canTransition,
 	mapDiscoveryCategoryToInitialState,
 	publishWorkflowEvent,
+	type WorkflowEvent,
 	type WorkflowEventType,
 	type WorkflowItem,
 	type WorkflowState,
@@ -356,10 +357,6 @@ export async function transitionWorkflowItem(input: {
 export function registerHealthWorkflowHandlers(): void {
 	// See health-workflow-bootstrap.ts
 }
-
-import type { WorkflowEvent } from '@/core/workflow'
-import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
-import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 
 export async function handleHealthWorkflowSideEffects(
 	event: WorkflowEvent,
