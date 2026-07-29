@@ -73,6 +73,12 @@ CREATE INDEX IF NOT EXISTS health_workflow_events_user_idx
 ALTER TABLE public.health_workflow_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.health_workflow_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own workflow items" ON public.health_workflow_items;
+DROP POLICY IF EXISTS "Users can insert own workflow items" ON public.health_workflow_items;
+DROP POLICY IF EXISTS "Users can update own workflow items" ON public.health_workflow_items;
+DROP POLICY IF EXISTS "Users can view own workflow events" ON public.health_workflow_events;
+DROP POLICY IF EXISTS "Users can insert own workflow events" ON public.health_workflow_events;
+
 CREATE POLICY "Users can view own workflow items"
 	ON public.health_workflow_items FOR SELECT TO authenticated
 	USING (auth.uid() = user_id);
