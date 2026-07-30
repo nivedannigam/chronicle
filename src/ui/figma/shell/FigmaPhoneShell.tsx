@@ -48,6 +48,8 @@ export function FigmaPhoneShell({ children }: { children?: ReactNode }) {
 
 	const contentStyle: CSSProperties = {
 		...shellScrollContentStyle,
+		display: 'flex',
+		flexDirection: 'column',
 		paddingBottom: NAV_DOCK_CONTENT_INSET,
 	}
 

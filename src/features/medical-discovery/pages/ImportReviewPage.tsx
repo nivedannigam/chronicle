@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check, Loader2, RefreshCw, User, X } from 'lucide-react'
+import { AppShell } from '@/components/layout/mobile'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth'
@@ -80,7 +81,13 @@ export function ImportReviewPage() {
 				: 'Review detected reports and import approved documents into Chronicle.'
 
 	return (
-		<div style={{ padding: '18px 18px 20px', color: C.text }}>
+		<AppShell
+			paddingX={18}
+			paddingTop={18}
+			paddingBottom={20}
+			nested
+			style={{ color: C.text }}
+		>
 			<button
 				type="button"
 				onClick={() => navigate(ROUTES.healthSettings)}
@@ -261,7 +268,7 @@ export function ImportReviewPage() {
 					))}
 				</div>
 			)}
-		</div>
+		</AppShell>
 	)
 }
 

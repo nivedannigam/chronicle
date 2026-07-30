@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { BottomSheet } from '@/components/layout/mobile'
 import { C } from '@/constants/colors'
 import { healthOcrPreviewPath, healthReportPath } from '@/constants/routes'
 import type { HealthObservation } from '@/features/health-knowledge/types'
@@ -19,40 +20,17 @@ export function MetricSourcePanel({
 	const navigate = useNavigate()
 
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			style={{
-				position: 'fixed',
-				inset: 0,
-				background: 'rgba(0,0,0,0.55)',
-				zIndex: 1000,
-				display: 'flex',
-				alignItems: 'flex-end',
-				justifyContent: 'center',
-				padding: 16,
-			}}
-			onClick={onClose}
-		>
-			<div
-				style={{
-					width: '100%',
-					maxWidth: 480,
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: 20,
-					padding: '18px 18px 22px',
-					maxHeight: '80vh',
-					overflowY: 'auto',
-				}}
-				onClick={(event) => event.stopPropagation()}
-			>
+		<BottomSheet
+			isOpen
+			onClose={onClose}
+			maxWidth={480}
+			aria-label={`${metricLabel} source`}
+			header={
 				<div
 					style={{
 						display: 'flex',
 						justifyContent: 'space-between',
 						alignItems: 'center',
-						marginBottom: 16,
 					}}
 				>
 					<div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>
@@ -72,28 +50,9 @@ export function MetricSourcePanel({
 						<X size={20} />
 					</button>
 				</div>
-
-				<SourceRow label="Value" value={observation.value} />
-				<SourceRow label="Status" value={observation.status} />
-				<SourceRow
-					label="Confidence"
-					value={`${Math.round(observation.confidence * 100)}%`}
-				/>
-				<SourceRow
-					label="Reference Range"
-					value={observation.referenceRange || '—'}
-				/>
-				<SourceRow
-					label="Report Date"
-					value={formatDate(observation.observedAt)}
-				/>
-				<SourceRow label="Laboratory" value={observation.laboratory || '—'} />
-				<SourceRow label="Report" value={observation.reportTitle} />
-				<SourceRow label="Raw Metric Name" value={observation.rawName} />
-
-				<div
-					style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}
-				>
+			}
+			footer={
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					<button
 						type="button"
 						onClick={() => navigate(healthReportPath(observation.reportId))}
@@ -109,8 +68,26 @@ export function MetricSourcePanel({
 						Highlighted OCR
 					</button>
 				</div>
-			</div>
-		</div>
+			}
+		>
+			<SourceRow label="Value" value={observation.value} />
+			<SourceRow label="Status" value={observation.status} />
+			<SourceRow
+				label="Confidence"
+				value={`${Math.round(observation.confidence * 100)}%`}
+			/>
+			<SourceRow
+				label="Reference Range"
+				value={observation.referenceRange || '—'}
+			/>
+			<SourceRow
+				label="Report Date"
+				value={formatDate(observation.observedAt)}
+			/>
+			<SourceRow label="Laboratory" value={observation.laboratory || '—'} />
+			<SourceRow label="Report" value={observation.reportTitle} />
+			<SourceRow label="Raw Metric Name" value={observation.rawName} />
+		</BottomSheet>
 	)
 }
 
@@ -154,6 +131,8 @@ const actionButtonStyle: CSSProperties = {
 	color: C.white,
 	cursor: 'pointer',
 	fontFamily: 'inherit',
+	flex: 1,
+	minHeight: 44,
 }
 
 const secondaryActionStyle: CSSProperties = {
@@ -166,4 +145,6 @@ const secondaryActionStyle: CSSProperties = {
 	color: C.accent,
 	cursor: 'pointer',
 	fontFamily: 'inherit',
+	flex: 1,
+	minHeight: 44,
 }

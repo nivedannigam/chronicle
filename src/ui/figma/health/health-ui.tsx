@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { ArrowLeft, Loader2, Search } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { AppShell } from '@/components/layout/mobile'
 import { C, screenTitleStyle } from '@/constants/colors'
 import { healthPrimaryButtonStyle } from '@/ui/figma/health/health-ui.styles'
 
@@ -391,10 +392,75 @@ export function HealthMetaGrid({
 
 export function HealthScreen({
 	children,
-	padding = '0 18px 20px',
+	padding,
+	paddingX = 18,
+	paddingTop = 0,
+	paddingBottom = 0,
+	nested = true,
 }: {
 	children: ReactNode
 	padding?: string
+	paddingX?: number
+	paddingTop?: number
+	paddingBottom?: number
+	nested?: boolean
 }) {
-	return <div style={{ color: C.text, padding }}>{children}</div>
+	const resolved = parseHealthScreenPadding(padding)
+
+	return (
+		<AppShell
+			paddingX={resolved?.paddingX ?? paddingX}
+			paddingTop={resolved?.paddingTop ?? paddingTop}
+			paddingBottom={resolved?.paddingBottom ?? paddingBottom}
+			nested={nested}
+			style={{ minHeight: '100%', color: C.text }}
+		>
+			{children}
+		</AppShell>
+	)
+}
+
+function parseHealthScreenPadding(padding?: string): {
+	paddingTop: number
+	paddingX: number
+	paddingBottom: number
+} | null {
+	if (!padding) {
+		return null
+	}
+
+	const parts = padding
+		.trim()
+		.split(/\s+/)
+		.map((part) => parseInt(part, 10))
+
+	if (parts.length === 1) {
+		return {
+			paddingTop: parts[0],
+			paddingX: parts[0],
+			paddingBottom: parts[0],
+		}
+	}
+
+	if (parts.length === 2) {
+		return {
+			paddingTop: parts[0],
+			paddingX: parts[1],
+			paddingBottom: parts[0],
+		}
+	}
+
+	if (parts.length === 3) {
+		return {
+			paddingTop: parts[0],
+			paddingX: parts[1],
+			paddingBottom: parts[2],
+		}
+	}
+
+	return {
+		paddingTop: parts[0],
+		paddingX: parts[1],
+		paddingBottom: parts[2],
+	}
 }

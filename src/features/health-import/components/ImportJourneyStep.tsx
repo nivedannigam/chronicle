@@ -21,6 +21,8 @@ interface ImportJourneyStepProps {
 	onRetry: () => void
 	onChooseDifferentFolder: () => void
 	onClose: () => void
+	/** When true, action buttons render via ImportJourneyFooter instead of inline. */
+	hideFooter?: boolean
 }
 
 function isOAuthError(message: string | null | undefined): boolean {
@@ -49,6 +51,7 @@ export function ImportJourneyStep({
 	onRetry,
 	onChooseDifferentFolder,
 	onClose,
+	hideFooter = false,
 }: ImportJourneyStepProps) {
 	const navigate = useNavigate()
 	const outcome = result?.outcome ?? null
@@ -136,8 +139,8 @@ export function ImportJourneyStep({
 				<ErrorBanner message={errorMessage} />
 			) : null}
 
-			{phase === 'summary' ? (
-				<ContextAction
+			{phase === 'summary' && !hideFooter ? (
+				<ImportJourneyFooter
 					outcome={outcome}
 					isRunning={isRunning}
 					oauthError={oauthError}
@@ -402,7 +405,7 @@ function ErrorBanner({ message }: { message: string }) {
 	)
 }
 
-function ContextAction({
+export function ImportJourneyFooter({
 	outcome,
 	isRunning,
 	oauthError,

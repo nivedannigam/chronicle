@@ -1,0 +1,111 @@
+import type { CSSProperties, ReactNode } from 'react'
+import { C } from '@/constants/colors'
+import { StickyFooter } from '@/components/layout/mobile/StickyFooter'
+import {
+	BOTTOM_SHEET_MAX_HEIGHT,
+	scrollablePageStyle,
+} from '@/components/layout/mobile/mobile-layout.constants'
+import { useBodyScrollLock } from '@/components/layout/mobile/useBodyScrollLock'
+
+interface BottomSheetProps {
+	isOpen: boolean
+	onClose?: () => void
+	header?: ReactNode
+	footer?: ReactNode
+	children: ReactNode
+	preventClose?: boolean
+	maxWidth?: number
+	panelStyle?: CSSProperties
+	'aria-label'?: string
+}
+
+export function BottomSheet({
+	isOpen,
+	onClose,
+	header,
+	footer,
+	children,
+	preventClose = false,
+	maxWidth = 520,
+	panelStyle,
+	'aria-label': ariaLabel,
+}: BottomSheetProps) {
+	useBodyScrollLock(isOpen)
+
+	if (!isOpen) {
+		return null
+	}
+
+	const canClose = !preventClose && onClose
+
+	return (
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label={ariaLabel}
+			style={{
+				position: 'fixed',
+				inset: 0,
+				background: 'rgba(0,0,0,0.55)',
+				display: 'flex',
+				alignItems: 'flex-end',
+				justifyContent: 'center',
+				zIndex: 1000,
+				padding: '0 16px max(16px, env(safe-area-inset-bottom, 0px))',
+			}}
+			onClick={canClose ? onClose : undefined}
+		>
+			<div
+				style={{
+					width: '100%',
+					maxWidth,
+					maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
+					background: C.card,
+					border: `1px solid ${C.border}`,
+					borderRadius: '24px 24px 20px 20px',
+					boxShadow: '0 -12px 40px rgba(0,0,0,0.35)',
+					display: 'flex',
+					flexDirection: 'column',
+					overflow: 'hidden',
+					...panelStyle,
+				}}
+				onClick={(event) => event.stopPropagation()}
+			>
+				<div
+					style={{
+						width: 42,
+						height: 4,
+						borderRadius: 999,
+						background: C.border,
+						margin: '10px auto 0',
+						flexShrink: 0,
+					}}
+				/>
+
+				{header ? (
+					<div
+						style={{
+							flexShrink: 0,
+							padding: '12px 18px 0',
+						}}
+					>
+						{header}
+					</div>
+				) : null}
+
+				<div
+					style={{
+						...scrollablePageStyle,
+						flex: 1,
+						minHeight: 0,
+						padding: header ? '0 18px 12px' : '12px 18px 12px',
+					}}
+				>
+					{children}
+				</div>
+
+				{footer ? <StickyFooter variant="sheet">{footer}</StickyFooter> : null}
+			</div>
+		</div>
+	)
+}

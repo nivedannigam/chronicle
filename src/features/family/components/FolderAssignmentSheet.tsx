@@ -1,5 +1,8 @@
 import { Check, FolderOpen, Loader2, Sparkles, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { BottomSheet } from '@/components/layout/mobile'
 import { C } from '@/constants/colors'
+import { ROUTES } from '@/constants/routes'
 import {
 	formatMemberLabel,
 	getNonRedundantAliases,
@@ -13,7 +16,10 @@ import type {
 	HealthSourceAssignment,
 } from '@/features/family/types/family.types'
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
-import { ImportJourneyStep } from '@/features/health-import/components/ImportJourneyStep'
+import {
+	ImportJourneyFooter,
+	ImportJourneyStep,
+} from '@/features/health-import/components/ImportJourneyStep'
 import type {
 	ImportJourneyPhase,
 	ImportJourneyResult,
@@ -47,142 +53,185 @@ interface FolderAssignmentSheetProps {
 	onChooseDifferentFolder: () => void
 }
 
-export function FolderAssignmentSheet({
-	members,
-	isOpen,
-	folderName,
-	step,
-	suggestion,
-	selectedMemberIds,
-	existingFolders,
-	existingMode,
-	isSaving = false,
-	errorMessage = null,
-	successInfo = null,
-	journeyPhase = 'assign',
-	journeyPhasesCompleted = ['assign'],
-	journeyPhasesSucceeded = ['assign'],
-	journeyResult = null,
-	isJourneyRunning = false,
-	onClose,
-	onConfirmSuggestion,
-	onChooseDifferentPerson,
-	onToggleMember,
-	onExistingModeChange,
-	onContinueExisting,
-	onAssign,
-	onRetryJourney,
-	onChooseDifferentFolder,
-}: FolderAssignmentSheetProps) {
-	if (!isOpen) {
-		return null
-	}
+export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
+	const {
+		members,
+		isOpen,
+		folderName,
+		step,
+		suggestion,
+		selectedMemberIds,
+		existingFolders,
+		existingMode,
+		isSaving = false,
+		errorMessage = null,
+		successInfo = null,
+		journeyPhase = 'assign',
+		journeyPhasesCompleted = ['assign'],
+		journeyPhasesSucceeded = ['assign'],
+		journeyResult = null,
+		isJourneyRunning = false,
+		onClose,
+		onConfirmSuggestion,
+		onChooseDifferentPerson,
+		onToggleMember,
+		onExistingModeChange,
+		onContinueExisting,
+		onAssign,
+		onRetryJourney,
+		onChooseDifferentFolder,
+	} = props
 
+	const navigate = useNavigate()
 	const uniqueMembers = dedupeFamilyMembers(members)
+	const preventClose = isSaving || isJourneyRunning
+	const journeyOutcome = journeyResult?.outcome ?? null
+	const oauthError = Boolean(
+		errorMessage &&
+		/(401|UNAUTHENTICATED|GOOGLE_AUTH_EXPIRED|RECONNECT)/i.test(errorMessage),
+	)
+
+	const footer =
+		step === 'pick' ? (
+			<div style={{ display: 'flex', gap: 10 }}>
+				<ActionButton
+					label="Cancel"
+					variant="secondary"
+					disabled={isSaving}
+					onClick={onClose}
+				/>
+				<ActionButton
+					label={isSaving ? 'Saving…' : 'Assign Folder'}
+					variant="primary"
+					disabled={isSaving || selectedMemberIds.length === 0}
+					loading={isSaving}
+					onClick={onAssign}
+				/>
+			</div>
+		) : step === 'existing' ? (
+			<div style={{ display: 'flex', gap: 10 }}>
+				<ActionButton
+					label="Cancel"
+					variant="secondary"
+					disabled={isSaving}
+					onClick={onClose}
+				/>
+				<ActionButton
+					label={isSaving ? 'Saving…' : 'Continue'}
+					variant="primary"
+					disabled={isSaving}
+					loading={isSaving}
+					onClick={onContinueExisting}
+				/>
+			</div>
+		) : step === 'suggest' ? (
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+				<ActionButton
+					label={isSaving ? 'Saving…' : 'Confirm'}
+					variant="primary"
+					disabled={isSaving}
+					loading={isSaving}
+					onClick={onConfirmSuggestion}
+				/>
+				<ActionButton
+					label="Choose Different Person"
+					variant="secondary"
+					disabled={isSaving}
+					onClick={onChooseDifferentPerson}
+				/>
+			</div>
+		) : step === 'journey' && journeyPhase === 'summary' ? (
+			<ImportJourneyFooter
+				outcome={journeyOutcome}
+				isRunning={isJourneyRunning}
+				oauthError={oauthError}
+				needsReview={journeyResult?.needsReview ?? 0}
+				onViewDashboard={() => {
+					onClose()
+					navigate(ROUTES.health)
+				}}
+				onReview={() => {
+					onClose()
+					navigate(ROUTES.healthImportReview)
+				}}
+				onReconnect={() => {
+					onClose()
+					navigate(ROUTES.profileConnectionsDrive)
+				}}
+				onRetry={onRetryJourney}
+				onChooseDifferentFolder={onChooseDifferentFolder}
+			/>
+		) : null
 
 	return (
-		<div
-			style={{
-				position: 'fixed',
-				inset: 0,
-				background: 'rgba(0,0,0,0.55)',
-				display: 'flex',
-				alignItems: 'flex-end',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: 16,
-			}}
-			onClick={isSaving || isJourneyRunning ? undefined : onClose}
-		>
-			<div
-				style={{
-					width: '100%',
-					maxWidth: 520,
-					background: C.card,
-					border: `1px solid ${C.border}`,
-					borderRadius: '24px 24px 20px 20px',
-					padding: '20px 18px calc(18px + env(safe-area-inset-bottom))',
-					boxShadow: '0 -12px 40px rgba(0,0,0,0.35)',
-				}}
-				onClick={(event) => event.stopPropagation()}
-			>
-				<div
-					style={{
-						width: 42,
-						height: 4,
-						borderRadius: 999,
-						background: C.border,
-						margin: '0 auto 16px',
-					}}
-				/>
-
-				{step === 'journey' && successInfo ? (
-					<ImportJourneyStep
-						successInfo={successInfo}
-						phase={journeyPhase}
-						phasesCompleted={journeyPhasesCompleted}
-						phasesSucceeded={journeyPhasesSucceeded}
-						result={journeyResult}
-						isRunning={isJourneyRunning}
-						errorMessage={errorMessage}
-						onRetry={onRetryJourney}
-						onChooseDifferentFolder={onChooseDifferentFolder}
+		<BottomSheet
+			isOpen={isOpen}
+			onClose={preventClose ? undefined : onClose}
+			preventClose={preventClose}
+			aria-label="Assign Health Folder"
+			footer={footer}
+			header={
+				step === 'journey' ? null : (
+					<SheetHeader
+						title={
+							step === 'existing'
+								? 'Existing Folder Assignment'
+								: 'Assign Health Folder'
+						}
+						subtitle={
+							step === 'existing'
+								? 'This family member already has folders assigned.'
+								: 'Which family member should use this folder?'
+						}
+						folderName={folderName}
+						isSaving={isSaving}
 						onClose={onClose}
 					/>
-				) : (
-					<>
-						<SheetHeader
-							title={
-								step === 'existing'
-									? 'Existing Folder Assignment'
-									: 'Assign Health Folder'
-							}
-							subtitle={
-								step === 'existing'
-									? 'This family member already has folders assigned.'
-									: 'Which family member should use this folder?'
-							}
-							folderName={folderName}
+				)
+			}
+		>
+			{step === 'journey' && successInfo ? (
+				<ImportJourneyStep
+					successInfo={successInfo}
+					phase={journeyPhase}
+					phasesCompleted={journeyPhasesCompleted}
+					phasesSucceeded={journeyPhasesSucceeded}
+					result={journeyResult}
+					isRunning={isJourneyRunning}
+					errorMessage={errorMessage}
+					onRetry={onRetryJourney}
+					onChooseDifferentFolder={onChooseDifferentFolder}
+					onClose={onClose}
+					hideFooter
+				/>
+			) : (
+				<>
+					{errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+
+					{step === 'suggest' && suggestion ? (
+						<SuggestStep suggestion={suggestion} />
+					) : null}
+
+					{step === 'pick' ? (
+						<PickStep
+							members={uniqueMembers}
+							selectedMemberIds={selectedMemberIds}
 							isSaving={isSaving}
-							onClose={onClose}
+							onToggleMember={onToggleMember}
 						/>
+					) : null}
 
-						{errorMessage ? <ErrorBanner message={errorMessage} /> : null}
-
-						{step === 'suggest' && suggestion ? (
-							<SuggestStep
-								suggestion={suggestion}
-								isSaving={isSaving}
-								onConfirm={onConfirmSuggestion}
-								onChooseDifferent={onChooseDifferentPerson}
-							/>
-						) : null}
-
-						{step === 'pick' ? (
-							<PickStep
-								members={uniqueMembers}
-								selectedMemberIds={selectedMemberIds}
-								isSaving={isSaving}
-								onToggleMember={onToggleMember}
-								onAssign={onAssign}
-								onCancel={onClose}
-							/>
-						) : null}
-
-						{step === 'existing' ? (
-							<ExistingStep
-								existingFolders={existingFolders}
-								existingMode={existingMode}
-								isSaving={isSaving}
-								onExistingModeChange={onExistingModeChange}
-								onContinue={onContinueExisting}
-								onCancel={onClose}
-							/>
-						) : null}
-					</>
-				)}
-			</div>
-		</div>
+					{step === 'existing' ? (
+						<ExistingStep
+							existingFolders={existingFolders}
+							existingMode={existingMode}
+							isSaving={isSaving}
+							onExistingModeChange={onExistingModeChange}
+						/>
+					) : null}
+				</>
+			)}
+		</BottomSheet>
 	)
 }
 
@@ -266,113 +315,84 @@ function ErrorBanner({ message }: { message: string }) {
 	)
 }
 
-function SuggestStep({
-	suggestion,
-	isSaving,
-	onConfirm,
-	onChooseDifferent,
-}: {
-	suggestion: FolderMatchSuggestion
-	isSaving: boolean
-	onConfirm: () => void
-	onChooseDifferent: () => void
-}) {
+function SuggestStep({ suggestion }: { suggestion: FolderMatchSuggestion }) {
 	return (
-		<div>
+		<div
+			style={{
+				background: 'rgba(52,211,153,0.08)',
+				border: '1px solid rgba(52,211,153,0.22)',
+				borderRadius: 16,
+				padding: '16px 16px 14px',
+			}}
+		>
 			<div
 				style={{
-					background: 'rgba(52,211,153,0.08)',
-					border: '1px solid rgba(52,211,153,0.22)',
-					borderRadius: 16,
-					padding: '16px 16px 14px',
-					marginBottom: 16,
+					display: 'flex',
+					alignItems: 'center',
+					gap: 8,
+					marginBottom: 12,
 				}}
 			>
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 8,
-						marginBottom: 12,
-					}}
-				>
-					<Sparkles size={16} color={C.greenAlt} />
-					<div style={{ fontSize: 12, fontWeight: 700, color: C.greenAlt }}>
-						Suggested Match
-					</div>
-				</div>
-
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 8,
-						fontSize: 16,
-						fontWeight: 800,
-						color: C.text,
-						marginBottom: 12,
-					}}
-				>
-					<Check size={18} color={C.greenAlt} strokeWidth={2.5} />
-					{suggestion.memberLabel}
-				</div>
-
-				<div style={{ marginBottom: 12 }}>
-					<div
-						style={{
-							fontSize: 11,
-							fontWeight: 700,
-							color: C.textMuted,
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em',
-							marginBottom: 6,
-						}}
-					>
-						Confidence
-					</div>
-					<div style={{ fontSize: 22, fontWeight: 800, color: C.greenAlt }}>
-						{suggestion.confidence}%
-					</div>
-				</div>
-
-				<div>
-					<div
-						style={{
-							fontSize: 11,
-							fontWeight: 700,
-							color: C.textMuted,
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em',
-							marginBottom: 6,
-						}}
-					>
-						Reason
-					</div>
-					{suggestion.reasons.map((reason) => (
-						<div
-							key={reason}
-							style={{ fontSize: 12, color: C.textSec, marginBottom: 2 }}
-						>
-							• {reason}
-						</div>
-					))}
+				<Sparkles size={16} color={C.greenAlt} />
+				<div style={{ fontSize: 12, fontWeight: 700, color: C.greenAlt }}>
+					Suggested Match
 				</div>
 			</div>
 
-			<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-				<ActionButton
-					label={isSaving ? 'Saving…' : 'Confirm'}
-					variant="primary"
-					disabled={isSaving}
-					loading={isSaving}
-					onClick={onConfirm}
-				/>
-				<ActionButton
-					label="Choose Different Person"
-					variant="secondary"
-					disabled={isSaving}
-					onClick={onChooseDifferent}
-				/>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 8,
+					fontSize: 16,
+					fontWeight: 800,
+					color: C.text,
+					marginBottom: 12,
+				}}
+			>
+				<Check size={18} color={C.greenAlt} strokeWidth={2.5} />
+				{suggestion.memberLabel}
+			</div>
+
+			<div style={{ marginBottom: 12 }}>
+				<div
+					style={{
+						fontSize: 11,
+						fontWeight: 700,
+						color: C.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em',
+						marginBottom: 6,
+					}}
+				>
+					Confidence
+				</div>
+				<div style={{ fontSize: 22, fontWeight: 800, color: C.greenAlt }}>
+					{suggestion.confidence}%
+				</div>
+			</div>
+
+			<div>
+				<div
+					style={{
+						fontSize: 11,
+						fontWeight: 700,
+						color: C.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em',
+						marginBottom: 6,
+					}}
+				>
+					Reason
+				</div>
+				{suggestion.reasons.map((reason) => (
+					<div
+						key={reason}
+						style={{ fontSize: 12, color: C.textSec, marginBottom: 2 }}
+					>
+						• {reason}
+					</div>
+				))}
 			</div>
 		</div>
 	)
@@ -383,15 +403,11 @@ function PickStep({
 	selectedMemberIds,
 	isSaving,
 	onToggleMember,
-	onAssign,
-	onCancel,
 }: {
 	members: FamilyMemberWithAliases[]
 	selectedMemberIds: string[]
 	isSaving: boolean
 	onToggleMember: (memberId: string) => void
-	onAssign: () => void
-	onCancel: () => void
 }) {
 	return (
 		<div>
@@ -408,14 +424,7 @@ function PickStep({
 				Select Family Member
 			</div>
 
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: 8,
-					marginBottom: 16,
-				}}
-			>
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 				{members.map((member) => {
 					const memberLabel = formatMemberLabel(member)
 					const visibleAliases = getNonRedundantAliases(member, memberLabel)
@@ -458,22 +467,6 @@ function PickStep({
 					)
 				})}
 			</div>
-
-			<div style={{ display: 'flex', gap: 10 }}>
-				<ActionButton
-					label="Cancel"
-					variant="secondary"
-					disabled={isSaving}
-					onClick={onCancel}
-				/>
-				<ActionButton
-					label={isSaving ? 'Saving…' : 'Assign Folder'}
-					variant="primary"
-					disabled={isSaving || selectedMemberIds.length === 0}
-					loading={isSaving}
-					onClick={onAssign}
-				/>
-			</div>
 		</div>
 	)
 }
@@ -483,15 +476,11 @@ function ExistingStep({
 	existingMode,
 	isSaving,
 	onExistingModeChange,
-	onContinue,
-	onCancel,
 }: {
 	existingFolders: HealthSourceAssignment[]
 	existingMode: ExistingFolderMode
 	isSaving: boolean
 	onExistingModeChange: (mode: ExistingFolderMode) => void
-	onContinue: () => void
-	onCancel: () => void
 }) {
 	return (
 		<div>
@@ -529,14 +518,7 @@ function ExistingStep({
 				What would you like to do?
 			</div>
 
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: 8,
-					marginBottom: 16,
-				}}
-			>
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 				<ModeOption
 					label="Replace Existing Folder"
 					description="Remove previous folders and use this one instead"
@@ -550,22 +532,6 @@ function ExistingStep({
 					selected={existingMode === 'add'}
 					disabled={isSaving}
 					onClick={() => onExistingModeChange('add')}
-				/>
-			</div>
-
-			<div style={{ display: 'flex', gap: 10 }}>
-				<ActionButton
-					label="Cancel"
-					variant="secondary"
-					disabled={isSaving}
-					onClick={onCancel}
-				/>
-				<ActionButton
-					label={isSaving ? 'Saving…' : 'Continue'}
-					variant="primary"
-					disabled={isSaving}
-					loading={isSaving}
-					onClick={onContinue}
 				/>
 			</div>
 		</div>
@@ -703,6 +669,7 @@ function ActionButton({
 				fontFamily: 'inherit',
 				opacity: disabled ? 0.6 : 1,
 				width: '100%',
+				minHeight: 44,
 			}}
 		>
 			{loading ? (

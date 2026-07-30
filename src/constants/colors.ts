@@ -84,8 +84,13 @@ export function shellNavDockStyle(usePhoneFrame: boolean) {
 	}
 }
 
-export const NAV_DOCK_CONTENT_INSET =
-	'calc(128px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-chrome, 0px))'
+import {
+	BOTTOM_NAV_DOCK_PADDING_PX,
+	BOTTOM_NAV_HEIGHT_PX,
+	CONTENT_NAV_SPACING_PX,
+} from '@/components/layout/mobile/mobile-layout.constants'
+
+export const NAV_DOCK_CONTENT_INSET = `calc(${BOTTOM_NAV_HEIGHT_PX}px + ${BOTTOM_NAV_DOCK_PADDING_PX}px + ${CONTENT_NAV_SPACING_PX}px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-chrome, 0px))`
 
 export const phoneFrameStyle = {
 	outer: {
