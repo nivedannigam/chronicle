@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
+	buildDownloadFailure,
+	createRequestId,
+	isDownloadMimeAllowed,
+	runDownloadStep,
+	type DriveDownloadStepRecord,
+	type DriveDownloadTraceContext,
+} from './download-trace.ts'
+import {
 	computeTokenExpiresAt,
 	GoogleAuthExpiredError,
 	GOOGLE_AUTH_EXPIRED_MESSAGE,
@@ -41,6 +49,10 @@ interface DriveConnectorRequest {
 	modifiedSince?: string | null
 	externalFileId?: string
 	fileName?: string
+	requestId?: string
+	registryId?: string
+	workflowId?: string
+	reportId?: string
 }
 
 interface DiscoveryDocument {
@@ -960,88 +972,167 @@ async function handleDownload(
 		)
 	}
 
-	logOAuth('download_started', {
+	const startedAt = Date.now()
+	const steps: DriveDownloadStepRecord[] = []
+	const traceContext: DriveDownloadTraceContext = {
+		requestId: body.requestId ?? createRequestId(),
 		userId,
+		registryId: body.registryId ?? null,
+		workflowId: body.workflowId ?? null,
+		reportId: body.reportId ?? null,
+		externalFileId: body.externalFileId,
+		fileName: body.fileName,
+	}
+
+	logOAuth('download_started', {
+		requestId: traceContext.requestId,
+		userId,
+		registryId: traceContext.registryId,
+		workflowId: traceContext.workflowId,
+		reportId: traceContext.reportId,
 		externalFileId: body.externalFileId,
 		fileName: body.fileName,
 	})
 
 	try {
-		const accessToken = await getValidAccessToken(serviceClient, userId)
+		const tokenStep = await runDownloadStep(
+			traceContext,
+			'resolve_access_token',
+			() => getValidAccessToken(serviceClient, userId),
+		)
+		steps.push(tokenStep.record)
+		const accessToken = tokenStep.result
 
-		const meta = await driveApiGet<GoogleDriveFile>(
-			serviceClient,
-			userId,
-			`files/${body.externalFileId}`,
-			{
-				fields: 'id,name,mimeType,size',
-				supportsAllDrives: 'true',
+		const metaStep = await runDownloadStep(
+			traceContext,
+			'fetch_file_metadata',
+			() =>
+				driveApiGetWithToken<GoogleDriveFile>(
+					serviceClient,
+					userId,
+					accessToken,
+					`files/${body.externalFileId}`,
+					{
+						fields: 'id,name,mimeType,size',
+						supportsAllDrives: 'true',
+					},
+				),
+		)
+		steps.push(metaStep.record)
+		const meta = metaStep.result
+
+		const bytesStep = await runDownloadStep(
+			traceContext,
+			'download_file_bytes',
+			() =>
+				fetchDriveFileBytes(
+					serviceClient,
+					userId,
+					accessToken,
+					body.externalFileId!,
+					meta.mimeType,
+				),
+		)
+		steps.push(bytesStep.record)
+		const fileBytes = bytesStep.result
+
+		const mimeStep = await runDownloadStep(
+			traceContext,
+			'validate_mime_type',
+			async () => {
+				if (!isDownloadMimeAllowed(meta.mimeType)) {
+					throw new Error(
+						`Unsupported MIME type for health import: ${meta.mimeType}`,
+					)
+				}
+
+				if (fileBytes.length === 0) {
+					throw new Error('Downloaded file is empty')
+				}
 			},
 		)
-
-		const fileBytes = await fetchDriveFileBytes(
-			serviceClient,
-			userId,
-			accessToken,
-			body.externalFileId,
-			meta.mimeType,
-		)
+		steps.push(mimeStep.record)
 
 		const checksum = await sha256Hex(fileBytes)
 		const safeName = body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
 		const storagePath = `${userId}/${Date.now()}-${safeName}`
+		const contentType = meta.mimeType.startsWith('application/vnd.google-apps')
+			? 'application/pdf'
+			: meta.mimeType
 
-		const { error: uploadError } = await serviceClient.storage
-			.from('health-reports')
-			.upload(storagePath, fileBytes, {
-				contentType: meta.mimeType.startsWith('application/vnd.google-apps')
-					? 'application/pdf'
-					: meta.mimeType,
-				upsert: false,
-			})
+		const uploadStep = await runDownloadStep(
+			traceContext,
+			'storage_upload',
+			async () => {
+				const { error: uploadError } = await serviceClient.storage
+					.from('health-reports')
+					.upload(storagePath, fileBytes, {
+						contentType,
+						upsert: false,
+					})
 
-		if (uploadError) {
-			const message = `Storage upload to health-reports failed: ${uploadError.message}`
+				if (uploadError) {
+					throw new Error(
+						`Storage upload to health-reports failed: ${uploadError.message}`,
+					)
+				}
+			},
+		)
+		steps.push(uploadStep.record)
 
-			logOAuth('download_storage_failed', {
-				userId,
-				externalFileId: body.externalFileId,
-				error: uploadError.message,
-			})
-
-			return json({ success: false, error: message }, 500)
-		}
+		const returnStep = await runDownloadStep(
+			traceContext,
+			'return_storage_path',
+			async () => storagePath,
+		)
+		steps.push(returnStep.record)
 
 		return json({
 			success: true,
 			storagePath,
 			fileSize: fileBytes.length,
 			sha256Checksum: checksum,
+			requestId: traceContext.requestId,
+			registryId: traceContext.registryId,
+			workflowId: traceContext.workflowId,
+			reportId: traceContext.reportId,
+			steps,
+			durationMs: Date.now() - startedAt,
 		})
 	} catch (error) {
 		if (isGoogleAuthExpiredError(error)) {
-			return json({ success: false, error: GOOGLE_AUTH_EXPIRED_MESSAGE }, 401)
-		}
-
-		const message =
-			error instanceof Error ? error.message : 'Google Drive download failed'
-
-		if (
-			message.includes('Google Drive download failed (') ||
-			message.includes('Storage upload to health-reports failed')
-		) {
-			const statusMatch = message.match(
-				/Google Drive download failed \((\d+)\)/,
-			)
-			const status = statusMatch ? Number(statusMatch[1]) : 500
+			const failure = buildDownloadFailure({
+				context: traceContext,
+				steps,
+				error,
+				startedAt,
+			})
 
 			return json(
-				{ success: false, error: message },
-				status === 401 ? 401 : 500,
+				{
+					...failure,
+					error: GOOGLE_AUTH_EXPIRED_MESSAGE,
+				},
+				401,
 			)
 		}
 
-		throw error
+		const failure = buildDownloadFailure({
+			context: traceContext,
+			steps,
+			error,
+			startedAt,
+		})
+
+		console.error(
+			JSON.stringify({
+				service: 'drive-connector',
+				event: 'download_failed',
+				...failure,
+			}),
+		)
+
+		return json(failure, 500)
 	}
 }
 

@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { C } from '@/constants/colors'
 import { StickyFooter } from '@/components/layout/mobile/StickyFooter'
 import {
@@ -34,13 +35,13 @@ export function BottomSheet({
 	useBodyScrollLock(isOpen)
 	const keyboardInset = useVisualViewportInset(isOpen)
 
-	if (!isOpen) {
+	if (!isOpen || typeof document === 'undefined') {
 		return null
 	}
 
 	const canClose = !preventClose && onClose
 
-	return (
+	const sheet = (
 		<div
 			role="dialog"
 			aria-modal="true"
@@ -58,6 +59,7 @@ export function BottomSheet({
 				paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
 				paddingBottom: `max(16px, calc(env(safe-area-inset-bottom, 0px) + ${keyboardInset}px))`,
 				boxSizing: 'border-box',
+				overflow: 'hidden',
 			}}
 			onClick={canClose ? onClose : undefined}
 		>
@@ -66,7 +68,6 @@ export function BottomSheet({
 					width: '100%',
 					maxWidth,
 					maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
-					height: `min(${BOTTOM_SHEET_MAX_HEIGHT}, calc(100% - env(safe-area-inset-top, 0px)))`,
 					background: C.card,
 					border: `1px solid ${C.border}`,
 					borderRadius: '24px 24px 20px 20px',
@@ -75,6 +76,7 @@ export function BottomSheet({
 					flexDirection: 'column',
 					overflow: 'hidden',
 					minHeight: 0,
+					flexShrink: 1,
 					...panelStyle,
 				}}
 				onClick={(event) => event.stopPropagation()}
@@ -119,4 +121,6 @@ export function BottomSheet({
 			</div>
 		</div>
 	)
+
+	return createPortal(sheet, document.body)
 }

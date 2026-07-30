@@ -171,6 +171,10 @@ export async function downloadDriveFile(input: {
 	userId: string
 	externalFileId: string
 	fileName: string
+	registryId?: string
+	workflowId?: string
+	reportId?: string
+	requestId?: string
 }) {
 	const data = await invokeDriveConnector<{
 		storagePath: string
@@ -178,15 +182,27 @@ export async function downloadDriveFile(input: {
 		sha256Checksum?: string
 		success?: boolean
 		error?: string
+		failedStep?: string
+		failedStepLabel?: string
+		requestId?: string
+		stack?: string | null
+		steps?: Array<{ step: string; label: string; success: boolean }>
 	}>({
 		action: 'download',
 		userId: input.userId,
 		externalFileId: input.externalFileId,
 		fileName: input.fileName,
+		registryId: input.registryId,
+		workflowId: input.workflowId,
+		reportId: input.reportId,
+		requestId: input.requestId,
 	})
 
 	if (data.success === false || data.error) {
-		throw new Error(data.error ?? 'Could not download file from Google Drive')
+		const stepLabel = data.failedStepLabel ?? 'Download'
+		throw new Error(
+			`${stepLabel} failed: ${data.error ?? 'Could not download file from Google Drive'}`,
+		)
 	}
 
 	if (!data.storagePath) {

@@ -44,11 +44,11 @@ export const IMPORT_JOURNEY_STEPS: {
 	label: string
 }[] = [
 	{ phase: 'assign', label: 'Folder connected' },
-	{ phase: 'scanning', label: 'Searching your Drive' },
-	{ phase: 'detection', label: 'Finding health reports' },
-	{ phase: 'download', label: 'Downloading reports' },
-	{ phase: 'ocr', label: 'Reading reports' },
-	{ phase: 'metrics', label: 'Organizing results' },
+	{ phase: 'scanning', label: 'Drive Search' },
+	{ phase: 'detection', label: 'File Discovery' },
+	{ phase: 'download', label: 'Download' },
+	{ phase: 'ocr', label: 'OCR' },
+	{ phase: 'metrics', label: 'Health Import' },
 	{ phase: 'summary', label: 'Complete' },
 ]
 

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { ScrollablePage } from '@/components/layout/mobile/ScrollablePage'
+import { StickyFooter } from '@/components/layout/mobile/StickyFooter'
 
 interface AppShellProps {
 	header?: ReactNode
@@ -9,12 +10,13 @@ interface AppShellProps {
 	paddingTop?: number
 	paddingBottom?: number
 	style?: CSSProperties
+	/** When true, skip nav clearance on the scroll area (inside another AppShell). */
 	nested?: boolean
 }
 
 /**
- * Standard mobile page shell: fixed header, scrollable body, optional footer.
- * Clears the floating bottom navigation via ScrollablePage bottom inset.
+ * Standard mobile page shell: fixed header, scrollable body, optional sticky footer.
+ * Footer stays above the floating bottom nav; scroll area clears nav when no footer.
  */
 export function AppShell({
 	header,
@@ -26,6 +28,8 @@ export function AppShell({
 	style,
 	nested = false,
 }: AppShellProps) {
+	const skipScrollBottomInset = nested || Boolean(footer)
+
 	return (
 		<div
 			style={{
@@ -33,7 +37,7 @@ export function AppShell({
 				flexDirection: 'column',
 				minHeight: 0,
 				flex: 1,
-				height: '100%',
+				overflow: 'hidden',
 				...style,
 			}}
 		>
@@ -43,12 +47,12 @@ export function AppShell({
 				paddingX={paddingX}
 				paddingTop={paddingTop}
 				paddingBottom={paddingBottom}
-				noBottomInset={nested}
+				noBottomInset={skipScrollBottomInset}
 			>
 				{children}
 			</ScrollablePage>
 
-			{footer ? <div style={{ flexShrink: 0 }}>{footer}</div> : null}
+			{footer ? <StickyFooter variant="page">{footer}</StickyFooter> : null}
 		</div>
 	)
 }

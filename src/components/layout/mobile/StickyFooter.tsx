@@ -21,7 +21,9 @@ export function StickyFooter({
 				paddingLeft: 18,
 				paddingRight: 18,
 				paddingBottom:
-					variant === 'sheet' ? BOTTOM_SHEET_FOOTER_PADDING_BOTTOM : '12px',
+					variant === 'sheet'
+						? BOTTOM_SHEET_FOOTER_PADDING_BOTTOM
+						: 'calc(12px + env(safe-area-inset-bottom, 0px))',
 				borderTop: `1px solid ${C.border}`,
 				background: C.card,
 				...style,

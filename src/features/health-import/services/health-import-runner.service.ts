@@ -152,6 +152,8 @@ async function importRegistryRecord(
 			userId,
 			externalFileId: registry.external_file_id,
 			fileName: registry.file_name,
+			registryId,
+			requestId: registryId,
 		})
 	} catch (error) {
 		const errorDetail = buildWorkflowErrorDetail({

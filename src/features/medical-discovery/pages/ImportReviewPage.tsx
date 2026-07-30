@@ -85,8 +85,84 @@ export function ImportReviewPage() {
 			paddingX={18}
 			paddingTop={18}
 			paddingBottom={20}
-			nested
-			style={{ color: C.text }}
+			style={{ flex: 1, minHeight: 0, color: C.text }}
+			footer={
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+					{importMessage ? (
+						<div
+							style={{
+								fontSize: 12,
+								color: importMessage.includes('errors 0')
+									? C.greenAlt
+									: C.orange,
+								lineHeight: 1.5,
+							}}
+						>
+							{importMessage}
+						</div>
+					) : null}
+					<div style={{ display: 'flex', gap: 10, width: '100%', minWidth: 0 }}>
+						{pendingDocuments.length > 0 ? (
+							<button
+								type="button"
+								onClick={() => void review.approveAllLikely()}
+								disabled={review.isLoading || isImporting}
+								style={{
+									flex: 1,
+									background: C.accentDim,
+									border: '1px solid rgba(108,111,255,0.25)',
+									borderRadius: 100,
+									padding: '12px 14px',
+									fontSize: 13,
+									fontWeight: 700,
+									color: C.accent,
+									cursor: 'pointer',
+									fontFamily: 'inherit',
+									minHeight: 44,
+								}}
+							>
+								Approve All Likely
+							</button>
+						) : null}
+						<button
+							type="button"
+							onClick={() => void handleImportApproved()}
+							disabled={isImporting || !hasActionableDocuments}
+							style={{
+								flex: 1,
+								background: C.accent,
+								border: 'none',
+								borderRadius: 100,
+								padding: '12px 14px',
+								fontSize: 13,
+								fontWeight: 700,
+								color: C.white,
+								cursor:
+									isImporting || !hasActionableDocuments
+										? 'not-allowed'
+										: 'pointer',
+								fontFamily: 'inherit',
+								opacity: isImporting || !hasActionableDocuments ? 0.6 : 1,
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: 6,
+								minHeight: 44,
+							}}
+						>
+							{isImporting ? (
+								<Loader2
+									size={16}
+									style={{ animation: 'spin 1s linear infinite' }}
+								/>
+							) : (
+								<RefreshCw size={16} />
+							)}
+							{failedDocuments.length > 0 ? 'Retry Import' : 'Import Approved'}
+						</button>
+					</div>
+				</div>
+			}
 		>
 			<button
 				type="button"
@@ -152,77 +228,6 @@ export function ImportReviewPage() {
 						value={String(failedDocuments.length)}
 						accent={C.red}
 					/>
-				</div>
-			) : null}
-
-			<div
-				style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}
-			>
-				{pendingDocuments.length > 0 ? (
-					<button
-						type="button"
-						onClick={() => void review.approveAllLikely()}
-						disabled={review.isLoading}
-						style={{
-							background: C.accentDim,
-							border: '1px solid rgba(108,111,255,0.25)',
-							borderRadius: 100,
-							padding: '10px 14px',
-							fontSize: 12,
-							fontWeight: 700,
-							color: C.accent,
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						Approve All Likely Medical
-					</button>
-				) : null}
-				<button
-					type="button"
-					onClick={() => void handleImportApproved()}
-					disabled={isImporting || !hasActionableDocuments}
-					style={{
-						background: C.accent,
-						border: 'none',
-						borderRadius: 100,
-						padding: '10px 14px',
-						fontSize: 12,
-						fontWeight: 700,
-						color: C.white,
-						cursor:
-							isImporting || !hasActionableDocuments
-								? 'not-allowed'
-								: 'pointer',
-						fontFamily: 'inherit',
-						opacity: isImporting || !hasActionableDocuments ? 0.6 : 1,
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 6,
-					}}
-				>
-					{isImporting ? (
-						<Loader2
-							size={14}
-							style={{ animation: 'spin 1s linear infinite' }}
-						/>
-					) : (
-						<RefreshCw size={14} />
-					)}
-					{failedDocuments.length > 0 ? 'Retry Import' : 'Import Approved'}
-				</button>
-			</div>
-
-			{importMessage ? (
-				<div
-					style={{
-						fontSize: 12,
-						color: importMessage.includes('errors 0') ? C.greenAlt : C.orange,
-						marginBottom: 12,
-						lineHeight: 1.5,
-					}}
-				>
-					{importMessage}
 				</div>
 			) : null}
 

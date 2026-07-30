@@ -413,7 +413,7 @@ export function HealthScreen({
 			paddingTop={resolved?.paddingTop ?? paddingTop}
 			paddingBottom={resolved?.paddingBottom ?? paddingBottom}
 			nested={nested}
-			style={{ minHeight: '100%', color: C.text }}
+			style={{ flex: 1, minHeight: 0, color: C.text }}
 		>
 			{children}
 		</AppShell>
