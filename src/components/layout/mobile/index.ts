@@ -4,6 +4,7 @@ export { SafeAreaContainer } from '@/components/layout/mobile/SafeAreaContainer'
 export { ScrollablePage } from '@/components/layout/mobile/ScrollablePage'
 export { StickyFooter } from '@/components/layout/mobile/StickyFooter'
 export { useBodyScrollLock } from '@/components/layout/mobile/useBodyScrollLock'
+export { useVisualViewportInset } from '@/components/layout/mobile/useVisualViewportInset'
 export {
 	BOTTOM_NAV_HEIGHT_PX,
 	BOTTOM_SHEET_FOOTER_PADDING_BOTTOM,

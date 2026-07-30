@@ -39,6 +39,8 @@ export const queryKeys = {
 			['health-source-assignments', userId] as const,
 		workflow: (userId: string | undefined) =>
 			['health-workflow-projection', userId] as const,
+		ocrStatus: (userId: string | undefined) =>
+			['ocr-provider-status', userId] as const,
 	},
 	discovery: {
 		stats: (userId: string | undefined) => ['discovery-stats', userId] as const,

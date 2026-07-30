@@ -2,10 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import {
-	documentProcessingConfig,
-	isProductionOcrProvider,
-} from '@/config/document-processing'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
@@ -19,7 +15,8 @@ import type {
 } from '@/features/health-import/types/health-import-journey.types'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
-import { OcrConfigurationBanner } from '@/features/health/components/OcrStatusBanner'
+import { OcrProviderStatusPanel } from '@/features/health/components/OcrStatusBanner'
+import { useOcrProviderStatus } from '@/features/health/hooks/useOcrProviderStatus'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
@@ -32,6 +29,7 @@ export function HealthSettingsPage() {
 	const setup = useHealthMemberSetup()
 	const { assignments, isLoading, refresh } = useHealthSources(userId)
 	const importStatus = useHealthImportStatus(userId)
+	const ocrStatus = useOcrProviderStatus(userId)
 
 	const [isScanning, setIsScanning] = useState(false)
 	const [journeyPhase, setJourneyPhase] =
@@ -79,9 +77,6 @@ export function HealthSettingsPage() {
 	]
 	const status = importStatus.data
 	const showSetupGuide = setup.currentStep !== 'ready'
-	const showOcrConfigurationBanner = isProductionOcrProvider(
-		documentProcessingConfig.ocrProvider,
-	)
 
 	const handleScanNow = async () => {
 		if (folderIds.length === 0) {
@@ -114,7 +109,12 @@ export function HealthSettingsPage() {
 					: null,
 			)
 
-			await Promise.all([refresh(), setup.refetch(), importStatus.refetch()])
+			await Promise.all([
+				refresh(),
+				setup.refetch(),
+				importStatus.refetch(),
+				ocrStatus.refetch(),
+			])
 		} catch (scanError) {
 			setJourneyError(
 				scanError instanceof Error
@@ -128,7 +128,10 @@ export function HealthSettingsPage() {
 
 	return (
 		<div>
-			{showOcrConfigurationBanner ? <OcrConfigurationBanner /> : null}
+			<OcrProviderStatusPanel
+				status={ocrStatus.data}
+				isLoading={ocrStatus.isLoading}
+			/>
 			{showSetupGuide ? <HealthSetupGuide compact /> : null}
 
 			<div style={{ marginBottom: 12 }}>

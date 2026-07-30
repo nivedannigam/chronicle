@@ -59,20 +59,21 @@ function resolveErrorType(
 	message: string,
 	edgeFunction?: string,
 ): WorkflowErrorType {
+	if (
+		stage === 'OCR' ||
+		stage === 'PROCESSING' ||
+		message.toLowerCase().includes('ocr') ||
+		message.toLowerCase().includes('document ai')
+	) {
+		return 'ocr_failure'
+	}
+
 	if (edgeFunction) {
 		return 'edge_function'
 	}
 
 	if (stage === 'DOWNLOADING' || message.toLowerCase().includes('download')) {
 		return 'download_failure'
-	}
-
-	if (
-		stage === 'OCR' ||
-		stage === 'PROCESSING' ||
-		message.toLowerCase().includes('ocr')
-	) {
-		return 'ocr_failure'
 	}
 
 	if (stage === 'PARSING' || message.toLowerCase().includes('pars')) {
@@ -93,7 +94,20 @@ function friendlyMessage(errorType: WorkflowErrorType, detail: string): string {
 		case 'download_failure':
 			return 'Could not download this file from Google Drive. Reconnect Drive and retry.'
 		case 'ocr_failure':
-			return 'Could not read text from this report. Retry or upload manually.'
+			if (
+				detail.includes('PAGE_LIMIT_EXCEEDED') ||
+				detail.includes('pages exceed the limit') ||
+				detail.includes('multiple OCR batches')
+			) {
+				return detail.length > 120 ? `${detail.slice(0, 117)}…` : detail
+			}
+
+			return detail.length > 0 &&
+				!detail.startsWith('Could not read text from this report')
+				? detail.length > 160
+					? `${detail.slice(0, 157)}…`
+					: detail
+				: 'Could not read text from this report. Retry or upload manually.'
 		case 'parse_failure':
 			return 'Could not extract health data from this report.'
 		case 'index_failure':

@@ -1,3 +1,20 @@
+export interface OcrProviderLimits {
+	standardPages: number
+	imagelessPages: number
+}
+
+export const GOOGLE_DOCUMENT_AI_LIMITS: OcrProviderLimits = {
+	standardPages: 15,
+	imagelessPages: 30,
+}
+
+export function resolveProviderPageLimit(
+	limits: OcrProviderLimits,
+	imagelessMode: boolean,
+): number {
+	return imagelessMode ? limits.imagelessPages : limits.standardPages
+}
+
 export interface PageChunkRange {
 	startPage: number
 	endPage: number
@@ -34,7 +51,6 @@ export interface MergedOcrResult {
 	confidence: number
 }
 
-/** Plan contiguous page ranges for provider limits (1-based inclusive pages). */
 export function planPageChunks(
 	totalPages: number,
 	maxPagesPerChunk: number,
@@ -57,6 +73,16 @@ export function planPageChunks(
 	}
 
 	return chunks
+}
+
+export function buildPageSelector(
+	startPage: number,
+	endPage: number,
+): number[] {
+	return Array.from(
+		{ length: endPage - startPage + 1 },
+		(_, index) => startPage + index,
+	)
 }
 
 export function splitPageRange(
@@ -86,7 +112,6 @@ export function splitPageRange(
 	]
 }
 
-/** Merge chunk OCR output into one logical document response. */
 export function mergeOcrChunks(
 	chunks: ParsedOcrChunk[],
 	totalPages: number,
@@ -100,18 +125,26 @@ export function mergeOcrChunks(
 		}
 	}
 
-	const rawText = chunks
+	const orderedChunks = [...chunks].sort(
+		(left, right) => left.startPage - right.startPage,
+	)
+
+	const rawText = orderedChunks
 		.map((chunk) => chunk.rawText.trim())
 		.filter(Boolean)
 		.join('\n')
 
 	const confidence =
-		chunks.reduce((sum, chunk) => sum + chunk.confidence, 0) / chunks.length
+		orderedChunks.reduce((sum, chunk) => sum + chunk.confidence, 0) /
+		orderedChunks.length
 
-	const tables = chunks.flatMap((chunk) =>
+	const tables = orderedChunks.flatMap((chunk) =>
 		chunk.tables.map((table) => ({
 			...table,
-			pageNumber: table.pageNumber + chunk.startPage - 1,
+			pageNumber:
+				table.pageNumber >= chunk.startPage
+					? table.pageNumber
+					: table.pageNumber + chunk.startPage - 1,
 		})),
 	)
 
@@ -140,7 +173,7 @@ export function readMaxPagesPerChunk(imagelessMode: boolean): number {
 		}
 	}
 
-	return imagelessMode ? 30 : 15
+	return resolveProviderPageLimit(GOOGLE_DOCUMENT_AI_LIMITS, imagelessMode)
 }
 
 export function readImagelessModeEnabled(): boolean {
@@ -151,4 +184,26 @@ export function readImagelessModeEnabled(): boolean {
 	}
 
 	return true
+}
+
+export function formatOcrUserMessage(
+	message: string,
+	pageCount?: number,
+): string {
+	if (
+		message.includes('PAGE_LIMIT_EXCEEDED') ||
+		message.includes('pages exceed the limit')
+	) {
+		const pagesMatch =
+			message.match(/got\s+(\d+)/i) ?? message.match(/(\d+)\s+pages/i)
+		const pages = pageCount ?? pagesMatch?.[1] ?? 'many'
+
+		return `This report contains ${pages} pages. Chronicle is processing it in multiple OCR batches.`
+	}
+
+	if (/Google Document AI failed/i.test(message)) {
+		return message.replace(/^Google Document AI failed \(\d+\):\s*/i, '')
+	}
+
+	return message
 }

@@ -20,6 +20,13 @@ describe('planPageChunks', () => {
 			{ startPage: 61, endPage: 65, pageCount: 5 },
 		])
 	})
+
+	it('splits 22 pages at the standard 15-page limit', () => {
+		expect(planPageChunks(22, 15)).toEqual([
+			{ startPage: 1, endPage: 15, pageCount: 15 },
+			{ startPage: 16, endPage: 22, pageCount: 7 },
+		])
+	})
 })
 
 describe('splitPageRange', () => {

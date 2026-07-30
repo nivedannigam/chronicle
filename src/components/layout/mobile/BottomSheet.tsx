@@ -6,6 +6,7 @@ import {
 	scrollablePageStyle,
 } from '@/components/layout/mobile/mobile-layout.constants'
 import { useBodyScrollLock } from '@/components/layout/mobile/useBodyScrollLock'
+import { useVisualViewportInset } from '@/components/layout/mobile/useVisualViewportInset'
 
 interface BottomSheetProps {
 	isOpen: boolean
@@ -31,6 +32,7 @@ export function BottomSheet({
 	'aria-label': ariaLabel,
 }: BottomSheetProps) {
 	useBodyScrollLock(isOpen)
+	const keyboardInset = useVisualViewportInset(isOpen)
 
 	if (!isOpen) {
 		return null
@@ -51,7 +53,11 @@ export function BottomSheet({
 				alignItems: 'flex-end',
 				justifyContent: 'center',
 				zIndex: 1000,
-				padding: '0 16px max(16px, env(safe-area-inset-bottom, 0px))',
+				paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
+				paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
+				paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+				paddingBottom: `max(16px, calc(env(safe-area-inset-bottom, 0px) + ${keyboardInset}px))`,
+				boxSizing: 'border-box',
 			}}
 			onClick={canClose ? onClose : undefined}
 		>
@@ -60,6 +66,7 @@ export function BottomSheet({
 					width: '100%',
 					maxWidth,
 					maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
+					height: `min(${BOTTOM_SHEET_MAX_HEIGHT}, calc(100% - env(safe-area-inset-top, 0px)))`,
 					background: C.card,
 					border: `1px solid ${C.border}`,
 					borderRadius: '24px 24px 20px 20px',
@@ -67,6 +74,7 @@ export function BottomSheet({
 					display: 'flex',
 					flexDirection: 'column',
 					overflow: 'hidden',
+					minHeight: 0,
 					...panelStyle,
 				}}
 				onClick={(event) => event.stopPropagation()}
@@ -86,7 +94,8 @@ export function BottomSheet({
 					<div
 						style={{
 							flexShrink: 0,
-							padding: '12px 18px 0',
+							padding: '12px 18px 10px',
+							borderBottom: `1px solid ${C.border}`,
 						}}
 					>
 						{header}
@@ -96,9 +105,11 @@ export function BottomSheet({
 				<div
 					style={{
 						...scrollablePageStyle,
-						flex: 1,
+						flex: '1 1 0',
 						minHeight: 0,
-						padding: header ? '0 18px 12px' : '12px 18px 12px',
+						padding: header ? '12px 18px' : '12px 18px',
+						overscrollBehavior: 'contain',
+						touchAction: 'pan-y',
 					}}
 				>
 					{children}

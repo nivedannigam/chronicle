@@ -46,4 +46,25 @@ export {
 	isProductionOcrProvider,
 	type OcrProviderType,
 } from './config/document-processing.config'
+export {
+	AZURE_DOCUMENT_INTELLIGENCE_LIMITS,
+	buildPageSelector,
+	formatOcrUserMessage,
+	GOOGLE_DOCUMENT_AI_LIMITS,
+	isPageLimitExceededError,
+	planOcrPageChunks,
+	resolveProviderPageLimit,
+	splitPageRange,
+	type OcrProviderLimits,
+	type PageChunkRange,
+} from './provider-limits.ts'
+export {
+	formatOcrProviderLabel,
+	formatOcrRuntimeError,
+	isOcrConfigurationError,
+	resolveOcrProviderStatus,
+	type OcrConfigurationStatus,
+	type OcrProcessingEvent,
+	type OcrProviderStatusSnapshot,
+} from './ocr-status.ts'
 export { ocrStorageConfig } from './config/ocr-storage.config'

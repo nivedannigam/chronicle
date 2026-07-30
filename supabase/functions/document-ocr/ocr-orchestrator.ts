@@ -4,15 +4,17 @@ import {
 } from './document-ai-client.ts'
 import { logStructured } from './google-auth.ts'
 import {
+	formatOcrUserMessage,
+	GOOGLE_DOCUMENT_AI_LIMITS,
 	mergeOcrChunks,
 	type PageChunkRange,
 	type ParsedOcrChunk,
 	planPageChunks,
 	readImagelessModeEnabled,
-	readMaxPagesPerChunk,
+	resolveProviderPageLimit,
 	splitPageRange,
 } from './page-chunk-plan.ts'
-import { countPdfPages, extractPdfPageRange } from './pdf-chunking.ts'
+import { countPdfPages } from './pdf-chunking.ts'
 
 export interface OrchestratedOcrResult {
 	rawText: string
@@ -33,6 +35,7 @@ export interface OrchestratedOcrResult {
 		originalPageCount: number
 		chunkCount: number
 		imagelessMode: boolean
+		providerLimit: number
 	}
 	processingTimeMs: number
 	ocrDurationMs: number
@@ -49,6 +52,7 @@ interface ProcessRangeInput {
 	mimeType: string
 	imagelessMode: boolean
 	correlationId: string
+	usePageSelector: boolean
 }
 
 async function processPageRange(
@@ -63,25 +67,26 @@ async function processPageRange(
 		mimeType,
 		imagelessMode,
 		correlationId,
+		usePageSelector,
 	} = input
 
-	const rangeBytes =
-		range.startPage === 1 && range.endPage === totalPages
-			? pdfBytes
-			: await extractPdfPageRange(pdfBytes, range.startPage, range.endPage)
+	const shouldUseSelector = usePageSelector && range.pageCount < totalPages
 
 	try {
 		const parsed = await processDocumentAiChunk({
 			endpoint,
 			accessToken,
-			pdfBytes: rangeBytes,
+			pdfBytes,
 			mimeType,
 			imagelessMode,
+			pageRange: shouldUseSelector
+				? { startPage: range.startPage, endPage: range.endPage }
+				: undefined,
 		})
 
 		return [
 			{
-				byteLength: rangeBytes.length,
+				byteLength: pdfBytes.length,
 				chunk: {
 					...parsed,
 					startPage: range.startPage,
@@ -100,8 +105,8 @@ async function processPageRange(
 				startPage: range.startPage,
 				endPage: range.endPage,
 				pageCount: range.pageCount,
-				byteLength: rangeBytes.length,
 				reason: 'PAGE_LIMIT_EXCEEDED',
+				strategy: 'bisect_page_range',
 			})
 
 			const [leftRange, rightRange] = splitPageRange(
@@ -110,14 +115,116 @@ async function processPageRange(
 			)
 
 			const [leftChunks, rightChunks] = await Promise.all([
-				processPageRange({ ...input, range: leftRange }),
-				processPageRange({ ...input, range: rightRange }),
+				processPageRange({ ...input, range: leftRange, usePageSelector: true }),
+				processPageRange({
+					...input,
+					range: rightRange,
+					usePageSelector: true,
+				}),
 			])
 
 			return [...leftChunks, ...rightChunks]
 		}
 
 		throw error
+	}
+}
+
+async function runOrchestration(input: {
+	pdfBytes: Uint8Array
+	fileName: string
+	mimeType: string
+	endpoint: string
+	accessToken: string
+	correlationId: string
+	startedAt: number
+	originalPageCount: number
+	imagelessMode: boolean
+	providerLimit: number
+}): Promise<OrchestratedOcrResult> {
+	const initialChunks = planPageChunks(
+		input.originalPageCount,
+		input.providerLimit,
+	)
+	const usePageSelector = initialChunks.length > 1
+
+	logStructured('ocr_orchestration_started', {
+		correlationId: input.correlationId,
+		fileName: input.fileName,
+		pageCount: input.originalPageCount,
+		providerLimit: input.providerLimit,
+		chunkCount: initialChunks.length,
+		imagelessMode: input.imagelessMode,
+		byteLength: input.pdfBytes.length,
+	})
+
+	const ocrStartedAt = Date.now()
+	const chunkSizes: number[] = []
+	const parsedChunks: ParsedOcrChunk[] = []
+
+	for (const range of initialChunks) {
+		const rangeResults = await processPageRange({
+			pdfBytes: input.pdfBytes,
+			totalPages: input.originalPageCount,
+			range,
+			endpoint: input.endpoint,
+			accessToken: input.accessToken,
+			mimeType: input.mimeType,
+			imagelessMode: input.imagelessMode,
+			correlationId: input.correlationId,
+			usePageSelector,
+		})
+
+		for (const result of rangeResults) {
+			chunkSizes.push(result.byteLength)
+			parsedChunks.push(result.chunk)
+		}
+	}
+
+	const ocrDurationMs = Date.now() - ocrStartedAt
+	const mergeStartedAt = Date.now()
+	const merged = mergeOcrChunks(parsedChunks, input.originalPageCount)
+	const mergeDurationMs = Date.now() - mergeStartedAt
+	const processingTimeMs = Date.now() - input.startedAt
+	const chunkCount = parsedChunks.length
+
+	logStructured('ocr_orchestration_succeeded', {
+		correlationId: input.correlationId,
+		pageCount: input.originalPageCount,
+		providerLimit: input.providerLimit,
+		chunkCount,
+		chunkSizes,
+		chunkPageRanges: parsedChunks.map(
+			(chunk) => `${chunk.startPage}-${chunk.endPage}`,
+		),
+		ocrDurationMs,
+		mergeDurationMs,
+		processingTimeMs,
+		characters: merged.rawText.length,
+		imagelessMode: input.imagelessMode,
+	})
+
+	return {
+		rawText: merged.rawText,
+		pages: merged.pages,
+		tables: merged.tables,
+		confidence: merged.confidence,
+		metadata: {
+			provider: 'google-document-ai',
+			mimeType: input.mimeType,
+			fileName: input.fileName,
+			pageCount: input.originalPageCount,
+			tableCount: merged.tables.length,
+			correlationId: input.correlationId,
+			originalPageCount: input.originalPageCount,
+			chunkCount,
+			imagelessMode: input.imagelessMode,
+			providerLimit: input.providerLimit,
+		},
+		processingTimeMs,
+		ocrDurationMs,
+		mergeDurationMs,
+		chunkSizes,
 	}
 }
 
@@ -131,83 +238,56 @@ export async function orchestrateDocumentOcr(input: {
 	startedAt: number
 }): Promise<OrchestratedOcrResult> {
 	const imagelessMode = readImagelessModeEnabled()
-	const maxPagesPerChunk = readMaxPagesPerChunk(imagelessMode)
 	const originalPageCount = await countPdfPages(input.pdfBytes)
-	const initialChunks = planPageChunks(originalPageCount, maxPagesPerChunk)
+	const imagelessLimit = resolveProviderPageLimit(
+		GOOGLE_DOCUMENT_AI_LIMITS,
+		true,
+	)
+	const standardLimit = resolveProviderPageLimit(
+		GOOGLE_DOCUMENT_AI_LIMITS,
+		false,
+	)
+	const configuredLimit = imagelessMode ? imagelessLimit : standardLimit
 
-	logStructured('ocr_orchestration_started', {
-		correlationId: input.correlationId,
-		fileName: input.fileName,
+	const baseInput = {
+		...input,
 		originalPageCount,
-		chunkCount: initialChunks.length,
-		maxPagesPerChunk,
 		imagelessMode,
-		byteLength: input.pdfBytes.length,
-	})
-
-	const ocrStartedAt = Date.now()
-	const chunkSizes: number[] = []
-	const parsedChunks: ParsedOcrChunk[] = []
-
-	for (const range of initialChunks) {
-		const rangeResults = await processPageRange({
-			pdfBytes: input.pdfBytes,
-			totalPages: originalPageCount,
-			range,
-			endpoint: input.endpoint,
-			accessToken: input.accessToken,
-			mimeType: input.mimeType,
-			imagelessMode,
-			correlationId: input.correlationId,
-		})
-
-		for (const result of rangeResults) {
-			chunkSizes.push(result.byteLength)
-			parsedChunks.push(result.chunk)
-		}
 	}
 
-	const ocrDurationMs = Date.now() - ocrStartedAt
-	const mergeStartedAt = Date.now()
-	const merged = mergeOcrChunks(parsedChunks, originalPageCount)
-	const mergeDurationMs = Date.now() - mergeStartedAt
-	const processingTimeMs = Date.now() - input.startedAt
-	const chunkCount = parsedChunks.length
+	try {
+		return await runOrchestration({
+			...baseInput,
+			providerLimit: configuredLimit,
+		})
+	} catch (error) {
+		const shouldFallbackToStandardChunks =
+			error instanceof DocumentAiProcessError &&
+			error.isPageLimitExceeded &&
+			imagelessMode &&
+			originalPageCount > standardLimit &&
+			configuredLimit > standardLimit
 
-	logStructured('ocr_orchestration_succeeded', {
-		correlationId: input.correlationId,
-		originalPageCount,
-		chunkCount,
-		chunkSizes,
-		chunkPageRanges: parsedChunks.map(
-			(chunk) => `${chunk.startPage}-${chunk.endPage}`,
-		),
-		ocrDurationMs,
-		mergeDurationMs,
-		processingTimeMs,
-		characters: merged.rawText.length,
-		imagelessMode,
-	})
+		if (shouldFallbackToStandardChunks) {
+			logStructured('ocr_imageless_fallback', {
+				correlationId: input.correlationId,
+				pageCount: originalPageCount,
+				previousProviderLimit: configuredLimit,
+				providerLimit: standardLimit,
+				imagelessMode,
+				reason: 'PAGE_LIMIT_EXCEEDED_with_imageless',
+			})
 
-	return {
-		rawText: merged.rawText,
-		pages: merged.pages,
-		tables: merged.tables,
-		confidence: merged.confidence,
-		metadata: {
-			provider: 'google-document-ai',
-			mimeType: input.mimeType,
-			fileName: input.fileName,
-			pageCount: originalPageCount,
-			tableCount: merged.tables.length,
-			correlationId: input.correlationId,
-			originalPageCount,
-			chunkCount,
-			imagelessMode,
-		},
-		processingTimeMs,
-		ocrDurationMs,
-		mergeDurationMs,
-		chunkSizes,
+			return await runOrchestration({
+				...baseInput,
+				providerLimit: standardLimit,
+			})
+		}
+
+		if (error instanceof DocumentAiProcessError) {
+			throw new Error(formatOcrUserMessage(error.message, originalPageCount))
+		}
+
+		throw error
 	}
 }

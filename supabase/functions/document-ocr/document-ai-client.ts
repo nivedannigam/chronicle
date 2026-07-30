@@ -1,4 +1,5 @@
 import { bytesToBase64 } from './google-auth.ts'
+import { buildPageSelector } from './page-chunk-plan.ts'
 import type { ParsedOcrChunk } from './page-chunk-plan.ts'
 
 export class DocumentAiProcessError extends Error {
@@ -68,20 +69,37 @@ export async function processDocumentAiChunk(input: {
 	pdfBytes: Uint8Array
 	mimeType: string
 	imagelessMode: boolean
+	pageRange?: {
+		startPage: number
+		endPage: number
+	}
 }): Promise<Omit<ParsedOcrChunk, 'startPage' | 'endPage'>> {
+	const requestBody: Record<string, unknown> = {
+		rawDocument: {
+			content: bytesToBase64(input.pdfBytes),
+			mimeType: input.mimeType,
+		},
+		imagelessMode: input.imagelessMode,
+	}
+
+	if (input.pageRange) {
+		requestBody.processOptions = {
+			individualPageSelector: {
+				pages: buildPageSelector(
+					input.pageRange.startPage,
+					input.pageRange.endPage,
+				),
+			},
+		}
+	}
+
 	const response = await fetch(input.endpoint, {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${input.accessToken}`,
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({
-			rawDocument: {
-				content: bytesToBase64(input.pdfBytes),
-				mimeType: input.mimeType,
-			},
-			imagelessMode: input.imagelessMode,
-		}),
+		body: JSON.stringify(requestBody),
 	})
 
 	if (!response.ok) {

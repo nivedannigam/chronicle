@@ -93,7 +93,14 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 
 	const footer =
 		step === 'pick' ? (
-			<div style={{ display: 'flex', gap: 10 }}>
+			<div
+				style={{
+					display: 'flex',
+					gap: 10,
+					width: '100%',
+					minWidth: 0,
+				}}
+			>
 				<ActionButton
 					label="Cancel"
 					variant="secondary"
@@ -109,7 +116,14 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 				/>
 			</div>
 		) : step === 'existing' ? (
-			<div style={{ display: 'flex', gap: 10 }}>
+			<div
+				style={{
+					display: 'flex',
+					gap: 10,
+					width: '100%',
+					minWidth: 0,
+				}}
+			>
 				<ActionButton
 					label="Cancel"
 					variant="secondary"
@@ -289,7 +303,7 @@ function SheetHeader({
 					<X size={18} />
 				</button>
 			</div>
-			<div style={{ fontSize: 12, color: C.textMuted, marginBottom: 14 }}>
+			<div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>
 				Folder: <span style={{ color: C.textSec }}>{folderName}</span>
 			</div>
 		</>

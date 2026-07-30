@@ -89,6 +89,17 @@ export function invalidateAfterHealthImport(userId: string | undefined) {
 	invalidateConnectorRegistryQueries(userId)
 	invalidateImportReviewQueries(userId)
 	invalidateHealthWorkflowQueries(userId)
+	invalidateOcrProviderStatusQueries(userId)
+}
+
+export function invalidateOcrProviderStatusQueries(userId: string | undefined) {
+	if (!userId) {
+		return
+	}
+
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.health.ocrStatus(userId),
+	})
 }
 
 export function invalidateAfterFolderAssignment(userId: string | undefined) {
