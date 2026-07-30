@@ -16,18 +16,6 @@ interface OcrRequestBody {
 const OCR_NOT_CONFIGURED_MESSAGE =
 	'Google Document AI is not configured. Set GOOGLE_DOCUMENT_AI_PROJECT_ID, GOOGLE_DOCUMENT_AI_PROCESSOR_ID, and GOOGLE_DOCUMENT_AI_ACCESS_TOKEN in Supabase edge function secrets, then redeploy document-ocr.'
 
-function bytesToBase64(bytes: Uint8Array): string {
-	const chunkSize = 8192
-	let binary = ''
-
-	for (let index = 0; index < bytes.length; index += chunkSize) {
-		const chunk = bytes.subarray(index, index + chunkSize)
-		binary += String.fromCharCode(...chunk)
-	}
-
-	return btoa(binary)
-}
-
 async function processWithGoogleDocumentAI(
 	pdfBytes: Uint8Array,
 	body: OcrRequestBody,
@@ -55,7 +43,7 @@ async function processWithGoogleDocumentAI(
 		},
 		body: JSON.stringify({
 			rawDocument: {
-				content: bytesToBase64(pdfBytes),
+				content: btoa(String.fromCharCode(...pdfBytes)),
 				mimeType: body.mimeType,
 			},
 		}),
