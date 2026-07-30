@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { C } from '@/constants/colors'
 import { StickyFooter } from '@/components/layout/mobile/StickyFooter'
 import {
+	BOTTOM_SHEET_CONTENT_MAX_HEIGHT,
 	BOTTOM_SHEET_MAX_HEIGHT,
 	scrollablePageStyle,
 } from '@/components/layout/mobile/mobile-layout.constants'
@@ -107,8 +108,9 @@ export function BottomSheet({
 				<div
 					style={{
 						...scrollablePageStyle,
-						flex: '1 1 0',
+						flex: '1 1 auto',
 						minHeight: 0,
+						maxHeight: BOTTOM_SHEET_CONTENT_MAX_HEIGHT,
 						padding: header ? '12px 18px' : '12px 18px',
 						overscrollBehavior: 'contain',
 						touchAction: 'pan-y',

@@ -7,6 +7,7 @@ export { useBodyScrollLock } from '@/components/layout/mobile/useBodyScrollLock'
 export { useVisualViewportInset } from '@/components/layout/mobile/useVisualViewportInset'
 export {
 	BOTTOM_NAV_HEIGHT_PX,
+	BOTTOM_SHEET_CONTENT_MAX_HEIGHT,
 	BOTTOM_SHEET_FOOTER_PADDING_BOTTOM,
 	BOTTOM_SHEET_MAX_HEIGHT,
 	CONTENT_NAV_SPACING_PX,

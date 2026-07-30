@@ -13,13 +13,13 @@ export const BOTTOM_NAV_DOCK_PADDING_PX = 22
  */
 export const PAGE_CONTENT_BOTTOM_INSET = `calc(${BOTTOM_NAV_HEIGHT_PX}px + ${BOTTOM_NAV_DOCK_PADDING_PX}px + ${CONTENT_NAV_SPACING_PX}px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-chrome, 0px))`
 
-/**
- * Max height for mobile bottom sheets.
- * Uses dvh and subtracts safe areas + overlay padding so the panel (and footer)
- * never extends below the visible viewport.
- */
+/** Max height for mobile bottom sheets. */
 export const BOTTOM_SHEET_MAX_HEIGHT =
 	'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 28px)'
+
+/** Scroll area cap — reserves space for handle, header, and sticky footer. */
+export const BOTTOM_SHEET_CONTENT_MAX_HEIGHT =
+	'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 220px)'
 
 /** Safe-area padding for sheet footers (iPhone home indicator). */
 export const BOTTOM_SHEET_FOOTER_PADDING_BOTTOM =
