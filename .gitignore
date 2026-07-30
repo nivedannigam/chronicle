@@ -11,6 +11,11 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Credentials (never commit)
+*service-account*.json
+*-credentials.json
+chronicle-service-account.json
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

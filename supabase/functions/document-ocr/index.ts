@@ -3,11 +3,11 @@ import {
 	type SupabaseClient,
 } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-	bytesToBase64,
 	createCorrelationId,
 	logStructured,
 	resolveDocumentAiAccessToken,
 } from './google-auth.ts'
+import { orchestrateDocumentOcr } from './ocr-orchestrator.ts'
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
@@ -88,75 +88,24 @@ async function processWithGoogleDocumentAI(
 
 	const endpoint = `https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`
 
-	logStructured('ocr_request_started', {
-		correlationId,
+	const result = await orchestrateDocumentOcr({
+		pdfBytes,
 		fileName: body.fileName,
-		bucket: body.bucket,
-		byteLength: pdfBytes.length,
 		mimeType: body.mimeType,
-	})
-
-	const response = await fetch(endpoint, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			rawDocument: {
-				content: bytesToBase64(pdfBytes),
-				mimeType: body.mimeType,
-			},
-		}),
-	})
-
-	if (!response.ok) {
-		const errorText = await response.text()
-		logStructured('ocr_provider_failed', {
-			correlationId,
-			status: response.status,
-			error: errorText.slice(0, 500),
-		})
-		throw new Error(
-			`Google Document AI failed (${response.status}): ${errorText}`,
-		)
-	}
-
-	const payload = await response.json()
-	const document = payload.document
-	const rawText = document?.text ?? ''
-	const pages = (document?.pages ?? []).map(
-		(page: { pageNumber?: number }, index: number) => ({
-			pageNumber: page.pageNumber ?? index + 1,
-			text: rawText,
-			confidence: 0.95,
-		}),
-	)
-
-	const processingTimeMs = Date.now() - startedAt
-
-	logStructured('ocr_request_succeeded', {
+		endpoint,
+		accessToken,
 		correlationId,
-		pageCount: pages.length,
-		characters: rawText.length,
-		processingTimeMs,
+		startedAt,
 	})
 
 	return new Response(
 		JSON.stringify({
-			rawText,
-			pages,
-			tables: [],
-			confidence: 0.95,
-			metadata: {
-				provider: 'google-document-ai',
-				mimeType: body.mimeType,
-				fileName: body.fileName,
-				pageCount: pages.length,
-				tableCount: 0,
-				correlationId,
-			},
-			processingTimeMs,
+			rawText: result.rawText,
+			pages: result.pages,
+			tables: result.tables,
+			confidence: result.confidence,
+			metadata: result.metadata,
+			processingTimeMs: result.processingTimeMs,
 		}),
 		{
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
