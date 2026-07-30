@@ -90,6 +90,18 @@ export function invalidateAfterHealthImport(userId: string | undefined) {
 	invalidateImportReviewQueries(userId)
 	invalidateHealthWorkflowQueries(userId)
 	invalidateOcrProviderStatusQueries(userId)
+
+	if (userId) {
+		void queryClient.invalidateQueries({
+			queryKey: queryKeys.knowledge.timeline(userId),
+		})
+		void queryClient.invalidateQueries({
+			queryKey: queryKeys.ask.sessions(userId),
+		})
+		void queryClient.invalidateQueries({
+			queryKey: queryKeys.timeline.events(userId, undefined),
+		})
+	}
 }
 
 export function invalidateOcrProviderStatusQueries(userId: string | undefined) {

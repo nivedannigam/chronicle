@@ -15,11 +15,15 @@ export async function safeTransitionWorkflowItem(input: {
 		const message =
 			error instanceof Error ? error.message : 'Workflow transition failed'
 
-		if (import.meta.env.DEV) {
-			console.warn(
-				`[health-workflow] ${input.toState} transition failed:`,
-				message,
-			)
-		}
+		console.warn(
+			JSON.stringify({
+				service: 'health-workflow',
+				event: 'workflow_transition_failed',
+				targetState: input.toState,
+				registryId: input.registryId ?? null,
+				reportId: input.reportId ?? null,
+				error: message,
+			}),
+		)
 	}
 }

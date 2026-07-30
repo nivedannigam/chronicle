@@ -27,6 +27,7 @@ import type { ImportPhase } from '@/features/health-import/types/import-runner.t
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
+import { advanceImportWorkflowToQueued } from '@/features/health/workflow/advance-import-workflow'
 
 function createEmptySummary(): ImportPipelineSummary {
 	return {
@@ -198,6 +199,11 @@ export async function queueApprovedImports(
 			await updateRegistryRecord(row.id as string, {
 				importStatus: 'queued',
 				errorMessage: null,
+			})
+
+			await advanceImportWorkflowToQueued({
+				registryId: row.id as string,
+				userId,
 			})
 		} catch (error) {
 			const message =

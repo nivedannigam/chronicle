@@ -32,6 +32,7 @@ describe('buildDocumentAiProcessRequest', () => {
 				contentBase64Length: payload.rawDocument.content.length,
 			},
 			imagelessMode: true,
+			pageSelectorCount: null,
 		})
 	})
 

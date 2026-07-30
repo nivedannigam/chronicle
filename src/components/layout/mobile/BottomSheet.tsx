@@ -52,7 +52,7 @@ export function BottomSheet({
 				display: 'flex',
 				alignItems: 'flex-end',
 				justifyContent: 'center',
-				zIndex: 1000,
+				zIndex: 2000,
 				paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
 				paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
 				paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',

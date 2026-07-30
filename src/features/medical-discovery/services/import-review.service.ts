@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { transitionWorkflowItem } from '@/features/health/workflow'
+import { advanceImportWorkflowToApproved } from '@/features/health/workflow/advance-import-workflow'
 import type {
 	ApprovalStatus,
 	DiscoveryCategory,
@@ -176,7 +177,13 @@ export async function approveAllLikelyMedical(userId: string): Promise<number> {
 		throw new Error(error.message)
 	}
 
-	return data?.length ?? 0
+	const ids = (data ?? []).map((row) => row.id as string)
+
+	for (const registryId of ids) {
+		await advanceImportWorkflowToApproved({ registryId, userId })
+	}
+
+	return ids.length
 }
 
 export async function approveAllImportCandidates(
@@ -198,7 +205,13 @@ export async function approveAllImportCandidates(
 		throw new Error(error.message)
 	}
 
-	return data?.length ?? 0
+	const ids = (data ?? []).map((row) => row.id as string)
+
+	for (const registryId of ids) {
+		await advanceImportWorkflowToApproved({ registryId, userId })
+	}
+
+	return ids.length
 }
 
 export async function getImportPipelineSummary(

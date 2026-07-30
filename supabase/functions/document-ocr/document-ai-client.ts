@@ -1,4 +1,5 @@
 import { bytesToBase64, logStructured } from './google-auth.ts'
+import { buildPageSelector } from './page-chunk-plan.ts'
 import type { ParsedOcrChunk } from './page-chunk-plan.ts'
 
 export class DocumentAiProcessError extends Error {
@@ -14,7 +15,8 @@ export class DocumentAiProcessError extends Error {
 		return (
 			this.errorText.includes('PAGE_LIMIT_EXCEEDED') ||
 			this.errorText.includes('pages exceed the limit') ||
-			this.errorText.includes('non-imageless mode')
+			this.errorText.includes('non-imageless mode') ||
+			this.errorText.includes('exceed the limit')
 		)
 	}
 
@@ -44,21 +46,42 @@ export interface DocumentAiProcessRequestPayload {
 		mimeType: string
 	}
 	imagelessMode: boolean
+	processOptions?: {
+		individualPageSelector: {
+			pages: number[]
+		}
+	}
 }
 
 export function buildDocumentAiProcessRequest(input: {
 	pdfBytes: Uint8Array
 	mimeType: string
 	imagelessModeEnabled: boolean
+	pageRange?: {
+		startPage: number
+		endPage: number
+	}
 }): DocumentAiProcessRequestPayload {
-	return {
+	const payload: DocumentAiProcessRequestPayload = {
 		rawDocument: {
 			content: bytesToBase64(input.pdfBytes),
 			mimeType: input.mimeType,
 		},
-		// REST API field per processors.process — must be camelCase `imagelessMode`.
 		imagelessMode: input.imagelessModeEnabled,
 	}
+
+	if (input.pageRange) {
+		payload.processOptions = {
+			individualPageSelector: {
+				pages: buildPageSelector(
+					input.pageRange.startPage,
+					input.pageRange.endPage,
+				),
+			},
+		}
+	}
+
+	return payload
 }
 
 export function describeDocumentAiRequestForLog(
@@ -72,6 +95,8 @@ export function describeDocumentAiRequestForLog(
 			contentBase64Length: payload.rawDocument.content.length,
 		},
 		imagelessMode: payload.imagelessMode,
+		pageSelectorCount:
+			payload.processOptions?.individualPageSelector.pages.length ?? null,
 	}
 }
 
@@ -113,11 +138,16 @@ export async function processDocumentAiChunk(input: {
 	detectedPageCount: number
 	providerPageLimit: number
 	correlationId: string
+	pageRange?: {
+		startPage: number
+		endPage: number
+	}
 }): Promise<Omit<ParsedOcrChunk, 'startPage' | 'endPage'>> {
 	const requestBody = buildDocumentAiProcessRequest({
 		pdfBytes: input.pdfBytes,
 		mimeType: input.mimeType,
 		imagelessModeEnabled: input.imagelessModeEnabled,
+		pageRange: input.pageRange,
 	})
 
 	logStructured('document_ai_request', {
@@ -125,6 +155,7 @@ export async function processDocumentAiChunk(input: {
 		imagelessModeEnabled: input.imagelessModeEnabled,
 		detectedPageCount: input.detectedPageCount,
 		providerPageLimit: input.providerPageLimit,
+		pageRange: input.pageRange ?? null,
 		requestPayload: describeDocumentAiRequestForLog(
 			requestBody,
 			input.pdfBytes.length,
@@ -148,6 +179,7 @@ export async function processDocumentAiChunk(input: {
 			imagelessModeEnabled: input.imagelessModeEnabled,
 			detectedPageCount: input.detectedPageCount,
 			providerPageLimit: input.providerPageLimit,
+			pageRange: input.pageRange ?? null,
 			status: response.status,
 			error: errorText.slice(0, 1000),
 			requestHadImagelessMode: requestBody.imagelessMode === true,

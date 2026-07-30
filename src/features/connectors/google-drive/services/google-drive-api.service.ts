@@ -60,7 +60,7 @@ async function invokeDriveConnector<T>(
 		})
 
 		throw error instanceof EdgeFunctionInvokeError
-			? new Error(error.message)
+			? error
 			: error instanceof Error
 				? error
 				: new Error('Drive API failed')

@@ -16,6 +16,7 @@ import {
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
+import { advanceImportWorkflowToDownload } from '@/features/health/workflow/advance-import-workflow'
 import { retryAllFailedWorkflowItems } from '@/features/health/workflow/health-workflow-retry.service'
 import {
 	completePipelineStage,
@@ -137,15 +138,11 @@ async function importRegistryRecord(
 		},
 	})
 
-	await safeTransitionWorkflowItem({
+	await advanceImportWorkflowToDownload({
 		registryId,
-		toState: 'DOWNLOADING',
-		context: {
-			userId,
-			familyMemberId: (registry.family_member_id as string | null) ?? null,
-			progress: { label: 'Downloading' },
-			worker: 'drive-connector',
-		},
+		userId,
+		familyMemberId: (registry.family_member_id as string | null) ?? null,
+		worker: 'drive-connector',
 	})
 
 	let download
@@ -352,6 +349,28 @@ async function importRegistryRecord(
 				' — Database schema may be outdated. Apply health report migrations (see CONNECTOR_DB_SETUP.md).'
 		}
 
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'IMPORTING',
+			error: new Error(message),
+		})
+
+		await updateRegistryRecord(registryId, {
+			importStatus: 'failed',
+			registryStatus: 'failed',
+			errorMessage: errorDetail.userMessage.slice(0, 500),
+		})
+
+		await safeTransitionWorkflowItem({
+			registryId,
+			toState: 'FAILED',
+			context: {
+				userId,
+				failureReason: errorDetail.userMessage,
+				failedStage: 'IMPORTING',
+				errorDetail,
+			},
+		})
+
 		throw new Error(message)
 	}
 
@@ -494,11 +513,32 @@ export async function processImportQueueWithProgress(
 			onItemError: async (registryId, error) => {
 				runResult.failedThisRun += 1
 
+				const errorDetail = buildWorkflowErrorDetail({
+					stage: 'DOWNLOADING',
+					error,
+					edgeFunction: 'drive-connector',
+					httpStatus:
+						error instanceof EdgeFunctionInvokeError
+							? error.httpStatus
+							: undefined,
+				})
+
 				await updateRegistryRecord(registryId, {
 					importStatus: 'failed',
 					registryStatus: 'failed',
-					errorMessage:
-						error instanceof Error ? error.message : 'Import failed',
+					errorMessage: errorDetail.userMessage.slice(0, 500),
+				})
+
+				await safeTransitionWorkflowItem({
+					registryId,
+					toState: 'FAILED',
+					context: {
+						userId,
+						failureReason: errorDetail.userMessage,
+						failedStage: 'DOWNLOADING',
+						errorDetail,
+						worker: 'drive-connector',
+					},
 				})
 			},
 		},

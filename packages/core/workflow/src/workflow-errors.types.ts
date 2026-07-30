@@ -6,6 +6,8 @@ export type WorkflowErrorType =
 	| 'parse_failure'
 	| 'index_failure'
 	| 'download_failure'
+	| 'storage_failure'
+	| 'database_failure'
 	| 'validation'
 	| 'unknown'
 
@@ -59,29 +61,64 @@ function resolveErrorType(
 	message: string,
 	edgeFunction?: string,
 ): WorkflowErrorType {
+	const lower = message.toLowerCase()
+
 	if (
 		stage === 'OCR' ||
 		stage === 'PROCESSING' ||
-		message.toLowerCase().includes('ocr') ||
-		message.toLowerCase().includes('document ai')
+		lower.includes('ocr') ||
+		lower.includes('document ai') ||
+		lower.includes('page_limit_exceeded')
 	) {
 		return 'ocr_failure'
 	}
 
-	if (edgeFunction) {
-		return 'edge_function'
-	}
-
-	if (stage === 'DOWNLOADING' || message.toLowerCase().includes('download')) {
+	if (
+		stage === 'DOWNLOADING' ||
+		lower.includes('google drive download') ||
+		lower.includes('could not download') ||
+		lower.includes('drive download failed')
+	) {
 		return 'download_failure'
 	}
 
-	if (stage === 'PARSING' || message.toLowerCase().includes('pars')) {
+	if (
+		lower.includes('storage upload') ||
+		lower.includes('health-reports') ||
+		lower.includes('storage upload failed')
+	) {
+		return 'storage_failure'
+	}
+
+	if (
+		lower.includes('could not create health report') ||
+		lower.includes('database schema') ||
+		lower.includes('health_reports') ||
+		lower.includes('insert failed') ||
+		lower.includes('violates')
+	) {
+		return 'database_failure'
+	}
+
+	if (stage === 'PARSING' || lower.includes('pars')) {
 		return 'parse_failure'
 	}
 
-	if (stage === 'INDEXING' || message.toLowerCase().includes('index')) {
+	if (stage === 'INDEXING' || lower.includes('index')) {
 		return 'index_failure'
+	}
+
+	if (edgeFunction && lower.includes('temporarily unavailable')) {
+		return 'edge_function'
+	}
+
+	if (
+		edgeFunction &&
+		(lower.includes('network') ||
+			lower.includes('fetch failed') ||
+			lower.includes('functions/v1'))
+	) {
+		return 'edge_function'
 	}
 
 	return 'unknown'
@@ -90,9 +127,25 @@ function resolveErrorType(
 function friendlyMessage(errorType: WorkflowErrorType, detail: string): string {
 	switch (errorType) {
 		case 'edge_function':
-			return 'Import service temporarily unavailable. Retry shortly.'
+			return detail.length > 0 &&
+				!detail.includes('Import service temporarily unavailable')
+				? detail.length > 160
+					? `${detail.slice(0, 157)}…`
+					: detail
+				: 'Import service temporarily unavailable. Retry shortly.'
 		case 'download_failure':
-			return 'Could not download this file from Google Drive. Reconnect Drive and retry.'
+			return detail.startsWith('Google Drive download failed')
+				? detail
+				: 'Google Drive download failed. Reconnect Drive and retry.'
+		case 'storage_failure':
+			return detail.startsWith('Storage upload')
+				? detail
+				: 'Storage upload failed. Verify Supabase storage bucket health-reports.'
+		case 'database_failure':
+			return detail.startsWith('Could not create health report') ||
+				detail.includes('health_reports')
+				? detail
+				: 'Database insert failed while creating the health report.'
 		case 'ocr_failure':
 			if (
 				detail.includes('PAGE_LIMIT_EXCEEDED') ||
@@ -107,11 +160,11 @@ function friendlyMessage(errorType: WorkflowErrorType, detail: string): string {
 				? detail.length > 160
 					? `${detail.slice(0, 157)}…`
 					: detail
-				: 'Could not read text from this report. Retry or upload manually.'
+				: 'OCR failed. Could not read text from this report.'
 		case 'parse_failure':
-			return 'Could not extract health data from this report.'
+			return 'Parser failed. Could not extract health data from this report.'
 		case 'index_failure':
-			return 'Report processed but dashboard update failed. Retry indexing.'
+			return 'Metrics generation failed. Report processed but dashboard update failed.'
 		default:
 			return detail.length > 120 ? `${detail.slice(0, 117)}…` : detail
 	}
@@ -126,8 +179,12 @@ function recoveryHint(
 			return 'Check Supabase edge function logs and redeploy if secrets changed.'
 		case 'download_failure':
 			return 'Verify Google Drive connection and file permissions, then retry download.'
+		case 'storage_failure':
+			return 'Verify health-reports bucket exists and drive-connector has service-role access.'
+		case 'database_failure':
+			return 'Apply pending Supabase migrations for health_reports and retry.'
 		case 'ocr_failure':
-			return 'Retry OCR only; verify document-ocr secrets or use mock OCR in dev.'
+			return 'Retry OCR; verify document-ocr secrets or use chunked OCR for large PDFs.'
 		case 'parse_failure':
 			return 'Retry parsing; inspect OCR output quality in Import Debug.'
 		case 'index_failure':

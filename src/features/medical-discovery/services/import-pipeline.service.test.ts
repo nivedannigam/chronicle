@@ -54,6 +54,10 @@ vi.mock(
 	}),
 )
 
+vi.mock('@/features/health/workflow/advance-import-workflow', () => ({
+	advanceImportWorkflowToQueued: vi.fn().mockResolvedValue(undefined),
+}))
+
 describe('processApprovedImports', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()

@@ -1001,9 +1001,15 @@ async function handleDownload(
 			})
 
 		if (uploadError) {
-			throw new Error(
-				`Storage upload to health-reports failed: ${uploadError.message}`,
-			)
+			const message = `Storage upload to health-reports failed: ${uploadError.message}`
+
+			logOAuth('download_storage_failed', {
+				userId,
+				externalFileId: body.externalFileId,
+				error: uploadError.message,
+			})
+
+			return json({ success: false, error: message }, 500)
 		}
 
 		return json({
@@ -1020,7 +1026,10 @@ async function handleDownload(
 		const message =
 			error instanceof Error ? error.message : 'Google Drive download failed'
 
-		if (message.includes('Google Drive download failed (')) {
+		if (
+			message.includes('Google Drive download failed (') ||
+			message.includes('Storage upload to health-reports failed')
+		) {
 			const statusMatch = message.match(
 				/Google Drive download failed \((\d+)\)/,
 			)
