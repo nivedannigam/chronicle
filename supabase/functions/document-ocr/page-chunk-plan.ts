@@ -177,9 +177,17 @@ export function readMaxPagesPerChunk(imagelessMode: boolean): number {
 }
 
 export function readImagelessModeEnabled(): boolean {
-	const configured = Deno.env.get('GOOGLE_DOCUMENT_AI_IMAGELESS_MODE')
+	const configured = Deno.env
+		.get('GOOGLE_DOCUMENT_AI_IMAGELESS_MODE')
+		?.trim()
+		.toLowerCase()
 
-	if (configured === 'false' || configured === '0') {
+	if (
+		configured === 'false' ||
+		configured === '0' ||
+		configured === 'no' ||
+		configured === 'off'
+	) {
 		return false
 	}
 

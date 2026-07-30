@@ -8,6 +8,7 @@ import {
 	resolveDocumentAiAccessToken,
 } from './google-auth.ts'
 import { orchestrateDocumentOcr } from './ocr-orchestrator.ts'
+import { readImagelessModeEnabled } from './page-chunk-plan.ts'
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
@@ -87,6 +88,14 @@ async function processWithGoogleDocumentAI(
 	}
 
 	const endpoint = `https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`
+
+	logStructured('ocr_processor_config', {
+		correlationId,
+		location,
+		processorId,
+		endpoint,
+		imagelessModeEnabled: readImagelessModeEnabled(),
+	})
 
 	const result = await orchestrateDocumentOcr({
 		pdfBytes,
