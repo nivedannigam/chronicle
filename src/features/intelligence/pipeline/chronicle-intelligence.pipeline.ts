@@ -3,7 +3,7 @@ import {
 	resolveQuestionWithContext,
 } from '@/features/ask/retrieval/intent-detector'
 import { conversationMemory } from '@/features/ask/memory/conversation-memory'
-import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
+import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import { runKnowledgeOrchestrator } from '@/features/intelligence/orchestrator/knowledge-orchestrator'
 import {
 	buildMemorySessionKey,

@@ -1,5 +1,7 @@
-import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
-import { getMetricDefinitions } from '@/features/document-intelligence/extraction/metric-normalization.engine'
+import {
+	getMetricDefinitions,
+	normalizeMetricName,
+} from '@/features/health/extraction/metric-normalization.engine'
 
 export interface ResolvedConcept {
 	canonicalId: string

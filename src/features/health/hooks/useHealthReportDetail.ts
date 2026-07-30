@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth'
 import { fetchUploadedHealthReports } from '@/features/health/services/health-upload.service'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
-import { toUiMetrics } from '@/features/document-intelligence/extraction'
+import { toUiMetrics } from '@/features/health/extraction'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 

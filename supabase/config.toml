@@ -8,7 +8,7 @@ major_version = 15
 verify_jwt = true
 
 [functions.ask-ai]
-verify_jwt = false
+verify_jwt = true
 
 [functions.document-ocr]
 verify_jwt = true

@@ -14,6 +14,7 @@ import {
 import type { WorkflowErrorDetail } from '@/core/workflow/workflow-errors.types'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
+import { logWorkflowTransition } from '@/core/workflow/workflow-trace'
 
 function parseProgress(value: unknown): WorkflowProgress | null {
 	if (!value || typeof value !== 'object') {
@@ -484,6 +485,33 @@ export async function transitionWorkflowItem(input: {
 		eventType,
 		payload: (eventRow.payload as Record<string, unknown>) ?? {},
 		createdAt: eventRow.created_at as string,
+	})
+
+	const stageStartedAtMs = item.stageStartedAt
+		? Date.parse(item.stageStartedAt)
+		: Date.now()
+	const durationMs =
+		fromState !== toState && !Number.isNaN(stageStartedAtMs)
+			? Date.now() - stageStartedAtMs
+			: undefined
+
+	logWorkflowTransition({
+		workflowId: updated.id,
+		reportId: updated.reportId,
+		fromState,
+		toState,
+		durationMs,
+		error: isFailure ? (failureReason ?? null) : null,
+		retryCount: updated.retryCount,
+		edgeFunction:
+			typeof input.context?.metadata?.edgeFunction === 'string'
+				? input.context.metadata.edgeFunction
+				: null,
+		correlationId:
+			typeof input.context?.metadata?.correlationId === 'string'
+				? input.context.metadata.correlationId
+				: null,
+		metadata: input.context?.metadata,
 	})
 
 	return updated

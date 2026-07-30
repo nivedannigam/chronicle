@@ -1,5 +1,5 @@
 import { C } from '@/constants/colors'
-import { METRIC_DEFINITIONS } from '@/features/document-intelligence/extraction/metric-definitions'
+import { METRIC_DEFINITIONS } from '@/features/health/extraction/metric-definitions'
 import type {
 	HealthMetricDefinition,
 	MetricCategory,

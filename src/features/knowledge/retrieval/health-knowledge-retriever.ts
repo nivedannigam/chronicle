@@ -1,4 +1,4 @@
-import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
+import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import {
 	getParsedHealthReport,
 	getReportDisplayDate,

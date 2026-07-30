@@ -1095,6 +1095,53 @@ async function upsertConnectionRecord(
 	}
 }
 
+async function handleVerify(
+	serviceClient: ReturnType<typeof createClient>,
+	userId: string,
+) {
+	const connection = await loadConnectorConnection(serviceClient, userId)
+
+	if (!connection || connection.status !== 'connected') {
+		return json({
+			success: true,
+			connected: false,
+			error: 'Google Drive is not connected.',
+		})
+	}
+
+	try {
+		await getValidAccessToken(serviceClient, userId)
+
+		return json({
+			success: true,
+			connected: true,
+		})
+	} catch (error) {
+		if (isGoogleAuthExpiredError(error)) {
+			return json(
+				{
+					success: false,
+					connected: false,
+					error: GOOGLE_AUTH_EXPIRED_MESSAGE,
+				},
+				401,
+			)
+		}
+
+		return json(
+			{
+				success: false,
+				connected: false,
+				error:
+					error instanceof Error
+						? error.message
+						: 'Google Drive verification failed',
+			},
+			400,
+		)
+	}
+}
+
 async function handleConnect(
 	serviceClient: ReturnType<typeof createClient>,
 	userId: string,
@@ -1276,6 +1323,10 @@ Deno.serve(async (request) => {
 			return await handleConnect(serviceClient, user.id, body)
 		}
 
+		if (body.action === 'verify') {
+			return await handleVerify(serviceClient, user.id)
+		}
+
 		if (body.action === 'browse') {
 			return await handleBrowse(serviceClient, user.id, body)
 		}
@@ -1295,7 +1346,7 @@ Deno.serve(async (request) => {
 		return json(
 			{
 				success: false,
-				error: `Unknown action: ${body.action ?? 'none'}. Supported actions: connect, browse, discover, import, download, disconnect`,
+				error: `Unknown action: ${body.action ?? 'none'}. Supported actions: connect, verify, browse, discover, import, download, disconnect`,
 			},
 			400,
 		)

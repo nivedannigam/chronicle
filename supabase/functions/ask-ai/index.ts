@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
@@ -19,11 +20,44 @@ serve(async (request) => {
 	}
 
 	const startedAt = performance.now()
+	const correlationId = crypto.randomUUID()
 
 	try {
+		const authHeader = request.headers.get('Authorization')
+
+		if (!authHeader) {
+			return jsonResponse({ error: 'Unauthorized' }, 401)
+		}
+
+		const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+		const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+		const userClient = createClient(supabaseUrl, anonKey, {
+			global: { headers: { Authorization: authHeader } },
+		})
+
+		const {
+			data: { user },
+			error: authError,
+		} = await userClient.auth.getUser()
+
+		if (authError || !user) {
+			return jsonResponse({ error: 'Unauthorized' }, 401)
+		}
+
 		const body = (await request.json()) as AskAiRequestBody
 		const provider = body.provider ?? 'openai'
 		const model = body.model ?? 'gpt-4o-mini'
+
+		console.log(
+			JSON.stringify({
+				service: 'ask-ai',
+				event: 'request_started',
+				correlationId,
+				userId: user.id,
+				provider,
+				model,
+			}),
+		)
 
 		if (provider === 'openai') {
 			const apiKey = Deno.env.get('OPENAI_API_KEY')
@@ -62,6 +96,7 @@ serve(async (request) => {
 				content: payload.choices?.[0]?.message?.content ?? '',
 				provider,
 				model,
+				correlationId,
 				usage: {
 					promptTokens: payload.usage?.prompt_tokens ?? 0,
 					completionTokens: payload.usage?.completion_tokens ?? 0,
@@ -117,6 +152,7 @@ serve(async (request) => {
 					.join('\n'),
 				provider,
 				model,
+				correlationId,
 				usage: {
 					promptTokens,
 					completionTokens,
@@ -128,20 +164,24 @@ serve(async (request) => {
 
 		throw new Error(`Unsupported provider: ${provider}`)
 	} catch (error) {
-		return new Response(
+		const message = error instanceof Error ? error.message : 'Ask AI failed'
+
+		console.error(
 			JSON.stringify({
-				error: error instanceof Error ? error.message : 'Ask AI failed',
+				service: 'ask-ai',
+				event: 'request_failed',
+				correlationId,
+				error: message,
 			}),
-			{
-				status: 500,
-				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-			},
 		)
+
+		return jsonResponse({ error: message, correlationId }, 500)
 	}
 })
 
-function jsonResponse(payload: unknown) {
+function jsonResponse(payload: unknown, status = 200) {
 	return new Response(JSON.stringify(payload), {
+		status,
 		headers: {
 			...corsHeaders,
 			'Content-Type': 'application/json',

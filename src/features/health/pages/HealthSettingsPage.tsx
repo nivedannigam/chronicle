@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import {
+	documentProcessingConfig,
+	isProductionOcrProvider,
+} from '@/config/document-processing'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
@@ -15,6 +19,7 @@ import type {
 } from '@/features/health-import/types/health-import-journey.types'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
+import { OcrConfigurationBanner } from '@/features/health/components/OcrStatusBanner'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
@@ -74,6 +79,9 @@ export function HealthSettingsPage() {
 	]
 	const status = importStatus.data
 	const showSetupGuide = setup.currentStep !== 'ready'
+	const showOcrConfigurationBanner = isProductionOcrProvider(
+		documentProcessingConfig.ocrProvider,
+	)
 
 	const handleScanNow = async () => {
 		if (folderIds.length === 0) {
@@ -120,6 +128,7 @@ export function HealthSettingsPage() {
 
 	return (
 		<div>
+			{showOcrConfigurationBanner ? <OcrConfigurationBanner /> : null}
 			{showSetupGuide ? <HealthSetupGuide compact /> : null}
 
 			<div style={{ marginBottom: 12 }}>

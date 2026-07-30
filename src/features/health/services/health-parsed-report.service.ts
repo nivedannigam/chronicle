@@ -1,4 +1,4 @@
-import { identifyReportType } from '@/features/document-intelligence/extraction/health-metadata.parser'
+import { identifyReportType } from '@/features/health/extraction/health-metadata.parser'
 import type { HealthReport as DomainHealthReport } from '@/features/document-intelligence/domain/health-report.domain'
 import type {
 	HealthMetric,
