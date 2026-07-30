@@ -7,6 +7,12 @@ import { supabase } from '@/lib/supabase'
 import { computeFileSha256 } from '@/lib/file-hash'
 import { buildUserScopedStoragePath } from '@chronicle/core-storage'
 import {
+	isSupportedHealthReportMimeType,
+	formatUnsupportedHealthReportMimeError,
+	normalizeHealthReportMimeType,
+	resolveHealthReportMimeType,
+} from '@chronicle/core-ocr'
+import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
 } from '@/features/health/services/health-processing.service'
@@ -35,8 +41,13 @@ export async function uploadHealthReport(
 	file: File,
 	familyMemberId?: string | null,
 ): Promise<UploadedHealthReport> {
-	if (file.type !== 'application/pdf') {
-		throw new Error('Only PDF files are supported.')
+	const contentType = resolveHealthReportMimeType({
+		fileName: file.name,
+		mimeType: file.type,
+	})
+
+	if (!isSupportedHealthReportMimeType(contentType)) {
+		throw new Error(formatUnsupportedHealthReportMimeError(file.type))
 	}
 
 	if (file.size > HEALTH_REPORT_MAX_FILE_SIZE_BYTES) {
@@ -76,7 +87,7 @@ export async function uploadHealthReport(
 	const { error: uploadError } = await supabase.storage
 		.from(HEALTH_REPORTS_BUCKET)
 		.upload(storagePath, file, {
-			contentType: 'application/pdf',
+			contentType: normalizeHealthReportMimeType(contentType),
 			upsert: false,
 		})
 

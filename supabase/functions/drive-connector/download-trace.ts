@@ -168,20 +168,4 @@ export function buildDownloadFailure(input: {
 	}
 }
 
-export function isDownloadMimeAllowed(mimeType: string): boolean {
-	const mime = mimeType.toLowerCase()
-
-	if (
-		mime === 'application/pdf' ||
-		mime === 'image/jpeg' ||
-		mime === 'image/png' ||
-		mime === 'image/jpg'
-	) {
-		return true
-	}
-
-	return (
-		mime.startsWith('application/vnd.google-apps') &&
-		mime !== 'application/vnd.google-apps.folder'
-	)
-}
+export { isDownloadMimeAllowed } from '../_shared/health-report-mime.ts'

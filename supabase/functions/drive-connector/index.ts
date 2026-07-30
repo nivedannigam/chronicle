@@ -16,6 +16,12 @@ import {
 	logOAuth,
 	resolveGoogleAccessToken,
 } from './google-oauth-token.ts'
+import {
+	formatStorageMimeRejectionError,
+	formatUnsupportedHealthReportMimeError,
+	isSupportedHealthReportMimeType,
+	normalizeHealthReportMimeType,
+} from '../_shared/health-report-mime.ts'
 
 const corsHeaders: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',
@@ -532,13 +538,7 @@ function scoreMedicalDocument(input: {
 }
 
 function isAllowedMedicalMime(mimeType: string): boolean {
-	const mime = mimeType.toLowerCase()
-	return (
-		mime === 'application/pdf' ||
-		mime === 'image/jpeg' ||
-		mime === 'image/png' ||
-		mime === 'image/jpg'
-	)
+	return isSupportedHealthReportMimeType(mimeType)
 }
 
 async function listFolderChildren(
@@ -1041,9 +1041,7 @@ async function handleDownload(
 			'validate_mime_type',
 			async () => {
 				if (!isDownloadMimeAllowed(meta.mimeType)) {
-					throw new Error(
-						`Unsupported MIME type for health import: ${meta.mimeType}`,
-					)
+					throw new Error(formatUnsupportedHealthReportMimeError(meta.mimeType))
 				}
 
 				if (fileBytes.length === 0) {
@@ -1058,7 +1056,7 @@ async function handleDownload(
 		const storagePath = `${userId}/${Date.now()}-${safeName}`
 		const contentType = meta.mimeType.startsWith('application/vnd.google-apps')
 			? 'application/pdf'
-			: meta.mimeType
+			: normalizeHealthReportMimeType(meta.mimeType)
 
 		const uploadStep = await runDownloadStep(
 			traceContext,
@@ -1073,7 +1071,7 @@ async function handleDownload(
 
 				if (uploadError) {
 					throw new Error(
-						`Storage upload to health-reports failed: ${uploadError.message}`,
+						formatStorageMimeRejectionError(uploadError.message, contentType),
 					)
 				}
 			},

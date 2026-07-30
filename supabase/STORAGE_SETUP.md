@@ -15,8 +15,8 @@ Run the SQL migration first (`supabase/migrations/20260722120000_health_reports.
 1. Go to **Storage → New bucket**
 2. **Name:** `health-reports`
 3. **Public bucket:** Off (private)
-4. **File size limit:** 10 MB
-5. **Allowed MIME types:** `application/pdf`
+4. **File size limit:** 50 MB
+5. **Allowed MIME types:** `application/pdf`, `image/jpeg`, `image/jpg`, `image/png`, `image/heic`, `image/heif`, `image/tiff`, `image/webp`
 
 ### 2. Storage policies
 
@@ -42,4 +42,4 @@ Files are stored under `{user_id}/{report_id}_{filename}.pdf`.
 
 - **Upload failed / new row violation:** Ensure RLS policies are applied and the user is authenticated.
 - **403 on storage:** Check that the storage path starts with the signed-in user's UUID.
-- **MIME type rejected:** Only PDF files are allowed.
+- **MIME type rejected:** Supported formats are PDF, JPG, PNG, HEIC, and TIFF. Apply migration `20260739120000_health_reports_image_mime_types.sql` if the bucket still allows PDF only.

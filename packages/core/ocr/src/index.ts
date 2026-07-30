@@ -68,3 +68,16 @@ export {
 	type OcrProviderStatusSnapshot,
 } from './ocr-status.ts'
 export { ocrStorageConfig } from './config/ocr-storage.config'
+export {
+	HEALTH_REPORT_SUPPORTED_FORMATS_LABEL,
+	HEALTH_REPORT_SUPPORTED_MIME_TYPES,
+	formatStorageMimeRejectionError,
+	formatUnsupportedHealthReportMimeError,
+	inferHealthReportMimeType,
+	isImageMimeType,
+	isPdfMimeType,
+	isSupportedHealthReportMimeType,
+	normalizeHealthReportMimeType,
+	resolveHealthReportMimeType,
+	type HealthReportMimeType,
+} from './supported-mime-types.ts'

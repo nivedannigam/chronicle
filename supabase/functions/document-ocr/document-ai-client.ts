@@ -54,7 +54,7 @@ export interface DocumentAiProcessRequestPayload {
 }
 
 export function buildDocumentAiProcessRequest(input: {
-	pdfBytes: Uint8Array
+	documentBytes: Uint8Array
 	mimeType: string
 	imagelessModeEnabled: boolean
 	pageRange?: {
@@ -64,7 +64,7 @@ export function buildDocumentAiProcessRequest(input: {
 }): DocumentAiProcessRequestPayload {
 	const payload: DocumentAiProcessRequestPayload = {
 		rawDocument: {
-			content: bytesToBase64(input.pdfBytes),
+			content: bytesToBase64(input.documentBytes),
 			mimeType: input.mimeType,
 		},
 		imagelessMode: input.imagelessModeEnabled,
@@ -132,7 +132,7 @@ function parseDocumentAiResponse(
 export async function processDocumentAiChunk(input: {
 	endpoint: string
 	accessToken: string
-	pdfBytes: Uint8Array
+	documentBytes: Uint8Array
 	mimeType: string
 	imagelessModeEnabled: boolean
 	detectedPageCount: number
@@ -144,7 +144,7 @@ export async function processDocumentAiChunk(input: {
 	}
 }): Promise<Omit<ParsedOcrChunk, 'startPage' | 'endPage'>> {
 	const requestBody = buildDocumentAiProcessRequest({
-		pdfBytes: input.pdfBytes,
+		documentBytes: input.documentBytes,
 		mimeType: input.mimeType,
 		imagelessModeEnabled: input.imagelessModeEnabled,
 		pageRange: input.pageRange,
@@ -158,7 +158,7 @@ export async function processDocumentAiChunk(input: {
 		pageRange: input.pageRange ?? null,
 		requestPayload: describeDocumentAiRequestForLog(
 			requestBody,
-			input.pdfBytes.length,
+			input.documentBytes.length,
 		),
 	})
 

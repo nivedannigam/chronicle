@@ -15,6 +15,12 @@ import {
 	splitPageRange,
 } from './page-chunk-plan.ts'
 import { countPdfPages } from './pdf-chunking.ts'
+import {
+	isImageMimeType,
+	isPdfMimeType,
+	formatUnsupportedHealthReportMimeError,
+	normalizeHealthReportMimeType,
+} from '../_shared/health-report-mime.ts'
 
 export interface OrchestratedOcrResult {
 	rawText: string
@@ -44,7 +50,7 @@ export interface OrchestratedOcrResult {
 }
 
 interface ProcessRangeInput {
-	pdfBytes: Uint8Array
+	documentBytes: Uint8Array
 	totalPages: number
 	range: PageChunkRange
 	endpoint: string
@@ -60,7 +66,7 @@ async function processPageRange(
 	input: ProcessRangeInput,
 ): Promise<Array<{ chunk: ParsedOcrChunk; byteLength: number }>> {
 	const {
-		pdfBytes,
+		documentBytes,
 		totalPages,
 		range,
 		endpoint,
@@ -78,7 +84,7 @@ async function processPageRange(
 		const parsed = await processDocumentAiChunk({
 			endpoint,
 			accessToken,
-			pdfBytes,
+			documentBytes,
 			mimeType,
 			imagelessModeEnabled,
 			detectedPageCount: totalPages,
@@ -91,7 +97,7 @@ async function processPageRange(
 
 		return [
 			{
-				byteLength: pdfBytes.length,
+				byteLength: documentBytes.length,
 				chunk: {
 					...parsed,
 					startPage: range.startPage,
@@ -136,7 +142,7 @@ async function processPageRange(
 }
 
 async function runOrchestration(input: {
-	pdfBytes: Uint8Array
+	documentBytes: Uint8Array
 	fileName: string
 	mimeType: string
 	endpoint: string
@@ -160,7 +166,7 @@ async function runOrchestration(input: {
 		detectedPageCount: input.originalPageCount,
 		providerPageLimit: input.providerPageLimit,
 		chunkCount: initialChunks.length,
-		byteLength: input.pdfBytes.length,
+		byteLength: input.documentBytes.length,
 		mimeType: input.mimeType,
 	})
 
@@ -170,7 +176,7 @@ async function runOrchestration(input: {
 
 	for (const range of initialChunks) {
 		const rangeResults = await processPageRange({
-			pdfBytes: input.pdfBytes,
+			documentBytes: input.documentBytes,
 			totalPages: input.originalPageCount,
 			range,
 			endpoint: input.endpoint,
@@ -236,7 +242,104 @@ async function runOrchestration(input: {
 }
 
 export async function orchestrateDocumentOcr(input: {
-	pdfBytes: Uint8Array
+	documentBytes: Uint8Array
+	fileName: string
+	mimeType: string
+	endpoint: string
+	accessToken: string
+	correlationId: string
+	startedAt: number
+}): Promise<OrchestratedOcrResult> {
+	const mimeType = normalizeHealthReportMimeType(input.mimeType)
+
+	if (isImageMimeType(mimeType)) {
+		return orchestrateImageOcr({ ...input, mimeType })
+	}
+
+	if (isPdfMimeType(mimeType)) {
+		return orchestratePdfOcr({ ...input, mimeType })
+	}
+
+	throw new Error(formatUnsupportedHealthReportMimeError(mimeType))
+}
+
+async function orchestrateImageOcr(input: {
+	documentBytes: Uint8Array
+	fileName: string
+	mimeType: string
+	endpoint: string
+	accessToken: string
+	correlationId: string
+	startedAt: number
+}): Promise<OrchestratedOcrResult> {
+	const ocrStartedAt = Date.now()
+
+	logStructured('ocr_image_started', {
+		correlationId: input.correlationId,
+		fileName: input.fileName,
+		mimeType: input.mimeType,
+		byteLength: input.documentBytes.length,
+	})
+
+	const parsed = await processDocumentAiChunk({
+		endpoint: input.endpoint,
+		accessToken: input.accessToken,
+		documentBytes: input.documentBytes,
+		mimeType: input.mimeType,
+		imagelessModeEnabled: false,
+		detectedPageCount: 1,
+		providerPageLimit: 1,
+		correlationId: input.correlationId,
+	})
+
+	const ocrDurationMs = Date.now() - ocrStartedAt
+	const processingTimeMs = Date.now() - input.startedAt
+	const pageText = parsed.rawText
+	const pageConfidence = parsed.confidence
+
+	logStructured('ocr_image_succeeded', {
+		correlationId: input.correlationId,
+		mimeType: input.mimeType,
+		ocrDurationMs,
+		processingTimeMs,
+		characters: pageText.length,
+	})
+
+	return {
+		rawText: pageText,
+		pages: [
+			{
+				pageNumber: 1,
+				text: pageText,
+				confidence: pageConfidence,
+			},
+		],
+		tables: parsed.tables.map((table) => ({
+			...table,
+			pageNumber: 1,
+		})),
+		confidence: pageConfidence,
+		metadata: {
+			provider: 'google-document-ai',
+			mimeType: input.mimeType,
+			fileName: input.fileName,
+			pageCount: 1,
+			tableCount: parsed.tables.length,
+			correlationId: input.correlationId,
+			originalPageCount: 1,
+			chunkCount: 1,
+			imagelessMode: false,
+			providerLimit: 1,
+		},
+		processingTimeMs,
+		ocrDurationMs,
+		mergeDurationMs: 0,
+		chunkSizes: [input.documentBytes.length],
+	}
+}
+
+async function orchestratePdfOcr(input: {
+	documentBytes: Uint8Array
 	fileName: string
 	mimeType: string
 	endpoint: string
@@ -245,7 +348,7 @@ export async function orchestrateDocumentOcr(input: {
 	startedAt: number
 }): Promise<OrchestratedOcrResult> {
 	const imagelessModeEnabled = readImagelessModeEnabled()
-	const originalPageCount = await countPdfPages(input.pdfBytes)
+	const originalPageCount = await countPdfPages(input.documentBytes)
 	const imagelessLimit = resolveProviderPageLimit(
 		GOOGLE_DOCUMENT_AI_LIMITS,
 		true,

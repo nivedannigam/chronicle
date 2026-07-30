@@ -1,3 +1,8 @@
+import {
+	formatUnsupportedHealthReportMimeError,
+	HEALTH_REPORT_SUPPORTED_FORMATS_LABEL,
+} from '../supported-mime-types.ts'
+
 export type OcrErrorCode =
 	| 'unsupported_format'
 	| 'ocr_failure'
@@ -27,7 +32,9 @@ export class OcrProviderError extends Error {
 export function getOcrErrorMessage(error: OcrProviderError): string {
 	switch (error.code) {
 		case 'unsupported_format':
-			return 'This file format is not supported. Upload a PDF document.'
+			return error.message.includes('Supported:')
+				? error.message
+				: `Unsupported file type. Supported: ${HEALTH_REPORT_SUPPORTED_FORMATS_LABEL}.`
 		case 'timeout':
 			return 'Document processing timed out. Please try again.'
 		case 'low_confidence':
@@ -39,3 +46,5 @@ export function getOcrErrorMessage(error: OcrProviderError): string {
 			return error.message || 'OCR processing failed.'
 	}
 }
+
+export { formatUnsupportedHealthReportMimeError }

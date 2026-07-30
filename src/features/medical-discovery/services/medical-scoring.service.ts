@@ -68,12 +68,7 @@ const IGNORED_EXTENSIONS = [
 	'.pptx',
 ]
 
-const ALLOWED_MIMES = new Set([
-	'application/pdf',
-	'image/jpeg',
-	'image/jpg',
-	'image/png',
-])
+import { isSupportedHealthReportMimeType } from '@chronicle/core-ocr'
 
 const LIKELY_MEDICAL_THRESHOLD = 45
 const NEEDS_REVIEW_THRESHOLD = 25
@@ -103,7 +98,7 @@ function extractKeywords(text: string): string[] {
 }
 
 export function isSupportedMedicalMime(mimeType: string): boolean {
-	return ALLOWED_MIMES.has(mimeType.toLowerCase())
+	return isSupportedHealthReportMimeType(mimeType)
 }
 
 export function isIgnoredFile(input: ScoreMedicalFileInput): boolean {

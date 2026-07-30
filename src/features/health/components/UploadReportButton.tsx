@@ -30,7 +30,7 @@ export function UploadReportButton({ userId }: UploadReportButtonProps) {
 			<input
 				ref={inputRef}
 				type="file"
-				accept="application/pdf,.pdf"
+				accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/heic,.heic,image/heif,.heif,image/tiff,.tif,.tiff,image/webp,.webp"
 				onChange={handleSelect}
 				style={{ display: 'none' }}
 			/>

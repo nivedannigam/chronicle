@@ -63,7 +63,7 @@ async function assertStorageOwnership(
 }
 
 async function processWithGoogleDocumentAI(
-	pdfBytes: Uint8Array,
+	documentBytes: Uint8Array,
 	body: OcrRequestBody,
 	startedAt: number,
 	correlationId: string,
@@ -98,7 +98,7 @@ async function processWithGoogleDocumentAI(
 	})
 
 	const result = await orchestrateDocumentOcr({
-		pdfBytes,
+		documentBytes,
 		fileName: body.fileName,
 		mimeType: body.mimeType,
 		endpoint,
@@ -178,10 +178,10 @@ Deno.serve(async (request) => {
 			throw new Error(downloadError?.message ?? 'Could not download document.')
 		}
 
-		const pdfBytes = new Uint8Array(await fileData.arrayBuffer())
+		const documentBytes = new Uint8Array(await fileData.arrayBuffer())
 
 		return await processWithGoogleDocumentAI(
-			pdfBytes,
+			documentBytes,
 			body,
 			startedAt,
 			correlationId,

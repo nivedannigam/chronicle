@@ -1,5 +1,20 @@
 import type { WorkflowState } from './workflow.types'
 
+const HEALTH_REPORT_SUPPORTED_FORMATS_LABEL = 'PDF, JPG, PNG, HEIC, TIFF'
+
+function formatStorageMimeRejectionError(storageMessage: string): string {
+	const lower = storageMessage.toLowerCase()
+
+	if (
+		lower.includes('mime type') &&
+		(lower.includes('not supported') || lower.includes('invalid'))
+	) {
+		return `Unsupported file type. Supported: ${HEALTH_REPORT_SUPPORTED_FORMATS_LABEL}.`
+	}
+
+	return storageMessage
+}
+
 export type WorkflowErrorType =
 	| 'edge_function'
 	| 'ocr_failure'
@@ -138,7 +153,15 @@ function friendlyMessage(errorType: WorkflowErrorType, detail: string): string {
 				? detail
 				: 'Google Drive download failed. Reconnect Drive and retry.'
 		case 'storage_failure':
-			return detail.startsWith('Storage upload')
+			if (
+				detail.toLowerCase().includes('mime type') &&
+				detail.toLowerCase().includes('not supported')
+			) {
+				return formatStorageMimeRejectionError(detail)
+			}
+
+			return detail.startsWith('Storage upload') ||
+				detail.startsWith('Unsupported file type')
 				? detail
 				: 'Storage upload failed. Verify Supabase storage bucket health-reports.'
 		case 'database_failure':

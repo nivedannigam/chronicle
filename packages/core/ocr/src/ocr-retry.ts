@@ -3,8 +3,10 @@ import type { DocumentOCRProvider } from './providers/document-ocr-provider.inte
 import { getOcrErrorMessage, OcrProviderError } from './types/ocr-errors.types'
 import type { OcrDocumentResult } from './types/ocr-result.types'
 import type { OcrDocumentInput } from './types/ocr-document-input.types'
-
-const SUPPORTED_MIME_TYPES = new Set(['application/pdf'])
+import {
+	formatUnsupportedHealthReportMimeError,
+	isSupportedHealthReportMimeType,
+} from './supported-mime-types.ts'
 
 export interface RunOcrWithRetryOptions {
 	timeoutMs?: number
@@ -18,9 +20,9 @@ export interface RunOcrWithRetryResult {
 }
 
 function assertSupportedFormat(document: OcrDocumentInput): void {
-	if (!SUPPORTED_MIME_TYPES.has(document.mimeType)) {
+	if (!isSupportedHealthReportMimeType(document.mimeType)) {
 		throw new OcrProviderError(
-			`Unsupported document format: ${document.mimeType}`,
+			formatUnsupportedHealthReportMimeError(document.mimeType),
 			'unsupported_format',
 			false,
 		)
