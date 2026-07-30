@@ -1,5 +1,19 @@
+import type { ParsedDocument } from '@chronicle/core-parser'
+import type { HealthReport } from '@/features/health/domain/health-report.domain'
+import type {
+	OcrDocumentMetadata,
+	OcrDocumentResult,
+	OcrErrorCode,
+} from '@/features/document-intelligence/ocr'
+
 export type DocumentPipelineStage =
-	'uploaded' | 'queued' | 'processing' | 'parsed' | 'completed' | 'failed'
+	| 'uploaded'
+	| 'queued'
+	| 'processing'
+	| 'ocr_complete'
+	| 'parsed'
+	| 'completed'
+	| 'failed'
 
 export interface DocumentPipelineProgress {
 	stage: DocumentPipelineStage
@@ -13,16 +27,17 @@ export interface DocumentPipelineResult {
 	confidence: number
 	processingTimeMs: number
 	ocrProvider: string
-	ocrMetadata: import('@/features/document-intelligence/ocr').OcrDocumentMetadata
+	ocrMetadata: OcrDocumentMetadata
 	ocrAttempts: number
-	ocrDocument: import('@/features/document-intelligence/ocr').OcrDocumentResult
-	healthReport: import('@/features/document-intelligence/domain').HealthReport
+	ocrDocument: OcrDocumentResult
+	parsedDocument: ParsedDocument<unknown>
+	healthReport?: HealthReport
 }
 
 export interface DocumentPipelineFailure {
 	stage: 'failed'
 	error: string
-	errorCode?: import('@/features/document-intelligence/ocr').OcrErrorCode
+	errorCode?: OcrErrorCode
 }
 
 export type DocumentPipelineOutcome =

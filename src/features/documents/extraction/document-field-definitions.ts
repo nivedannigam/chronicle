@@ -11,7 +11,7 @@ export const DOCUMENT_FIELD_DEFINITIONS: DocumentFieldDefinition[] = [
 		id: 'document_number',
 		label: 'Document Number',
 		patterns: [
-			/(?:passport\s*(?:no|number|#)?[:\s]*)([A-Z0-9]{6,12})/i,
+			/(?:passport\s*(?:no|number|#)[:\s]+)([A-Z0-9]{6,12})/i,
 			/(?:pan[:\s]*)([A-Z]{5}\d{4}[A-Z])/i,
 			/(?:aadhaar[:\s]*)(\d{4}\s?\d{4}\s?\d{4})/i,
 			/(?:licen[cs]e\s*(?:no|number|#)?[:\s]*)([A-Z0-9/-]{5,20})/i,
@@ -30,6 +30,7 @@ export const DOCUMENT_FIELD_DEFINITIONS: DocumentFieldDefinition[] = [
 		id: 'expiry_date',
 		label: 'Expiry Date',
 		patterns: [
+			/(?:date of expiry[:\s]*)(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
 			/(?:expir(?:y|es|ation)\s*(?:on|date)?[:\s]*)(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
 			/(?:valid\s*(?:till|until|upto|up to)[:\s]*)(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
 		],
@@ -46,6 +47,8 @@ export const DOCUMENT_FIELD_DEFINITIONS: DocumentFieldDefinition[] = [
 		id: 'holder_name',
 		label: 'Name',
 		patterns: [
+			/(?:given names?[:\s]+)([A-Za-z\s.]{2,80})/i,
+			/(?:surname[:\s]+)([A-Za-z\s.]{2,80})/i,
 			/(?:name[:\s]*)([A-Za-z\s.]{3,80})/i,
 			/(?:holder[:\s]*)([A-Za-z\s.]{3,80})/i,
 		],

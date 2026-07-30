@@ -26,7 +26,7 @@ import type { ImportPipelineSummary } from '@/features/medical-discovery/types/m
 import type { ImportPhase } from '@/features/health-import/types/import-runner.types'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
-import { transitionWorkflowItem } from '@/features/health/workflow'
+import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
 
 function createEmptySummary(): ImportPipelineSummary {
 	return {
@@ -225,20 +225,20 @@ export async function approveAndImportDocument(
 	})
 
 	try {
-		await transitionWorkflowItem({
+		await safeTransitionWorkflowItem({
 			registryId,
 			toState: 'APPROVED',
 			approvalStatus: 'approved',
 			context: { userId },
 		})
-		await transitionWorkflowItem({
+		await safeTransitionWorkflowItem({
 			registryId,
 			toState: 'QUEUED',
 			approvalStatus: 'approved',
 			context: { userId },
 		})
 	} catch {
-		// Workflow optional until migration
+		// Workflow table may not exist until migration applied
 	}
 
 	const result = await importRegistryRecord(userId, registryId, onImportPhase)
@@ -262,7 +262,7 @@ export async function processApprovedImports(
 
 	try {
 		const runResult = await processImportQueueWithProgress(userId, {
-			parallel: options.parallel ?? 2,
+			parallel: options.parallel ?? 3,
 			onDocumentProgress: options.onDocumentProgress,
 		})
 		summary.imported = runResult.importedThisRun

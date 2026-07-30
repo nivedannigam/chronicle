@@ -6,7 +6,7 @@ import { approveAllImportCandidates } from '@/features/medical-discovery/service
 import { processApprovedImports } from '@/features/medical-discovery/services/import-pipeline.service'
 import { processImportQueueWithProgress } from '@/features/health-import/services/health-import-runner.service'
 import { buildImportSummary } from '@/features/health-import/services/import-summary.service'
-import { pushImportNotification } from '@/features/health-import/services/import-notifications.service'
+import { emitImportEvent } from '@/features/health-import/services/import-event-bus'
 import type {
 	HealthImportDiscoveryPreview,
 	HealthImportDocumentProgress,
@@ -48,7 +48,11 @@ export function cancelHealthImport(): void {
 
 	if (activeJob) {
 		emit({ ...activeJob, status: 'cancelled' })
-		pushImportNotification('failed', 'Import cancelled')
+		void emitImportEvent({
+			type: 'import.cancelled',
+			userId: activeJob.userId,
+			message: 'Import cancelled',
+		})
 	}
 }
 
@@ -109,7 +113,11 @@ export async function runHealthImport(
 	}
 
 	emit(job)
-	pushImportNotification('started', 'Health import started')
+	void emitImportEvent({
+		type: 'import.started',
+		userId,
+		message: 'Health import started',
+	})
 
 	try {
 		const discovery = await previewHealthImportDiscovery(userId)
@@ -171,20 +179,26 @@ export async function runHealthImport(
 		emit(completedJob)
 
 		if (summary.failedCount > 0) {
-			pushImportNotification(
-				'failed',
-				`Import finished with ${summary.failedCount} failed report(s)`,
-			)
+			void emitImportEvent({
+				type: 'import.failed',
+				userId,
+				message: `Import finished with ${summary.failedCount} failed report(s)`,
+				payload: { failedCount: summary.failedCount },
+			})
 		} else if (pipelineSummary.imported === 0) {
-			pushImportNotification(
-				'complete',
-				'No approved reports to import. Review discoveries first.',
-			)
+			void emitImportEvent({
+				type: 'import.completed',
+				userId,
+				message: 'No approved reports to import. Review discoveries first.',
+				payload: { imported: 0 },
+			})
 		} else {
-			pushImportNotification(
-				'complete',
-				`${pipelineSummary.imported} health reports imported successfully`,
-			)
+			void emitImportEvent({
+				type: 'import.completed',
+				userId,
+				message: `${pipelineSummary.imported} health reports imported successfully`,
+				payload: { imported: pipelineSummary.imported },
+			})
 		}
 
 		invalidateHealthKnowledgeCache(userId)
@@ -201,13 +215,21 @@ export async function runHealthImport(
 			errorMessage: message,
 		})
 
-		pushImportNotification('failed', message)
+		void emitImportEvent({
+			type: cancelled ? 'import.cancelled' : 'import.failed',
+			userId,
+			message,
+		})
 		throw error
 	}
 }
 
 export async function retryHealthImport(userId: string): Promise<number> {
-	pushImportNotification('started', 'Retrying failed imports')
+	void emitImportEvent({
+		type: 'import.retry_started',
+		userId,
+		message: 'Retrying failed imports',
+	})
 
 	const count = (
 		await processImportQueueWithProgress(userId, {
@@ -219,7 +241,12 @@ export async function retryHealthImport(userId: string): Promise<number> {
 		})
 	).importedThisRun
 
-	pushImportNotification('retry_complete', `Retried ${count} failed import(s)`)
+	void emitImportEvent({
+		type: 'import.retry_completed',
+		userId,
+		message: `Retried ${count} failed import(s)`,
+		payload: { count },
+	})
 	invalidateHealthKnowledgeCache(userId)
 	invalidateAfterHealthImport(userId)
 

@@ -1,10 +1,8 @@
-export type {
-	HealthReportParser,
-	HealthReportParserInput,
-} from '@/features/document-intelligence/parsers/health-report-parser.interface'
+export type { HealthReportParserInput } from '@/features/health/parsers/health.parser'
 export {
+	HealthReportParser,
 	HealthReportParserImpl,
 	healthReportParser,
-	MockHealthReportParser,
 	mockHealthReportParser,
-} from '@/features/document-intelligence/parsers/health-report-parser'
+	MockHealthReportParser,
+} from '@/features/health/parsers/health.parser'

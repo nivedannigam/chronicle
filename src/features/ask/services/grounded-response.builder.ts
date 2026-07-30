@@ -16,6 +16,7 @@ import {
 	shouldIncludeAnswerCards,
 } from '@/features/personalization/services/response-adapter.service'
 import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
+import type { AskMetricStatus } from '@/features/ask/types/ask.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
@@ -161,7 +162,7 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 			name: metric.displayName,
 			value: metric.latestValue,
 			reference: metric.referenceRange,
-			status: metric.status as import('@/features/health/types').MetricStatus,
+			status: metric.status as AskMetricStatus,
 			reportTitle: metric.reportTitle,
 			reportDate: metric.observedAt,
 		})
@@ -227,7 +228,10 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 				label: comparison.label,
 				olderLabel: comparison.olderLabel,
 				newerLabel: comparison.newerLabel,
-				metrics: comparison.metrics,
+				metrics: comparison.metrics.map((metric) => ({
+					...metric,
+					status: metric.status as AskMetricStatus,
+				})),
 			})
 		}
 	}
@@ -382,7 +386,7 @@ export function buildGroundedTurn(input: {
 	domains: KnowledgeDomain[]
 	dataAvailable: boolean
 	confidence?: number
-	uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+	uploadedReports?: unknown[]
 	personalContext?: PersonalContext
 }): AskConversationTurn {
 	const timestamp = new Date().toISOString()
@@ -493,7 +497,7 @@ export function attachTrustToTurn(
 		knowledge: RetrievedKnowledge | null
 		question: string
 		dataAvailable: boolean
-		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+		uploadedReports?: unknown[]
 		confidence?: number
 	},
 ): AskConversationTurn {

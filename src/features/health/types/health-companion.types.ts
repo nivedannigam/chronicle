@@ -93,6 +93,10 @@ export interface HealthInsightGroup {
 }
 
 import type { TrendSeries } from '@/features/health/types'
+import type {
+	HealthSummary,
+	LongitudinalHealthProfile,
+} from '@/features/health-intelligence/types/health-profile.types'
 
 export interface HealthCompanionView {
 	status: HealthStatusLabel
@@ -109,4 +113,6 @@ export interface HealthCompanionView {
 	trendHighlights: HealthTrendHighlight[]
 	insightGroups: HealthInsightGroup[]
 	narrative: string[]
+	profile: LongitudinalHealthProfile | null
+	healthSummary: HealthSummary | null
 }

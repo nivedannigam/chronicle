@@ -1,6 +1,1 @@
-export * from '@/core/workflow/workflow.types'
-export {
-	publishWorkflowEvent,
-	subscribeWorkflowEvent,
-	clearWorkflowEventHandlers,
-} from '@/core/workflow/workflow-events'
+export * from '../../../packages/core/workflow/src/index.ts'

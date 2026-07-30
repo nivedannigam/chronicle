@@ -12,6 +12,7 @@ import {
 	createDocumentRecord,
 	updateDocumentRecord,
 } from '@/features/documents/services/document.service'
+import { processChronicleDocument } from '@/features/documents/services/documents-processing.service'
 import { supabase } from '@/lib/supabase'
 
 function sanitizeFileName(fileName: string): string {
@@ -82,9 +83,11 @@ export async function uploadDocument(input: {
 				address: metadata.address,
 			},
 			source: 'upload',
+			status: 'processing',
 		})
 
-		return document
+		const processed = await processChronicleDocument(document)
+		return processed.document
 	} catch (error) {
 		await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath])
 		throw error

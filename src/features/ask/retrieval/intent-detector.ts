@@ -1,13 +1,7 @@
-import type { AskIntent } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import type { DetectedIntent } from '@chronicle/core-knowledge'
 import { resolveCategoryFromQuery } from '@/features/documents/types/document-categories'
 
-export interface IntentDetectionResult {
-	intent: AskIntent
-	categoryId?: string
-	metricName?: string
-	timeRangeYears?: number
-	confidence: number
-}
+export type IntentDetectionResult = DetectedIntent
 
 const CATEGORY_PATTERNS: Array<{ pattern: RegExp; categoryId: string }> = [
 	{ pattern: /\bliver\b|\balt\b|\bast\b|\blft\b/i, categoryId: 'liver' },

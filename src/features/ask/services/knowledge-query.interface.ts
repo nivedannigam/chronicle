@@ -27,7 +27,7 @@ export interface AskReasoningEngine {
 		memberName?: string | null
 		familyMembers?: import('@/features/family/types/family.types').FamilyMemberWithAliases[]
 		onStream?: (partialAnswer: string) => void
-		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+		uploadedReports?: unknown[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: import('@/features/personalization/types/personal-context.types').ChroniclePersonalPreferences

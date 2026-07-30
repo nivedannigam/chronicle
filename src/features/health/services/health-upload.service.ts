@@ -5,6 +5,7 @@ import {
 } from '@/features/health-import/services/duplicate-detection.service'
 import { supabase } from '@/lib/supabase'
 import { computeFileSha256 } from '@/lib/file-hash'
+import { buildUserScopedStoragePath } from '@chronicle/core-storage'
 import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
@@ -13,10 +14,6 @@ import {
 	HEALTH_REPORTS_BUCKET,
 	type UploadedHealthReport,
 } from '@/features/health/types'
-
-function sanitizeFileName(fileName: string): string {
-	return fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
-}
 
 export async function fetchUploadedHealthReports(): Promise<
 	UploadedHealthReport[]
@@ -74,7 +71,7 @@ export async function uploadHealthReport(
 	}
 
 	const reportId = crypto.randomUUID()
-	const storagePath = `${userId}/${reportId}_${sanitizeFileName(file.name)}`
+	const storagePath = buildUserScopedStoragePath(userId, reportId, file.name)
 
 	const { error: uploadError } = await supabase.storage
 		.from(HEALTH_REPORTS_BUCKET)

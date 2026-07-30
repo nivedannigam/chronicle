@@ -6,17 +6,21 @@ import {
 	OcrProviderError,
 } from '@/features/document-intelligence/ocr'
 import { runOcrWithRetry } from '@/features/document-intelligence/ocr'
-import type { HealthReportParser } from '@/features/document-intelligence/parsers'
-import { healthReportParser } from '@/features/document-intelligence/parsers/health-report-parser'
+import type { HealthReport } from '@/features/health/domain/health-report.domain'
+import { ensurePlatformParsersRegistered } from '@/features/document-intelligence/parsers/platform-parser.bootstrap'
 import type {
 	DocumentPipelineOutcome,
 	PipelineProgressCallback,
 } from '@/features/document-intelligence/pipeline/pipeline.types'
-import type { OcrDocumentResult } from '@/features/document-intelligence/ocr'
+import {
+	defaultParserRegistry,
+	parseDocument,
+	type ParserRegistry,
+} from '@chronicle/core-parser'
 
 export interface DocumentIntelligencePipelineDeps {
 	ocrProvider: DocumentOCRProvider
-	parser: HealthReportParser
+	parserRegistry?: ParserRegistry
 }
 
 export interface RunDocumentIntelligencePipelineInput {
@@ -26,7 +30,16 @@ export interface RunDocumentIntelligencePipelineInput {
 
 const defaultDeps: DocumentIntelligencePipelineDeps = {
 	ocrProvider: defaultOCRProvider,
-	parser: healthReportParser,
+	parserRegistry: defaultParserRegistry,
+}
+
+function isHealthReportPayload(payload: unknown): payload is HealthReport {
+	return (
+		typeof payload === 'object' &&
+		payload != null &&
+		'metrics' in payload &&
+		'metadata' in payload
+	)
 }
 
 export async function runDocumentIntelligencePipeline(
@@ -34,6 +47,9 @@ export async function runDocumentIntelligencePipeline(
 	deps: DocumentIntelligencePipelineDeps = defaultDeps,
 ): Promise<DocumentPipelineOutcome> {
 	const { document, onProgress } = input
+	const parserRegistry = deps.parserRegistry ?? defaultParserRegistry
+
+	ensurePlatformParsersRegistered()
 
 	try {
 		await onProgress?.({
@@ -47,22 +63,47 @@ export async function runDocumentIntelligencePipeline(
 		)
 
 		await onProgress?.({
-			stage: 'parsed',
-			message: 'Parsing structured health data',
-		})
-
-		const healthReport = await deps.parser.parse({
-			documentId: document.id,
-			fileName: document.fileName,
-			ocrDocument,
+			stage: 'ocr_complete',
+			message: 'OCR extraction complete',
 		})
 
 		await onProgress?.({
-			stage: 'completed',
-			message: 'Health report created',
+			stage: 'parsed',
+			message: 'Parsing structured document data',
 		})
 
-		return buildSuccessOutcome(ocrDocument, healthReport, attempts)
+		const parsedDocument = await parseDocument(
+			{
+				documentId: document.id,
+				fileName: document.fileName,
+				mimeType: document.mimeType,
+				ocrDocument,
+			},
+			parserRegistry,
+		)
+
+		await onProgress?.({
+			stage: 'completed',
+			message: 'Document parsed',
+		})
+
+		return {
+			stage: 'completed',
+			extractedText: ocrDocument.rawText,
+			pageCount: ocrDocument.pages.length,
+			confidence: ocrDocument.confidence,
+			processingTimeMs: ocrDocument.processingTimeMs,
+			ocrProvider: ocrDocument.metadata.provider,
+			ocrMetadata: ocrDocument.metadata,
+			ocrAttempts: attempts,
+			ocrDocument,
+			parsedDocument,
+			healthReport:
+				parsedDocument.documentType === 'health_report' &&
+				isHealthReportPayload(parsedDocument.payload)
+					? parsedDocument.payload
+					: undefined,
+		}
 	} catch (error) {
 		const message =
 			error instanceof OcrProviderError
@@ -81,25 +122,6 @@ export async function runDocumentIntelligencePipeline(
 			error: message,
 			errorCode: error instanceof OcrProviderError ? error.code : 'ocr_failure',
 		}
-	}
-}
-
-function buildSuccessOutcome(
-	ocrDocument: OcrDocumentResult,
-	healthReport: import('@/features/document-intelligence/domain').HealthReport,
-	attempts: number,
-): Extract<DocumentPipelineOutcome, { stage: 'completed' }> {
-	return {
-		stage: 'completed',
-		extractedText: ocrDocument.rawText,
-		pageCount: ocrDocument.pages.length,
-		confidence: ocrDocument.confidence,
-		processingTimeMs: ocrDocument.processingTimeMs,
-		ocrProvider: ocrDocument.metadata.provider,
-		ocrMetadata: ocrDocument.metadata,
-		ocrAttempts: attempts,
-		ocrDocument,
-		healthReport,
 	}
 }
 

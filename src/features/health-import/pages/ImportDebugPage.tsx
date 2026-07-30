@@ -4,6 +4,8 @@ import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth'
 import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
 import { getImportDebugTimings } from '@/features/health-import/services/health-import-runner.service'
+import { getPipelineStageLogs } from '@/features/health/pipeline/health-pipeline-logger'
+import { getDriveApiDebugLog } from '@/features/connectors/google-drive/services/google-drive-api.service'
 import { useEffect, useMemo, useState } from 'react'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import { IMPORT_QUEUE_LABELS } from '@/core/connectors'
@@ -43,6 +45,8 @@ export function ImportDebugPage() {
 	}
 
 	const timings = getImportDebugTimings()
+	const pipelineLogs = getPipelineStageLogs()
+	const driveLogs = getDriveApiDebugLog()
 
 	return (
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
@@ -135,6 +139,74 @@ export function ImportDebugPage() {
 						failureGroups.map(([message, count]) => (
 							<div key={message}>
 								{count}× {message}
+							</div>
+						))
+					)}
+				</div>
+
+				<div style={{ marginBottom: 12 }}>
+					<strong style={{ color: C.text }}>Pipeline Stage Log</strong>
+					{pipelineLogs.length === 0 ? (
+						<div>No pipeline stages recorded yet.</div>
+					) : (
+						pipelineLogs.map((log, index) => (
+							<div
+								key={`${log.stage}-${log.startedAt}-${index}`}
+								style={{
+									marginTop: 8,
+									paddingTop: 8,
+									borderTop: `1px solid ${C.border}`,
+								}}
+							>
+								<div style={{ color: C.text, fontWeight: 700 }}>
+									{log.stage}
+									{log.nextStage ? ` → ${log.nextStage}` : ''}
+								</div>
+								<div>
+									Started: {log.startedAt}
+									{log.durationMs != null ? ` · ${log.durationMs}ms` : ''}
+								</div>
+								{log.error ? (
+									<div
+										style={{
+											color: C.red,
+											marginTop: 4,
+											whiteSpace: 'pre-wrap',
+										}}
+									>
+										{log.error}
+									</div>
+								) : null}
+								{Object.keys(log.details).length > 0 ? (
+									<pre
+										style={{
+											marginTop: 4,
+											fontSize: 10,
+											whiteSpace: 'pre-wrap',
+											color: C.textMuted,
+										}}
+									>
+										{JSON.stringify(log.details, null, 2)}
+									</pre>
+								) : null}
+							</div>
+						))
+					)}
+				</div>
+
+				<div style={{ marginBottom: 12 }}>
+					<strong style={{ color: C.text }}>Drive Edge Function Log</strong>
+					{driveLogs.length === 0 ? (
+						<div>No drive-connector calls yet.</div>
+					) : (
+						driveLogs.slice(0, 10).map((entry) => (
+							<div
+								key={`${entry.action}-${entry.timestamp}`}
+								style={{ marginTop: 4 }}
+							>
+								{entry.success ? '✓' : '✗'} {entry.action} · {entry.durationMs}
+								ms
+								{entry.detail ? ` — ${entry.detail.slice(0, 120)}` : ''}
 							</div>
 						))
 					)}

@@ -5,37 +5,38 @@ export type {
 	OcrPage,
 	OcrTable,
 	OcrTableCell,
-} from '@/features/document-intelligence/ocr/types/ocr-result.types'
-export { toLegacyOcrResult } from '@/features/document-intelligence/ocr/types/ocr-result.types'
-export type { OcrErrorCode } from '@/features/document-intelligence/ocr/types/ocr-errors.types'
-export {
-	getOcrErrorMessage,
-	OcrProviderError,
-} from '@/features/document-intelligence/ocr/types/ocr-errors.types'
-export type {
+	OcrErrorCode,
 	DocumentOCRProvider,
 	DocumentOCRService,
-} from '@/features/document-intelligence/ocr/providers/document-ocr-provider.interface'
+	OcrDocumentInput,
+	RunOcrWithRetryOptions,
+	RunOcrWithRetryResult,
+	OcrProviderType,
+	OcrProviderFactoryOptions,
+	GoogleDocumentAiProviderOptions,
+	MockLabMetricRow,
+	MockLabTemplate,
+} from '../../../../packages/core/ocr/src/index.ts'
 export {
+	toLegacyOcrResult,
+	getOcrErrorMessage,
+	OcrProviderError,
 	MockOCRProvider,
 	mockOCRProvider,
 	MockDocumentOCRService,
 	mockDocumentOCRService,
-} from '@/features/document-intelligence/ocr/providers/mock-ocr.provider'
-export {
+	buildMockOcrDocumentResult,
+	MOCK_LAB_TEMPLATES,
 	GoogleDocumentAIProvider,
-	googleDocumentAIProvider,
-} from '@/features/document-intelligence/ocr/providers/google-document-ai.provider'
-export {
+	OCR_SETUP_MESSAGE,
 	AzureDocumentIntelligenceProvider,
 	azureDocumentIntelligenceProvider,
-} from '@/features/document-intelligence/ocr/providers/azure-document-intelligence.provider'
+	runOcrWithRetry,
+	documentProcessingConfig,
+	isProductionOcrProvider,
+	ocrStorageConfig,
+} from '../../../../packages/core/ocr/src/index.ts'
 export {
 	createOCRProvider,
 	defaultOCRProvider,
 } from '@/features/document-intelligence/ocr/ocr-provider.factory'
-export { runOcrWithRetry } from '@/features/document-intelligence/ocr/ocr-retry'
-export type {
-	RunOcrWithRetryOptions,
-	RunOcrWithRetryResult,
-} from '@/features/document-intelligence/ocr/ocr-retry'

@@ -3,7 +3,7 @@ import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr
 import {
 	identifyReportType,
 	parseReportMetadata,
-} from '@/features/document-intelligence/extraction/health-metadata.parser'
+} from '@/features/health/extraction/health-metadata.parser'
 import type { Document } from '@/features/document-intelligence/domain'
 
 function mockDocument(fileName: string): Document {

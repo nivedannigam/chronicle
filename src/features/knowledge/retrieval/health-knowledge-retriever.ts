@@ -5,6 +5,8 @@ import {
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
+import { buildLongitudinalHealthProfile } from '@/features/health-intelligence/services/health-profile.service'
+import { buildHealthSummary } from '@/features/health-intelligence/services/health-summary.service'
 import type {
 	HealthMetricHistory,
 	MetricCategoryId,
@@ -250,12 +252,12 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			query.userId,
 			query.uploadedReports ?? [],
 		)
-		const profile = graph.profile
+		const personProfile = graph.profile
 		const categoryId = mapCategoryId(query.categoryId)
 		const metricId = query.metricId ?? resolveMetricId(query.metricName)
 		const years = query.timeRangeYears
 
-		let histories = profile.metricHistories
+		let histories = personProfile.metricHistories
 
 		if (categoryId) {
 			histories = histories.filter(
@@ -293,17 +295,32 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			latestValue: history.baseline.latestValueLabel,
 		}))
 
-		const insights = profile.insights.map((insight) => insight.text)
-		const alerts = profile.alerts.map((alert) => alert.message)
+		const insights = personProfile.insights.map((insight) => insight.text)
+		const alerts = personProfile.alerts.map((alert) => alert.message)
 
-		const summaryLines = buildSummaryLines(query.intent, {
-			metrics,
-			timelines,
-			trends,
-			reports,
-			insights,
-			alerts,
+		const longitudinalProfile = buildLongitudinalHealthProfile({
+			personId: query.userId,
+			graph,
 		})
+		const healthSummary = buildHealthSummary({
+			graph,
+			profile: longitudinalProfile,
+			insights: [],
+			statusLabel: 'Looking Good',
+		})
+
+		const summaryLines = [
+			healthSummary.headline,
+			...healthSummary.bullets,
+			...buildSummaryLines(query.intent, {
+				metrics,
+				timelines,
+				trends,
+				reports,
+				insights,
+				alerts,
+			}),
+		].filter(Boolean)
 
 		const comparisons: RetrievedComparison[] = []
 
@@ -323,7 +340,7 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			timelines,
 			trends,
 			observations,
-			relationships: profile.relationships.map((relationship) => ({
+			relationships: personProfile.relationships.map((relationship) => ({
 				id: relationship.id,
 				fromMetricId: relationship.fromMetricId,
 				toMetricId: relationship.toMetricId,

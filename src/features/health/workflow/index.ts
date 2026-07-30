@@ -2,12 +2,20 @@ export {
 	ensureWorkflowItemForRegistry,
 	getWorkflowItemByRegistryId,
 	getWorkflowItemByReportId,
+	getWorkflowItemByExternalFileId,
 	listWorkflowItemsForUser,
 	transitionWorkflowItem,
+	updateWorkflowProgress,
 } from '@/features/health/workflow/health-workflow.service'
+export {
+	retryFailedWorkflowItem,
+	retryAllFailedWorkflowItems,
+	processApprovedBatch,
+} from '@/features/health/workflow/health-workflow-retry.service'
 export {
 	getHealthWorkflowProjection,
 	workflowStateLabel,
+	workflowProgressLabel,
 	isWorkflowProcessing,
 	isWorkflowReadyForDashboard,
 	type HealthWorkflowProjection,

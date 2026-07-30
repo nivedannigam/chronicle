@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr/providers/mock-ocr.templates'
-import { extractMetricsFromOcr } from '@/features/document-intelligence/extraction/metric-extraction.engine'
-import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
-import { parseReportMetadata } from '@/features/document-intelligence/extraction/health-metadata.parser'
+import { extractMetricsFromOcr } from '@/features/health/extraction/metric-extraction.engine'
+import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
+import { parseReportMetadata } from '@/features/health/extraction/health-metadata.parser'
 
 const PANELS = [
 	{ fileName: 'CBC_Report.pdf', expectedMetric: 'Hemoglobin' },

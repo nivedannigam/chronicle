@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr/providers/mock-ocr.templates'
-import { parseReportMetadata } from '@/features/document-intelligence/extraction/health-metadata.parser'
-import { normalizeMetricName } from '@/features/document-intelligence/extraction/metric-normalization.engine'
+import { parseReportMetadata } from '@/features/health/extraction/health-metadata.parser'
+import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 
 describe('normalizeMetricName', () => {
 	it('maps Fasting Glucose to fasting-glucose, not AST', () => {

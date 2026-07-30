@@ -20,6 +20,10 @@ const EMPTY_STATUS: HealthImportStatus = {
 
 	failedImportsCount: 0,
 
+	importingCount: 0,
+
+	processingCount: 0,
+
 	filesFound: 0,
 
 	documentsScanned: 0,

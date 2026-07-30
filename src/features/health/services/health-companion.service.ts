@@ -1,7 +1,13 @@
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
-import { detectReportChanges } from '@/features/health-insights/engines/change-detection.engine'
+import {
+	buildHealthSummary,
+	buildLongitudinalHealthProfile,
+	classifyReportType,
+	timelineSummaryForReport,
+} from '@/features/health-intelligence'
 import type { ChronicleInsight } from '@/features/health-insights/types/health-insights.types'
+import { detectReportChanges } from '@/features/health-insights/engines/change-detection.engine'
 import {
 	getCategoryMeta,
 	mapCategoryId,
@@ -502,18 +508,18 @@ function buildJourneyEvents(input: {
 	for (const report of input.reports.filter(
 		(item) => item.status === 'completed',
 	)) {
-		const parsed = getParsedHealthReport(report)
-		const date = getReportDisplayDate(report, parsed)
+		const classified = classifyReportType(report)
 
 		events.push({
 			id: `checkup-${report.id}`,
-			date,
-			displayDate: formatDisplayDate(date),
-			title: getReportDisplayTitle(report),
-			summary: parsed?.metadata.laboratory
-				? `Annual checkup at ${parsed.metadata.laboratory}`
-				: 'Health checkup completed',
-			kind: 'checkup',
+			date: classified.date,
+			displayDate: formatDisplayDate(classified.date),
+			title: classified.displayKind,
+			summary: timelineSummaryForReport(classified),
+			kind:
+				classified.kind === 'ecg' || classified.kind === 'radiology'
+					? 'monitoring'
+					: 'checkup',
 			reportId: report.id,
 		})
 	}
@@ -605,7 +611,15 @@ function buildMetricGroups(graph: HealthKnowledgeGraph): MetricInsightGroup[] {
 	return [...groups.values()]
 }
 
-function buildNarrative(insights: ChronicleInsight[]): string[] {
+function buildNarrative(
+	insights: ChronicleInsight[],
+	summary?: { headline: string; bullets: string[] } | null,
+): string[] {
+	if (summary?.headline) {
+		const paragraphs = [summary.headline, ...summary.bullets.slice(0, 4)]
+		return paragraphs.filter(Boolean)
+	}
+
 	const ordered = [
 		...insights.filter((item) => item.category === 'areas_to_watch'),
 		...insights.filter((item) => item.category === 'recently_changed'),
@@ -636,12 +650,24 @@ export function buildHealthCompanionView(input: {
 	insights: ChronicleInsight[]
 	needsReview?: number
 	trendSeries?: import('@/features/health/types').TrendSeries[]
+	personId?: string
 }): HealthCompanionView {
 	const needsReview = input.needsReview ?? 0
+	const personId = input.personId ?? input.graph.profile.personId
+	const profile = buildLongitudinalHealthProfile({
+		personId,
+		graph: input.graph,
+	})
 	const { status, detail, score } = deriveStatus({
 		graph: input.graph,
 		insights: input.insights,
 		needsReview,
+	})
+	const healthSummary = buildHealthSummary({
+		graph: input.graph,
+		profile,
+		insights: input.insights,
+		statusLabel: status,
 	})
 	const attention = buildAttention({
 		graph: input.graph,
@@ -681,7 +707,9 @@ export function buildHealthCompanionView(input: {
 			groups: metricGroups,
 			insights: input.insights,
 		}),
-		narrative: buildNarrative(input.insights),
+		narrative: buildNarrative(input.insights, healthSummary),
+		profile,
+		healthSummary,
 	}
 }
 

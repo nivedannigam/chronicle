@@ -1,4 +1,3 @@
-import type { UploadedHealthReport } from '@/features/health/types'
 import type {
 	EvidenceCitation,
 	RelatedMetricRef,
@@ -28,20 +27,31 @@ function truncateExcerpt(text: string, maxLength = 160): string {
 	return `${cleaned.slice(0, maxLength)}…`
 }
 
+function isReportWithOcr(
+	item: unknown,
+): item is { id: string; extracted_text?: string | null } {
+	return (
+		typeof item === 'object' &&
+		item != null &&
+		'id' in item &&
+		typeof (item as { id: unknown }).id === 'string'
+	)
+}
+
 function findOcrExcerpt(input: {
 	reportId: string
 	metricName?: string
-	uploadedReports?: UploadedHealthReport[]
+	uploadedReports?: unknown[]
 }): string | undefined {
 	if (!input.uploadedReports?.length) {
 		return undefined
 	}
 
 	const report = input.uploadedReports.find(
-		(item) => item.id === input.reportId,
+		(item) => isReportWithOcr(item) && item.id === input.reportId,
 	)
 
-	if (!report?.extracted_text) {
+	if (!isReportWithOcr(report) || !report.extracted_text) {
 		return undefined
 	}
 
@@ -62,7 +72,7 @@ function findOcrExcerpt(input: {
 
 export function buildTrustEvidenceItems(input: {
 	knowledge: RetrievedKnowledge
-	uploadedReports?: UploadedHealthReport[]
+	uploadedReports?: unknown[]
 }): TrustEvidenceItem[] {
 	const items: TrustEvidenceItem[] = []
 	const { knowledge } = input
@@ -204,7 +214,7 @@ export function buildTrustResponse(input: {
 	relatedMetrics: RelatedMetricRef[]
 	followUpQuestions: string[]
 	intentConfidence?: number
-	uploadedReports?: UploadedHealthReport[]
+	uploadedReports?: unknown[]
 }): TrustResponse {
 	const disagreements = input.dataAvailable
 		? detectReportDisagreements(input.knowledge)

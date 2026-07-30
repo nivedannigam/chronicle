@@ -67,6 +67,7 @@ export interface CreateDocumentInput {
 	notes?: string | null
 	extractedText?: string | null
 	extractedMetadata?: Record<string, unknown>
+	status?: DocumentStatus
 }
 
 export const DOCUMENTS_BUCKET = 'personal-documents' as const

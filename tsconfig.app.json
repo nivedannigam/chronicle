@@ -20,8 +20,36 @@
 		"noUncheckedSideEffectImports": true,
 		"baseUrl": ".",
 		"paths": {
+			"@chronicle/core-workflow": ["./packages/core/workflow/src/index.ts"],
+			"@chronicle/core-workflow/*": ["./packages/core/workflow/src/*"],
+			"@chronicle/core-connectors": ["./packages/core/connectors/src/index.ts"],
+			"@chronicle/core-connectors/*": ["./packages/core/connectors/src/*"],
+			"@chronicle/core-ai": ["./packages/core/ai/src/index.ts"],
+			"@chronicle/core-ai/*": ["./packages/core/ai/src/*"],
+			"@chronicle/core-jobs": ["./packages/core/jobs/src/index.ts"],
+			"@chronicle/core-jobs/*": ["./packages/core/jobs/src/*"],
+			"@chronicle/core-ocr": ["./packages/core/ocr/src/index.ts"],
+			"@chronicle/core-ocr/*": ["./packages/core/ocr/src/*"],
+			"@chronicle/core-parser": ["./packages/core/parser/src/index.ts"],
+			"@chronicle/core-parser/*": ["./packages/core/parser/src/*"],
+			"@chronicle/core-knowledge": ["./packages/core/knowledge/src/index.ts"],
+			"@chronicle/core-knowledge/*": ["./packages/core/knowledge/src/*"],
+			"@chronicle/core-search": ["./packages/core/search/src/index.ts"],
+			"@chronicle/core-search/*": ["./packages/core/search/src/*"],
+			"@chronicle/core-events": ["./packages/core/events/src/index.ts"],
+			"@chronicle/core-events/*": ["./packages/core/events/src/*"],
+			"@chronicle/core-notifications": [
+				"./packages/core/notifications/src/index.ts"
+			],
+			"@chronicle/core-notifications/*": [
+				"./packages/core/notifications/src/*"
+			],
+			"@chronicle/core-storage": ["./packages/core/storage/src/index.ts"],
+			"@chronicle/core-storage/*": ["./packages/core/storage/src/*"],
+			"@chronicle/shared": ["./packages/shared/src/index.ts"],
+			"@chronicle/shared/*": ["./packages/shared/src/*"],
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src"]
+	"include": ["src", "packages/core/*/src", "packages/shared/src"]
 }

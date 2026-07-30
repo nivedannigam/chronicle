@@ -6,4 +6,4 @@ export type {
 	AiProvider,
 	AiStreamChunk,
 	AiTokenUsage,
-} from '@/features/ai/types/ai.types'
+} from '../../../../packages/core/ai/src/types/index.ts'

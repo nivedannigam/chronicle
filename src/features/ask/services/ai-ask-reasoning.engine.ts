@@ -1,4 +1,5 @@
 import { askAiConfig, isAskAiProviderConfigured } from '@/config/ask-ai'
+import { applyPromptPostProcessing } from '@chronicle/core-ai'
 import { aiService } from '@/features/ai/services/ai.service'
 import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { promptBuilder } from '@/features/ask/prompt/prompt-builder'
@@ -47,7 +48,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		memberName?: string | null
 		familyMembers?: import('@/features/family/types/family.types').FamilyMemberWithAliases[]
 		onStream?: (partialAnswer: string) => void
-		uploadedReports?: import('@/features/health/types').UploadedHealthReport[]
+		uploadedReports?: unknown[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: ChroniclePersonalPreferences
@@ -106,6 +107,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			member: personalContext.activeMember,
 			dataAvailable: pipeline.dataAvailable,
 			personalContext,
+			activeDomains: pipeline.activeDomains,
+			intent: pipeline.detection.intent,
 		})
 
 		if (pipeline.detection.intent === 'explain_response') {
@@ -198,10 +201,17 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 
 				if (parsed) {
 					const verified = verifyCitations(parsed, knowledge)
+					const processedAnswer = applyPromptPostProcessing(verified.answer, {
+						question: pipeline.resolvedQuestion,
+						contextJson: prompt.contextJson,
+						dataAvailable: pipeline.dataAvailable,
+						memberName: personalContext.activeMember.memberName,
+						conversationHistory: [],
+						activeDomains: pipeline.activeDomains,
+						intent: pipeline.detection.intent,
+					})
 					const styledAnswer = adaptAnswerForStyle({
-						answer: verified.answer.endsWith('not medical advice.')
-							? verified.answer
-							: `${verified.answer}\n\nThis is informational and not medical advice.`,
+						answer: processedAnswer,
 						style: preferences.communicationStyle,
 						knowledge: pipeline.mergedKnowledge,
 						memberName: personalContext.activeMember.memberName,

@@ -20,6 +20,7 @@ import {
 	MIN_EVIDENCE_FOR_INSIGHT,
 } from '@/features/health-insights/types/health-insights.types'
 import { buildSemanticMemory } from '@/features/semantic-memory/memory/semantic-memory-builder'
+import { generateLongTermTrendInsights } from '@/features/health-intelligence/engines/long-term-trend.engine'
 import type { SemanticInsight } from '@/features/semantic-memory/types/semantic-memory.types'
 
 export interface HealthInsightsResult {
@@ -342,6 +343,14 @@ export function generateHealthInsights(input: {
 		input.uploadedReports,
 	)) {
 		insightMap.set(doctorInsight.id, doctorInsight)
+	}
+
+	for (const longTerm of generateLongTermTrendInsights(
+		input.graph.profile.metricHistories,
+	)) {
+		if (!insightMap.has(longTerm.id)) {
+			insightMap.set(longTerm.id, longTerm)
+		}
 	}
 
 	const insights = rankInsights([...insightMap.values()]).slice(

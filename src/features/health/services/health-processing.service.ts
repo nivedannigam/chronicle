@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { documentProcessingConfig } from '@/config/document-processing'
 import {
 	createDocumentFromUpload,
 	runDocumentIntelligencePipeline,
@@ -7,7 +8,13 @@ import { createKnowledgeItemFromHealthReport } from '@/features/knowledge/servic
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
-import { transitionWorkflowItem } from '@/features/health/workflow'
+import { buildWorkflowErrorDetail } from '@/core/workflow/workflow-errors.types'
+import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
+import {
+	completePipelineStage,
+	failPipelineStage,
+	startPipelineStage,
+} from '@/features/health/pipeline/health-pipeline-logger'
 import { serializeParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type {
 	HealthReportStatus,
@@ -138,6 +145,23 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
+		startPipelineStage({
+			reportId,
+			stage: 'OCR',
+			nextStage: 'PARSING',
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'OCR',
+			context: {
+				userId: typedReport.user_id,
+				reportId,
+				progress: { label: 'Running OCR' },
+				worker: documentProcessingConfig.ocrProvider,
+			},
+		})
+
 		const document = createDocumentFromUpload({
 			id: typedReport.id,
 			userId: typedReport.user_id,
@@ -149,9 +173,46 @@ export async function processHealthReport(
 		const outcome = await runDocumentIntelligencePipeline({
 			document,
 			onProgress: async (progress) => {
+				if (progress.stage === 'ocr_complete') {
+					completePipelineStage({
+						reportId,
+						stage: 'OCR',
+						nextStage: 'PARSING',
+					})
+
+					startPipelineStage({
+						reportId,
+						stage: 'PARSING',
+						nextStage: 'READY',
+					})
+
+					await safeTransitionWorkflowItem({
+						reportId,
+						toState: 'OCR',
+						context: {
+							userId: typedReport.user_id,
+							reportId,
+							progress: {
+								label: 'OCR complete',
+								percent: 100,
+							},
+						},
+					})
+				}
+
 				if (progress.stage === 'parsed') {
 					await updateReportStatus(reportId, { status: 'parsed' })
 					await updateQueueStatus(reportId, 'parsed')
+
+					await safeTransitionWorkflowItem({
+						reportId,
+						toState: 'PARSING',
+						context: {
+							userId: typedReport.user_id,
+							reportId,
+							progress: { label: 'Parsing' },
+						},
+					})
 				}
 			},
 		})
@@ -162,6 +223,10 @@ export async function processHealthReport(
 
 		const processedAt = new Date().toISOString()
 		const { healthReport } = outcome
+
+		if (!healthReport) {
+			throw new Error('Expected a health report from the document pipeline.')
+		}
 
 		await updateReportStatus(reportId, {
 			status: 'completed',
@@ -183,15 +248,100 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
-		try {
-			await transitionWorkflowItem({
+		completePipelineStage({
+			reportId,
+			stage: 'PARSING',
+			nextStage: 'INDEXING',
+			details: {
+				pageCount: outcome.pageCount,
+				characters: outcome.extractedText.length,
+				confidence: outcome.confidence,
+				processingTimeMs: outcome.processingTimeMs,
+				metricCount: healthReport.metrics.length,
+			},
+		})
+
+		startPipelineStage({
+			reportId,
+			stage: 'INDEXING',
+			nextStage: 'READY',
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'INDEXING',
+			context: {
+				userId: typedReport.user_id,
 				reportId,
-				toState: 'READY',
-				context: { userId: typedReport.user_id },
+				progress: { label: 'Generating metrics' },
+			},
+		})
+
+		createKnowledgeItemFromHealthReport({
+			...typedReport,
+			status: 'completed',
+			extracted_text: outcome.extractedText,
+			parsed_data: serializeParsedHealthReport(healthReport),
+			ocr_page_count: outcome.pageCount,
+			ocr_confidence: outcome.confidence,
+			ocr_provider: outcome.ocrProvider,
+			ocr_processing_time_ms: outcome.processingTimeMs,
+			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
+			report_type: healthReport.metadata.reportType,
+			report_date: healthReport.metadata.reportDate,
+			processed_at: processedAt,
+			processing_error: null,
+		})
+
+		try {
+			await persistHealthKnowledgeGraph(
+				typedReport.user_id,
+				typedReport.family_member_id ?? null,
+			)
+		} catch (indexError) {
+			const errorDetail = buildWorkflowErrorDetail({
+				stage: 'INDEXING',
+				error: indexError,
 			})
-		} catch {
-			// Workflow optional until migration
+
+			await safeTransitionWorkflowItem({
+				reportId,
+				toState: 'FAILED',
+				context: {
+					userId: typedReport.user_id,
+					reportId,
+					failureReason: errorDetail.userMessage,
+					failedStage: 'INDEXING',
+					errorDetail,
+				},
+			})
+
+			throw indexError
 		}
+
+		completePipelineStage({
+			reportId,
+			stage: 'INDEXING',
+			nextStage: 'READY',
+		})
+
+		startPipelineStage({
+			reportId,
+			stage: 'READY',
+			details: { reportId },
+		})
+
+		completePipelineStage({
+			reportId,
+			stage: 'READY',
+			details: { reportId },
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'READY',
+			context: { userId: typedReport.user_id, reportId },
+		})
 
 		const completedReport: UploadedHealthReport = {
 			...typedReport,
@@ -209,40 +359,49 @@ export async function processHealthReport(
 			processing_error: null,
 		}
 
-		createKnowledgeItemFromHealthReport(completedReport)
 		invalidateHealthKnowledgeCache(completedReport.user_id)
-		await persistHealthKnowledgeGraph(completedReport.user_id, null)
 		invalidateAfterHealthImport(completedReport.user_id)
 
 		return completedReport
 	} catch (error) {
-		const message =
-			error instanceof Error ? error.message : 'Processing failed.'
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'OCR',
+			error,
+			edgeFunction:
+				documentProcessingConfig.ocrProvider === 'google'
+					? 'document-ocr'
+					: undefined,
+		})
+
+		failPipelineStage({
+			reportId,
+			stage: 'OCR',
+			error: errorDetail.message,
+		})
 
 		await updateReportStatus(reportId, {
 			status: 'failed',
-			processing_error: message,
+			processing_error: errorDetail.userMessage,
 		})
 
 		await updateQueueStatus(reportId, 'failed', {
 			completed_at: new Date().toISOString(),
-			error_message: message,
+			error_message: errorDetail.userMessage,
 		})
 
-		try {
-			await transitionWorkflowItem({
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'FAILED',
+			context: {
+				userId: typedReport.user_id,
 				reportId,
-				toState: 'FAILED',
-				context: {
-					userId: typedReport.user_id,
-					failureReason: message,
-				},
-			})
-		} catch {
-			// Workflow optional until migration
-		}
+				failureReason: errorDetail.userMessage,
+				failedStage: 'OCR',
+				errorDetail,
+			},
+		})
 
-		throw new Error(message)
+		throw new Error(errorDetail.userMessage)
 	}
 }
 

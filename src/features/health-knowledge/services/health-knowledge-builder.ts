@@ -18,6 +18,7 @@ import {
 	mapCategoryId,
 } from '@/features/health-knowledge/graph/metric-categories'
 import { getMetricRelationships } from '@/features/health-knowledge/graph/metric-relationships'
+import type { KnowledgeGraphBuilder } from '@chronicle/core-knowledge'
 import type {
 	BuildHealthKnowledgeInput,
 	CategorySnapshot,
@@ -388,6 +389,14 @@ export function buildHealthKnowledgeGraph(
 		metricDefinitions: getHealthMetricDefinitions(),
 		metricCategories: getMetricCategories(),
 	}
+}
+
+export const healthKnowledgeGraphBuilder: KnowledgeGraphBuilder<
+	BuildHealthKnowledgeInput,
+	HealthKnowledgeGraph
+> = {
+	domain: 'health',
+	build: buildHealthKnowledgeGraph,
 }
 
 export function buildHealthKnowledgeSourceKey(

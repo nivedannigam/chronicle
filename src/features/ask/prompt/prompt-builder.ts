@@ -3,59 +3,12 @@ import type { IntelligenceMemberContext } from '@/features/intelligence/types/in
 import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
 import { stylePromptInstructions } from '@/features/personalization/services/response-adapter.service'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
-import type { AiMessage } from '@/features/ai/types'
+import {
+	promptBuilder as corePromptBuilder,
+	type BuiltPrompt,
+} from '@chronicle/core-ai'
 
-export interface BuiltPrompt {
-	system: string
-	user: string
-	messages: AiMessage[]
-	contextJson: string
-}
-
-const CHRONICLE_SYSTEM_PROMPT = `
-You are Chronicle — the intelligence layer of a family's personal operating system.
-
-Your role is to explain, connect, and summarize information the family has already entrusted to Chronicle.
-You are NOT a generic chatbot. You do NOT browse the internet. You do NOT invent facts.
-
-SOURCE OF TRUTH:
-- Use ONLY the structured knowledge context provided in the user message.
-- The knowledge graph is the product. Your words organize what is already known.
-- If information is missing, say clearly: "I don't have that in your Chronicle records yet."
-- Distinguish known facts (from structured metrics/reports) from reasonable inference (from OCR text).
-- Never fabricate values, dates, or reports not present in the context.
-- If reports disagree on a metric, surface all values — do not silently pick one.
-
-VOICE:
-- Personal, calm, and precise — like a trusted family advisor.
-- Refer to the selected family member when relevant.
-- Prefer phrases like "In your records…", "Based on what Chronicle knows…", "From your report on…"
-
-MEDICAL SAFETY (when health records are in context):
-- Never diagnose or prescribe.
-- Encourage discussing significant findings with a healthcare professional.
-- End health-related answers with: "This is informational and not medical advice."
-
-RESPONSE STRUCTURE (in the answer field):
-1. Start with a direct, plain-language answer in the first sentence.
-2. Follow with a brief explanation (2-3 sentences maximum).
-3. End with actionable recommendations when relevant.
-Never begin with raw extracted data, metric dumps, or technical OCR fields.
-Never expose implementation details, pipeline steps, or internal field names.
-
-TRANSPARENCY:
-- When uncertain, say so clearly — e.g. "I couldn't confidently determine the expiry date because the uploaded scan is partially unreadable."
-- Never fabricate values, dates, or documents not present in the context.
-- Distinguish known facts from reasonable inference.
-
-PERSONALIZATION:
-- Use natural references: "your passport", "your daughter", "your health reports".
-- Do not ask for information Chronicle already knows from context or conversation history.
-
-OUTPUT:
-Return valid JSON only with keys: answer, confidence, citations.
-Each citation must reference a reportId that exists in the context when citing reports.
-`.trim()
+export type { BuiltPrompt }
 
 export class PromptBuilder {
 	build(input: {
@@ -66,6 +19,8 @@ export class PromptBuilder {
 		member: IntelligenceMemberContext
 		dataAvailable: boolean
 		personalContext?: PersonalContext
+		activeDomains?: string[]
+		intent?: string
 	}): BuiltPrompt {
 		const preferences = input.personalContext?.preferences
 		const styleInstruction = preferences
@@ -101,59 +56,21 @@ export class PromptBuilder {
 				2,
 			)
 
-		const history = input.memory
-			.slice(-4)
-			.map(
-				(turn) =>
-					`User: ${turn.question}\nChronicle: ${turn.answer.slice(0, 400)}`,
-			)
-			.join('\n\n')
-
-		const system = `${CHRONICLE_SYSTEM_PROMPT}
-
-PERSONALIZATION:
-- ${styleInstruction}
-- Always answer for the selected family member unless the question explicitly names someone else.
-- Use conversation history to resolve follow-up questions without asking the user to repeat context.
-
-Output JSON schema:
-{
-  "answer": "string",
-  "confidence": "high" | "medium" | "low",
-  "citations": [{
-    "reportId": "string",
-    "reportTitle": "string",
-    "metricName": "string optional",
-    "hospital": "string optional",
-    "date": "string optional",
-    "timelineRef": "string optional"
-  }]
-}`
-
-		const user = [
-			input.member.memberName
-				? `Selected family member: ${input.member.memberName}`
-				: 'Selected family member: account owner',
-			'Structured Chronicle knowledge (ONLY source of truth):',
+		return corePromptBuilder.build({
+			question: input.question,
 			contextJson,
-			history ? `\nRecent conversation:\n${history}` : '',
-			`\nQuestion:\n${input.question}`,
-			input.dataAvailable
-				? '\nAnswer using only the knowledge above.'
-				: '\nNo matching records were found. Explain what is missing and what capability would answer this in the future.',
-		]
-			.filter(Boolean)
-			.join('\n')
-
-		return {
-			system,
-			user,
-			contextJson,
-			messages: [
-				{ role: 'system', content: system },
-				{ role: 'user', content: user },
-			],
-		}
+			dataAvailable: input.dataAvailable,
+			memberName: input.member.memberName,
+			conversationHistory: input.memory.map((turn) => ({
+				question: turn.question,
+				answer: turn.answer,
+			})),
+			personalizationInstructions: styleInstruction,
+			activeDomains:
+				input.activeDomains ??
+				(input.knowledge?.domain ? [input.knowledge.domain] : []),
+			intent: input.intent ?? input.knowledge?.intent,
+		})
 	}
 }
 

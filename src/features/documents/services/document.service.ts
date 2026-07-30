@@ -99,7 +99,7 @@ export async function createDocumentRecord(
 			document_number: input.documentNumber ?? null,
 			tags: input.tags ?? [],
 			notes: input.notes ?? null,
-			status: 'active',
+			status: input.status ?? 'active',
 			source: input.source ?? 'upload',
 			connector_id: input.connectorId ?? null,
 			external_file_id: input.externalFileId ?? null,

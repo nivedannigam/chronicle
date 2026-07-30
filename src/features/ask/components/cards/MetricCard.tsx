@@ -1,8 +1,10 @@
 import { C } from '@/constants/colors'
-import type { MetricCardData } from '@/features/ask/types'
-import type { MetricStatus } from '@/features/health/types'
+import type {
+	AskMetricStatus,
+	MetricCardData,
+} from '@/features/ask/types/ask.types'
 
-function statusColor(status: MetricStatus): string {
+function statusColor(status: AskMetricStatus): string {
 	switch (status) {
 		case 'low':
 		case 'high':

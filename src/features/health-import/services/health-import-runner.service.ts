@@ -7,10 +7,23 @@ import type {
 	ImportPhase,
 	ImportRegistryOutcome,
 } from '@/features/health-import/types/import-runner.types'
+import { HEALTH_JOB_WORKERS } from '@/features/health/jobs/health-job.types'
+import {
+	createJobHandler,
+	DEFAULT_JOB_BATCH_PARALLEL,
+	runJobBatch,
+} from '@chronicle/core-jobs'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
-import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
-import { transitionWorkflowItem } from '@/features/health/workflow'
+import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
+import { retryAllFailedWorkflowItems } from '@/features/health/workflow/health-workflow-retry.service'
+import {
+	completePipelineStage,
+	failPipelineStage,
+	startPipelineStage,
+} from '@/features/health/pipeline/health-pipeline-logger'
+import { buildWorkflowErrorDetail } from '@/core/workflow/workflow-errors.types'
+import { EdgeFunctionInvokeError } from '@/lib/edge-function-invoke'
 import {
 	completeSyncRun,
 	createSyncRun,
@@ -114,10 +127,94 @@ async function importRegistryRecord(
 	onImportPhase?.('download')
 	await updateRegistryRecord(registryId, { importStatus: 'downloading' })
 
-	const download = await downloadDriveFile({
-		userId,
-		externalFileId: registry.external_file_id,
-		fileName: registry.file_name,
+	startPipelineStage({
+		registryId,
+		stage: 'DOWNLOADING',
+		nextStage: 'OCR',
+		details: {
+			fileId: registry.external_file_id,
+			fileName: registry.file_name,
+		},
+	})
+
+	await safeTransitionWorkflowItem({
+		registryId,
+		toState: 'DOWNLOADING',
+		context: {
+			userId,
+			familyMemberId: (registry.family_member_id as string | null) ?? null,
+			progress: { label: 'Downloading' },
+			worker: 'drive-connector',
+		},
+	})
+
+	let download
+
+	try {
+		download = await downloadDriveFile({
+			userId,
+			externalFileId: registry.external_file_id,
+			fileName: registry.file_name,
+		})
+	} catch (error) {
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'DOWNLOADING',
+			error,
+			edgeFunction: 'drive-connector',
+			httpStatus:
+				error instanceof EdgeFunctionInvokeError ? error.httpStatus : undefined,
+			requestPayload:
+				error instanceof EdgeFunctionInvokeError
+					? error.requestPayload
+					: undefined,
+			responsePayload:
+				error instanceof EdgeFunctionInvokeError
+					? error.responsePayload
+					: undefined,
+		})
+
+		failPipelineStage({
+			registryId,
+			stage: 'DOWNLOADING',
+			error: errorDetail.message,
+			details: {
+				fileId: registry.external_file_id,
+				fileName: registry.file_name,
+			},
+		})
+
+		await updateRegistryRecord(registryId, {
+			importStatus: 'failed',
+			registryStatus: 'failed',
+			errorMessage: errorDetail.userMessage.slice(0, 500),
+		})
+
+		await safeTransitionWorkflowItem({
+			registryId,
+			toState: 'FAILED',
+			context: {
+				userId,
+				failureReason: errorDetail.userMessage,
+				failedStage: 'DOWNLOADING',
+				errorDetail,
+				worker: 'drive-connector',
+			},
+		})
+
+		throw error
+	}
+
+	completePipelineStage({
+		registryId,
+		stage: 'DOWNLOADING',
+		nextStage: 'OCR',
+		details: {
+			fileId: registry.external_file_id,
+			fileName: registry.file_name,
+			downloadedSize: download.fileSize,
+			storagePath: download.storagePath,
+			checksum: download.sha256Checksum ?? null,
+		},
 	})
 
 	if (download.sha256Checksum) {
@@ -130,6 +227,15 @@ async function importRegistryRecord(
 	await updateRegistryRecord(registryId, {
 		importStatus: 'imported',
 		importedAt: new Date().toISOString(),
+	})
+
+	await safeTransitionWorkflowItem({
+		registryId,
+		toState: 'IMPORTING',
+		context: {
+			userId,
+			progress: { label: 'Importing' },
+		},
 	})
 
 	const reportPayload = {
@@ -256,24 +362,16 @@ async function importRegistryRecord(
 	})
 	onImportPhase?.('ocr')
 
-	try {
-		await transitionWorkflowItem({
-			registryId,
-			toState: 'IMPORTING',
-			context: {
-				userId,
-				reportId: report.id as string,
-				familyMemberId: (registry.family_member_id as string | null) ?? null,
-			},
-		})
-		await transitionWorkflowItem({
-			registryId,
-			toState: 'PROCESSING',
-			context: { userId, reportId: report.id as string },
-		})
-	} catch {
-		// Workflow table may not exist until migration applied — legacy path continues
-	}
+	await safeTransitionWorkflowItem({
+		registryId,
+		toState: 'OCR',
+		context: {
+			userId,
+			reportId: report.id as string,
+			familyMemberId: (registry.family_member_id as string | null) ?? null,
+			progress: { label: 'Running OCR' },
+		},
+	})
 
 	await enqueueHealthReportProcessing(userId, report.id as string)
 	await updateRegistryRecord(registryId, { importStatus: 'parsing' })
@@ -295,19 +393,6 @@ async function importRegistryRecord(
 			registryStatus: 'completed',
 			knowledgeGraphStatus: 'indexed',
 		})
-
-		const familyMemberId = (registry.family_member_id as string | null) ?? null
-		await persistHealthKnowledgeGraph(userId, familyMemberId)
-
-		try {
-			await transitionWorkflowItem({
-				registryId,
-				toState: 'READY',
-				context: { userId, reportId: report.id as string },
-			})
-		} catch {
-			// Workflow optional until migration
-		}
 	} else {
 		await updateRegistryRecord(registryId, {
 			importStatus: 'failed',
@@ -315,19 +400,15 @@ async function importRegistryRecord(
 			errorMessage: processed.processing_error ?? 'Processing failed',
 		})
 
-		try {
-			await transitionWorkflowItem({
-				registryId,
-				toState: 'FAILED',
-				context: {
-					userId,
-					reportId: report.id as string,
-					failureReason: processed.processing_error ?? 'Processing failed',
-				},
-			})
-		} catch {
-			// Workflow optional until migration
-		}
+		await safeTransitionWorkflowItem({
+			registryId,
+			toState: 'FAILED',
+			context: {
+				userId,
+				reportId: report.id as string,
+				failureReason: processed.processing_error ?? 'Processing failed',
+			},
+		})
 	}
 
 	importStartTimes.delete(registryId)
@@ -356,57 +437,72 @@ export async function processImportQueueWithProgress(
 	})
 
 	const batch = pending.slice(0, options.limit ?? pending.length)
-	const parallel = options.parallel ?? 2
 	const runResult: ImportQueueRunResult = {
 		importedThisRun: 0,
 		failedThisRun: 0,
 		skippedThisRun: 0,
 	}
 
-	for (let index = 0; index < batch.length; index += parallel) {
-		if (options.isCancelled?.()) {
-			break
-		}
+	const downloadImportHandler = createJobHandler(
+		'download',
+		async (input: {
+			userId: string
+			registryId: string
+			onImportPhase?: (phase: ImportPhase) => void
+		}) => {
+			await enqueueImportItem({
+				userId: input.userId,
+				connectorId: 'google-drive',
+				registryId: input.registryId,
+			})
 
-		const chunk = batch.slice(index, index + parallel)
+			return importRegistryRecord(
+				input.userId,
+				input.registryId,
+				input.onImportPhase,
+			)
+		},
+	)
 
-		const results = await Promise.allSettled(
-			chunk.map(async (record) => {
-				await enqueueImportItem({
-					userId,
-					connectorId: 'google-drive',
-					registryId: record.id,
-				})
+	await runJobBatch(
+		batch.map((record) => ({
+			id: record.id,
+			userId,
+			jobType: 'download' as const,
+			worker: HEALTH_JOB_WORKERS.download,
+			input: {
+				userId,
+				registryId: record.id,
+				onImportPhase: options.onImportPhase,
+			},
+			handler: downloadImportHandler,
+		})),
+		{
+			parallel: options.parallel ?? DEFAULT_JOB_BATCH_PARALLEL,
+			isCancelled: options.isCancelled,
+			onBatchProgress: options.onDocumentProgress,
+			onItemComplete: (_id, result) => {
+				const payload = result.data as
+					{ outcome: ImportRegistryOutcome } | undefined
 
-				return importRegistryRecord(userId, record.id, options.onImportPhase)
-			}),
-		)
-
-		for (const [resultIndex, result] of results.entries()) {
-			const record = chunk[resultIndex]!
-
-			if (result.status === 'fulfilled') {
-				if (result.value.outcome === 'imported') {
+				if (payload?.outcome === 'imported') {
 					runResult.importedThisRun += 1
 				} else {
 					runResult.skippedThisRun += 1
 				}
-			} else {
+			},
+			onItemError: async (registryId, error) => {
 				runResult.failedThisRun += 1
 
-				await updateRegistryRecord(record.id, {
+				await updateRegistryRecord(registryId, {
 					importStatus: 'failed',
 					registryStatus: 'failed',
 					errorMessage:
-						result.reason instanceof Error
-							? result.reason.message
-							: 'Import failed',
+						error instanceof Error ? error.message : 'Import failed',
 				})
-			}
-		}
-
-		await options.onDocumentProgress?.()
-	}
+			},
+		},
+	)
 
 	invalidateAfterHealthImport(userId)
 
@@ -484,24 +580,8 @@ export async function runGoogleDriveSync(input: {
 }
 
 export async function retryFailedImports(userId: string): Promise<number> {
-	const registry = await listRegistryRecords(userId, 'google-drive')
-
-	for (const record of registry.filter(
-		(item) => item.importStatus === 'failed',
-	)) {
-		await updateRegistryRecord(record.id, {
-			importStatus: 'retry',
-			errorMessage: null,
-		})
-	}
-
-	const result = await processImportQueueWithProgress(userId, {
-		limit: 5,
-		parallel: 2,
-		retryFailedOnly: true,
-	})
-
-	return result.importedThisRun
+	const result = await retryAllFailedWorkflowItems(userId)
+	return result.retried
 }
 
 export async function resetGoogleDriveConnector(userId: string): Promise<void> {

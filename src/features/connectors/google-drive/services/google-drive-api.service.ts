@@ -1,5 +1,8 @@
-import { supabase } from '@/lib/supabase'
 import type { DriveBrowseResult } from '@/core/connectors'
+import {
+	EdgeFunctionInvokeError,
+	invokeEdgeFunction,
+} from '@/lib/edge-function-invoke'
 
 export interface DriveApiDebugEntry {
 	action: string
@@ -23,107 +26,45 @@ function recordDebug(entry: DriveApiDebugEntry) {
 	}
 }
 
-function extractInvokeErrorMessage(error: unknown, data: unknown): string {
-	if (data && typeof data === 'object' && 'error' in data) {
-		const payloadError = (data as { error?: string }).error
-
-		if (payloadError) {
-			return payloadError
-		}
-	}
-
-	if (error instanceof Error) {
-		if (error.message.includes('non-2xx')) {
-			return 'Google Drive download failed (edge function error). Reconnect Google Drive and retry.'
-		}
-
-		return error.message
-	}
-
-	return 'Drive API failed'
-}
-
-async function extractInvokeErrorMessageAsync(
-	error: unknown,
-	data: unknown,
-): Promise<string> {
-	const direct = extractInvokeErrorMessage(error, data)
-
-	if (
-		direct !== 'Drive API failed' &&
-		!direct.includes('edge function error')
-	) {
-		return direct
-	}
-
-	if (error && typeof error === 'object' && 'context' in error) {
-		const context = (
-			error as { context?: { json?: () => Promise<{ error?: string }> } }
-		).context
-
-		if (context?.json) {
-			try {
-				const body = await context.json()
-
-				if (body.error) {
-					return body.error
-				}
-			} catch {
-				// Response body was not JSON.
-			}
-		}
-	}
-
-	return direct
-}
-
 async function invokeDriveConnector<T>(
 	body: Record<string, unknown>,
 ): Promise<T> {
 	const startedAt = performance.now()
+	const action = String(body.action ?? 'unknown')
 
-	const { data, error } = await supabase.functions.invoke('drive-connector', {
-		body,
-	})
-
-	if (error) {
-		const message = await extractInvokeErrorMessageAsync(error, data)
+	try {
+		const data = await invokeEdgeFunction<T>('drive-connector', body)
 
 		recordDebug({
-			action: String(body.action ?? 'unknown'),
+			action,
+			timestamp: new Date().toISOString(),
+			durationMs: Math.round(performance.now() - startedAt),
+			success: true,
+		})
+
+		return data
+	} catch (error) {
+		const detail =
+			error instanceof EdgeFunctionInvokeError
+				? error.toDebugString()
+				: error instanceof Error
+					? error.message
+					: 'Drive API failed'
+
+		recordDebug({
+			action,
 			timestamp: new Date().toISOString(),
 			durationMs: Math.round(performance.now() - startedAt),
 			success: false,
-			detail: message,
+			detail,
 		})
 
-		throw new Error(message)
+		throw error instanceof EdgeFunctionInvokeError
+			? new Error(error.message)
+			: error instanceof Error
+				? error
+				: new Error('Drive API failed')
 	}
-
-	const payload = data as T & { success?: boolean; error?: string }
-
-	if (payload?.success === false || payload?.error) {
-		const message = payload.error ?? 'Drive connector request failed'
-
-		recordDebug({
-			action: String(body.action ?? 'unknown'),
-			timestamp: new Date().toISOString(),
-			durationMs: Math.round(performance.now() - startedAt),
-			success: false,
-			detail: message,
-		})
-
-		throw new Error(message)
-	}
-
-	recordDebug({
-		action: String(body.action ?? 'unknown'),
-		timestamp: new Date().toISOString(),
-		durationMs: Math.round(performance.now() - startedAt),
-		success: true,
-	})
-
-	return data as T
 }
 
 export async function browseDriveFolders(input: {

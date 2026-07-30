@@ -1,4 +1,5 @@
-import type { MetricStatus } from '@/features/health/types'
+export type AskMetricStatus =
+	'normal' | 'low' | 'high' | 'critical' | 'borderline' | 'unknown'
 
 export type AnswerCardType =
 	| 'summary'
@@ -22,7 +23,7 @@ export interface MetricCardData {
 	name: string
 	value: string
 	reference: string
-	status: MetricStatus
+	status: AskMetricStatus
 	reportTitle?: string
 	reportDate?: string
 }
@@ -59,7 +60,7 @@ export interface ComparisonCardData {
 		oldValue: string
 		newValue: string
 		difference: string
-		status: MetricStatus
+		status: AskMetricStatus
 	}>
 }
 
@@ -184,7 +185,7 @@ export interface MetricSearchResult {
 	metricName: string
 	value: string
 	reference: string
-	status: MetricStatus
+	status: AskMetricStatus
 	reportId: string
 	reportTitle: string
 	reportDate: string
@@ -199,7 +200,7 @@ export interface ReportComparisonResult {
 		oldValue: string
 		newValue: string
 		difference: string
-		status: MetricStatus
+		status: AskMetricStatus
 	}>
 }
 
@@ -212,6 +213,6 @@ export interface ReportSummaryResult {
 	metrics: Array<{
 		name: string
 		value: string
-		status: MetricStatus
+		status: AskMetricStatus
 	}>
 }
