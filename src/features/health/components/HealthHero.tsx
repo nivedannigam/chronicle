@@ -17,7 +17,9 @@ export function HealthHero({
 	const cx = 48
 	const cy = 48
 	const circ = 2 * Math.PI * r
-	const offset = circ - (dashboard.score / 100) * circ
+	const displayScore = dashboard.score
+	const offset =
+		displayScore === null ? circ : circ - (displayScore / 100) * circ
 
 	return (
 		<div
@@ -67,7 +69,7 @@ export function HealthHero({
 						fontWeight="700"
 						fontFamily="system-ui"
 					>
-						{dashboard.score}
+						{displayScore ?? '—'}
 					</text>
 				</svg>
 				<div style={{ flex: 1 }}>

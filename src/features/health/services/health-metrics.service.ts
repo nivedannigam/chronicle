@@ -104,7 +104,7 @@ export function filterMetricsForMemberReports(
 		filterReportsForMember(
 			reports as import('@/features/health/types').UploadedHealthReport[],
 			selectedMemberId,
-			accountOwnerMemberId,
+			accountOwnerMemberId ?? null,
 		).map((report) => report.id),
 	)
 
