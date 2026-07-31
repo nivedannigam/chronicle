@@ -1,16 +1,24 @@
 import { supabase } from '@/lib/supabase'
 import { buildHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-builder'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
+import { backfillHealthMetricsFromReports } from '@/features/health/services/health-metrics-persist.service'
+import { fetchHealthMetricsForUser } from '@/features/health/services/health-metrics.service'
 import { fetchUploadedHealthReports } from '@/features/health/services/health-upload.service'
 
 export async function persistHealthKnowledgeGraph(
 	userId: string,
 	familyMemberId: string | null,
 ) {
+	const uploadedReports = await fetchUploadedHealthReports()
+	await backfillHealthMetricsFromReports(userId, uploadedReports)
+	const storedMetrics = await fetchHealthMetricsForUser(userId, {
+		familyMemberId,
+	})
+
 	const graph = buildHealthKnowledgeGraph({
 		personId: userId,
-		mockReports: [],
-		uploadedReports: await fetchUploadedHealthReports(),
+		uploadedReports,
+		storedMetrics,
 	})
 
 	const { error } = await supabase.from('health_knowledge_graphs').upsert(

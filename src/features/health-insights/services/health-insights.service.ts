@@ -16,6 +16,7 @@ import type {
 	HealthInsight,
 	UploadedHealthReport,
 } from '@/features/health/types'
+import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
 
 let bootstrapped = false
@@ -38,6 +39,7 @@ export interface ProactiveInsightsResult {
 export function getProactiveHealthInsights(input: {
 	userId: string | undefined
 	uploadedReports: UploadedHealthReport[]
+	storedMetrics?: StoredHealthMetric[]
 	limit?: number
 }): ProactiveInsightsResult {
 	bootstrapInsightsProviders()
@@ -46,6 +48,7 @@ export function getProactiveHealthInsights(input: {
 	const graph = healthKnowledgeService.getGraphForUser(
 		userId,
 		input.uploadedReports,
+		input.storedMetrics ?? [],
 	)
 	const ranked = generateHealthInsights({
 		userId,

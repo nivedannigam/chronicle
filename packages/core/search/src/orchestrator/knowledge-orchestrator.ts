@@ -150,13 +150,17 @@ export function runKnowledgeOrchestrator(
 /** Builds domain-agnostic `sources` payload from Ask hook data. */
 export function buildIntelligenceSources(input: {
 	uploadedReports?: unknown[]
+	storedMetrics?: unknown[]
 	connectorDocuments?: unknown[]
 	documents?: unknown[]
 }): Record<string, unknown> {
 	const sources: Record<string, unknown> = {}
 
-	if (input.uploadedReports?.length) {
-		sources.health = { uploadedReports: input.uploadedReports }
+	if (input.uploadedReports?.length || input.storedMetrics?.length) {
+		sources.health = {
+			uploadedReports: input.uploadedReports ?? [],
+			storedMetrics: input.storedMetrics ?? [],
+		}
 	}
 
 	if (input.documents?.length || input.connectorDocuments?.length) {

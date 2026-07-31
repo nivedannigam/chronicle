@@ -12,6 +12,7 @@ import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hook
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
 import {
 	AskGreetingCard,
@@ -44,6 +45,7 @@ export function FigmaAskScreen() {
 	const { members, selectedMember, selectedMemberId } = useFamilyContext()
 	const { preferences } = usePersonalPreferences()
 	const uploadedQuery = useMemberHealthReports()
+	const metricsQuery = useHealthMetrics()
 	const documentsQuery = useMemberDocuments()
 	const driveConnector = useGoogleDriveConnector(userId)
 	const [input, setInput] = useState('')
@@ -84,6 +86,7 @@ export function FigmaAskScreen() {
 		driveConnector.registry ?? [],
 		preferences,
 		documentsQuery.data ?? [],
+		metricsQuery.data ?? [],
 	)
 
 	const home = useMemo(

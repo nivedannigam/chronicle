@@ -49,6 +49,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		familyMembers?: import('@/features/family/types/family.types').FamilyMemberWithAliases[]
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: unknown[]
+		storedMetrics?: unknown[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: ChroniclePersonalPreferences
@@ -86,6 +87,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			member: personalContext.activeMember,
 			sources: buildIntelligenceSources({
 				uploadedReports: input.uploadedReports,
+				storedMetrics: input.storedMetrics,
 				connectorDocuments: input.connectorDocuments,
 				documents: input.documents,
 			}),

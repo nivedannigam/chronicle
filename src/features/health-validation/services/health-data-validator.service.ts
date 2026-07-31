@@ -115,7 +115,6 @@ export async function runHealthDataValidation(
 
 	const graph = buildHealthKnowledgeGraph({
 		personId: userId,
-		mockReports: [],
 		uploadedReports: reports,
 	})
 

@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth'
+import { toUiMetrics } from '@/features/health/extraction'
 import { fetchUploadedHealthReports } from '@/features/health/services/health-upload.service'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
-import { toUiMetrics } from '@/features/health/extraction'
+import {
+	fetchHealthMetricsForReport,
+	storedMetricsToUiMetrics,
+} from '@/features/health/services/health-metrics.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
@@ -23,25 +27,37 @@ export function useHealthReportDetail(reportId: string | undefined) {
 		staleTime: STALE_TIME.reports,
 	})
 
+	const uploaded = uploadedQuery.data?.find((report) => report.id === reportId)
+
+	const metricsQuery = useQuery({
+		queryKey: queryKeys.health.reportDetail(reportId),
+		queryFn: () => fetchHealthMetricsForReport(reportId!),
+		enabled: Boolean(reportId && uploaded?.status === 'completed'),
+		staleTime: STALE_TIME.reports,
+	})
+
 	return useMemo(() => {
 		if (!reportId) {
 			return { source: null, isLoading: false }
 		}
 
-		const uploaded = uploadedQuery.data?.find(
-			(report) => report.id === reportId,
-		)
-
 		if (uploaded) {
 			const parsed = getParsedHealthReport(uploaded)
+			const storedMetrics = metricsQuery.data ?? []
+			const uiMetrics =
+				storedMetrics.length > 0
+					? storedMetricsToUiMetrics(storedMetrics)
+					: parsed
+						? toUiMetrics(parsed.metrics)
+						: []
 
 			return {
 				source: { type: 'uploaded', report: uploaded } as ReportDetailSource,
 				parsed,
-				uiMetrics: parsed ? toUiMetrics(parsed.metrics) : [],
-				isLoading: uploadedQuery.isLoading,
-				isFetching: uploadedQuery.isFetching,
-				isError: uploadedQuery.isError,
+				uiMetrics,
+				isLoading: uploadedQuery.isLoading || metricsQuery.isLoading,
+				isFetching: uploadedQuery.isFetching || metricsQuery.isFetching,
+				isError: uploadedQuery.isError || metricsQuery.isError,
 			}
 		}
 
@@ -53,9 +69,13 @@ export function useHealthReportDetail(reportId: string | undefined) {
 		}
 	}, [
 		reportId,
-		uploadedQuery.data,
+		uploaded,
 		uploadedQuery.isLoading,
 		uploadedQuery.isFetching,
 		uploadedQuery.isError,
+		metricsQuery.data,
+		metricsQuery.isLoading,
+		metricsQuery.isFetching,
+		metricsQuery.isError,
 	])
 }

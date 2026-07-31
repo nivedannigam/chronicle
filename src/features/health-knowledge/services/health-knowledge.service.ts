@@ -16,6 +16,7 @@ import type {
 	HealthKnowledgeGraph,
 	HealthMetricHistory,
 } from '@/features/health-knowledge/types'
+import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import type {
 	HealthInsight,
 	HealthSnapshot,
@@ -28,8 +29,8 @@ const DEFAULT_PERSON_ID = 'default-person'
 export class HealthKnowledgeService {
 	getGraph(input: BuildHealthKnowledgeInput): HealthKnowledgeGraph {
 		const sourceKey = buildHealthKnowledgeSourceKey(
-			input.mockReports,
 			input.uploadedReports,
+			input.storedMetrics ?? [],
 		)
 		const cached = getCachedHealthKnowledge(input.personId, sourceKey)
 
@@ -46,19 +47,21 @@ export class HealthKnowledgeService {
 	getGraphForUser(
 		userId: string | undefined,
 		uploadedReports: UploadedHealthReport[] = [],
+		storedMetrics: StoredHealthMetric[] = [],
 	): HealthKnowledgeGraph {
 		return this.getGraph({
 			personId: userId ?? DEFAULT_PERSON_ID,
-			mockReports: [],
 			uploadedReports,
+			storedMetrics,
 		})
 	}
 
 	getSnapshots(
 		userId: string | undefined,
 		uploadedReports: UploadedHealthReport[] = [],
+		storedMetrics: StoredHealthMetric[] = [],
 	): HealthSnapshot[] {
-		const graph = this.getGraphForUser(userId, uploadedReports)
+		const graph = this.getGraphForUser(userId, uploadedReports, storedMetrics)
 
 		return categorySnapshotsToHealthSnapshots(graph.profile.categories)
 	}
@@ -66,10 +69,12 @@ export class HealthKnowledgeService {
 	getInsights(
 		userId: string | undefined,
 		uploadedReports: UploadedHealthReport[] = [],
+		storedMetrics: StoredHealthMetric[] = [],
 	): HealthInsight[] {
 		const proactive = healthInsightsService.getProactiveHealthInsights({
 			userId,
 			uploadedReports,
+			storedMetrics,
 			limit: 12,
 		})
 
@@ -77,7 +82,7 @@ export class HealthKnowledgeService {
 			return proactive.healthInsights
 		}
 
-		const graph = this.getGraphForUser(userId, uploadedReports)
+		const graph = this.getGraphForUser(userId, uploadedReports, storedMetrics)
 
 		return derivedInsightsToHealthInsights(graph.profile.insights)
 	}
@@ -85,8 +90,9 @@ export class HealthKnowledgeService {
 	getTrendSeries(
 		userId: string | undefined,
 		uploadedReports: UploadedHealthReport[] = [],
+		storedMetrics: StoredHealthMetric[] = [],
 	): TrendSeries[] {
-		const graph = this.getGraphForUser(userId, uploadedReports)
+		const graph = this.getGraphForUser(userId, uploadedReports, storedMetrics)
 		const series = metricHistoriesToTrendSeries(graph.profile.metricHistories)
 
 		if (series.length > 0) {
@@ -100,8 +106,9 @@ export class HealthKnowledgeService {
 		userId: string | undefined,
 		metricId: string,
 		uploadedReports: UploadedHealthReport[] = [],
+		storedMetrics: StoredHealthMetric[] = [],
 	): HealthMetricHistory | null {
-		const graph = this.getGraphForUser(userId, uploadedReports)
+		const graph = this.getGraphForUser(userId, uploadedReports, storedMetrics)
 
 		return (
 			graph.profile.metricHistories.find(

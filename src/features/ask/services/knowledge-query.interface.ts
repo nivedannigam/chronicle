@@ -28,6 +28,7 @@ export interface AskReasoningEngine {
 		familyMembers?: import('@/features/family/types/family.types').FamilyMemberWithAliases[]
 		onStream?: (partialAnswer: string) => void
 		uploadedReports?: unknown[]
+		storedMetrics?: unknown[]
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: import('@/features/personalization/types/personal-context.types').ChroniclePersonalPreferences

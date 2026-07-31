@@ -39,6 +39,7 @@ export interface RetrievalQuery {
 	member?: import('@chronicle/core-knowledge').MemberContext
 	sources?: Record<string, unknown>
 	uploadedReports?: UploadedHealthReport[]
+	storedMetrics?: import('@/features/health/types/health-metric-record.types').StoredHealthMetric[]
 	documents?: ChronicleDocument[]
 	connectorDocuments?: ConnectorDocumentRecord[]
 	documentCategoryId?: string

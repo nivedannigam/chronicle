@@ -22,6 +22,12 @@ export function invalidateHealthReportsQueries(userId: string | undefined) {
 	void queryClient.invalidateQueries({
 		queryKey: queryKeys.health.reports(userId),
 	})
+	void queryClient.invalidateQueries({
+		queryKey: ['health-metrics', userId],
+	})
+	void queryClient.invalidateQueries({
+		queryKey: ['health-report-detail'],
+	})
 }
 
 export function invalidateHealthDashboardQueries(userId: string | undefined) {

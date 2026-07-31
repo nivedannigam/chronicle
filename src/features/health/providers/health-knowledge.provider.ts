@@ -27,6 +27,7 @@ const PROVIDER_ID = 'health'
 
 export interface HealthProviderSource {
 	uploadedReports?: UploadedHealthReport[]
+	storedMetrics?: import('@/features/health/types/health-metric-record.types').StoredHealthMetric[]
 }
 
 function getHealthReports(
@@ -34,6 +35,13 @@ function getHealthReports(
 ): UploadedHealthReport[] {
 	const source = query.sources[PROVIDER_ID] as HealthProviderSource | undefined
 	return source?.uploadedReports ?? []
+}
+
+function getStoredHealthMetrics(
+	query: KnowledgeProviderQuery,
+): import('@/features/health/types/health-metric-record.types').StoredHealthMetric[] {
+	const source = query.sources[PROVIDER_ID] as HealthProviderSource | undefined
+	return source?.storedMetrics ?? []
 }
 
 function searchHealthReports(input: {
@@ -154,6 +162,7 @@ function toRetrievalQuery(query: KnowledgeProviderQuery): RetrievalQuery {
 		metricName: query.metricName,
 		timeRangeYears: query.timeRangeYears,
 		uploadedReports: getHealthReports(query),
+		storedMetrics: getStoredHealthMetrics(query),
 		searchHits: query.searchHits,
 		member: query.member,
 		sources: query.sources,

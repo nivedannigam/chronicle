@@ -1,5 +1,4 @@
 import { C } from '@/constants/colors'
-import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import {
 	getParsedHealthReport,
 	getReportDisplayTitle,
@@ -29,28 +28,10 @@ import type {
 	MetricCategoryId,
 	PersonHealthProfile,
 } from '@/features/health-knowledge/types'
-import type {
-	HealthReport,
-	UploadedHealthReport,
-} from '@/features/health/types'
+import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
+import type { UploadedHealthReport } from '@/features/health/types'
 
 const CACHE_VERSION = '1'
-
-function parseNumericValue(value: string): number | null {
-	const match = value.match(/-?\d+\.?\d*/)
-
-	if (!match) {
-		return null
-	}
-
-	return Number.parseFloat(match[0])
-}
-
-function extractUnit(value: string): string | null {
-	const unit = value.replace(/^[\d./\s+-]+/, '').trim()
-
-	return unit || null
-}
 
 function formatDisplayDate(value: string | null | undefined): string {
 	if (!value) {
@@ -72,65 +53,55 @@ function slugifyMetricId(rawName: string): string {
 }
 
 function buildSourceKey(
-	mockReports: HealthReport[],
 	uploadedReports: UploadedHealthReport[],
+	storedMetrics: StoredHealthMetric[],
 ): string {
-	const mockKey = mockReports
-		.map((report) => `${report.id}:${report.date}`)
-		.join('|')
 	const uploadKey = uploadedReports
 		.map(
 			(report) =>
 				`${report.id}:${report.status}:${report.processed_at ?? report.uploaded_at}`,
 		)
 		.join('|')
+	const metricsKey = storedMetrics
+		.map(
+			(metric) =>
+				`${metric.id}:${metric.report_id}:${metric.canonical_metric_id}:${metric.observed_at}`,
+		)
+		.join('|')
 
-	return `${mockKey}::${uploadKey}`
+	return `${uploadKey}::${metricsKey}`
 }
 
-function observationFromMockMetric(
-	report: HealthReport,
-	metric: HealthReport['metrics'][number],
-	index: number,
-): HealthObservation | null {
-	const normalized = normalizeMetricName(metric.name)
-	const canonicalMetricId =
-		normalized.canonicalId ?? `raw:${slugifyMetricId(metric.name)}`
-
-	return {
-		id: `${report.id}-${canonicalMetricId}-${index}`,
-		canonicalMetricId,
-		displayName: normalized.displayName,
-		rawName: metric.name,
-		value: metric.value,
-		numericValue: parseNumericValue(metric.value),
-		unit: extractUnit(metric.value),
-		status: metric.status,
-		confidence: metric.confidence ?? 0.85,
-		observedAt: report.date,
-		reportId: report.id,
-		reportTitle: report.title,
-		laboratory: report.lab,
-		referenceRange: metric.reference,
-	}
-}
-
-function observationsFromMockReports(
-	reports: HealthReport[],
+function observationsFromStoredMetrics(
+	metrics: StoredHealthMetric[],
+	uploadedReports: UploadedHealthReport[],
 ): HealthObservation[] {
-	const observations: HealthObservation[] = []
+	const reportById = new Map(
+		uploadedReports.map((report) => [report.id, report]),
+	)
 
-	for (const report of reports) {
-		for (const [index, metric] of report.metrics.entries()) {
-			const observation = observationFromMockMetric(report, metric, index)
+	return metrics.map((metric) => {
+		const report = reportById.get(metric.report_id)
 
-			if (observation) {
-				observations.push(observation)
-			}
+		return {
+			id: metric.id,
+			canonicalMetricId: metric.canonical_metric_id,
+			displayName: metric.display_name,
+			rawName: metric.raw_name,
+			value: metric.value,
+			numericValue: metric.numeric_value,
+			unit: metric.unit,
+			status: metric.status,
+			confidence: metric.confidence,
+			observedAt: metric.observed_at,
+			reportId: metric.report_id,
+			reportTitle: report ? getReportDisplayTitle(report) : 'Health Report',
+			laboratory: report
+				? (getParsedHealthReport(report)?.metadata.laboratory ?? '')
+				: '',
+			referenceRange: metric.reference_range_raw ?? '',
 		}
-	}
-
-	return observations
+	})
 }
 
 function observationsFromUploadedReports(
@@ -353,20 +324,24 @@ function buildAlerts(histories: HealthMetricHistory[]): HealthAlert[] {
 export function buildHealthKnowledgeGraph(
 	input: BuildHealthKnowledgeInput,
 ): HealthKnowledgeGraph {
-	const observations = dedupeObservations([
-		...observationsFromMockReports(input.mockReports),
-		...observationsFromUploadedReports(input.uploadedReports),
-	])
+	const storedMetricObservations = observationsFromStoredMetrics(
+		input.storedMetrics ?? [],
+		input.uploadedReports,
+	)
+	const observations = dedupeObservations(
+		storedMetricObservations.length > 0
+			? storedMetricObservations
+			: observationsFromUploadedReports(input.uploadedReports),
+	)
 
 	const metricHistories = buildMetricHistories(observations)
 	const categories = buildCategorySnapshots(metricHistories)
 	const reportIds = [
-		...new Set([
-			...input.mockReports.map((report) => report.id),
-			...input.uploadedReports
+		...new Set(
+			input.uploadedReports
 				.filter((report) => report.status === 'completed')
 				.map((report) => report.id),
-		]),
+		),
 	]
 
 	const profile: PersonHealthProfile = {
@@ -400,10 +375,10 @@ export const healthKnowledgeGraphBuilder: KnowledgeGraphBuilder<
 }
 
 export function buildHealthKnowledgeSourceKey(
-	mockReports: HealthReport[],
 	uploadedReports: UploadedHealthReport[],
+	storedMetrics: StoredHealthMetric[] = [],
 ): string {
-	return buildSourceKey(mockReports, uploadedReports)
+	return buildSourceKey(uploadedReports, storedMetrics)
 }
 
 export function categorySnapshotsToHealthSnapshots(

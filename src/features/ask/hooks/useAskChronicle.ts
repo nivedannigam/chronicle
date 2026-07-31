@@ -27,6 +27,7 @@ import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import type { UploadedHealthReport } from '@/features/health/types'
+import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import { buildMemorySessionKey } from '@/features/intelligence/services/member-context.service'
 import { hydrateConversationMemoryFromStorage } from '@/features/personalization/services/conversation-session.service'
 import type { ChroniclePersonalPreferences } from '@/features/personalization/types/personal-context.types'
@@ -57,6 +58,7 @@ export function useAskChronicle(
 	connectorDocuments: ConnectorDocumentRecord[] = [],
 	personalPreferences?: ChroniclePersonalPreferences,
 	documents: ChronicleDocument[] = [],
+	storedMetrics: StoredHealthMetric[] = [],
 ) {
 	const memberId = memberContext?.selectedMemberId ?? null
 	const sessionKey = useMemo(
@@ -205,6 +207,7 @@ export function useAskChronicle(
 					memberName: memberContext?.selectedMemberName ?? null,
 					familyMembers: memberContext?.members ?? [],
 					uploadedReports,
+					storedMetrics,
 					connectorDocuments,
 					documents,
 					personalPreferences,
@@ -273,6 +276,7 @@ export function useAskChronicle(
 		[
 			userId,
 			uploadedReports,
+			storedMetrics,
 			connectorDocuments,
 			documents,
 			memberContext,

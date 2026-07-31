@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { listHealthSourceAssignments } from '@/features/family/services/health-sources.service'
+import { deleteHealthMetricsForReports } from '@/features/health/services/health-metrics-persist.service'
 import { HEALTH_REPORTS_BUCKET } from '@/features/health/types'
 
 async function deleteStoragePaths(storagePaths: string[]) {
@@ -111,7 +112,13 @@ export async function deleteImportedDataForExternalFolder(
 	}
 
 	await deleteStoragePaths(storagePaths)
-	await deleteHealthReportsByIds([...new Set(reportIds)])
+	const uniqueReportIds = [...new Set(reportIds)]
+
+	if (uniqueReportIds.length > 0) {
+		await deleteHealthMetricsForReports(uniqueReportIds)
+	}
+
+	await deleteHealthReportsByIds(uniqueReportIds)
 
 	if (rows.length > 0) {
 		const { error: deleteRegistryError } = await supabase
@@ -198,9 +205,15 @@ export async function resetAllImportedHealthData(userId: string): Promise<{
 		throw new Error(reportsError.message)
 	}
 
+	const reportIds = (reports ?? []).map((report) => report.id as string)
+
 	await deleteStoragePaths(
 		(reports ?? []).map((report) => report.storage_path as string),
 	)
+
+	if (reportIds.length > 0) {
+		await deleteHealthMetricsForReports(reportIds)
+	}
 
 	const { error: deleteReportsError } = await supabase
 		.from('health_reports')

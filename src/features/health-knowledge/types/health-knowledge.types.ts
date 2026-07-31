@@ -128,6 +128,6 @@ export interface HealthKnowledgeGraph {
 
 export interface BuildHealthKnowledgeInput {
 	personId: string
-	mockReports: import('@/features/health/types').HealthReport[]
 	uploadedReports: import('@/features/health/types').UploadedHealthReport[]
+	storedMetrics?: import('@/features/health/types/health-metric-record.types').StoredHealthMetric[]
 }

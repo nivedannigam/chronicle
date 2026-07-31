@@ -16,6 +16,7 @@ import {
 	startPipelineStage,
 } from '@/features/health/pipeline/health-pipeline-logger'
 import { serializeParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import { persistHealthMetrics } from '@/features/health/services/health-metrics-persist.service'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
@@ -248,6 +249,14 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
+		const persistedMetricCount = await persistHealthMetrics({
+			userId: typedReport.user_id,
+			reportId,
+			familyMemberId: typedReport.family_member_id ?? null,
+			healthReport,
+			reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
+		})
+
 		completePipelineStage({
 			reportId,
 			stage: 'PARSING',
@@ -257,7 +266,7 @@ export async function processHealthReport(
 				characters: outcome.extractedText.length,
 				confidence: outcome.confidence,
 				processingTimeMs: outcome.processingTimeMs,
-				metricCount: healthReport.metrics.length,
+				metricCount: persistedMetricCount,
 			},
 		})
 

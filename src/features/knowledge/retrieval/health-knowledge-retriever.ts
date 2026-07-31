@@ -251,6 +251,7 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 		const graph = healthKnowledgeService.getGraphForUser(
 			query.userId,
 			query.uploadedReports ?? [],
+			query.storedMetrics ?? [],
 		)
 		const personProfile = graph.profile
 		const categoryId = mapCategoryId(query.categoryId)
