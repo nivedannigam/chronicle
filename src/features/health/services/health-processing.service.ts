@@ -229,10 +229,10 @@ export async function processHealthReport(
 			throw new Error('Expected a health report from the document pipeline.')
 		}
 
-		await updateReportStatus(reportId, {
-			status: 'completed',
+		const serializedParsedData = serializeParsedHealthReport(healthReport)
+		const parsedReportUpdate = {
 			extracted_text: outcome.extractedText,
-			parsed_data: serializeParsedHealthReport(healthReport),
+			parsed_data: serializedParsedData,
 			ocr_page_count: outcome.pageCount,
 			ocr_confidence: outcome.confidence,
 			ocr_provider: outcome.ocrProvider,
@@ -242,20 +242,56 @@ export async function processHealthReport(
 			report_date: healthReport.metadata.reportDate,
 			processed_at: processedAt,
 			processing_error: null,
+		}
+
+		await updateReportStatus(reportId, {
+			status: 'parsed',
+			...parsedReportUpdate,
 		})
 
-		await updateQueueStatus(reportId, 'completed', {
-			completed_at: processedAt,
+		await updateQueueStatus(reportId, 'parsed', {
 			error_message: null,
 		})
 
-		const persistedMetricCount = await persistHealthMetrics({
-			userId: typedReport.user_id,
-			reportId,
-			familyMemberId: typedReport.family_member_id ?? null,
-			healthReport,
-			reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
-		})
+		let persistedMetricCount = 0
+
+		try {
+			persistedMetricCount = await persistHealthMetrics({
+				userId: typedReport.user_id,
+				reportId,
+				familyMemberId: typedReport.family_member_id ?? null,
+				healthReport,
+				reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
+			})
+		} catch (metricError) {
+			const errorDetail = buildWorkflowErrorDetail({
+				stage: 'PARSING',
+				error: metricError,
+			})
+
+			await updateReportStatus(reportId, {
+				status: 'failed',
+				processing_error: errorDetail.userMessage,
+			})
+			await updateQueueStatus(reportId, 'failed', {
+				completed_at: processedAt,
+				error_message: errorDetail.userMessage,
+			})
+
+			await safeTransitionWorkflowItem({
+				reportId,
+				toState: 'FAILED',
+				context: {
+					userId: typedReport.user_id,
+					reportId,
+					failureReason: errorDetail.userMessage,
+					failedStage: 'PARSING',
+					errorDetail,
+				},
+			})
+
+			throw metricError
+		}
 
 		completePipelineStage({
 			reportId,
@@ -288,18 +324,8 @@ export async function processHealthReport(
 
 		createKnowledgeItemFromHealthReport({
 			...typedReport,
-			status: 'completed',
-			extracted_text: outcome.extractedText,
-			parsed_data: serializeParsedHealthReport(healthReport),
-			ocr_page_count: outcome.pageCount,
-			ocr_confidence: outcome.confidence,
-			ocr_provider: outcome.ocrProvider,
-			ocr_processing_time_ms: outcome.processingTimeMs,
-			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
-			report_type: healthReport.metadata.reportType,
-			report_date: healthReport.metadata.reportDate,
-			processed_at: processedAt,
-			processing_error: null,
+			status: 'parsed',
+			...parsedReportUpdate,
 		})
 
 		try {
@@ -311,6 +337,15 @@ export async function processHealthReport(
 			const errorDetail = buildWorkflowErrorDetail({
 				stage: 'INDEXING',
 				error: indexError,
+			})
+
+			await updateReportStatus(reportId, {
+				status: 'failed',
+				processing_error: errorDetail.userMessage,
+			})
+			await updateQueueStatus(reportId, 'failed', {
+				completed_at: processedAt,
+				error_message: errorDetail.userMessage,
 			})
 
 			await safeTransitionWorkflowItem({
@@ -352,20 +387,20 @@ export async function processHealthReport(
 			context: { userId: typedReport.user_id, reportId },
 		})
 
+		await updateReportStatus(reportId, {
+			status: 'completed',
+			...parsedReportUpdate,
+		})
+
+		await updateQueueStatus(reportId, 'completed', {
+			completed_at: processedAt,
+			error_message: null,
+		})
+
 		const completedReport: UploadedHealthReport = {
 			...typedReport,
 			status: 'completed',
-			extracted_text: outcome.extractedText,
-			parsed_data: serializeParsedHealthReport(healthReport),
-			ocr_page_count: outcome.pageCount,
-			ocr_confidence: outcome.confidence,
-			ocr_provider: outcome.ocrProvider,
-			ocr_processing_time_ms: outcome.processingTimeMs,
-			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
-			report_type: healthReport.metadata.reportType,
-			report_date: healthReport.metadata.reportDate,
-			processed_at: processedAt,
-			processing_error: null,
+			...parsedReportUpdate,
 		}
 
 		invalidateHealthKnowledgeCache(completedReport.user_id)

@@ -28,11 +28,13 @@ import {
 	FigmaHealthRing,
 	FigmaHealthSectionLabel,
 	FigmaHealthTrendChart,
+} from '@/ui/figma/health/figma-health-primitives'
+import {
 	figmaHealthScoreColor,
 	figmaHealthStatusHeadline,
 	figmaJourneyEventColor,
 	figmaMetricStatusColor,
-} from '@/ui/figma/health/figma-health-primitives'
+} from '@/ui/figma/health/figma-health-formatters'
 import {
 	HealthAiActionRow,
 	HealthAiBadge,
@@ -146,9 +148,9 @@ export function FigmaHealthOverviewView({
 	memberName: string | null
 }) {
 	const navigate = useNavigate()
-	const score = companion.score ?? 0
 	const ringColor = figmaHealthScoreColor(companion.score)
 	const latestReport = companion.recentReports[0]
+	const showScore = companion.score !== null
 
 	return (
 		<div>
@@ -161,7 +163,7 @@ export function FigmaHealthOverviewView({
 				}}
 			>
 				<div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
-					<FigmaHealthRing score={score} color={ringColor} />
+					<FigmaHealthRing score={companion.score} color={ringColor} />
 					<div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
 						<p
 							style={{
@@ -200,7 +202,7 @@ export function FigmaHealthOverviewView({
 					</div>
 				</div>
 
-				{companion.scoreReasons.length > 0 ? (
+				{showScore && companion.scoreReasons.length > 0 ? (
 					<div
 						style={{
 							borderTop: `1px solid ${FC.line}`,

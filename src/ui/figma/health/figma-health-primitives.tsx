@@ -6,7 +6,7 @@ export function FigmaHealthRing({
 	score,
 	color = FC.green,
 }: {
-	score: number
+	score: number | null
 	color?: string
 }) {
 	const size = 144
@@ -14,7 +14,11 @@ export function FigmaHealthRing({
 	const radius = 56
 	const strokeWidth = 8
 	const circumference = 2 * Math.PI * radius
-	const offset = circumference - (score / 100) * circumference
+	const displayScore = score ?? null
+	const offset =
+		displayScore === null
+			? circumference
+			: circumference - (displayScore / 100) * circumference
 
 	return (
 		<div
@@ -61,7 +65,7 @@ export function FigmaHealthRing({
 						lineHeight: 1,
 					}}
 				>
-					{score}
+					{displayScore ?? '—'}
 				</span>
 				<span
 					style={{
@@ -93,62 +97,6 @@ export function FigmaHealthSectionLabel({ children }: { children: ReactNode }) {
 			{children}
 		</span>
 	)
-}
-
-export function figmaHealthScoreColor(score: number | null): string {
-	if (score === null) return FC.blue
-	if (score >= 85) return FC.green
-	if (score >= 70) return FC.amber
-	return FC.orange
-}
-
-export function figmaHealthStatusHeadline(
-	status: import('@/features/health/types/health-companion.types').HealthStatusLabel,
-): string {
-	switch (status) {
-		case 'Looking Good':
-			return "You're in good health."
-		case 'Improving':
-			return "You're trending in the right direction."
-		case 'Monitoring Required':
-			return 'A few markers need watching.'
-		default:
-			return 'Some results need your attention.'
-	}
-}
-
-export function figmaMetricStatusColor(status: string): string {
-	if (status === 'normal') return FC.green
-	if (status === 'critical' || status === 'high') return FC.orange
-	if (status === 'low' || status === 'borderline') return FC.amber
-	return FC.green
-}
-
-export function figmaMetricStatusLabel(
-	status: string,
-	trendLabel?: string,
-): string {
-	if (trendLabel) return trendLabel
-	if (status === 'normal') return 'Normal'
-	if (status === 'low') return 'Low ↓'
-	if (status === 'high') return 'Slightly high ↑'
-	if (status === 'critical') return 'Above range ↑'
-	if (status === 'borderline') return 'Borderline'
-	return 'Tracked'
-}
-
-export function figmaJourneyEventColor(
-	kind: import('@/features/health/types/health-companion.types').HealthJourneyEvent['kind'],
-): string {
-	switch (kind) {
-		case 'finding':
-		case 'review':
-			return FC.amber
-		case 'monitoring':
-			return FC.blue
-		default:
-			return FC.green
-	}
 }
 
 export function FigmaSparkline({

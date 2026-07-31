@@ -14,6 +14,10 @@ import {
 } from '@/features/health-knowledge/graph/metric-categories'
 import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
 import type { UploadedHealthReport } from '@/features/health/types'
+import {
+	countProcessingReports,
+	isReportDisplayReady,
+} from '@/features/health/services/report-readiness.service'
 import type {
 	HealthAttentionItem,
 	HealthChangeItem,
@@ -47,6 +51,7 @@ function deriveStatus(input: {
 	graph: HealthKnowledgeGraph
 	insights: ChronicleInsight[]
 	needsReview: number
+	hasProcessingReports?: boolean
 }): { status: HealthStatusLabel; detail: string; score: number | null } {
 	const histories = input.graph.profile.metricHistories
 	let normalCount = 0
@@ -87,6 +92,16 @@ function deriveStatus(input: {
 			? Math.round((normalCount / totalWithStatus) * 100)
 			: null
 
+	if (totalWithStatus === 0) {
+		return {
+			status: 'Awaiting Data',
+			detail: input.hasProcessingReports
+				? 'Metrics are still being processed.'
+				: 'No laboratory metrics detected.',
+			score: null,
+		}
+	}
+
 	const warningInsights = input.insights.filter(
 		(item) => item.severity === 'attention',
 	)
@@ -121,8 +136,7 @@ function deriveStatus(input: {
 
 	return {
 		status: 'Looking Good',
-		detail:
-			score !== null ? `${score}% of markers in range` : 'Records look stable',
+		detail: `${score}% of markers in range`,
 		score,
 	}
 }
@@ -152,6 +166,10 @@ function humanMetricStatus(
 }
 
 function buildScoreReasons(groups: MetricInsightGroup[]): HealthScoreReason[] {
+	if (groups.length === 0) {
+		return []
+	}
+
 	const reasons: HealthScoreReason[] = []
 
 	for (const group of groups) {
@@ -448,15 +466,6 @@ function buildNextSteps(input: {
 		})
 	}
 
-	if (steps.length === 0) {
-		steps.push({
-			id: 'annual-checkup',
-			title: 'Keep up regular checkups',
-			reason:
-				'Your latest records look stable. Annual labs help catch changes early.',
-		})
-	}
-
 	return steps.slice(0, 4)
 }
 
@@ -464,7 +473,7 @@ export function buildReportSummaries(
 	reports: UploadedHealthReport[],
 ): HealthReportSummary[] {
 	return [...reports]
-		.filter((report) => report.status === 'completed')
+		.filter(isReportDisplayReady)
 		.sort(
 			(a, b) =>
 				Date.parse(getReportDisplayDate(b)) -
@@ -636,9 +645,7 @@ function buildNarrative(
 	})
 
 	if (paragraphs.length === 0) {
-		return [
-			'Chronicle is reviewing your health records. Import more reports to unlock a fuller picture of your health journey.',
-		]
+		return []
 	}
 
 	return paragraphs.slice(0, 6)
@@ -654,6 +661,7 @@ export function buildHealthCompanionView(input: {
 }): HealthCompanionView {
 	const needsReview = input.needsReview ?? 0
 	const personId = input.personId ?? input.graph.profile.personId
+	const hasProcessingReports = countProcessingReports(input.uploadedReports) > 0
 	const profile = buildLongitudinalHealthProfile({
 		personId,
 		graph: input.graph,
@@ -662,6 +670,7 @@ export function buildHealthCompanionView(input: {
 		graph: input.graph,
 		insights: input.insights,
 		needsReview,
+		hasProcessingReports,
 	})
 	const healthSummary = buildHealthSummary({
 		graph: input.graph,
@@ -721,6 +730,8 @@ export function getStatusColor(status: HealthStatusLabel): string {
 			return C.teal
 		case 'Monitoring Required':
 			return C.orange
+		case 'Awaiting Data':
+			return C.accentBlue
 		default:
 			return C.red
 	}

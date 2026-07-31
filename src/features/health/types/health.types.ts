@@ -47,7 +47,7 @@ export interface HealthCategory {
 }
 
 export interface HealthDashboard {
-	score: number
+	score: number | null
 	latestReportId: string
 	lastCheckupDate: string
 	lastCheckupLabel: string

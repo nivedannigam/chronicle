@@ -4,6 +4,8 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { countDisplayReadyReports } from '@/features/health/services/report-readiness.service'
 import { getConnectorConnection } from '@/features/connectors/services/connector-store.service'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
@@ -31,6 +33,7 @@ export function useHealthMemberSetup() {
 	const { selectedMemberId } = useFamilyContext()
 	const importStatus = useHealthImportStatus(userId)
 	const sources = useHealthSources(userId)
+	const memberReports = useMemberHealthReports()
 
 	const driveQuery = useQuery({
 		queryKey: queryKeys.connectors.connection(userId, 'google-drive'),
@@ -57,7 +60,7 @@ export function useHealthMemberSetup() {
 		const hasFolderForMember = memberAssignments.length > 0
 		const needsReview = importStatus.data?.needsReviewCount ?? 0
 		const hasCompletedReports =
-			(importStatus.data?.completedReportsCount ?? 0) > 0
+			countDisplayReadyReports(memberReports.data ?? []) > 0
 
 		let currentStep: HealthSetupStep = 'connect_drive'
 
@@ -89,6 +92,7 @@ export function useHealthMemberSetup() {
 		memberAssignments,
 		importStatus.data,
 		importStatus.isLoading,
+		memberReports.data,
 		sources.isLoading,
 	])
 

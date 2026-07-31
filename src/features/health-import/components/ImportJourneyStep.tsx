@@ -276,9 +276,9 @@ function SummaryPanel({
 					hint="Discovered in your Drive folder"
 				/>
 				<Stat
-					label="Reports found"
+					label="Candidates this scan"
 					value={String(result.importCandidates)}
-					hint="Possible health reports"
+					hint="Possible health reports found in this scan"
 				/>
 				<Stat
 					label="Imported this run"

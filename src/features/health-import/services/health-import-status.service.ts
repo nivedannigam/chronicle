@@ -50,7 +50,12 @@ function countWorkflowByCategory(
 export async function fetchHealthImportStatus(
 	userId: string,
 ): Promise<HealthImportStatus> {
-	const [assignments, workflowProjection, lastRunResult] = await Promise.all([
+	const [
+		assignments,
+		workflowProjection,
+		lastRunResult,
+		completedReportsResult,
+	] = await Promise.all([
 		listHealthSourceAssignments(userId),
 		getHealthWorkflowProjection(userId),
 		supabase
@@ -60,6 +65,11 @@ export async function fetchHealthImportStatus(
 			.order('started_at', { ascending: false })
 			.limit(1)
 			.maybeSingle(),
+		supabase
+			.from('health_reports')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', userId)
+			.eq('status', 'completed'),
 	])
 
 	const items = workflowProjection.items
@@ -81,10 +91,11 @@ export async function fetchHealthImportStatus(
 		medicalReportsCount +
 		items.filter((item) => item.currentState === 'PENDING_REVIEW').length
 	const documentsScanned = importCandidatesCount + skippedIgnoredCount
+	const completedReportsCount = completedReportsResult.count ?? 0
 
 	return {
-		hasImportedReports: workflowProjection.readyCount > 0,
-		completedReportsCount: workflowProjection.readyCount,
+		hasImportedReports: completedReportsCount > 0,
+		completedReportsCount,
 		failedImportsCount: workflowProjection.failedCount,
 		importingCount: workflowProjection.importingCount,
 		processingCount: workflowProjection.processingCount,

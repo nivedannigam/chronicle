@@ -1,5 +1,9 @@
 export type HealthStatusLabel =
-	'Looking Good' | 'Needs Attention' | 'Improving' | 'Monitoring Required'
+	| 'Looking Good'
+	| 'Needs Attention'
+	| 'Improving'
+	| 'Monitoring Required'
+	| 'Awaiting Data'
 
 export interface HealthAttentionItem {
 	id: string

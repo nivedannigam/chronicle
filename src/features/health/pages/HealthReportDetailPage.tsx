@@ -16,6 +16,7 @@ import {
 } from '@/features/health/services/health-parsed-report.service'
 import { getHealthReportSignedUrl } from '@/features/health/services/health-upload.service'
 import { reprocessHealthReport } from '@/features/health/services/health-processing.service'
+import { metricsDisplayMessage } from '@/features/health/services/report-readiness.service'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
 import { supabase } from '@/lib/supabase'
@@ -62,6 +63,14 @@ export function HealthReportDetailPage() {
 
 	const uploaded = detail.source.report
 	const parsed = detail.parsed
+	const uiMetrics = detail.uiMetrics ?? []
+	const metricsMessage =
+		uiMetrics.length === 0
+			? metricsDisplayMessage({
+					report: uploaded,
+					storedMetricCount: uiMetrics.length,
+				})
+			: ''
 	const showFailedBanner = uploaded.status === 'failed'
 	const subtitle = [
 		getReportDisplayDate(uploaded, parsed),
@@ -222,8 +231,9 @@ export function HealthReportDetailPage() {
 							<div>Reference: {parsed.metadata.referenceNumber}</div>
 						) : null}
 						<div>
-							{parsed.metrics.length} result
-							{parsed.metrics.length === 1 ? '' : 's'} from this visit.
+							{uiMetrics.length > 0
+								? `${uiMetrics.length} result${uiMetrics.length === 1 ? '' : 's'} from this visit.`
+								: metricsMessage}
 						</div>
 					</FigmaCard>
 
@@ -231,7 +241,19 @@ export function HealthReportDetailPage() {
 						{USER_VOCAB.sections.extractedMetrics}
 					</HealthSectionLabel>
 					<div style={{ marginBottom: 24 }}>
-						<ExtractedMetricsList metrics={detail.uiMetrics ?? []} />
+						{uiMetrics.length > 0 ? (
+							<ExtractedMetricsList metrics={uiMetrics} />
+						) : (
+							<FigmaCard
+								style={{
+									padding: '16px',
+									fontSize: 14,
+									color: C.textMuted,
+								}}
+							>
+								{metricsMessage}
+							</FigmaCard>
+						)}
 					</div>
 				</>
 			) : (
@@ -242,9 +264,10 @@ export function HealthReportDetailPage() {
 						color: C.textMuted,
 					}}
 				>
-					{uploaded.status === 'completed'
-						? 'No structured metrics were found in this report.'
-						: 'Report is still processing. Check back shortly.'}
+					{metricsDisplayMessage({
+						report: uploaded,
+						storedMetricCount: 0,
+					})}
 				</FigmaCard>
 			)}
 		</HealthScreen>

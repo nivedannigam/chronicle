@@ -11,6 +11,7 @@ import {
 } from '@/features/health/services/health-parsed-report.service'
 import { useAuth } from '@/features/auth'
 import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
+import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
 import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
 
 function computeHealthScore(graph: HealthKnowledgeGraph): number | null {
@@ -82,7 +83,7 @@ function buildDashboardFromData(
 			: '—'
 
 	return {
-		score: score ?? 0,
+		score: score,
 		latestReportId: latestExtracted?.id ?? '',
 		lastCheckupDate: latestParsed?.metadata.reportDate ?? '',
 		lastCheckupLabel: latestParsed
@@ -100,9 +101,7 @@ export function useHealthDashboard(
 	const knowledge = useHealthKnowledge(user?.id, uploadedReports)
 
 	return useMemo(() => {
-		const completedReports = uploadedReports.filter(
-			(report) => report.status === 'completed',
-		)
+		const completedReports = uploadedReports.filter(isReportDisplayReady)
 		const latestExtracted = getLatestExtractedReport(uploadedReports)
 		const latestParsed = latestExtracted
 			? getParsedHealthReport(latestExtracted)

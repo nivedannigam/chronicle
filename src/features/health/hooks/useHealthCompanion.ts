@@ -4,6 +4,7 @@ import { healthInsightsService } from '@/features/health-insights/services/healt
 import type { ChronicleInsight } from '@/features/health-insights/types/health-insights.types'
 import { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { buildHealthCompanionView } from '@/features/health/services/health-companion.service'
 import type { UploadedHealthReport } from '@/features/health/types'
@@ -21,11 +22,14 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 	)
 	const setup = useHealthMemberSetup()
 	const dashboard = useHealthDashboard(reports)
+	const metricsQuery = useHealthMetrics()
+	const storedMetrics = metricsQuery.data ?? []
 
 	const proactiveInsights = userId
 		? healthInsightsService.getProactiveHealthInsights({
 				userId,
 				uploadedReports: reports,
+				storedMetrics,
 			}).insights
 		: EMPTY_INSIGHTS
 
@@ -45,6 +49,7 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 			reports,
 			proactiveInsights,
 			setup.needsReview,
+			userId,
 		],
 	)
 

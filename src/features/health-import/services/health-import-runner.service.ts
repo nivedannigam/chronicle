@@ -273,6 +273,16 @@ async function importRegistryRecord(
 		onImportPhase?.('ocr')
 		onImportPhase?.('metrics')
 
+		await safeTransitionWorkflowItem({
+			reportId: report.id as string,
+			toState: 'READY',
+			context: {
+				userId,
+				reportId: report.id as string,
+				progress: { label: 'Already imported' },
+			},
+		})
+
 		await updateRegistryRecord(registryId, {
 			importStatus: 'completed',
 			registryStatus: 'completed',
