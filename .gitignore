@@ -30,5 +30,5 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 
-# TypeScript
+_fixtures/
 *.tsbuildinfo

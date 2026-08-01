@@ -1,0 +1,890 @@
+
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:37
+09 Mar 2026 11:52
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+URINE | BARCODE001
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+VALUE
+TECHNOLOGY 
+NEGATIVE
+COTININEIMMUNOASSAY
+Note : 
+This is a screening test and a positive report does not confirm diagnosis. All positive cases should be verified by confirmatory 
+methods.
+Please correlate with clinical conditions.
+Method:-
+RAPID IMMUNOASSAY
+Scan QR to verify(valid for 
+30 days from release time)
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 1 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:37
+09 Mar 2026 11:52
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+URINE | BARCODE001
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+Bio. Ref. Interval.
+Complete Urinogram
+UNITSVALUE
+METHODOLOGY
+Physical Examination
+VOLUME
+3
+-
+mL
+Visual Determination
+COLOUR
+PALE YELLOW
+Pale Yellow
+-
+Visual Determination
+APPEARANCE
+CLEAR
+Clear
+-
+Visual Determination
+SPECIFIC GRAVITY
+1.010
+1.003-1.030
+-
+pKa change
+PH
+5.5
+5-8
+-
+pH indicator
+Chemical Examination
+URINARY PROTEIN
+ABSENT
+Absent
+mg/dL
+PEI
+URINARY GLUCOSE
+ABSENT
+Absent
+mg/dL
+GOD-POD
+URINE KETONE
+ABSENT
+Absent
+mg/dL
+Nitroprusside
+URINARY BILIRUBIN
+ABSENT
+Absent
+mg/dL
+Diazo coupling
+UROBILINOGEN
+Normal
+<=0.2
+mg/dL
+Diazo coupling
+BILE SALT
+ABSENT
+Absent
+-
+Hays sulphur
+BILE PIGMENT
+ABSENT
+Absent
+-
+Ehrlich reaction
+URINE BLOOD
+ABSENT
+Absent
+-
+Peroxidase reaction
+NITRITE
+ABSENT
+Absent
+-
+Diazo coupling
+LEUCOCYTE ESTERASE
+ABSENT
+Absent
+-
+Esterase reaction
+Microscopic Examination
+MUCUS
+ABSENT
+Absent
+-
+Microscopy
+RED BLOOD CELLS
+ABSENT
+0-2
+cells/HPF
+Microscopy
+URINARY LEUCOCYTES (PUS CELLS)
+ABSENT
+0-5
+cells/HPF
+Microscopy
+EPITHELIAL CELLS
+ABSENT
+0-5
+cells/HPF
+Microscopy
+CASTS
+ABSENT
+Absent
+-
+Microscopy
+CRYSTALS
+ABSENT
+Absent
+-
+Microscopy
+BACTERIA
+ABSENT
+Absent
+-
+Microscopy
+YEAST
+ABSENT
+Absent
+-
+Microscopy
+PARASITE
+ABSENT
+Absent
+-
+Microscopy
+(Reference : *PEI - Protein error of indicator, *GOD-POD - Glucose oxidase-peroxidase)
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS
+Tests Done :
+Page : 2 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:45
+09 Mar 2026 11:38
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+FLUORIDE PLASMA | EZ800811
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+UNITS
+VALUE
+TECHNOLOGY 
+mg/dL
+89.3
+RANDOM BLOOD SUGAR(GLUCOSE)PHOTOMETRY
+Normal  
+As per ADA Guideline: Random/Post-Prandial Plasma 
+Glucose (RPG/PPPG)
+70 to 140 mg/dl
+Impaired Glucose 
+Tolerance
+140 - 199 mg/dl
+Greater than or Equal to 200 mg/dl
+Diabetes
+Bio. Ref. Interval. :-
+Please correlate with clinical conditions.
+Method:-
+GOD-PAP METHOD
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 3 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+SERUM | BARCODE002
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAMETECHNOLOGY
+VALUE
+UNITS
+OD ratio 0.23C.M.I.AHEPATITIS B SURFACE ANTIGEN (HBSAG)
+Reference range :
+ 
+NON REACTIVE : < 1 (Indicates absence of Hepatitis B surface antigen)
+REACTIVE : >=1 (Indicates presence of Hepatitis B surface antigen)
+Clinical Significance: 
+A positive report does not confirm diagnosis and all positive cases should be confirmed by confirmatory test like PCR. 
+HBsAg can be detected in the serum as early as 2 to 3 weeks before the onset of the illness and reaches a peak titre 
+at the time when the characteristic symptoms like jaundice and changes in the liver-specific enzymes appear. This is 
+normally followed by a gradual elimination of the antigen. In some cases and in an unknown percentage of subclinical 
+hepatitis b virus infections, the antigen can be detected in the serum for years, if not for life. False positive results 
+seen in patients with high titre of heterophile antibodies, On Mouse monoclonal antibody therapy, biotin therapy or 
+HBV vaccination for a transient period of time. False negative cases seen if testing done in early course of disease and 
+in patients with immunosuppression .
+References: Neurath AR, Kent SB et al. Identification and chemical synthesis of a host cell receptor binding site on 
+hepatitis B virus. Cell 1986; 46, 429-436. National Laboratory guidelines for viral hepatitis.
+NOTE   : Result Rechecked. Kindly correlate clinically.
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 4 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+SELF
+ADDRESS PLACEHOLDER
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+PATIENT PLACEHOLDER(45Y/M)
+Sample Type | Barcode       :
+Report  Released on (RRT)  :
+Sample Collected on (SCT) :
+Sample Received on (SRT)  :
+Patient Name            :
+Referred By               :
+Home Collection :
+SERUM | BARCODE002
+TEST NAME
+TECHNOLOGY
+VALUE
+UNITS
+INTERPRETATION
+NON REACTIVE
+OD ratioC.M.I.A 0.14HIV I and II
+FULLY AUTOMATED CHEMILUMINESCENT MICROPARTICLE IMMUNOASSAY
+Method:-
+Interpretation : 
+NONREACTIVE (Titre value <1 ): 
+- Indicates Absence of HIV-1 p24 antigens and antibodies specific to HIV-1 and HIV -2.
+REACTIVE (Titre value >= 1)
+- Indicates Presence  of HIV-1 p24 antigens and antibodies specific to HIV-1 and HIV -2
+Clinical Significance:
+- This is a screening test. Any positive or non-correlating result needs to be confirmed with a confirmatory 
+test, such as Western Blot or HIV RNA PCR testing etc. 
+- All results should be interpreted in conjunction with the patients clinical history and other findings.
+- HIV reporting follows Strategy 3 of the National Guidelines of HIV Testing by NACO (National AIDS Control 
+Organization), utilizing highly sensitive and specific assays.
+- All indeterminate results require retesting with a fresh sample after 14-28 days or confirmation by a 
+confirmatory test.
+- Indeterminate cases are reported if one or two of the three assays report reactive results.
+Limitations:
+- Several conditions can lead to false positive or false negative results.
+- Common causes of a false positive result include autoimmune diseases, alcoholic hepatitis, primary biliary 
+cirrhosis, leprosy, multiple pregnancies, and cross-reactive antibodies.
+- Common causes of a false negative result include testing during the window period or the end stage of the 
+disease.
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 5 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+SERUM | BARCODE002
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+TECHNOLOGY
+VALUE
+UNITS
+Bio. Ref. Interval.
+< 200mg/dL 155
+PHOTOMETRYTOTAL CHOLESTEROL
+40-60mg/dL 54
+PHOTOMETRYHDL CHOLESTEROL - DIRECT
+< 100mg/dL 96
+PHOTOMETRYLDL CHOLESTEROL - DIRECT
+< 150mg/dL 52
+PHOTOMETRYTRIGLYCERIDES
+3 - 5Ratio 2.9
+CALCULATEDTC/ HDL CHOLESTEROL RATIO
+< 3.12Ratio 0.96
+CALCULATEDTRIG / HDL RATIO
+1.5-3.5Ratio 1.8
+CALCULATEDLDL / HDL RATIO
+> 0.40Ratio 0.56
+CALCULATEDHDL / LDL RATIO
+< 160mg/dL 101.2
+CALCULATEDNON-HDL CHOLESTEROL
+5 - 40mg/dL 10.36
+CALCULATEDVLDL CHOLESTEROL
+Please correlate with clinical conditions.
+Method :
+CHOL - Cholesterol Oxidase, Esterase, Peroxidase
+HCHO - Direct Enzymatic Colorimetric
+LDL - Direct Measure
+TRIG - Enzymatic, End Point
+TC /H - Derived from serum Cholesterol and Hdl values
+TRI/H - Derived from TRIG and HDL Values
+LDL/ - Derived from serum HDL and LDL Values
+HD/LD - Derived from HDL and LDL values.
+NHDL - Derived from serum Cholesterol and HDL values
+VLDL - Derived from serum Triglyceride values
+Alert !!! 10-12 hours fasting is mandatory for lipid parameters. If not, values might fluctuate.
+TOTAL CHOLESTEROL   
+>190
+VERY HIGH                 
+>500VERY HIGH                 
+160-189
+HIGH                         
+200-499HIGH                        
+130-159
+BORDERLINE HIGH   
+>240HIGH                              
+150-199BORDERLINE HIGH    
+100-129
+NEAR OPTIMAL          
+>60HIGH          
+200-239BORDERLINE HIGH            
+<150NORMAL                   
+<100
+OPTIMAL                    <40LOW             
+<200DESIRABLE                      
+(mg/dl)TRIGLYCERIDES   
+(mg/dl)
+LDL                          (mg/dl)HDL           
+(mg/dl)
+*REFERENCE RANGES AS PER NCEP ATP III GUIDELINES:
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 6 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+SERUM | BARCODE002
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+TECHNOLOGY
+VALUE
+UNITS
+Bio. Ref. Interval.
+45-129U/L 106.7
+PHOTOMETRYALKALINE PHOSPHATASE
+0.3-1.2mg/dL 1.02
+PHOTOMETRYBILIRUBIN - TOTAL
+0 - 0.20mg/dL 0.22
+PHOTOMETRYBILIRUBIN -DIRECT
+0-0.9mg/dL 0.8
+CALCULATEDBILIRUBIN (INDIRECT)
+< 55U/L 59.5
+PHOTOMETRYGAMMA GLUTAMYL TRANSFERASE (GGT)
+< 35U/L 22.1
+PHOTOMETRYASPARTATE AMINOTRANSFERASE (SGOT )
+< 45U/L 19.9
+PHOTOMETRYALANINE TRANSAMINASE (SGPT)
+< 2Ratio 1.11
+CALCULATEDSGOT / SGPT RATIO
+5.7-8.2gm/dL 6.73
+PHOTOMETRYPROTEIN - TOTAL
+3.2-4.8gm/dL 3.96
+PHOTOMETRYALBUMIN - SERUM
+2.5-3.4gm/dL 2.77
+CALCULATEDSERUM GLOBULIN
+0.9 - 2Ratio 1.43
+CALCULATEDSERUM ALB/GLOBULIN RATIO
+Please correlate with clinical conditions.
+Method :
+ALKP - Modified IFCC method
+BILT - Diazonium salt DPD method
+BILD - Diazonium salt DPD method
+BILI - Derived from serum Total and Direct Bilirubin values
+GGT - Modified IFCC method
+SGOT - IFCC* Without Pyridoxal Phosphate Activation
+SGPT - IFCC* Without Pyridoxal Phosphate Activation
+OT /PT - Derived from SGOT and SGPT values.
+PROT -   Biuret Method
+SALB - Albumin Bcg¹method (Colorimetric Assay Endpoint)
+SEGB - DERIVED FROM SERUM ALBUMIN AND PROTEIN VALUES
+A/GR - Derived from serum Albumin and Protein values
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 7 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+SERUM | BARCODE002
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+UNITS
+VALUE
+TECHNOLOGY 
+mg/dL
+0.83
+Bio. Ref. Interval. :-
+CREATININE - SERUMPHOTOMETRY
+Male : 0.72 -1.18 mg/dL 
+Female : 0.55 - 1.02 mg/dL
+Clinical Significance :
+The significance of a single creatinine value must be interpreted in light of the patients muscle mass. A patient with a greater 
+muscle mass will have a higher creatinine concentration. The trend of serum creatinine concentrations over time is more important 
+than absolute creatinine concentration. Serum creatinine concentrations may increase when an ACE inhibitor (ACEI) is taken. The 
+assay could be affected mildly and may result in anomalous values if serum samples have heterophilic antibodies, hemolyzed , 
+icteric or lipemic.
+Please correlate with clinical conditions.
+Method:-
+Creatinine Enzymatic Method
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 9 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:48
+09 Mar 2026 14:18
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+SERUM | BARCODE002
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+UNITS
+VALUE
+TECHNOLOGY 
+mL/min/1.73 m2
+110
+Bio. Ref. Interval. :-
+EST. GLOMERULAR FILTRATION RATE (eGFR)CALCULATED
+>  =  90 : Normal
+60 - 89 : Mild Decrease
+45 - 59  : Mild to Moderate Decrease
+30 - 44 : Moderate to Severe Decrease  
+15 - 29 : Severe Decrease  
+  <15   : Kidney Failure
+Clinical Significance  
+The normal serum creatinine reference interval does not necessarily reflect a normal GFR for a patient. Because mild and
+moderate kidney injury is poorly inferred from serum creatinine alone. Thus, it is recommended for clinical laboratories to routinely
+estimate glomerular filtration rate (eGFR), a “gold standard” measurement for assessment of renal function, and report the value
+when serum creatinine is measured for patients 18 and older, when appropriate and feasible. It cannot be measured easily in
+clinical practice, instead, GFR is estimated from equations using serum creatinine, age, race and sex. This provides easy to
+interpret information for the doctor and patient on the degree of renal impairment since it approximately equates to the
+percentage of kidney function remaining. Application of CKD-EPI equation together with the other diagnostic tools in renal
+medicine will further improve the detection and management of patients with CKD.
+Reference  
+Levey AS, Stevens LA, Schmid CH, Zhang YL, Castro AF, 3rd, Feldman HI, et al. A new equation to estimate glomerular filtration
+rate . Ann Intern Med. 2009;150(9):604-12.
+Please correlate with clinical conditions.
+Method:-
+2021 CKD EPI Creatinine Equation
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 10 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:50
+09 Mar 2026 13:53
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+EDTA Whole Blood | FF792054
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAME
+TECHNOLOGY
+VALUE
+UNITS
+%4.7H.P.L.C
+HbA1c
+Below 5.7%   : Normal
+5.7% - 6.4% : Prediabetic
+>=6.5%        : Diabetic   
+As per ADA Guidelines
+Below 6.5% : Good Control
+6.5% - 7%  : Fair Control
+7.0% - 8%  : Unsatisfactory Control
+>8%          : Poor Control
+Guidance For Known Diabetics
+Bio. Ref. Interval. :
+Fully Automated H.P.L.C method
+Method :
+mg/dL88CALCULATEDAVERAGE BLOOD GLUCOSE (ABG)
+90 - 120 mg/dl   : Good Control
+121 - 150 mg/dl : Fair Control
+151 - 180 mg/dl : Unsatisfactory Control
+> 180 mg/dl      : Poor Control
+Bio. Ref. Interval. :
+Derived from HBA1c  values
+Method :
+Please correlate with clinical conditions. 
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :
+Page : 11 of 12
+
+Processed At :
+Sohrabh Hall, 112, A Wing, 1st 
+Floor, Sangamwadi, Pune 411001
+09 Mar 2026 06:48
+09 Mar 2026 10:50
+09 Mar 2026 13:53
+Sample Type | Barcode
+Report  Released on (RRT)
+Sample Collected on (SCT)
+Sample Received on (SRT)
+EDTA Whole Blood | FF792054
+:
+:
+:
+:
+ADDRESS PLACEHOLDER
+Home Collection
+SELF
+Referred By
+PATIENT PLACEHOLDER(45Y/M)
+Patient Name
+:
+:
+:
+TEST NAMEVALUE
+UNITS
+Bio. Ref. Interval.
+METHODOLOGY
+g/dL
+ 12.1
+13.0-17.0
+HEMOGLOBIN
+SLS-Hemoglobin Method
+%
+ 37.1
+40.0-50.0
+Hematocrit (PCV)
+CPH Detection
+X 10^6/μL
+ 4.21
+4.5-5.5
+Total RBC
+HF & EI
+fL
+ 88.1
+83.0-101.0
+Mean Corpuscular Volume (MCV)
+Calculated
+pq
+ 28.7
+27.0-32.0
+Mean Corpuscular Hemoglobin (MCH)
+Calculated
+g/dL
+ 32.6
+31.5-34.5
+Mean Corp.Hemo. Conc (MCHC)
+Calculated
+fL
+ 44
+39-46
+Red Cell Distribution Width - SD (RDW-SD)
+Calculated
+%
+ 13.6
+11.6-14
+Red Cell Distribution Width (RDW - CV)
+Calculated
+-
+ 284.6
+*Refer Note below
+RED CELL DISTRIBUTION WIDTH INDEX (RDWI)
+Calculated
+-
+ 20.9
+*Refer Note below
+MENTZER INDEX
+Calculated
+X 10³ / μL
+ 6.47
+4.0 - 10.0
+TOTAL LEUCOCYTE COUNT (WBC)
+HF & FC
+DIFFERENTIAL LEUCOCYTE COUNT
+%
+ 47.9
+40-80
+Neutrophils Percentage
+Flow Cytometry
+%
+ 42.3
+20-40
+Lymphocytes Percentage
+Flow Cytometry
+%
+ 4
+2-10
+Monocytes Percentage
+Flow Cytometry
+%
+ 4.9
+1-6
+Eosinophils Percentage
+Flow Cytometry
+%
+ 0.5
+0-2
+Basophils Percentage
+Flow Cytometry
+%
+ 0.4
+0-0.5
+Immature Granulocyte Percentage (IG%)
+Flow Cytometry
+%
+ 0.01
+0.0-5.0
+Nucleated Red Blood Cells %
+Flow Cytometry
+ABSOLUTE LEUCOCYTE COUNT
+X 10³ / μL
+ 3.1
+2.0-7.0
+Neutrophils - Absolute Count
+Calculated
+X 10³ / μL
+ 2.74
+1.0-3.0
+Lymphocytes - Absolute Count
+Calculated
+X 10³ / μL
+ 0.26
+0.2 - 1.0
+Monocytes - Absolute Count
+Calculated
+X 10³ / μL
+ 0.03
+0.02 - 0.1
+Basophils - Absolute Count
+Calculated
+X 10³ / μL
+ 0.32
+0.02 - 0.5
+Eosinophils - Absolute Count
+Calculated
+X 10³ / μL
+ 0.03
+0-0.3
+Immature Granulocytes (IG)
+Calculated
+X 10³ / μL
+ 0.01
+0.0-0.5
+Nucleated Red Blood Cells
+Calculated
+X 10³ / μL
+ 318
+150-410
+PLATELET COUNT
+HF & EI
+fL
+ 9.5
+6.5-12
+Mean Platelet Volume (MPV)
+Calculated
+fL
+ 9.4
+9.6-15.2
+Platelet Distribution Width (PDW)
+Calculated
+%
+ 20
+19.7-42.4
+Platelet to Large Cell Ratio (PLCR)
+Calculated
+%
+ 0.3
+0.19-0.39
+Plateletcrit (PCT)
+Calculated
+Alert!!!  Predominantly normocytic normochromic with ovalocytes.  Platelets:Appear adequate in smear.Remarks : 
+Method : Fully automated bidirectional analyser (6 Part Differential SYSMEX XN-1000)
+(Reference : *FC - flowcytometry, *HF- hydrodynamic focussing, *EI- Electric Impedence, *Hb- hemoglobin,  *CPH- Cumulative pulse height)
+*Note    - Mentzer index (MI), RDW-CV and RDWI are hematological indices to differentiate between Iron Deficiency Anemia (IDA ) and Beta Thalassemia Trait (BTT). MI >13, RDWI 
+>220 and RDW-CV >14 more likely to be IDA. MI <13, RDWI <220, and RDW-CV <14 more likely to be BTT. Suggested Clinical correlation. BTT to be confirmed with HB 
+electrophoresis if clinically indicated.
+~~ End of report ~~
+Page : 12 of 12
+Scan QR to verify(valid for 
+30 days from release time)
+Dr Zeeshan Hashmi 
+MD(Path )
+COMPLETE URINE ANALYSIS,HBsAg,LIPID PROFILE,CH 
+HDFC COMBO 1
+Tests Done :

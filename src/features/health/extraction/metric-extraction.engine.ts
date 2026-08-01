@@ -14,8 +14,10 @@ import {
 	parseNumericValue,
 	parseReferenceRange,
 } from '@/features/health/extraction/reference-range.engine'
+import { isThyrocareOcrText } from '@/features/health/extraction/vendors/thyrocare-detection'
+import { extractThyrocareMetricsFromText } from '@/features/health/extraction/vendors/thyrocare-text.extractor'
 
-export interface RawMetricRow {
+export type RawMetricRow = {
 	rawName: string
 	value: string
 	referenceRange: string
@@ -112,11 +114,46 @@ function deduplicateRows(rows: RawMetricRow[]): RawMetricRow[] {
 	return [...bestByKey.values()]
 }
 
+function evaluateExtractedMetricStatus(
+	value: string,
+	referenceRange: ReturnType<typeof parseReferenceRange>,
+	numericValue: number | null,
+): MetricStatus {
+	if (numericValue != null) {
+		return evaluateMetricStatus(numericValue, referenceRange)
+	}
+
+	const normalized = value.trim().toUpperCase()
+
+	if (
+		[
+			'NEGATIVE',
+			'NON REACTIVE',
+			'NONREACTIVE',
+			'ABSENT',
+			'NORMAL',
+			'CLEAR',
+		].includes(normalized)
+	) {
+		return 'normal'
+	}
+
+	if (['POSITIVE', 'REACTIVE', 'PRESENT'].includes(normalized)) {
+		return 'high'
+	}
+
+	return 'unknown'
+}
+
 function toMetricResult(row: RawMetricRow): MetricResult {
 	const { canonicalId, displayName } = normalizeMetricName(row.rawName)
 	const referenceRange = parseReferenceRange(row.referenceRange, row.unit)
 	const numericValue = parseNumericValue(row.value)
-	const status = evaluateMetricStatus(numericValue, referenceRange)
+	const status = evaluateExtractedMetricStatus(
+		row.value,
+		referenceRange,
+		numericValue,
+	)
 
 	return {
 		rawName: row.rawName,
@@ -158,12 +195,27 @@ export function extractMetricsFromOcr(
 	ocrDocument: OcrDocumentResult,
 ): MetricExtractionResult {
 	const warnings: string[] = []
+	const thyrocareRows = isThyrocareOcrText(ocrDocument.rawText)
+		? extractThyrocareMetricsFromText(ocrDocument.rawText)
+		: []
 	const fromTables = extractRowsFromTables(ocrDocument.tables)
 	const fromText =
-		fromTables.length > 0 ? [] : extractRowsFromText(ocrDocument.rawText)
+		fromTables.length > 0 || thyrocareRows.length > 0
+			? []
+			: extractRowsFromText(ocrDocument.rawText)
 
-	if (fromTables.length === 0 && fromText.length === 0) {
+	if (
+		fromTables.length === 0 &&
+		fromText.length === 0 &&
+		thyrocareRows.length === 0
+	) {
 		warnings.push('No metric rows identified in OCR output.')
+	}
+
+	if (thyrocareRows.length > 0) {
+		warnings.push(
+			`Extracted ${thyrocareRows.length} metric row(s) using Thyrocare parser.`,
+		)
 	}
 
 	if (ocrDocument.tables.length > 1) {
@@ -172,7 +224,7 @@ export function extractMetricsFromOcr(
 		)
 	}
 
-	const merged = deduplicateRows([...fromTables, ...fromText])
+	const merged = deduplicateRows([...thyrocareRows, ...fromTables, ...fromText])
 	const unknownCount = merged.filter(
 		(row) => !normalizeMetricName(row.rawName).canonicalId,
 	).length

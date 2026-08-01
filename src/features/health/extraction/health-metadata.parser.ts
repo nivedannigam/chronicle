@@ -5,9 +5,11 @@ const LAB_PATTERN = /(?:Laboratory|Lab(?: Name)?)\s*[:.-]?\s*(.+)/i
 const PATIENT_PATTERN = /(?:Patient(?: Name)?)\s*[:.-]?\s*(.+)/i
 const DOCTOR_PATTERN = /(?:Doctor|Ref(?:erred)? By|Consultant)\s*[:.-]?\s*(.+)/i
 const REPORT_DATE_PATTERN =
-	/(?:Report Date|Date of Report)\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/i
+	/(?:Report Date|Date of Report|Report Released on \(RRT\))\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{2}\s+[A-Za-z]{3}\s+\d{4}(?:\s+\d{2}:\d{2})?)/i
+const THYROCARE_RRT_DATE_PATTERN =
+	/Report Released on \(RRT\)[\s\S]{0,400}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})/i
 const COLLECTION_DATE_PATTERN =
-	/(?:Collection Date|Sample Date|Collected On)\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/i
+	/(?:Collection Date|Sample Date|Collected On|Sample Collected on \(SCT\))\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{2}\s+[A-Za-z]{3}\s+\d{4}(?:\s+\d{2}:\d{2})?)/i
 const REFERENCE_NUMBER_PATTERN =
 	/(?:Reference(?: No|Number)?|Accession(?: No|Number)?|Lab ID)\s*[:.-]?\s*([A-Za-z0-9-]+)/i
 
@@ -51,9 +53,35 @@ const HEADER_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /diabetes panel|\bhba1c\b/i, type: 'diabetes' },
 ]
 
+const MONTHS: Record<string, string> = {
+	Jan: '01',
+	Feb: '02',
+	Mar: '03',
+	Apr: '04',
+	May: '05',
+	Jun: '06',
+	Jul: '07',
+	Aug: '08',
+	Sep: '09',
+	Oct: '10',
+	Nov: '11',
+	Dec: '12',
+}
+
 function parseDate(rawDate: string | null): string | null {
 	if (!rawDate) {
 		return null
+	}
+
+	const ddMmmYyyy = rawDate.match(/^(\d{2})\s+([A-Za-z]{3})\s+(\d{4})/)
+
+	if (ddMmmYyyy) {
+		const [, day, month, year] = ddMmmYyyy
+		const monthNumber = MONTHS[month]
+
+		if (monthNumber) {
+			return `${year}-${monthNumber}-${day}`
+		}
 	}
 
 	const normalized = rawDate.replace(/\//g, '-')
@@ -64,6 +92,42 @@ function parseDate(rawDate: string | null): string | null {
 	}
 
 	return parsed.toISOString().slice(0, 10)
+}
+
+function resolveLaboratory(text: string, fileName: string): string {
+	if (/Clinically Tested by\s*:\s*Thyrocare/i.test(text)) {
+		return 'Thyrocare Technologies Ltd'
+	}
+
+	if (
+		/thyrocare|Sohrabh Hall|Aarogyam|HDFC COMBO/i.test(`${text}\n${fileName}`)
+	) {
+		return 'Thyrocare'
+	}
+
+	const explicit = text.match(LAB_PATTERN)?.[1]?.trim()
+
+	if (explicit && !/^unknown$/i.test(explicit) && explicit.length < 80) {
+		return explicit
+	}
+
+	return 'Unknown Laboratory'
+}
+
+function resolveReportDate(text: string): string | null {
+	const headerBlock = text.slice(0, 1500)
+	const thyrocareDates = headerBlock.match(
+		/Processed At[\s\S]{0,500}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})[\s\S]{0,120}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})[\s\S]{0,120}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})/i,
+	)
+
+	if (thyrocareDates) {
+		return parseDate(thyrocareDates[3])
+	}
+
+	return (
+		parseDate(text.match(REPORT_DATE_PATTERN)?.[1] ?? null) ??
+		parseDate(text.match(THYROCARE_RRT_DATE_PATTERN)?.[1] ?? null)
+	)
 }
 
 /** Document header only — stops before metric table rows. */
@@ -146,8 +210,8 @@ export function parseReportMetadata(
 
 	return {
 		reportType: identifyReportType(text, fileName),
-		laboratory: text.match(LAB_PATTERN)?.[1]?.trim() ?? 'Unknown Laboratory',
-		reportDate: parseDate(text.match(REPORT_DATE_PATTERN)?.[1] ?? null),
+		laboratory: resolveLaboratory(text, fileName),
+		reportDate: resolveReportDate(text),
 		collectionDate: parseDate(text.match(COLLECTION_DATE_PATTERN)?.[1] ?? null),
 		referenceNumber: text.match(REFERENCE_NUMBER_PATTERN)?.[1]?.trim() ?? null,
 		patientName: text.match(PATIENT_PATTERN)?.[1]?.trim() ?? null,

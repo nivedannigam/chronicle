@@ -1,0 +1,227 @@
+
+
+PATIENT PLACEHOLDER(43Y/M)
+Aarogyam Full Body Checkup With Vitamins - New
+31 Jan 2023
+Complete Report
+Report for
+Tests asked
+Test date
+Report status
+
+ADDRESS PLACEHOLDER
+NAGAR PUNE
+Name
+SELF
+PATIENT PLACEHOLDER(43Y/M)
+Ref. By
+:
+:
+Note : This is summary page. Please refer to the table below for the details
+Report Availability Summary
+Full Report Available
+ADDRESS :
+Test
+Report Status
+Available
+● AAROGYAM FULL BODY CHECKUP WITH VITAMINS - NEW
+Available
+  25-OH VITAMIN D (TOTAL)
+Available
+  CARDIAC RISK MARKERS
+Available
+  CHLORIDE
+Available
+  COMPLETE URINE ANALYSIS
+Available
+  FASTING BLOOD SUGAR(GLUCOSE)
+Available
+  HbA1c
+Available
+  HEMOGRAM - 6 PART (DIFF)
+Available
+  IRON
+Available
+  KIDPRO
+Available
+  LIPID PROFILE
+Available
+  LIVER FUNCTION TESTS
+Available
+  SODIUM
+Available
+  TOTAL IRON BINDING CAPACITY (TIBC)
+Available
+  TOTAL THYROXINE (T4)
+Available
+  TOTAL TRIIODOTHYRONINE (T3)
+Available
+  TSH - ULTRASENSITIVE
+Available
+  UNSAT.IRON-BINDING CAPACITY(UIBC)
+Available
+  VITAMIN B-12
+Clinically Tested by : Thyrocare Technologies Ltd.
+Note : Underlined values are Critical Values, Clinician's attention required.
+
+NAME 
+SELF
+PATIENT PLACEHOLDER(43Y/M)
+REF. BY
+TEST ASKED
+AAROGYAM FULL BODY CHECKUP WITH VITAMINS - 
+NEW
+:
+:
+:
+ADDRESS PLACEHOLDER
+NAGAR PUNE
+HOME COLLECTION :
+TEST NAME
+OBSERVATIONUNITS
+REFERENCE RANGE
+COMPLETE URINOGRAM 
+VOLUME
+3
+mL
+-
+COLOUR
+Straw
+-
+Pale Yellow
+APPEARANCE
+CLEAR
+-
+Clear
+SPECIFIC GRAVITY
+1.02
+-
+1.003-1.030
+PH
+5
+-
+5 - 8
+URINARY PROTEIN
+ABSENT
+mg/dl
+Absent
+URINARY GLUCOSE
+ABSENT
+mg/dl
+Absent
+URINE KETONE
+ABSENT
+mg/dl
+Absent
+URINARY BILIRUBIN
+ABSENT
+mg/dl
+Absent
+UROBILINOGEN
+< 0.2
+mg/dl
+<=0.2
+BILE SALT
+ABSENT
+-
+Absent
+BILE PIGMENT
+ABSENT
+-
+Absent
+URINE BLOOD
+ABSENT
+Cells/ul*
+Absent
+NITRITE
+ABSENT
+-
+Absent
+MICROALBUMIN
+10
+mg/l
+< 20
+MUCUS
+ABSENT
+-
+Absent
+RED BLOOD CELLS
+ABSENT
+Cells/ul*
+Absent
+URINARY LEUCOCYTES (PUS CELLS)
+ABSENT
+Cells/ul*
+Absent
+EPITHELIAL CELLS
+1-2
+-
+0-4
+CASTS
+ABSENT
+-
+Absent
+CRYSTALS
+ABSENT
+-
+Absent
+BACTERIA
+ABSENT
+-
+Absent
+YEAST
+ABSENT
+-
+Absent
+PARASITE
+ABSENT
+-
+Absent
+* To Obtain Counts in Cells / HPF Divide the Cells / ul by 5
+Method :
+Please correlate with clinical conditions.
+Fully Automated DIRUI H-100 Urinalysis Dipstick Method, Microscopy
+URINE
+31 Jan 2023 17:11
+31 Jan 2023 14:03
+31 Jan 2023 07:59
+:
+:
+:
+:
+Sample Collected on (SCT)
+Sample Received on (SRT)
+Report  Released on (RRT)
+Sample Type
+AO148593
+:
+Barcode
+:
+3101080081/DG007
+Labcode
+Page : 1 of 14
+Dr Keerthi K MD(Path)
+Dr.Caesar Sengupta MD(Micro)
+Note:- Underlined values are Critical Values, Clinician's attention required.
+Clinically Tested by :Thyrocare Technologies Ltd - (NABL accredited)
+
+NAME 
+SELF
+PATIENT PLACEHOLDER(43Y/M)
+REF. BY
+TEST ASKED
+AAROGYAM FULL BODY CHECKUP WITH VITAMINS - NEW
+:
+:
+:
+ADDRESS PLACEHOLDER
+NAGAR PUNE
+HOME COLLECTION :
+TEST NAMETECHNOLOGY
+VALUE
+UNITS
+16.17C.L.I.A
+ng/ml
+25-OH VITAMIN D (TOTAL)
+DEFICIENCY : <20 ng/ml || INSUFFICIENCY : 20-<30 ng/ml 
+SUFFICIENCY : 30-100 
