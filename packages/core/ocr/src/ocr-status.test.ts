@@ -23,7 +23,7 @@ describe('ocr-status', () => {
 		expect(snapshot.configurationStatus).toBe('ready')
 		expect(snapshot.configurationStatusLabel).toBe('Ready')
 		expect(snapshot.latestProcessingError).toContain('22 pages')
-		expect(snapshot.latestProcessingError).toContain('multiple OCR batches')
+		expect(snapshot.latestProcessingError).toContain('smaller batches')
 		expect(
 			isOcrConfigurationError(snapshot.latestProcessingErrorRaw ?? ''),
 		).toBe(false)
@@ -81,6 +81,6 @@ describe('ocr-status', () => {
 			formatOcrRuntimeError(
 				'Google Document AI failed (400): PAGE_LIMIT_EXCEEDED limit: 15 got 22',
 			),
-		).toContain('multiple OCR batches')
+		).toContain('smaller batches')
 	})
 })

@@ -14,7 +14,7 @@ import {
 	resolveProviderPageLimit,
 	splitPageRange,
 } from './page-chunk-plan.ts'
-import { countPdfPages } from './pdf-chunking.ts'
+import { countPdfPages, extractPdfPageRange } from './pdf-chunking.ts'
 import {
 	isImageMimeType,
 	isPdfMimeType,
@@ -59,45 +59,73 @@ interface ProcessRangeInput {
 	imagelessModeEnabled: boolean
 	providerPageLimit: number
 	correlationId: string
-	usePageSelector: boolean
+}
+
+function isPartialPageRange(
+	range: PageChunkRange,
+	totalPages: number,
+): boolean {
+	return range.startPage !== 1 || range.endPage !== totalPages
+}
+
+async function resolveChunkDocument(input: ProcessRangeInput): Promise<{
+	documentBytes: Uint8Array
+	detectedPageCount: number
+	imagelessModeEnabled: boolean
+}> {
+	const partialRange = isPartialPageRange(input.range, input.totalPages)
+
+	if (partialRange && isPdfMimeType(input.mimeType)) {
+		const extractedBytes = await extractPdfPageRange(
+			input.documentBytes,
+			input.range.startPage,
+			input.range.endPage,
+		)
+
+		return {
+			documentBytes: extractedBytes,
+			detectedPageCount: input.range.pageCount,
+			// Sub-PDFs are already within provider chunk limits; standard mode is reliable.
+			imagelessModeEnabled: false,
+		}
+	}
+
+	return {
+		documentBytes: input.documentBytes,
+		detectedPageCount: input.totalPages,
+		imagelessModeEnabled: input.imagelessModeEnabled,
+	}
 }
 
 async function processPageRange(
 	input: ProcessRangeInput,
 ): Promise<Array<{ chunk: ParsedOcrChunk; byteLength: number }>> {
 	const {
-		documentBytes,
-		totalPages,
 		range,
 		endpoint,
 		accessToken,
 		mimeType,
-		imagelessModeEnabled,
 		providerPageLimit,
 		correlationId,
-		usePageSelector,
 	} = input
 
-	const shouldUseSelector = usePageSelector && range.pageCount < totalPages
-
 	try {
+		const chunkDocument = await resolveChunkDocument(input)
+
 		const parsed = await processDocumentAiChunk({
 			endpoint,
 			accessToken,
-			documentBytes,
+			documentBytes: chunkDocument.documentBytes,
 			mimeType,
-			imagelessModeEnabled,
-			detectedPageCount: totalPages,
+			imagelessModeEnabled: chunkDocument.imagelessModeEnabled,
+			detectedPageCount: chunkDocument.detectedPageCount,
 			providerPageLimit,
 			correlationId,
-			pageRange: shouldUseSelector
-				? { startPage: range.startPage, endPage: range.endPage }
-				: undefined,
 		})
 
 		return [
 			{
-				byteLength: documentBytes.length,
+				byteLength: chunkDocument.documentBytes.length,
 				chunk: {
 					...parsed,
 					startPage: range.startPage,
@@ -126,12 +154,8 @@ async function processPageRange(
 			)
 
 			const [leftChunks, rightChunks] = await Promise.all([
-				processPageRange({ ...input, range: leftRange, usePageSelector: true }),
-				processPageRange({
-					...input,
-					range: rightRange,
-					usePageSelector: true,
-				}),
+				processPageRange({ ...input, range: leftRange }),
+				processPageRange({ ...input, range: rightRange }),
 			])
 
 			return [...leftChunks, ...rightChunks]
@@ -157,7 +181,6 @@ async function runOrchestration(input: {
 		input.originalPageCount,
 		input.providerPageLimit,
 	)
-	const usePageSelector = initialChunks.length > 1
 
 	logStructured('ocr_orchestration_started', {
 		correlationId: input.correlationId,
@@ -185,7 +208,6 @@ async function runOrchestration(input: {
 			imagelessModeEnabled: input.imagelessModeEnabled,
 			providerPageLimit: input.providerPageLimit,
 			correlationId: input.correlationId,
-			usePageSelector,
 		})
 
 		for (const result of rangeResults) {
@@ -390,6 +412,7 @@ async function orchestratePdfOcr(input: {
 
 			return await runOrchestration({
 				...baseInput,
+				imagelessModeEnabled: false,
 				providerPageLimit: standardLimit,
 			})
 		}

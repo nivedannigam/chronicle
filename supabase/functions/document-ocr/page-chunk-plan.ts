@@ -206,7 +206,7 @@ export function formatOcrUserMessage(
 			message.match(/got\s+(\d+)/i) ?? message.match(/(\d+)\s+pages/i)
 		const pages = pageCount ?? pagesMatch?.[1] ?? 'many'
 
-		return `This report contains ${pages} pages. Chronicle is processing it in multiple OCR batches.`
+		return `This report has ${pages} pages. Chronicle splits large PDFs into smaller batches for OCR automatically — retry the import if processing was interrupted.`
 	}
 
 	if (/Google Document AI failed/i.test(message)) {

@@ -29,7 +29,7 @@ describe('provider-limits', () => {
 		expect(
 			formatOcrUserMessage('PAGE_LIMIT_EXCEEDED limit: 15 got 22', 22),
 		).toBe(
-			'This report contains 22 pages. Chronicle is processing it in multiple OCR batches.',
+			'This report has 22 pages. Chronicle splits large PDFs into smaller batches for OCR automatically — retry the import if processing was interrupted.',
 		)
 	})
 })
