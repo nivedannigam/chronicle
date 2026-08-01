@@ -28,7 +28,7 @@ async function fetchDriveConnected(userId: string): Promise<boolean> {
 }
 
 export function useHealthMemberSetup() {
-	const { user } = useAuth()
+	const { user, session, isLoading: authLoading } = useAuth()
 	const userId = user?.id
 	const { selectedMemberId } = useFamilyContext()
 	const importStatus = useHealthImportStatus(userId)
@@ -38,7 +38,7 @@ export function useHealthMemberSetup() {
 	const driveQuery = useQuery({
 		queryKey: queryKeys.connectors.connection(userId, 'google-drive'),
 		queryFn: () => fetchDriveConnected(userId!),
-		enabled: Boolean(userId),
+		enabled: Boolean(userId && session?.access_token) && !authLoading,
 		staleTime: STALE_TIME.connectorConnection,
 	})
 

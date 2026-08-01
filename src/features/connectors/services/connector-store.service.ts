@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import {
+	isUnauthorizedSupabaseError,
+	requireSupabaseSession,
+	SupabaseAuthRequiredError,
+} from '@/lib/supabase-session'
+import {
 	isMissingSchemaError,
 	missingSchemaMessage,
 } from '@/features/connectors/services/connector-schema.utils'
@@ -88,6 +93,22 @@ export async function getConnectorConnection(
 	userId: string,
 	connectorId: ConnectorId,
 ) {
+	let session
+
+	try {
+		session = await requireSupabaseSession()
+	} catch (error) {
+		if (error instanceof SupabaseAuthRequiredError) {
+			return null
+		}
+
+		throw error
+	}
+
+	if (session.user.id !== userId) {
+		throw new Error('Session user does not match requested connector user.')
+	}
+
 	const { data, error } = await supabase
 		.from('connector_connections')
 		.select('*')
@@ -96,7 +117,7 @@ export async function getConnectorConnection(
 		.maybeSingle()
 
 	if (error) {
-		if (isMissingSchemaError(error)) {
+		if (isMissingSchemaError(error) || isUnauthorizedSupabaseError(error)) {
 			return null
 		}
 

@@ -38,6 +38,16 @@ function emitProgress(
 	})
 }
 
+function isJourneyTerminalSuccess(
+	outcome: ImportJourneyResult['outcome'],
+): boolean {
+	return (
+		outcome === 'success' ||
+		outcome === 'partial_success' ||
+		outcome === 'no_reports'
+	)
+}
+
 function buildResult(
 	partial: Omit<ImportJourneyResult, 'phasesCompleted' | 'phasesSucceeded'> & {
 		phasesCompleted: ImportJourneyPhase[]
@@ -45,6 +55,18 @@ function buildResult(
 	},
 ): ImportJourneyResult {
 	return partial
+}
+
+function finalizeJourneySummary(
+	phasesCompleted: ImportJourneyPhase[],
+	phasesSucceeded: ImportJourneyPhase[],
+	outcome: ImportJourneyResult['outcome'],
+): void {
+	phasesCompleted.push('summary')
+
+	if (isJourneyTerminalSuccess(outcome)) {
+		phasesSucceeded.push('summary')
+	}
 }
 
 async function fetchCompletedReports(
@@ -125,8 +147,7 @@ export async function runHealthImportJourney(
 
 		if (importCandidates === 0) {
 			invalidateImportCaches(userId)
-			phasesCompleted.push('summary')
-			phasesSucceeded.push('summary')
+			finalizeJourneySummary(phasesCompleted, phasesSucceeded, 'no_reports')
 			emitProgress(onProgress, 'summary', phasesCompleted, phasesSucceeded)
 
 			return buildResult({
@@ -289,8 +310,7 @@ export async function runHealthImportJourney(
 			outcome = 'no_reports'
 		}
 
-		phasesCompleted.push('summary')
-		phasesSucceeded.push('summary')
+		finalizeJourneySummary(phasesCompleted, phasesSucceeded, outcome)
 		emitProgress(onProgress, 'summary', phasesCompleted, phasesSucceeded)
 
 		return buildResult({

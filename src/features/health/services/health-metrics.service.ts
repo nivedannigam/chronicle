@@ -3,6 +3,10 @@ import { mapMetricStatusToUi } from '@/features/health/extraction/metric-extract
 import { formatReferenceRange } from '@/features/health/extraction/reference-range.engine'
 import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import type { HealthMetric as UiHealthMetric } from '@/features/health/types'
+import {
+	isMissingSchemaError,
+	missingHealthMetricsMessage,
+} from '@/features/connectors/services/connector-schema.utils'
 import { supabase } from '@/lib/supabase'
 
 function mapStoredHealthMetric(
@@ -57,6 +61,14 @@ export async function fetchHealthMetricsForUser(
 	const { data, error } = await query
 
 	if (error) {
+		if (isMissingSchemaError(error)) {
+			if (import.meta.env.DEV) {
+				console.warn(missingHealthMetricsMessage())
+			}
+
+			return []
+		}
+
 		throw new Error(error.message)
 	}
 
@@ -86,6 +98,14 @@ export async function fetchHealthMetricsForReport(
 		.order('display_name', { ascending: true })
 
 	if (error) {
+		if (isMissingSchemaError(error)) {
+			if (import.meta.env.DEV) {
+				console.warn(missingHealthMetricsMessage())
+			}
+
+			return []
+		}
+
 		throw new Error(error.message)
 	}
 

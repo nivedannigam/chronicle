@@ -18,3 +18,7 @@ export function isMissingSchemaError(error: unknown): boolean {
 export function missingSchemaMessage(): string {
 	return 'Connector database tables are not set up yet. Run the connector migration in Supabase (see supabase/CONNECTOR_DB_SETUP.md).'
 }
+
+export function missingHealthMetricsMessage(): string {
+	return 'The health_metrics table is missing. Apply supabase/migrations/20260740120000_health_metrics.sql (run pnpm db:health-metrics or paste the migration in the Supabase SQL editor).'
+}

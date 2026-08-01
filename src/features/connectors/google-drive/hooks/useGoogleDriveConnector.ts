@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { connectorManager } from '@/core/connectors'
 import type { ConnectorConnectionStatus } from '@/core/connectors'
 import {
@@ -42,7 +43,9 @@ function resolveConnectionStatus(
 }
 
 export function useGoogleDriveConnector(userId: string | undefined) {
+	const { session, isLoading: authLoading } = useAuth()
 	const [actionError, setActionError] = useState<string | null>(null)
+	const isAuthenticated = Boolean(userId && session?.access_token)
 
 	const connectionQuery = useQuery({
 		queryKey: queryKeys.connectors.connection(userId, CONNECTOR_ID),
@@ -53,7 +56,7 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 			)
 			return getConnectorConnection(userId!, CONNECTOR_ID)
 		},
-		enabled: Boolean(userId),
+		enabled: isAuthenticated && !authLoading,
 		staleTime: STALE_TIME.connectorConnection,
 	})
 
@@ -71,7 +74,7 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 			)
 			return listConnectorFolders(userId!, CONNECTOR_ID)
 		},
-		enabled: Boolean(userId) && isConnected,
+		enabled: isAuthenticated && !authLoading && isConnected,
 		staleTime: STALE_TIME.connectorConnection,
 	})
 
@@ -84,7 +87,7 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 			)
 			return listRegistryRecords(userId!, CONNECTOR_ID)
 		},
-		enabled: Boolean(userId),
+		enabled: isAuthenticated && !authLoading,
 		staleTime: STALE_TIME.connectorRegistry,
 	})
 
@@ -97,7 +100,7 @@ export function useGoogleDriveConnector(userId: string | undefined) {
 			)
 			return getLatestSyncRun(userId!, CONNECTOR_ID)
 		},
-		enabled: Boolean(userId),
+		enabled: isAuthenticated && !authLoading,
 		staleTime: STALE_TIME.connectorRegistry,
 	})
 

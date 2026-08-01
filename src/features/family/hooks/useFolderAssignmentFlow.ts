@@ -239,11 +239,11 @@ export function useFolderAssignmentFlow({
 					primaryError: message,
 					errorSamples: [message],
 					phasesCompleted: ['assign', 'scanning', 'summary'],
-					phasesSucceeded: ['assign', 'summary'],
+					phasesSucceeded: ['assign'],
 				})
 				setJourneyPhase('summary')
 				setJourneyPhasesCompleted(['assign', 'scanning', 'summary'])
-				setJourneyPhasesSucceeded(['assign', 'summary'])
+				setJourneyPhasesSucceeded(['assign'])
 			} finally {
 				setIsJourneyRunning(false)
 			}

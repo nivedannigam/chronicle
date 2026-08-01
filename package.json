@@ -13,6 +13,7 @@
 		"format:check": "prettier --check .",
 		"prepare": "husky",
 		"db:connectors": "node scripts/apply-connector-migration.mjs",
+		"db:health-metrics": "node scripts/apply-health-metrics-migration.mjs",
 		"test:drive-connector": "node scripts/test-drive-connector.mjs"
 	},
 	"dependencies": {

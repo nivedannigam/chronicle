@@ -7,6 +7,10 @@ import {
 import type { PersistHealthMetricsInput } from '@/features/health/types/health-metric-record.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import {
+	isMissingSchemaError,
+	missingHealthMetricsMessage,
+} from '@/features/connectors/services/connector-schema.utils'
 import { supabase } from '@/lib/supabase'
 
 function resolveMetricCategory(
@@ -78,13 +82,28 @@ async function resolveWorkflowItemId(reportId: string): Promise<string | null> {
 	return (data?.id as string | undefined) ?? null
 }
 
+function rethrowMetricsSchemaError(error: unknown): never {
+	if (isMissingSchemaError(error)) {
+		throw new Error(missingHealthMetricsMessage())
+	}
+
+	throw error instanceof Error ? error : new Error(String(error))
+}
+
 export async function persistHealthMetrics(
 	input: PersistHealthMetricsInput,
 ): Promise<number> {
 	const { userId, reportId, familyMemberId, healthReport } = input
 
 	if (healthReport.metrics.length === 0) {
-		await supabase.from('health_metrics').delete().eq('report_id', reportId)
+		const { error: deleteError } = await supabase
+			.from('health_metrics')
+			.delete()
+			.eq('report_id', reportId)
+
+		if (deleteError) {
+			rethrowMetricsSchemaError(deleteError)
+		}
 
 		return 0
 	}
@@ -121,7 +140,7 @@ export async function persistHealthMetrics(
 		.eq('report_id', reportId)
 
 	if (deleteError) {
-		throw new Error(deleteError.message)
+		rethrowMetricsSchemaError(deleteError)
 	}
 
 	const { error: insertError } = await supabase
@@ -129,7 +148,7 @@ export async function persistHealthMetrics(
 		.insert(rows)
 
 	if (insertError) {
-		throw new Error(insertError.message)
+		rethrowMetricsSchemaError(insertError)
 	}
 
 	return rows.length
@@ -154,6 +173,10 @@ export async function backfillHealthMetricsFromReports(
 			.eq('report_id', report.id)
 
 		if (countError) {
+			if (isMissingSchemaError(countError)) {
+				return 0
+			}
+
 			throw new Error(countError.message)
 		}
 

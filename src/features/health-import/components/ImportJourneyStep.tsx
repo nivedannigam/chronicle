@@ -106,10 +106,7 @@ export function ImportJourneyStep({
 					const isFailed =
 						phase === 'summary' &&
 						completedSet.has(step.phase) &&
-						!succeededSet.has(step.phase) &&
-						(step.phase === 'download' ||
-							step.phase === 'ocr' ||
-							step.phase === 'metrics')
+						!succeededSet.has(step.phase)
 					const isActive =
 						step.phase === phase && phase !== 'summary' && isRunning
 
