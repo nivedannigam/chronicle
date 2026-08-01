@@ -3,8 +3,10 @@ import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.t
 /** Human-first response layout for every Ask turn. */
 export interface StructuredAskResponse {
 	directAnswer: string
+	keyFindings: string[]
 	explanation: string | null
 	recommendations: string[]
+	limitations: string[]
 	hasEvidence: boolean
 	relatedQuestions: string[]
 	confidenceLevel: ConfidenceLevel

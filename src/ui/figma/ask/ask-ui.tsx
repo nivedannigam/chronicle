@@ -342,6 +342,30 @@ export function AskStructuredResponseView({
 				{structured.directAnswer}
 			</p>
 
+			{structured.keyFindings.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>Key Findings</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.keyFindings.map((item) => (
+							<li
+								key={item}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
+
 			{structured.explanation ? (
 				<div style={{ marginBottom: 14 }}>
 					<AskSectionLabel>Explanation</AskSectionLabel>
@@ -382,7 +406,28 @@ export function AskStructuredResponseView({
 				</div>
 			) : null}
 
-			{structured.uncertaintyNote ? (
+			{structured.limitations.length > 0 ? (
+				<div
+					style={{
+						background: `${FC.amber}10`,
+						border: `1px solid ${FC.amber}22`,
+						borderRadius: 14,
+						padding: '10px 12px',
+						marginBottom: 14,
+					}}
+				>
+					<p
+						style={{
+							color: FC.amber,
+							fontSize: 13,
+							margin: 0,
+							lineHeight: 1.5,
+						}}
+					>
+						{structured.limitations.join(' ')}
+					</p>
+				</div>
+			) : structured.uncertaintyNote ? (
 				<div
 					style={{
 						background: `${FC.amber}10`,

@@ -128,6 +128,7 @@ export interface AskConversationTurn {
 	id: string
 	question: string
 	answer: string
+	clinicalAnswer?: import('@/features/ask/clinical/clinical-response.types').ClinicalAnswer
 	cards: AnswerCardData[]
 	relatedReports: RelatedReportRef[]
 	relatedMetrics: RelatedMetricRef[]

@@ -1,4 +1,3 @@
-import { C } from '@/constants/colors'
 import type {
 	AnswerCardData,
 	AskConversationTurn,
@@ -16,9 +15,16 @@ import {
 	shouldIncludeAnswerCards,
 } from '@/features/personalization/services/response-adapter.service'
 import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
-import type { AskMetricStatus } from '@/features/ask/types/ask.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import {
+	buildClinicalAnswer,
+	buildClinicalCards,
+	buildClinicalEvidenceLines,
+	clinicalAnswerToProse,
+	rankEvidence,
+	selectImportantMetrics,
+} from '@/features/ask/clinical'
 
 function formatTimestamp(iso: string): string {
 	return new Date(iso).toLocaleString('en-US', {
@@ -88,8 +94,10 @@ function buildEvidenceCitations(
 	knowledge: RetrievedKnowledge,
 ): EvidenceCitation[] {
 	const citations: EvidenceCitation[] = []
+	const ranked = rankEvidence(knowledge)
+	const important = selectImportantMetrics(ranked, 6)
 
-	for (const metric of resolvedMetrics(knowledge).slice(0, 6)) {
+	for (const metric of important) {
 		const report = knowledge.reports.find((item) => item.id === metric.reportId)
 		citations.push({
 			reportId: metric.reportId,
@@ -97,6 +105,7 @@ function buildEvidenceCitations(
 			hospital: report?.lab ?? '',
 			date: metric.observedAt || report?.date || '',
 			metricName: metric.displayName,
+			metricId: metric.canonicalId,
 			source: knowledge.domain,
 		})
 	}
@@ -115,176 +124,24 @@ function buildEvidenceCitations(
 		})
 	}
 
-	for (const timeline of knowledge.timelines.slice(0, 2)) {
-		const latest = timeline.observations[timeline.observations.length - 1]
-
-		if (!latest) {
-			continue
-		}
-
-		citations.push({
-			reportId: latest.reportId,
-			reportTitle: latest.reportTitle,
-			hospital: '',
-			date: latest.observedAt,
-			metricName: timeline.displayName,
-			timelineRef: `${timeline.displayName} timeline`,
-			source: knowledge.domain,
-		})
-	}
-
 	return citations.slice(0, 8)
 }
 
 function buildEvidenceLines(knowledge: RetrievedKnowledge): string[] {
-	const lines: string[] = []
+	const clinical = buildClinicalAnswer({
+		knowledge,
+		question: '',
+		dataAvailable: true,
+	})
 
-	for (const metric of resolvedMetrics(knowledge).slice(0, 4)) {
-		lines.push(
-			`${metric.displayName}: ${metric.latestValue} (${metric.status}) — ${metric.reportTitle}, ${formatTimestamp(metric.observedAt)}`,
-		)
-	}
-
-	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 2)) {
-		lines.push(`${report.title} · ${report.lab} · ${report.date}`)
-	}
-
-	return lines
+	return buildClinicalEvidenceLines(clinical)
 }
 
-function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
-	const cards: AnswerCardData[] = []
-
-	if (knowledge.summaryLines.length > 0) {
-		cards.push({
-			type: 'summary',
-			id: 'summary-grounded',
-			text: knowledge.summaryLines.slice(0, 3).join(' '),
-		})
-	}
-
-	if (knowledge.semanticTimeline && knowledge.semanticTimeline.length > 0) {
-		for (const group of knowledge.semanticTimeline.slice(-3)) {
-			cards.push({
-				type: 'timeline',
-				id: `journey-${group.year}`,
-				items: group.events.slice(0, 6).map((event) => ({
-					title: event.label,
-					date: event.date,
-					status: event.kind,
-					reportId: event.reportId,
-				})),
-			})
-		}
-	}
-
-	for (const trend of knowledge.trends.slice(0, 2)) {
-		const history = knowledge.metricHistories?.find(
-			(item) => item.canonicalId === trend.metricId,
-		)
-
-		if (!history) {
-			continue
-		}
-
-		cards.push({
-			type: 'summary',
-			id: `trend-summary-${trend.metricId}`,
-			text: `${trend.displayName}: ${history.previousValue ?? '—'} → ${history.latestValue} (${trend.direction}, ${trend.changePercent}). Range ${history.lowest ?? '—'}–${history.highest ?? '—'}.`,
-		})
-	}
-
-	for (const metric of resolvedMetrics(knowledge).slice(0, 4)) {
-		cards.push({
-			type: 'metric',
-			id: `metric-${metric.canonicalId}`,
-			name: metric.displayName,
-			value: metric.latestValue,
-			reference: metric.referenceRange,
-			status: metric.status as AskMetricStatus,
-			reportTitle: metric.reportTitle,
-			reportDate: metric.observedAt,
-		})
-	}
-
-	for (const timeline of knowledge.timelines.slice(0, 2)) {
-		cards.push({
-			type: 'timeline',
-			id: `timeline-${timeline.metricId}`,
-			items: timeline.observations.map((observation) => ({
-				title: `${observation.displayName}: ${observation.value}`,
-				date: observation.observedAt,
-				status: observation.status,
-				reportId: observation.reportId,
-			})),
-		})
-
-		if (
-			timeline.observations.filter((item) => item.value.match(/\d/)).length >= 2
-		) {
-			cards.push({
-				type: 'trend',
-				id: `trend-${timeline.metricId}`,
-				name: timeline.displayName,
-				unit: timeline.unit ?? '',
-				color: C.accent,
-				values: timeline.observations
-					.filter((observation) => /\d/.test(observation.value))
-					.map((observation) => ({
-						date: observation.observedAt,
-						label: new Date(observation.observedAt).toLocaleDateString(
-							'en-US',
-							{ month: 'short' },
-						),
-						value: Number.parseFloat(
-							observation.value.match(/-?\d+\.?\d*/)?.[0] ?? '0',
-						),
-						reportId: observation.reportId,
-					})),
-				latestValue: timeline.baseline.latest,
-			})
-		}
-	}
-
-	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 2)) {
-		cards.push({
-			type: 'report',
-			id: `report-${report.id}`,
-			reportId: report.id,
-			title: report.title,
-			date: report.date,
-			lab: report.lab,
-			category: report.category,
-			summary: report.summary,
-		})
-	}
-
-	if (knowledge.intent === 'compare_reports') {
-		for (const comparison of knowledge.comparisons.slice(0, 1)) {
-			cards.push({
-				type: 'comparison',
-				id: comparison.id,
-				label: comparison.label,
-				olderLabel: comparison.olderLabel,
-				newerLabel: comparison.newerLabel,
-				metrics: comparison.metrics.map((metric) => ({
-					...metric,
-					status: metric.status as AskMetricStatus,
-				})),
-			})
-		}
-	}
-
-	for (const alert of knowledge.alerts.slice(0, 2)) {
-		cards.push({
-			type: 'alert',
-			id: `alert-${alert.slice(0, 24)}`,
-			message: alert,
-			severity: 'attention',
-		})
-	}
-
-	return cards
+function buildCards(
+	knowledge: RetrievedKnowledge,
+	clinical: ReturnType<typeof buildClinicalAnswer>,
+): AnswerCardData[] {
+	return buildClinicalCards(clinical, knowledge)
 }
 
 function buildGroundedAnswer(input: {
@@ -303,119 +160,14 @@ function buildGroundedAnswer(input: {
 		].join(' ')
 	}
 
-	const knowledge = input.knowledge
-	const lines: string[] = []
-	const memberPrefix = input.memberName ? `For ${input.memberName}, ` : ''
+	const clinical = buildClinicalAnswer({
+		knowledge: input.knowledge,
+		question: input.question,
+		memberName: input.memberName,
+		dataAvailable: input.dataAvailable,
+	})
 
-	if (knowledge.intent === 'organ_status' && knowledge.metrics.length > 0) {
-		const focusLabel =
-			knowledge.metrics[0]?.categoryId?.replace(/_/g, ' ') ??
-			input.question.replace(/how is my|how are my|how's my|\?/gi, '').trim()
-
-		const metricSummaries = knowledge.metrics
-			.slice(0, 4)
-			.map(
-				(metric) =>
-					`${metric.displayName} is ${metric.latestValue} (${metric.status}) from ${metric.reportTitle} on ${metric.observedAt}`,
-			)
-
-		lines.push(
-			`${memberPrefix}based on your records${focusLabel ? ` for ${focusLabel}` : ''}: ${metricSummaries.join('. ')}.`,
-		)
-	} else if (knowledge.summaryLines.length > 0) {
-		lines.push(
-			`${memberPrefix}based on your Chronicle records, ${knowledge.summaryLines[0]!.toLowerCase()}`,
-		)
-	} else if (knowledge.metrics.length > 0) {
-		const metric = knowledge.metrics[0]!
-		lines.push(
-			`${memberPrefix}in your records, the latest ${metric.displayName} is ${metric.latestValue} (${metric.status}) from ${metric.reportTitle} on ${metric.observedAt}.`,
-		)
-	} else if (knowledge.reports.length > 0) {
-		lines.push(
-			`${memberPrefix}I found ${knowledge.reports.length} related report${knowledge.reports.length === 1 ? '' : 's'} in your records.`,
-		)
-	}
-
-	if (
-		knowledge.intent !== 'organ_status' &&
-		knowledge.timelines.length > 0 &&
-		/trend|change|over|history|lowest|highest|journey|since last year/i.test(
-			input.question,
-		)
-	) {
-		const timeline = knowledge.timelines[0]!
-		const first = timeline.observations[0]
-		const last = timeline.observations[timeline.observations.length - 1]
-
-		if (first && last && first.id !== last.id) {
-			lines.push(
-				`${timeline.displayName} moved from ${first.value} (${first.reportTitle}) to ${last.value} (${last.reportTitle}). Trend: ${timeline.trend}.`,
-			)
-		}
-	}
-
-	if (
-		knowledge.intent !== 'organ_status' &&
-		knowledge.semanticTimeline &&
-		knowledge.semanticTimeline.length > 0
-	) {
-		const recent = knowledge.semanticTimeline.slice(-2)
-
-		for (const group of recent) {
-			if (group.events.length > 0) {
-				lines.push(
-					`In ${group.year}: ${group.events.map((event) => event.label).join('; ')}.`,
-				)
-			}
-		}
-	}
-
-	if (knowledge.metricHistories && knowledge.metricHistories.length > 0) {
-		const history = knowledge.metricHistories[0]!
-
-		if (/how has|changed over|since last year/i.test(input.question)) {
-			lines.push(
-				`${history.displayName} changed from ${history.previousValue ?? '—'} to ${history.latestValue} (${history.trendDirection}, ${history.changePercent ?? '—'}).`,
-			)
-		}
-	}
-
-	if (
-		knowledge.intent === 'doctor_discussion' ||
-		knowledge.intent === 'attention_summary'
-	) {
-		const discussionPoints = [
-			...knowledge.alerts.slice(0, 2),
-			...knowledge.insights.slice(0, 3),
-		]
-
-		if (discussionPoints.length > 0) {
-			lines.push(
-				`Based on your Chronicle records, you may want to review: ${discussionPoints.join('; ')}.`,
-			)
-		}
-	}
-
-	if (
-		knowledge.intent === 'summarize_health' ||
-		knowledge.intent === 'health_journey'
-	) {
-		if (knowledge.insights.length > 0) {
-			lines.push(knowledge.insights.slice(0, 3).join(' '))
-		}
-	}
-
-	if (
-		knowledge.intent === 'since_last_report' &&
-		knowledge.summaryLines.length > 0
-	) {
-		lines.push(knowledge.summaryLines[0]!)
-	}
-
-	lines.push('This is informational and not medical advice.')
-
-	return lines.join(' ')
+	return clinicalAnswerToProse(clinical)
 }
 
 export function buildGroundedTurn(input: {
@@ -458,6 +210,15 @@ export function buildGroundedTurn(input: {
 		domains: input.domains,
 	})
 
+	const clinicalAnswer = input.dataAvailable
+		? buildClinicalAnswer({
+				knowledge,
+				question: input.question,
+				memberName: input.member.memberName,
+				dataAvailable: input.dataAvailable,
+			})
+		: undefined
+
 	const rawAnswer = buildGroundedAnswer({
 		knowledge: input.knowledge,
 		question: input.question,
@@ -486,20 +247,23 @@ export function buildGroundedTurn(input: {
 		followUpQuestions,
 		intentConfidence: input.confidence,
 		uploadedReports: input.uploadedReports,
+		clinicalAnswer,
 	})
 
 	return {
 		id: crypto.randomUUID(),
 		question: input.question,
 		answer: trust.directAnswer,
+		clinicalAnswer,
 		cards:
 			input.dataAvailable &&
+			clinicalAnswer &&
 			(!input.personalContext ||
 				shouldIncludeAnswerCards(
 					input.personalContext.preferences.communicationStyle,
 					input.personalContext.preferences.displayFormat,
 				))
-				? buildCards(knowledge)
+				? buildCards(knowledge, clinicalAnswer)
 				: [],
 		relatedReports: trust.supportingReports,
 		relatedMetrics,
@@ -569,6 +333,7 @@ export function attachTrustToTurn(
 		followUpQuestions: turn.followUpQuestions,
 		intentConfidence: input.confidence,
 		uploadedReports: input.uploadedReports,
+		clinicalAnswer: turn.clinicalAnswer,
 	})
 
 	return {

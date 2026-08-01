@@ -21,6 +21,10 @@ function splitAnswerParagraphs(answer: string): string[] {
 function buildRecommendations(turn: AskConversationTurn): string[] {
 	const recommendations: string[] = []
 
+	if (turn.clinicalAnswer?.recommendations.length) {
+		recommendations.push(...turn.clinicalAnswer.recommendations)
+	}
+
 	for (const card of turn.cards) {
 		if (card.type === 'alert') {
 			recommendations.push(card.message)
@@ -28,12 +32,6 @@ function buildRecommendations(turn: AskConversationTurn): string[] {
 
 		if (card.type === 'action') {
 			recommendations.push(`${card.title} — ${card.dueLabel}`)
-		}
-	}
-
-	if (turn.trust?.missingInformation.length) {
-		for (const line of turn.trust.missingInformation.slice(0, 2)) {
-			recommendations.push(line)
 		}
 	}
 
@@ -46,16 +44,24 @@ function buildRecommendations(turn: AskConversationTurn): string[] {
 		)
 	}
 
-	return recommendations.slice(0, 4)
+	return [...new Set(recommendations)].slice(0, 4)
+}
+
+function buildLimitations(turn: AskConversationTurn): string[] {
+	const limitations: string[] = []
+
+	if (turn.clinicalAnswer?.limitations.length) {
+		limitations.push(...turn.clinicalAnswer.limitations)
+	}
+
+	return [...new Set(limitations)].slice(0, 2)
 }
 
 function buildUncertaintyNote(turn: AskConversationTurn): string | null {
-	if (turn.confidenceLevel === 'high' && turn.dataAvailable) {
-		return null
-	}
+	const limitations = buildLimitations(turn)
 
-	if (turn.trust?.missingInformation[0]) {
-		return turn.trust.missingInformation[0]!
+	if (limitations.length > 0) {
+		return limitations[0]!
 	}
 
 	if (!turn.dataAvailable) {
@@ -72,10 +78,15 @@ function buildUncertaintyNote(turn: AskConversationTurn): string | null {
 export function buildStructuredResponse(
 	turn: AskConversationTurn,
 ): StructuredAskResponse {
+	const clinical = turn.clinicalAnswer
 	const paragraphs = splitAnswerParagraphs(turn.answer)
-	const directAnswer = paragraphs[0] ?? stripSafetyFooter(turn.answer)
+	const directAnswer =
+		clinical?.executiveSummary ??
+		paragraphs[0] ??
+		stripSafetyFooter(turn.answer)
+	const keyFindings = clinical?.keyFindings ?? []
 	const explanation =
-		paragraphs.length > 1 ? paragraphs.slice(1).join('\n\n') : null
+		!clinical && paragraphs.length > 1 ? paragraphs.slice(1).join('\n\n') : null
 
 	const relatedQuestions = Array.from(
 		new Set([
@@ -84,10 +95,14 @@ export function buildStructuredResponse(
 		]),
 	).slice(0, 5)
 
+	const limitations = buildLimitations(turn)
+
 	return {
 		directAnswer,
+		keyFindings,
 		explanation,
 		recommendations: buildRecommendations(turn),
+		limitations,
 		hasEvidence: Boolean(
 			turn.trust?.evidenceItems.length ||
 			turn.citations.length ||

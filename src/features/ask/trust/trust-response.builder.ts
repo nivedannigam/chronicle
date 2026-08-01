@@ -3,6 +3,7 @@ import type {
 	RelatedMetricRef,
 	RelatedReportRef,
 } from '@/features/ask/types'
+import type { ClinicalAnswer } from '@/features/ask/clinical/clinical-response.types'
 import {
 	computeTrustConfidence,
 	detectReportDisagreements,
@@ -103,14 +104,45 @@ function findOcrExcerpt(input: {
 	return truncateExcerpt(report.extracted_text.slice(0, 200))
 }
 
+function formatEvidenceDate(value: string | undefined): string {
+	if (!value?.trim()) {
+		return ''
+	}
+
+	const date = new Date(value)
+
+	if (Number.isNaN(date.getTime())) {
+		return value
+	}
+
+	return date.toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	})
+}
+
 export function buildTrustEvidenceItems(input: {
 	knowledge: RetrievedKnowledge
 	uploadedReports?: unknown[]
+	clinicalAnswer?: ClinicalAnswer
+	cardMetricIds?: string[]
 }): TrustEvidenceItem[] {
 	const items: TrustEvidenceItem[] = []
 	const { knowledge } = input
+	const cardMetricIds = new Set(input.cardMetricIds ?? [])
 
-	for (const metric of knowledge.metrics.slice(0, 8)) {
+	const metrics = input.clinicalAnswer
+		? input.clinicalAnswer.rankedEvidence.metrics.filter((metric) =>
+				input.clinicalAnswer!.importantMetricIds.includes(metric.canonicalId),
+			)
+		: knowledge.metrics.filter((metric) => metric.status !== 'unknown')
+
+	for (const metric of metrics.slice(0, 6)) {
+		if (cardMetricIds.has(metric.canonicalId)) {
+			continue
+		}
+
 		const ocrExcerpt = findOcrExcerpt({
 			reportId: metric.reportId,
 			metricName: metric.displayName,
@@ -121,7 +153,7 @@ export function buildTrustEvidenceItems(input: {
 			id: `ev-metric-${metric.reportId}-${metric.canonicalId}`,
 			reportId: metric.reportId,
 			reportTitle: metric.reportTitle,
-			reportDate: metric.observedAt,
+			reportDate: formatEvidenceDate(metric.observedAt),
 			hospital: knowledge.reports.find(
 				(report) => report.id === metric.reportId,
 			)?.lab,
@@ -135,7 +167,7 @@ export function buildTrustEvidenceItems(input: {
 		})
 	}
 
-	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 6)) {
+	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 4)) {
 		if (items.some((item) => item.reportId === report.id && !item.metricName)) {
 			continue
 		}
@@ -149,7 +181,7 @@ export function buildTrustEvidenceItems(input: {
 			id: `ev-report-${report.id}`,
 			reportId: report.id,
 			reportTitle: report.title,
-			reportDate: report.date,
+			reportDate: formatEvidenceDate(report.date),
 			hospital: report.lab,
 			ocrExcerpt,
 			section: ocrExcerpt ? 'OCR text' : 'Report metadata',
@@ -158,13 +190,14 @@ export function buildTrustEvidenceItems(input: {
 		})
 	}
 
-	return items.slice(0, 10)
+	return items.slice(0, 8)
 }
 
 function buildMissingInformation(input: {
 	knowledge: RetrievedKnowledge
 	dataAvailable: boolean
 	question: string
+	clinicalAnswer?: ClinicalAnswer
 }): string[] {
 	const missing: string[] = []
 
@@ -197,9 +230,19 @@ function buildMissingInformation(input: {
 		)
 	}
 
-	if (missing.length === 0 && input.knowledge.reports.length === 1) {
+	const trendQuestion = /trend|compare|change over|history|journey/i.test(
+		input.question,
+	)
+	const singleReport = input.clinicalAnswer?.rankedEvidence.singleReport
+
+	if (
+		missing.length === 0 &&
+		singleReport &&
+		trendQuestion &&
+		!input.clinicalAnswer?.limitations.length
+	) {
 		missing.push(
-			'Only one report is available — trends and comparisons may be limited.',
+			'Only one report is available — trend analysis requires at least two readings over time.',
 		)
 	}
 
@@ -248,15 +291,22 @@ export function buildTrustResponse(input: {
 	followUpQuestions: string[]
 	intentConfidence?: number
 	uploadedReports?: unknown[]
+	clinicalAnswer?: ClinicalAnswer
 }): TrustResponse {
 	const disagreements = input.dataAvailable
 		? detectReportDisagreements(input.knowledge)
 		: []
 
+	const cardMetricIds =
+		input.clinicalAnswer?.importantMetricIds ??
+		input.knowledge.metrics.slice(0, 4).map((metric) => metric.canonicalId)
+
 	const evidenceItems = input.dataAvailable
 		? buildTrustEvidenceItems({
 				knowledge: input.knowledge,
 				uploadedReports: input.uploadedReports,
+				clinicalAnswer: input.clinicalAnswer,
+				cardMetricIds,
 			})
 		: []
 
@@ -277,6 +327,7 @@ export function buildTrustResponse(input: {
 		knowledge: input.knowledge,
 		dataAvailable: input.dataAvailable,
 		question: input.question,
+		clinicalAnswer: input.clinicalAnswer,
 	})
 
 	let directAnswer = input.answer
