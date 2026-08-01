@@ -70,6 +70,17 @@ export function ImportDebugPage() {
 			<div style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
 				Import Debug
 			</div>
+			<div
+				style={{
+					fontSize: 12,
+					color: C.textMuted,
+					marginBottom: 16,
+					lineHeight: 1.6,
+				}}
+			>
+				Dev tools: {ROUTES.healthImportReview} · {ROUTES.healthValidation} ·{' '}
+				{ROUTES.connectorsDebug}
+			</div>
 
 			<button
 				type="button"

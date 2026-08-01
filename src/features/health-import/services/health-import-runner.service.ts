@@ -43,6 +43,8 @@ import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
 } from '@/features/health/services/health-processing.service'
+import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
+import type { UploadedHealthReport } from '@/features/health/types'
 import { supabase } from '@/lib/supabase'
 import type { ConnectorSyncMode } from '@/core/connectors'
 
@@ -269,7 +271,10 @@ async function importRegistryRecord(
 		code?: string
 	} | null = null
 
-	if (report?.status === 'completed') {
+	if (
+		report?.status === 'completed' &&
+		isReportDisplayReady(report as unknown as UploadedHealthReport)
+	) {
 		onImportPhase?.('ocr')
 		onImportPhase?.('metrics')
 
@@ -410,13 +415,12 @@ async function importRegistryRecord(
 
 	const processed = await processHealthReport(report.id as string)
 
-	await updateRegistryRecord(registryId, {
-		importStatus:
-			processed.status === 'completed' ? 'knowledge_graph' : 'failed',
-		errorMessage: processed.processing_error,
-	})
-
 	if (processed.status === 'completed') {
+		await updateRegistryRecord(registryId, {
+			importStatus: 'knowledge_graph',
+			errorMessage: null,
+		})
+
 		invalidateHealthKnowledgeCache(userId)
 
 		await updateRegistryRecord(registryId, {
@@ -424,27 +428,38 @@ async function importRegistryRecord(
 			registryStatus: 'completed',
 			knowledgeGraphStatus: 'indexed',
 		})
-	} else {
-		await updateRegistryRecord(registryId, {
-			importStatus: 'failed',
-			registryStatus: 'failed',
-			errorMessage: processed.processing_error ?? 'Processing failed',
-		})
 
-		await safeTransitionWorkflowItem({
-			registryId,
-			toState: 'FAILED',
-			context: {
-				userId,
-				reportId: report.id as string,
-				failureReason: processed.processing_error ?? 'Processing failed',
-			},
-		})
+		importStartTimes.delete(registryId)
+
+		return { reportId: report.id as string, outcome: 'imported' }
 	}
+
+	const partialError =
+		processed.processing_error ??
+		(processed.status === 'parsed'
+			? 'No laboratory metrics could be extracted from this report.'
+			: 'Processing failed')
+
+	await updateRegistryRecord(registryId, {
+		importStatus: 'failed',
+		registryStatus: 'failed',
+		errorMessage: partialError,
+	})
+
+	await safeTransitionWorkflowItem({
+		registryId,
+		toState: processed.status === 'parsed' ? 'PENDING_REVIEW' : 'FAILED',
+		context: {
+			userId,
+			reportId: report.id as string,
+			failureReason: partialError,
+			failedStage: processed.status === 'parsed' ? 'PARSING' : 'OCR',
+		},
+	})
 
 	importStartTimes.delete(registryId)
 
-	return { reportId: report.id as string, outcome: 'imported' }
+	return { reportId: report.id as string, outcome: 'failed' }
 }
 
 export async function processImportQueueWithProgress(
@@ -518,6 +533,8 @@ export async function processImportQueueWithProgress(
 
 				if (payload?.outcome === 'imported') {
 					runResult.importedThisRun += 1
+				} else if (payload?.outcome === 'failed') {
+					runResult.failedThisRun += 1
 				} else {
 					runResult.skippedThisRun += 1
 				}

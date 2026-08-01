@@ -1,6 +1,8 @@
 -- Reset all scan/import health data for one user while keeping family setup.
 -- Run in Supabase SQL Editor. Replace the UUID with your auth.users.id.
--- Note: this does not remove files from the health-reports storage bucket.
+--
+-- After running: also delete objects under your user folder in the
+-- Supabase Storage bucket `health-reports` (Dashboard -> Storage).
 
 DO $$
 DECLARE

@@ -85,6 +85,11 @@ function finalizeJourneySummary(
 ): void {
 	phasesCompleted.push('summary')
 
+	if (outcome === 'candidates_found') {
+		phasesSucceeded.push('summary')
+		return
+	}
+
 	if (
 		isJourneyTerminalSuccess(outcome) &&
 		pipelinePhasesSucceeded(phasesCompleted, phasesSucceeded)

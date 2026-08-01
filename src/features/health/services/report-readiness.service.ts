@@ -1,5 +1,43 @@
+import { classifyReportType } from '@/features/health-intelligence/services/report-type.classifier'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type { UploadedHealthReport } from '@/features/health/types'
+
+const METRICLESS_COMPLETE_KINDS = new Set(['ecg', 'radiology'])
+
+export function textIndicatesMetriclessReportType(text: string): boolean {
+	const normalized = text.toLowerCase()
+
+	return (
+		normalized.includes('ecg') ||
+		normalized.includes('electrocardiogram') ||
+		normalized.includes('ekg') ||
+		normalized.includes('mri') ||
+		normalized.includes(' ct ') ||
+		normalized.includes('x-ray') ||
+		normalized.includes('xray') ||
+		normalized.includes('ultrasound') ||
+		normalized.includes('radiology')
+	)
+}
+
+export function reportQualifiesForMetriclessCompletion(
+	report: UploadedHealthReport,
+): boolean {
+	return METRICLESS_COMPLETE_KINDS.has(classifyReportType(report).kind)
+}
+
+export function healthReportQualifiesForMetriclessCompletion(input: {
+	metadata: { reportType?: string; laboratory?: string }
+	fileName?: string
+}): boolean {
+	const searchable = [
+		input.metadata.reportType ?? '',
+		input.metadata.laboratory ?? '',
+		input.fileName ?? '',
+	].join(' ')
+
+	return textIndicatesMetriclessReportType(searchable)
+}
 
 const PROCESSING_STATUSES = new Set([
 	'uploaded',
@@ -18,7 +56,14 @@ export function getReportPipelinePhase(
 	}
 
 	if (report.status === 'completed') {
-		return 'ready'
+		if (
+			reportHasParsedObservations(report) ||
+			reportQualifiesForMetriclessCompletion(report)
+		) {
+			return 'ready'
+		}
+
+		return 'processing'
 	}
 
 	if (PROCESSING_STATUSES.has(report.status)) {
@@ -28,9 +73,16 @@ export function getReportPipelinePhase(
 	return 'pending'
 }
 
-/** User-visible readiness — report finished all required downstream processing. */
+/** User-visible readiness — report finished processing and has displayable results. */
 export function isReportDisplayReady(report: UploadedHealthReport): boolean {
-	return report.status === 'completed'
+	if (report.status !== 'completed') {
+		return false
+	}
+
+	return (
+		reportHasParsedObservations(report) ||
+		reportQualifiesForMetriclessCompletion(report)
+	)
 }
 
 export function isReportProcessing(report: UploadedHealthReport): boolean {
@@ -67,6 +119,7 @@ export interface ReportArtifactStatus {
 	hasOcrText: boolean
 	hasParsedObservations: boolean
 	hasStoredMetrics: boolean
+	hasActionableMetrics: boolean
 	isDisplayReady: boolean
 	processingError: string | null
 }
@@ -85,6 +138,8 @@ export function assessReportArtifacts(input: {
 		hasParsedObservations: reportHasParsedObservations(report),
 		hasStoredMetrics: storedMetricCount > 0,
 		isDisplayReady: isReportDisplayReady(report),
+		hasActionableMetrics:
+			reportHasParsedObservations(report) || storedMetricCount > 0,
 		processingError: report.processing_error ?? null,
 	}
 }
@@ -96,6 +151,14 @@ export function metricsDisplayMessage(input: {
 	const phase = getReportPipelinePhase(input.report)
 
 	if (phase === 'processing') {
+		if (
+			input.report.status === 'completed' &&
+			!reportHasParsedObservations(input.report) &&
+			!reportQualifiesForMetriclessCompletion(input.report)
+		) {
+			return 'No laboratory metrics detected.'
+		}
+
 		return 'Metrics are still being processed.'
 	}
 

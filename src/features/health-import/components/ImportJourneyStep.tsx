@@ -78,7 +78,11 @@ export function ImportJourneyStep({
 					textAlign: 'center',
 				}}
 			>
-				{phase === 'summary' ? 'Import Summary' : 'Importing Health Reports'}
+				{phase === 'summary'
+					? outcome === 'candidates_found'
+						? 'Scan Complete'
+						: 'Import Summary'
+					: 'Importing Health Reports'}
 			</div>
 			<div
 				style={{
@@ -106,14 +110,19 @@ export function ImportJourneyStep({
 					const isFailed =
 						phase === 'summary' &&
 						completedSet.has(step.phase) &&
-						!succeededSet.has(step.phase)
+						!succeededSet.has(step.phase) &&
+						outcome !== 'candidates_found'
 					const isActive =
 						step.phase === phase && phase !== 'summary' && isRunning
+					const summaryLabel =
+						step.phase === 'summary' && outcome === 'candidates_found'
+							? 'Needs review'
+							: step.label
 
 					return (
 						<JourneyStepRow
 							key={step.phase}
-							label={step.label}
+							label={summaryLabel}
 							isComplete={isComplete}
 							isActive={isActive}
 							isFailed={isFailed}

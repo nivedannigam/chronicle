@@ -32,7 +32,11 @@ export function useHealthReportDetail(reportId: string | undefined) {
 	const metricsQuery = useQuery({
 		queryKey: queryKeys.health.reportDetail(reportId),
 		queryFn: () => fetchHealthMetricsForReport(reportId!),
-		enabled: Boolean(reportId && uploaded?.status === 'completed'),
+		enabled: Boolean(
+			reportId &&
+			uploaded &&
+			(uploaded.status === 'completed' || uploaded.status === 'parsed'),
+		),
 		staleTime: STALE_TIME.reports,
 	})
 

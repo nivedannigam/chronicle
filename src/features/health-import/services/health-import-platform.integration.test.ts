@@ -228,7 +228,7 @@ describe('health import platform regression', () => {
 		expect(result.phasesCompleted).not.toContain('download')
 		expect(result.phasesCompleted).not.toContain('ocr')
 		expect(result.phasesCompleted).not.toContain('metrics')
-		expect(result.phasesSucceeded).not.toContain('summary')
+		expect(result.phasesSucceeded).toContain('summary')
 	})
 
 	it('marks summary failed when import pipeline stages fail', async () => {

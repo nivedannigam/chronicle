@@ -481,6 +481,7 @@ export function buildReportSummaries(
 		)
 		.map((report) => {
 			const parsed = getParsedHealthReport(report)
+			const metricCount = parsed?.metrics.length ?? 0
 			const abnormal = (parsed?.metrics ?? [])
 				.filter((metric) => ABNORMAL.has(metric.status))
 				.slice(0, 3)
@@ -489,6 +490,16 @@ export function buildReportSummaries(
 						`${metric.displayName} ${metric.status === 'low' ? 'low' : 'elevated'}`,
 				)
 
+			let summary: string
+
+			if (metricCount === 0) {
+				summary = 'No laboratory metrics detected in this report.'
+			} else if (abnormal.length > 0) {
+				summary = `${abnormal.length} finding${abnormal.length === 1 ? '' : 's'} noted · ${metricCount} results reviewed`
+			} else {
+				summary = `All reviewed markers within expected range · ${metricCount} results`
+			}
+
 			return {
 				id: report.id,
 				title: getReportDisplayTitle(report),
@@ -496,13 +507,10 @@ export function buildReportSummaries(
 				doctor: parsed?.metadata.doctorName ?? undefined,
 				date: getReportDisplayDate(report, parsed),
 				displayDate: formatDisplayDate(getReportDisplayDate(report, parsed)),
-				summary:
-					abnormal.length > 0
-						? `${abnormal.length} finding${abnormal.length === 1 ? '' : 's'} noted · ${parsed?.metrics.length ?? 0} results reviewed`
-						: `All reviewed markers within expected range · ${parsed?.metrics.length ?? 0} results`,
+				summary,
 				findings: abnormal,
 				status: report.status,
-				isReady: report.status === 'completed',
+				isReady: isReportDisplayReady(report),
 			}
 		})
 }

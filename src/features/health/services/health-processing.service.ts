@@ -17,6 +17,7 @@ import {
 } from '@/features/health/pipeline/health-pipeline-logger'
 import { serializeParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { persistHealthMetrics } from '@/features/health/services/health-metrics-persist.service'
+import { healthReportQualifiesForMetriclessCompletion } from '@/features/health/services/report-readiness.service'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
@@ -305,6 +306,49 @@ export async function processHealthReport(
 				metricCount: persistedMetricCount,
 			},
 		})
+
+		const allowsMetriclessCompletion =
+			persistedMetricCount === 0 &&
+			healthReportQualifiesForMetriclessCompletion({
+				metadata: healthReport.metadata,
+				fileName: typedReport.file_name,
+			})
+
+		if (persistedMetricCount === 0 && !allowsMetriclessCompletion) {
+			const noMetricsMessage =
+				'No laboratory metrics could be extracted from this report.'
+
+			await updateReportStatus(reportId, {
+				...parsedReportUpdate,
+				status: 'parsed',
+				processing_error: noMetricsMessage,
+			})
+
+			await updateQueueStatus(reportId, 'parsed', {
+				error_message: noMetricsMessage,
+			})
+
+			await safeTransitionWorkflowItem({
+				reportId,
+				toState: 'PENDING_REVIEW',
+				context: {
+					userId: typedReport.user_id,
+					reportId,
+					failureReason: noMetricsMessage,
+					failedStage: 'PARSING',
+				},
+			})
+
+			invalidateHealthKnowledgeCache(typedReport.user_id)
+			invalidateAfterHealthImport(typedReport.user_id)
+
+			return {
+				...typedReport,
+				...parsedReportUpdate,
+				status: 'parsed',
+				processing_error: noMetricsMessage,
+			}
+		}
 
 		startPipelineStage({
 			reportId,
