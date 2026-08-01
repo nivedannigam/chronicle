@@ -16,3 +16,16 @@ export type {
 	MetricRelationship,
 	PersonHealthProfile,
 } from '@/features/health-knowledge/types/health-knowledge.types'
+export type {
+	HealthKnowledge,
+	HealthKnowledgeGetInput,
+	HealthKnowledgeMetric,
+	HealthKnowledgeReportRef,
+	HealthKnowledgeLimitation,
+	HealthKnowledgeTimelineEvent,
+	HealthKnowledgeSummary,
+	HealthKnowledgeConfidence,
+	HealthKnowledgeInsight,
+	HealthKnowledgeRecommendation,
+	KnowledgeLimitationCode,
+} from '@/features/health-knowledge/types/health-knowledge-object.types'

@@ -1,0 +1,342 @@
+import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
+import { recordAICost } from '@/shared/ai/cost/cost-tracker'
+import { isLlmSupportedIntent } from '@/shared/ai/intent/intent.types'
+import { classifyAndSelectHealthEvidence } from '@/shared/ai/intent-evidence/intent-evidence.orchestrator'
+import { AIGateway } from '@/shared/ai/gateway/ai-gateway'
+import { createDefaultKnowledgeRegistry } from '@/shared/ai/knowledge/knowledge-bootstrap'
+import { healthKnowledgeToNormalized } from '@/shared/ai/knowledge/health-knowledge-normalizer'
+import { HealthKnowledgePlatformAdapter } from '@/shared/ai/knowledge/health-knowledge.provider'
+import { KnowledgeProviderRegistry } from '@/shared/ai/knowledge/knowledge-provider.registry'
+import { recordAIObservability } from '@/shared/ai/observability/ai-observability'
+import { buildEvidencePrompt } from '@/shared/ai/prompt/evidence-prompt.builder'
+import {
+	assertStructuredResponse,
+	buildGroundedValidationContext,
+	validateStructuredResponseContent,
+} from '@/shared/ai/response/response-validator'
+import type { SelectedEvidence } from '@/shared/ai/evidence/evidence.types'
+import type { ChronicleIntent } from '@/shared/ai/intent/intent.types'
+import { healthKnowledgeProvider } from '@/features/health-knowledge/providers/health-knowledge.provider'
+import type { AIPlatformConfig } from '@/shared/ai/types/ai-platform.types'
+import type { IntentId } from '@/shared/ai/types/ai-platform.types'
+import type {
+	AIPlatformRequest,
+	AIPlatformResult,
+} from '@/shared/ai/types/pipeline.types'
+
+export interface AIPlatformPipelineDeps {
+	gateway: AIGateway
+	knowledgeRegistry: KnowledgeProviderRegistry
+	healthKnowledge?: typeof healthKnowledgeProvider
+}
+
+export function createDefaultAIPlatformPipeline(
+	config?: AIPlatformConfig,
+): AIPlatformPipeline {
+	return new AIPlatformPipeline({
+		gateway: new AIGateway(config),
+		knowledgeRegistry: createDefaultKnowledgeRegistry(),
+	})
+}
+
+export interface RunHealthQuestionInput {
+	userId: string
+	question: string
+	familyMemberId?: string | null
+	accountOwnerMemberId?: string | null
+	memberName?: string | null
+}
+
+const CHRONICLE_TO_LEGACY_INTENT: Partial<Record<ChronicleIntent, IntentId>> = {
+	GENERAL_HEALTH_SUMMARY: 'summarize_health',
+	LATEST_REPORT: 'summarize_report',
+	ABNORMAL_RESULTS: 'abnormal_summary',
+	NORMAL_RESULTS: 'normal_results',
+	SPECIFIC_METRIC: 'metric_query',
+	TREND_ANALYSIS: 'trend_analysis',
+	COMPARE_REPORTS: 'compare_reports',
+	RECOMMENDATIONS: 'recommendations',
+	FOLLOW_UP_TESTS: 'follow_up_tests',
+	EXPLAIN_METRIC: 'explain_metric',
+}
+
+function resolveLegacyIntent(
+	classifiedIntent: ChronicleIntent,
+	requestIntent?: IntentId,
+): IntentId {
+	return (
+		CHRONICLE_TO_LEGACY_INTENT[classifiedIntent] ??
+		requestIntent ??
+		classifiedIntent.toLowerCase()
+	)
+}
+
+function buildValidationContextFromEvidence(evidence: SelectedEvidence) {
+	const metricNames: string[] = []
+	const reportIds: string[] = []
+	const evidenceIds: string[] = []
+
+	for (const item of evidence.items) {
+		evidenceIds.push(item.id)
+
+		if (
+			item.type === 'health_metric' &&
+			typeof item.data.displayName === 'string'
+		) {
+			metricNames.push(item.data.displayName)
+		}
+
+		if (item.type === 'health_report' && typeof item.data.id === 'string') {
+			reportIds.push(item.data.id)
+		}
+	}
+
+	return buildGroundedValidationContext({
+		metricNames,
+		reportIds,
+		evidenceIds,
+	})
+}
+
+export class AIPlatformPipeline {
+	private readonly gateway: AIGateway
+	private readonly knowledgeRegistry: KnowledgeProviderRegistry
+	private readonly healthKnowledgeProvider: typeof healthKnowledgeProvider
+
+	constructor(deps: AIPlatformPipelineDeps) {
+		this.gateway = deps.gateway
+		this.knowledgeRegistry = deps.knowledgeRegistry
+		this.healthKnowledgeProvider =
+			deps.healthKnowledge ?? healthKnowledgeProvider
+
+		if (!this.knowledgeRegistry.get('health')) {
+			this.knowledgeRegistry.register(new HealthKnowledgePlatformAdapter())
+		}
+	}
+
+	async summarizeLatestReport(
+		input: RunHealthQuestionInput,
+	): Promise<AIPlatformResult> {
+		return this.runHealthQuestion(input)
+	}
+
+	async runHealthQuestion(
+		input: RunHealthQuestionInput,
+	): Promise<AIPlatformResult> {
+		const healthKnowledge = await this.healthKnowledgeProvider.getKnowledge({
+			userId: input.userId,
+			familyMemberId: input.familyMemberId,
+			accountOwnerMemberId: input.accountOwnerMemberId,
+		})
+
+		return this.run({
+			question: input.question,
+			domain: 'health',
+			userId: input.userId,
+			memberName: input.memberName,
+			knowledgePayload: {
+				familyMemberId: input.familyMemberId,
+				accountOwnerMemberId: input.accountOwnerMemberId,
+			},
+			healthKnowledge,
+		})
+	}
+
+	async run(request: AIPlatformRequest): Promise<AIPlatformResult> {
+		const requestId = request.requestId ?? crypto.randomUUID()
+		const config = loadAIPlatformConfig()
+
+		const healthKnowledge =
+			request.healthKnowledge ??
+			(request.userId
+				? await this.healthKnowledgeProvider.getKnowledge({
+						userId: request.userId,
+						familyMemberId:
+							typeof request.knowledgePayload.familyMemberId === 'string'
+								? request.knowledgePayload.familyMemberId
+								: null,
+						accountOwnerMemberId:
+							typeof request.knowledgePayload.accountOwnerMemberId === 'string'
+								? request.knowledgePayload.accountOwnerMemberId
+								: null,
+					})
+				: undefined)
+
+		if (!healthKnowledge) {
+			throw new Error(
+				'Health knowledge is required for production AI requests.',
+			)
+		}
+
+		const { classifiedIntent, evidence, selectedTool, toolResult } =
+			await classifyAndSelectHealthEvidence({
+				question: request.question,
+				knowledge: healthKnowledge,
+				userId: request.userId ?? 'unknown',
+				familyMemberId:
+					typeof request.knowledgePayload.familyMemberId === 'string'
+						? request.knowledgePayload.familyMemberId
+						: null,
+				accountOwnerMemberId:
+					typeof request.knowledgePayload.accountOwnerMemberId === 'string'
+						? request.knowledgePayload.accountOwnerMemberId
+						: null,
+				memberName: request.memberName,
+			})
+
+		if (!isLlmSupportedIntent(classifiedIntent.intent)) {
+			throw new Error(
+				`Intent "${classifiedIntent.intent}" is not supported by production AI.`,
+			)
+		}
+
+		const legacyIntent = resolveLegacyIntent(
+			classifiedIntent.intent,
+			request.intent,
+		)
+
+		const knowledge = healthKnowledgeToNormalized(
+			healthKnowledge,
+			legacyIntent,
+			request.question,
+		)
+
+		const prompt = buildEvidencePrompt({
+			question: request.question,
+			intent: classifiedIntent,
+			evidence,
+			memberName: request.memberName,
+		})
+
+		const validationContext = buildValidationContextFromEvidence(evidence)
+
+		let aiResponse: Awaited<ReturnType<AIGateway['generate']>> | null = null
+		let response: ReturnType<typeof assertStructuredResponse> | null = null
+		let retryCount = 0
+		let validationSuccess = false
+		let lastValidationError = ''
+
+		while (retryCount <= config.maxRetries) {
+			aiResponse = await this.gateway.generate({
+				requestId: `${requestId}-attempt-${retryCount}`,
+				messages: prompt.messages,
+				responseFormat: 'json',
+				metadata: {
+					intent: legacyIntent,
+					classifiedIntent: classifiedIntent.intent,
+					knowledgeProvider: `${request.domain}-knowledge-provider`,
+					knowledgeDomain: request.domain,
+					userId: request.userId,
+					evidenceCount: evidence.metadata.evidenceCount,
+					estimatedContextTokens: evidence.metadata.estimatedTokens,
+					selectedTool,
+				},
+			})
+
+			const validation = validateStructuredResponseContent(aiResponse.content)
+
+			if (!validation.ok) {
+				lastValidationError = validation.errors.join('; ')
+				retryCount += 1
+				continue
+			}
+
+			try {
+				response = assertStructuredResponse(
+					aiResponse.content,
+					validationContext,
+				)
+				validationSuccess = true
+				break
+			} catch (error) {
+				lastValidationError =
+					error instanceof Error ? error.message : 'Grounded validation failed'
+				retryCount += 1
+			}
+		}
+
+		if (!aiResponse || !response) {
+			recordAIObservability({
+				requestId,
+				timestamp: new Date().toISOString(),
+				provider: config.provider,
+				model: config.model,
+				intent: legacyIntent,
+				classifiedIntent: classifiedIntent.intent,
+				knowledgeProvider: `${request.domain}-knowledge-provider`,
+				knowledgeDomain: request.domain,
+				promptTokens: aiResponse?.usage.promptTokens ?? 0,
+				completionTokens: aiResponse?.usage.completionTokens ?? 0,
+				totalTokens: aiResponse?.usage.totalTokens ?? 0,
+				estimatedCostUsd: aiResponse?.estimatedCostUsd ?? 0,
+				latencyMs: aiResponse?.latencyMs ?? 0,
+				confidence: 0,
+				cacheHit: false,
+				validationSuccess: false,
+				retryCount,
+				evidenceCount: evidence.metadata.evidenceCount,
+				excludedEvidence: evidence.metadata.excludedItems,
+				estimatedContextTokens: evidence.metadata.estimatedTokens,
+				selectedTool,
+				toolExecutionTimeMs: toolResult.executionTimeMs,
+				error: lastValidationError || 'Validation failed after retries',
+			})
+
+			throw new Error(
+				lastValidationError || 'AI response validation failed after retries',
+			)
+		}
+
+		recordAICost({
+			requestId,
+			provider: aiResponse.provider,
+			model: aiResponse.model,
+			intent: legacyIntent,
+			promptTokens: aiResponse.usage.promptTokens,
+			completionTokens: aiResponse.usage.completionTokens,
+		})
+
+		const observability = {
+			requestId,
+			timestamp: new Date().toISOString(),
+			provider: aiResponse.provider,
+			model: aiResponse.model,
+			intent: legacyIntent,
+			classifiedIntent: classifiedIntent.intent,
+			knowledgeProvider: `${request.domain}-knowledge-provider`,
+			knowledgeDomain: request.domain,
+			promptTokens: aiResponse.usage.promptTokens,
+			completionTokens: aiResponse.usage.completionTokens,
+			totalTokens: aiResponse.usage.totalTokens,
+			estimatedCostUsd: aiResponse.estimatedCostUsd,
+			latencyMs: aiResponse.latencyMs,
+			confidence: response.confidence,
+			cacheHit: false,
+			validationSuccess,
+			retryCount,
+			evidenceCount: evidence.metadata.evidenceCount,
+			excludedEvidence: evidence.metadata.excludedItems,
+			estimatedContextTokens: evidence.metadata.estimatedTokens,
+			selectedTool,
+			toolExecutionTimeMs: toolResult.executionTimeMs,
+		}
+
+		recordAIObservability(observability)
+
+		return {
+			requestId,
+			intent: legacyIntent,
+			domain: request.domain,
+			classifiedIntent,
+			selectedEvidence: evidence,
+			selectedTool,
+			toolResult,
+			knowledge,
+			response,
+			observability,
+			healthKnowledge,
+		}
+	}
+}
+
+export const defaultAIPlatformPipeline = createDefaultAIPlatformPipeline()

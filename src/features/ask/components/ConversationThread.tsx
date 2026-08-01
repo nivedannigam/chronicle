@@ -4,6 +4,7 @@ import type { AskConversationTurn } from '@/features/ask/types'
 
 interface ConversationThreadProps {
 	turns: AskConversationTurn[]
+	userId?: string
 	streamingTurn?: AskConversationTurn | null
 	isTyping?: boolean
 	onFollowUpSelect?: (question: string) => void
@@ -14,6 +15,7 @@ interface ConversationThreadProps {
 
 export function ConversationThread({
 	turns,
+	userId,
 	streamingTurn,
 	isTyping = false,
 	onFollowUpSelect,
@@ -49,6 +51,7 @@ export function ConversationThread({
 				<ConversationTurnView
 					key={turn.id}
 					turn={turn}
+					userId={userId}
 					onFollowUpSelect={onFollowUpSelect}
 					onRegenerate={
 						onRegenerateTurn ? () => onRegenerateTurn(turn.id) : undefined

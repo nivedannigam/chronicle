@@ -102,10 +102,11 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 		label: 'Health',
 		available: true,
 		questions: [
-			'What should I pay attention to?',
-			'What changed since my last report?',
-			'How is my liver?',
-			'What should I discuss with my doctor?',
+			'Summarize my latest health report.',
+			'Explain my HbA1c result.',
+			'Show my abnormal health findings.',
+			'Compare my last two health reports.',
+			'What follow-up tests should I consider?',
 		],
 	},
 	{
@@ -114,7 +115,7 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 		available: true,
 		questions: [
 			'Where is my passport?',
-			'Find my latest tax return.',
+			'Explain my passport document.',
 			'What documents expire this year?',
 		],
 	},
@@ -127,21 +128,21 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 	{
 		id: 'travel',
 		label: 'Travel',
-		available: false,
-		questions: ['Plan my next vacation.', 'When do our visas expire?'],
+		available: true,
+		questions: ['Help me plan my upcoming trip.', 'When do our visas expire?'],
 	},
 	{
 		id: 'finance',
 		label: 'Finance',
-		available: false,
-		questions: ['Summarize our monthly spending.', 'When is our mortgage due?'],
+		available: true,
+		questions: ['Summarize my monthly spending.', 'When is our mortgage due?'],
 	},
 	{
 		id: 'family',
 		label: 'Family',
-		available: false,
+		available: true,
 		questions: [
-			"When is Advika's vaccination?",
+			'Summarize my family health.',
 			'What appointments are coming up?',
 		],
 	},

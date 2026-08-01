@@ -144,6 +144,7 @@ export interface AskConversationTurn {
 	trust?: import('@/features/ask/trust/trust.types').TrustResponse
 	timestamp: string
 	displayTimestamp: string
+	betaExperienceId?: import('@/features/ask/beta/beta-experiences').BetaExperienceId
 }
 
 export interface AskRecentQuestion {

@@ -277,6 +277,7 @@ export function FigmaAskScreen() {
 				) : (
 					<ConversationThread
 						turns={turns}
+						userId={userId}
 						streamingTurn={pendingTurn}
 						isTyping={isLoading}
 						onRegenerateTurn={regenerateTurn}

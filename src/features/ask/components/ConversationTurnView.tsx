@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AskMarkdownContent } from '@/features/ask/components/AskMarkdownContent'
 import { AskMessageActions } from '@/features/ask/components/AskMessageActions'
 import { AskStreamingSkeleton } from '@/features/ask/components/AskStreamingSkeleton'
@@ -10,6 +10,11 @@ import { TypingIndicator } from '@/features/ask/components/TypingIndicator'
 import { AnswerCardRenderer } from '@/features/ask/components/AnswerCardRenderer'
 import { buildStructuredResponse } from '@/features/ask/services/structured-response.service'
 import type { AskConversationTurn } from '@/features/ask/types'
+import type { AskFeedbackRating } from '@/features/ask/beta/beta-observability.service'
+import {
+	getFeedbackForTurn,
+	recordAskFeedback,
+} from '@/features/ask/beta/beta-observability.service'
 import {
 	AskSectionLabel,
 	AskStructuredResponseView,
@@ -18,6 +23,7 @@ import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 interface ConversationTurnViewProps {
 	turn: AskConversationTurn
+	userId?: string
 	isTyping?: boolean
 	isStreaming?: boolean
 	onFollowUpSelect?: (question: string) => void
@@ -29,6 +35,7 @@ interface ConversationTurnViewProps {
 
 export function ConversationTurnView({
 	turn,
+	userId,
 	isTyping = false,
 	isStreaming = false,
 	onFollowUpSelect,
@@ -40,6 +47,10 @@ export function ConversationTurnView({
 	const trust = turn.trust
 	const showTyping = isTyping && !turn.answer.trim()
 	const hasAnswer = turn.answer.trim().length > 0
+	const [feedbackRating, setFeedbackRating] =
+		useState<AskFeedbackRating | null>(() =>
+			userId ? getFeedbackForTurn(userId, turn.id) : null,
+		)
 
 	const structured = useMemo(() => buildStructuredResponse(turn), [turn])
 
@@ -134,6 +145,21 @@ export function ConversationTurnView({
 						onRegenerate={onRegenerate}
 						onContinue={onContinue}
 						isRegenerating={isRegenerating}
+						feedbackRating={feedbackRating}
+						onFeedback={
+							userId
+								? (rating) => {
+										recordAskFeedback({
+											userId,
+											turnId: turn.id,
+											experienceId: turn.betaExperienceId,
+											question: turn.question,
+											rating,
+										})
+										setFeedbackRating(rating)
+									}
+								: undefined
+						}
 					/>
 				) : null}
 

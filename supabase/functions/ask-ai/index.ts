@@ -162,6 +162,86 @@ serve(async (request) => {
 			})
 		}
 
+		if (provider === 'gemini') {
+			const apiKey =
+				Deno.env.get('GEMINI_API_KEY') ?? Deno.env.get('GOOGLE_AI_API_KEY')
+
+			if (!apiKey) {
+				throw new Error('GEMINI_API_KEY is not configured')
+			}
+
+			const system =
+				body.messages.find((message) => message.role === 'system')?.content ??
+				''
+			const developer =
+				body.messages.find((message) => message.role === 'developer')
+					?.content ?? ''
+			const userMessages = body.messages.filter(
+				(message) => message.role === 'user' || message.role === 'assistant',
+			)
+			const userContent = userMessages
+				.map((message) => message.content)
+				.join('\n\n')
+
+			const geminiModel = model.startsWith('gemini')
+				? model
+				: `gemini-2.0-flash`
+			const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`
+
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					systemInstruction: {
+						parts: [{ text: [system, developer].filter(Boolean).join('\n\n') }],
+					},
+					contents: [
+						{
+							role: 'user',
+							parts: [{ text: userContent }],
+						},
+					],
+					generationConfig: {
+						temperature: 0.2,
+						maxOutputTokens: 2048,
+						responseMimeType:
+							body.responseFormat === 'json'
+								? 'application/json'
+								: 'text/plain',
+					},
+				}),
+			})
+
+			if (!response.ok) {
+				const errorBody = await response.text()
+				throw new Error(
+					`Gemini failed (${response.status}): ${errorBody.slice(0, 200)}`,
+				)
+			}
+
+			const payload = await response.json()
+			const content =
+				payload.candidates?.[0]?.content?.parts
+					?.map((part: { text?: string }) => part.text ?? '')
+					.join('') ?? ''
+
+			const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0
+			const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0
+
+			return jsonResponse({
+				content,
+				provider,
+				model: geminiModel,
+				correlationId,
+				usage: {
+					promptTokens,
+					completionTokens,
+					totalTokens: promptTokens + completionTokens,
+				},
+				latencyMs: Math.round(performance.now() - startedAt),
+			})
+		}
+
 		throw new Error(`Unsupported provider: ${provider}`)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Ask AI failed'

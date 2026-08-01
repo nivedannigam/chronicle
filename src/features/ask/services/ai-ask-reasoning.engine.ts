@@ -33,9 +33,19 @@ import { runIntelligencePipeline } from '@/features/intelligence/pipeline/chroni
 import { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'
 import { createEmptyContextPackage } from '@/features/intelligence/entities/knowledge-entities'
 import { toRetrievedKnowledge } from '@/features/intelligence/adapters/retrieved-knowledge.adapter'
-import { buildHealthCoverageSnapshot } from '@/features/health/services/health-coverage.service'
-import type { UploadedHealthReport } from '@/features/health/types'
 import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
+
+import type { UploadedHealthReport } from '@/features/health/types'
+import { buildHealthCoverageSnapshot } from '@/features/health/services/health-coverage.service'
+import {
+	formatPlatformErrorForUser,
+	runProductionHealthAi,
+	shouldUseProductionAi,
+} from '@/features/ask/services/summarize-latest-report.service'
+import { resolveBetaExperience } from '@/features/ask/beta/beta-experience-resolver'
+import { buildBetaExperienceTurn } from '@/features/ask/beta/beta-domain-handlers'
+import { recordBetaExperienceUsage } from '@/features/ask/beta/beta-observability.service'
+import type { AIObservabilityRecord } from '@/shared/ai/observability/ai-observability.types'
 
 let lastDebugInfo: AskDebugInfo | null = null
 
@@ -57,6 +67,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: ChroniclePersonalPreferences
 	}): Promise<AskQuestionResult> {
+		const startedAt = performance.now()
+		const betaExperience = resolveBetaExperience(input.question)
 		const preferences =
 			input.personalPreferences ?? DEFAULT_PERSONAL_PREFERENCES
 		const bootstrapSessionKey = buildMemorySessionKey(
@@ -182,10 +194,73 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			coverage,
 		})
 		let providerResponse = ''
+		let platformObservability: AIObservabilityRecord | undefined
+		const productionAiEnabled = shouldUseProductionAi({
+			question: input.question,
+			legacyIntent: pipeline.detection.intent,
+		})
 		const aiConfigured = isAskAiProviderConfigured()
-		let usedProvider = aiConfigured ? askAiConfig.provider! : 'grounded'
+		let usedProvider = productionAiEnabled
+			? 'gemini-platform'
+			: aiConfigured
+				? askAiConfig.provider!
+				: 'grounded'
 
-		if (aiConfigured) {
+		const betaGroundedTurn =
+			betaExperience?.route === 'grounded'
+				? buildBetaExperienceTurn({
+						experience: betaExperience,
+						question: input.question,
+						userId: input.userId,
+						member: memberForTurn,
+						documents: input.documents,
+						uploadedReports: (input.uploadedReports ??
+							[]) as UploadedHealthReport[],
+						storedMetrics: (input.storedMetrics ?? []) as StoredHealthMetric[],
+						familyMembers: input.familyMembers,
+						onStream: input.onStream,
+					})
+				: null
+
+		if (betaGroundedTurn) {
+			turn = betaGroundedTurn
+			usedProvider = 'beta-grounded'
+		} else if (productionAiEnabled) {
+			try {
+				const platformResult = await runProductionHealthAi({
+					userId: input.userId,
+					question: input.question,
+					familyMemberId: memberForTurn.memberId,
+					accountOwnerMemberId: input.familyMembers?.find(
+						(item) => item.isAccountOwner,
+					)?.id,
+					memberName: memberForTurn.memberName,
+					onStream: input.onStream,
+					betaExperienceId: betaExperience?.id,
+				})
+
+				providerResponse = JSON.stringify(platformResult.result.response)
+				platformObservability = platformResult.result.observability
+				turn = attachTrustToTurn(platformResult.turn, {
+					knowledge: pipeline.mergedKnowledge,
+					question: input.question,
+					dataAvailable: pipeline.dataAvailable,
+					uploadedReports: input.uploadedReports,
+					confidence: platformResult.result.response.confidence,
+				})
+				usedProvider = platformResult.result.observability.provider
+
+				if (betaExperience) {
+					turn = { ...turn, betaExperienceId: betaExperience.id }
+				}
+			} catch (error) {
+				turn = {
+					...turn,
+					answer: `${formatPlatformErrorForUser(error)}\n\n${turn.answer}`,
+				}
+				usedProvider = 'grounded'
+			}
+		} else if (aiConfigured) {
 			try {
 				let streamed = ''
 
@@ -306,6 +381,22 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			reportId: turn.relatedReports[0]?.id,
 			timestamp: new Date().toISOString(),
 		})
+
+		if (betaExperience) {
+			recordBetaExperienceUsage({
+				userId: input.userId,
+				memberId: personalContext.activeMember.memberId,
+				experienceId: betaExperience.id,
+				question: input.question,
+				provider: usedProvider,
+				latencyMs: performance.now() - startedAt,
+				promptTokens: platformObservability?.promptTokens,
+				completionTokens: platformObservability?.completionTokens,
+				totalTokens: platformObservability?.totalTokens,
+				estimatedCostUsd: platformObservability?.estimatedCostUsd,
+				confidence: turn.confidence,
+			})
+		}
 
 		if (import.meta.env.DEV) {
 			lastDebugInfo = {

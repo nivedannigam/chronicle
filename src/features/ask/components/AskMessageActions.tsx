@@ -1,11 +1,21 @@
 import { useState } from 'react'
-import { Check, Copy, RefreshCw, SkipForward } from 'lucide-react'
+import {
+	Check,
+	Copy,
+	RefreshCw,
+	SkipForward,
+	ThumbsDown,
+	ThumbsUp,
+} from 'lucide-react'
 import { C } from '@/constants/colors'
+import type { AskFeedbackRating } from '@/features/ask/beta/beta-observability.service'
 
 interface AskMessageActionsProps {
 	answer: string
 	onRegenerate?: () => void
 	onContinue?: () => void
+	onFeedback?: (rating: AskFeedbackRating) => void
+	feedbackRating?: AskFeedbackRating | null
 	isRegenerating?: boolean
 	disabled?: boolean
 }
@@ -14,6 +24,8 @@ export function AskMessageActions({
 	answer,
 	onRegenerate,
 	onContinue,
+	onFeedback,
+	feedbackRating = null,
 	isRegenerating = false,
 	disabled = false,
 }: AskMessageActionsProps) {
@@ -74,6 +86,24 @@ export function AskMessageActions({
 					icon={<SkipForward size={14} />}
 				/>
 			) : null}
+			{onFeedback ? (
+				<>
+					<ActionButton
+						label="Helpful"
+						onClick={() => onFeedback('up')}
+						disabled={disabled}
+						icon={<ThumbsUp size={14} />}
+						active={feedbackRating === 'up'}
+					/>
+					<ActionButton
+						label="Not helpful"
+						onClick={() => onFeedback('down')}
+						disabled={disabled}
+						icon={<ThumbsDown size={14} />}
+						active={feedbackRating === 'down'}
+					/>
+				</>
+			) : null}
 		</div>
 	)
 }
@@ -83,11 +113,13 @@ function ActionButton({
 	onClick,
 	disabled,
 	icon,
+	active = false,
 }: {
 	label: string
 	onClick: () => void
 	disabled?: boolean
 	icon: React.ReactNode
+	active?: boolean
 }) {
 	return (
 		<button
@@ -102,9 +134,9 @@ function ActionButton({
 				gap: 5,
 				padding: '6px 10px',
 				borderRadius: 100,
-				border: `1px solid ${C.border}`,
-				background: C.card2,
-				color: C.textSec,
+				border: `1px solid ${active ? C.teal : C.border}`,
+				background: active ? `${C.teal}18` : C.card2,
+				color: active ? C.teal : C.textSec,
 				fontSize: 11,
 				fontWeight: 600,
 				cursor: disabled ? 'not-allowed' : 'pointer',

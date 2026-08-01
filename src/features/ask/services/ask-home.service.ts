@@ -1,4 +1,7 @@
-import { ASK_QUESTION_GROUPS } from '@/constants/product-copy'
+import {
+	BETA_ASK_QUESTION_GROUPS,
+	BETA_EXPERIENCES,
+} from '@/features/ask/beta/beta-experiences'
 import type { AskSessionMeta } from '@/features/ask/services/ask-session.service'
 import { listAskSessions } from '@/features/ask/services/ask-session.service'
 import {
@@ -71,12 +74,23 @@ export function buildAskHomeView(input: {
 			? `Ask anything about ${displayName}'s health, documents, or family context.`
 			: 'Your personal assistant across health, documents, and family.'
 
-	const suggestedQuestions = buildDynamicSuggestionChips({
-		uploadedReports: input.uploadedReports,
-		documents: input.documents,
-		memberName: displayName,
-		members: input.members,
-	})
+	const suggestedQuestions = [
+		...BETA_EXPERIENCES.slice(0, 4).map((experience) => ({
+			id: experience.id,
+			label: experience.title,
+			question: experience.canonicalQuestion,
+			category:
+				experience.domain === 'health' || experience.domain === 'documents'
+					? experience.domain
+					: ('general' as const),
+		})),
+		...buildDynamicSuggestionChips({
+			uploadedReports: input.uploadedReports,
+			documents: input.documents,
+			memberName: displayName,
+			members: input.members,
+		}),
+	].slice(0, 8)
 
 	const recentSessions = listAskSessions(input.userId).slice(0, 5)
 
@@ -129,7 +143,7 @@ export function buildAskHomeView(input: {
 		greeting,
 		subGreeting,
 		suggestedQuestions,
-		groupedSuggestions: ASK_QUESTION_GROUPS.map((group) => ({
+		groupedSuggestions: BETA_ASK_QUESTION_GROUPS.map((group) => ({
 			id: group.id,
 			label: group.label,
 			available: group.available,
