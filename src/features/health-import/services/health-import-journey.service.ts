@@ -38,6 +38,8 @@ function emitProgress(
 	})
 }
 
+const PIPELINE_PHASES: ImportJourneyPhase[] = ['download', 'ocr', 'metrics']
+
 function isJourneyTerminalSuccess(
 	outcome: ImportJourneyResult['outcome'],
 ): boolean {
@@ -46,6 +48,25 @@ function isJourneyTerminalSuccess(
 		outcome === 'partial_success' ||
 		outcome === 'no_reports'
 	)
+}
+
+function pipelinePhasesSucceeded(
+	phasesCompleted: ImportJourneyPhase[],
+	phasesSucceeded: ImportJourneyPhase[],
+): boolean {
+	return PIPELINE_PHASES.every(
+		(phase) =>
+			!phasesCompleted.includes(phase) || phasesSucceeded.includes(phase),
+	)
+}
+
+function markPipelinePhaseCompleted(
+	phasesCompleted: ImportJourneyPhase[],
+	phase: ImportJourneyPhase,
+): void {
+	if (!phasesCompleted.includes(phase)) {
+		phasesCompleted.push(phase)
+	}
 }
 
 function buildResult(
@@ -64,7 +85,10 @@ function finalizeJourneySummary(
 ): void {
 	phasesCompleted.push('summary')
 
-	if (isJourneyTerminalSuccess(outcome)) {
+	if (
+		isJourneyTerminalSuccess(outcome) &&
+		pipelinePhasesSucceeded(phasesCompleted, phasesSucceeded)
+	) {
 		phasesSucceeded.push('summary')
 	}
 }
@@ -175,7 +199,6 @@ export async function runHealthImportJourney(
 
 		const autoApprovedCount = await approveAllLikelyMedical(userId)
 
-		phasesCompleted.push('download')
 		emitProgress(
 			onProgress,
 			'download',
@@ -189,25 +212,14 @@ export async function runHealthImportJourney(
 		await prepareImportCandidatesForQueue(userId)
 		await queueApprovedImports(userId)
 
-		phasesCompleted.push('ocr')
-		emitProgress(
-			onProgress,
-			'ocr',
-			phasesCompleted,
-			phasesSucceeded,
-			'Extracting text from reports…',
-		)
-
-		let downloadPhaseSucceeded = false
-		let ocrPhaseSucceeded = false
+		let ocrPhaseReached = false
 		let metricsPhaseStarted = false
 
 		const runStats = await processImportQueueWithProgress(userId, {
 			parallel: 2,
 			onImportPhase: (phase: ImportPhase) => {
-				if (phase === 'download' && !downloadPhaseSucceeded) {
-					downloadPhaseSucceeded = true
-					phasesSucceeded.push('download')
+				if (phase === 'download') {
+					markPipelinePhaseCompleted(phasesCompleted, 'download')
 					emitProgress(
 						onProgress,
 						'download',
@@ -217,9 +229,14 @@ export async function runHealthImportJourney(
 					)
 				}
 
-				if (phase === 'ocr' && !ocrPhaseSucceeded) {
-					ocrPhaseSucceeded = true
-					phasesSucceeded.push('ocr')
+				if (phase === 'ocr') {
+					ocrPhaseReached = true
+					markPipelinePhaseCompleted(phasesCompleted, 'ocr')
+
+					if (!phasesSucceeded.includes('download')) {
+						phasesSucceeded.push('download')
+					}
+
 					emitProgress(
 						onProgress,
 						'ocr',
@@ -229,11 +246,12 @@ export async function runHealthImportJourney(
 					)
 				}
 
-				if (phase === 'metrics' && !metricsPhaseStarted) {
+				if (phase === 'metrics') {
 					metricsPhaseStarted = true
+					markPipelinePhaseCompleted(phasesCompleted, 'metrics')
 
-					if (!phasesCompleted.includes('metrics')) {
-						phasesCompleted.push('metrics')
+					if (!phasesSucceeded.includes('ocr')) {
+						phasesSucceeded.push('ocr')
 					}
 
 					emitProgress(
@@ -250,17 +268,34 @@ export async function runHealthImportJourney(
 			},
 		})
 
-		if (!phasesCompleted.includes('metrics')) {
-			phasesCompleted.push('metrics')
+		const importedThisRun = runStats.importedThisRun
+		const failedThisRun = runStats.failedThisRun
+		const skippedThisRun = runStats.skippedThisRun
+
+		if (importedThisRun > 0 || skippedThisRun > 0) {
+			markPipelinePhaseCompleted(phasesCompleted, 'metrics')
+
+			if (!phasesSucceeded.includes('download')) {
+				phasesSucceeded.push('download')
+			}
+
+			if (!phasesSucceeded.includes('ocr')) {
+				phasesSucceeded.push('ocr')
+			}
+
+			if (!phasesSucceeded.includes('metrics')) {
+				phasesSucceeded.push('metrics')
+			}
+		} else if (metricsPhaseStarted && !phasesSucceeded.includes('metrics')) {
+			markPipelinePhaseCompleted(phasesCompleted, 'metrics')
+		} else if (ocrPhaseReached && !phasesCompleted.includes('ocr')) {
+			markPipelinePhaseCompleted(phasesCompleted, 'ocr')
 		}
 
-		if (downloadPhaseSucceeded && !phasesSucceeded.includes('download')) {
-			phasesSucceeded.push('download')
-		}
-
-		if (ocrPhaseSucceeded && !phasesSucceeded.includes('ocr')) {
-			phasesSucceeded.push('ocr')
-		}
+		const pipelineFailed = PIPELINE_PHASES.some(
+			(phase) =>
+				phasesCompleted.includes(phase) && !phasesSucceeded.includes(phase),
+		)
 
 		invalidateImportCaches(userId)
 
@@ -274,13 +309,6 @@ export async function runHealthImportJourney(
 			(record) => record.importStatus === 'failed',
 		)
 		const failedCount = failedRecords.length
-		const importedThisRun = runStats.importedThisRun
-		const failedThisRun = runStats.failedThisRun
-		const skippedThisRun = runStats.skippedThisRun
-
-		if (importedThisRun > 0 || skippedThisRun > 0) {
-			phasesSucceeded.push('metrics')
-		}
 
 		const errorSamples = [
 			...new Set(
@@ -304,10 +332,12 @@ export async function runHealthImportJourney(
 			outcome = 'partial_success'
 		} else if (importedThisRun === 0 && failedThisRun > 0) {
 			outcome = 'failed'
-		} else if (needsReview > 0 && importedThisRun === 0) {
+		} else if (needsReview > 0 && importedThisRun === 0 && !pipelineFailed) {
 			outcome = 'candidates_found'
 		} else if (importCandidates === 0) {
 			outcome = 'no_reports'
+		} else if (pipelineFailed && importedThisRun === 0) {
+			outcome = 'failed'
 		}
 
 		finalizeJourneySummary(phasesCompleted, phasesSucceeded, outcome)

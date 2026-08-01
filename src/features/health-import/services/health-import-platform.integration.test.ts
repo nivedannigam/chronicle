@@ -214,4 +214,47 @@ describe('health import platform regression', () => {
 		expect(result.importCandidates).toBe(0)
 		expect(mockProcessImportQueueWithProgress).not.toHaveBeenCalled()
 	})
+
+	it('does not mark pipeline phases failed when queue has no pending imports', async () => {
+		mockProcessImportQueueWithProgress.mockResolvedValue({
+			importedThisRun: 0,
+			failedThisRun: 0,
+			skippedThisRun: 0,
+		})
+
+		const result = await runHealthImportJourney('user-1', ['folder-1'], vi.fn())
+
+		expect(result.outcome).toBe('candidates_found')
+		expect(result.phasesCompleted).not.toContain('download')
+		expect(result.phasesCompleted).not.toContain('ocr')
+		expect(result.phasesCompleted).not.toContain('metrics')
+		expect(result.phasesSucceeded).not.toContain('summary')
+	})
+
+	it('marks summary failed when import pipeline stages fail', async () => {
+		mockProcessImportQueueWithProgress.mockImplementation(
+			async (_userId, options) => {
+				options?.onImportPhase?.('download')
+				return {
+					importedThisRun: 0,
+					failedThisRun: 1,
+					skippedThisRun: 0,
+				}
+			},
+		)
+		mockListRegistryRecords.mockResolvedValue([
+			{
+				id: 'registry-1',
+				importStatus: 'failed',
+				errorMessage: 'Download failed',
+			},
+		])
+
+		const result = await runHealthImportJourney('user-1', ['folder-1'], vi.fn())
+
+		expect(result.outcome).toBe('failed')
+		expect(result.phasesCompleted).toContain('download')
+		expect(result.phasesSucceeded).not.toContain('download')
+		expect(result.phasesSucceeded).not.toContain('summary')
+	})
 })

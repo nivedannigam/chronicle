@@ -21,10 +21,10 @@ export async function fetchOcrProviderStatus(userId: string) {
 		supabase
 			.from('health_reports')
 			.select(
-				'status, processing_error, ocr_provider, processed_at, updated_at',
+				'status, processing_error, ocr_provider, processed_at, uploaded_at',
 			)
 			.eq('user_id', userId)
-			.order('updated_at', { ascending: false })
+			.order('processed_at', { ascending: false, nullsFirst: false })
 			.limit(25),
 		listRegistryRecords(userId, 'google-drive'),
 		supabase
@@ -50,7 +50,7 @@ export async function fetchOcrProviderStatus(userId: string) {
 	for (const report of reportsResult.data ?? []) {
 		const occurredAt =
 			(report.processed_at as string | null) ??
-			(report.updated_at as string | null) ??
+			(report.uploaded_at as string | null) ??
 			new Date().toISOString()
 
 		if (report.status === 'completed' && report.ocr_provider) {
