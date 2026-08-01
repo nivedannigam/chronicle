@@ -105,6 +105,39 @@ export function countProcessingReports(
 	return reports.filter(isReportProcessing).length
 }
 
+/** Report finished OCR/parse but has no usable metrics and is not metricless-by-type. */
+export function reportNeedsReprocess(report: UploadedHealthReport): boolean {
+	if (isReportDisplayReady(report)) {
+		return false
+	}
+
+	if (reportQualifiesForMetriclessCompletion(report)) {
+		return false
+	}
+
+	if (report.status === 'failed') {
+		return true
+	}
+
+	if (report.status === 'parsed') {
+		return (
+			!reportHasParsedObservations(report) || Boolean(report.processing_error)
+		)
+	}
+
+	if (report.status === 'completed') {
+		return !reportHasParsedObservations(report)
+	}
+
+	return false
+}
+
+export function countReportsNeedingReprocess(
+	reports: UploadedHealthReport[],
+): number {
+	return reports.filter(reportNeedsReprocess).length
+}
+
 export function reportHasParsedObservations(
 	report: UploadedHealthReport,
 ): boolean {

@@ -17,6 +17,7 @@ import {
 	prepareImportCandidatesForQueue,
 } from '@/features/medical-discovery/services/import-pipeline.service'
 import { runMedicalDiscovery } from '@/features/medical-discovery/services/medical-discovery-engine.service'
+import { reprocessStuckHealthReports } from '@/features/health/services/health-processing.service'
 
 function invalidateImportCaches(userId: string) {
 	invalidateHealthKnowledgeCache(userId)
@@ -175,6 +176,71 @@ export async function runHealthImportJourney(
 		)
 
 		if (importCandidates === 0) {
+			emitProgress(
+				onProgress,
+				'metrics',
+				phasesCompleted,
+				phasesSucceeded,
+				'Checking for reports that need reprocessing…',
+			)
+
+			const reprocess = await reprocessStuckHealthReports(userId)
+
+			if (reprocess.processed > 0) {
+				phasesCompleted.push('metrics')
+
+				if (reprocess.succeeded > 0) {
+					phasesSucceeded.push('metrics')
+				}
+
+				invalidateImportCaches(userId)
+
+				const completedReports = await fetchCompletedReports(userId)
+				const metricsExtracted = countExtractedMetrics(userId, completedReports)
+
+				const outcome =
+					reprocess.succeeded > 0 && reprocess.failed === 0
+						? 'success'
+						: reprocess.succeeded > 0
+							? 'partial_success'
+							: 'failed'
+
+				finalizeJourneySummary(phasesCompleted, phasesSucceeded, outcome)
+				emitProgress(onProgress, 'summary', phasesCompleted, phasesSucceeded)
+
+				return buildResult({
+					outcome,
+					filesFound,
+					documentsScanned,
+					importCandidates,
+					medicalReports,
+					needsReview,
+					skippedIgnored,
+					reportsImported: completedReports.length,
+					importedThisRun: reprocess.succeeded,
+					failedThisRun: reprocess.failed,
+					skippedThisRun: duplicatesSkipped,
+					autoApprovedCount: 0,
+					metricsExtracted,
+					failedCount: reprocess.failed,
+					errorMessage:
+						reprocess.succeeded > 0
+							? null
+							: reprocess.processed > 0
+								? 'Reports were reprocessed but no metrics could be extracted.'
+								: null,
+					primaryError:
+						reprocess.succeeded > 0
+							? null
+							: reprocess.processed > 0
+								? 'Reports were reprocessed but no metrics could be extracted.'
+								: null,
+					errorSamples: [],
+					phasesCompleted,
+					phasesSucceeded,
+				})
+			}
+
 			invalidateImportCaches(userId)
 			finalizeJourneySummary(phasesCompleted, phasesSucceeded, 'no_reports')
 			emitProgress(onProgress, 'summary', phasesCompleted, phasesSucceeded)

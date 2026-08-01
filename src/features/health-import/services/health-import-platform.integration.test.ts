@@ -10,6 +10,7 @@ const mockProcessImportQueueWithProgress = vi.fn()
 const mockListRegistryRecords = vi.fn()
 const mockInvalidateHealthKnowledgeCache = vi.fn()
 const mockInvalidateAfterHealthImport = vi.fn()
+const mockReprocessStuckHealthReports = vi.fn()
 const mockSupabaseFrom = vi.fn()
 
 vi.mock(
@@ -55,6 +56,11 @@ vi.mock('@/features/health-knowledge/services/health-knowledge-cache', () => ({
 vi.mock('@/lib/query-invalidation', () => ({
 	invalidateAfterHealthImport: (...args: unknown[]) =>
 		mockInvalidateAfterHealthImport(...args),
+}))
+
+vi.mock('@/features/health/services/health-processing.service', () => ({
+	reprocessStuckHealthReports: (...args: unknown[]) =>
+		mockReprocessStuckHealthReports(...args),
 }))
 
 vi.mock(
@@ -144,6 +150,11 @@ describe('health import platform regression', () => {
 			},
 		])
 		mockCompletedReportsQuery()
+		mockReprocessStuckHealthReports.mockResolvedValue({
+			processed: 0,
+			failed: 0,
+			succeeded: 0,
+		})
 	})
 
 	it('runs assign → scan → review → approve → OCR → parser → metrics → summary', async () => {
@@ -213,6 +224,30 @@ describe('health import platform regression', () => {
 		expect(result.outcome).toBe('no_reports')
 		expect(result.importCandidates).toBe(0)
 		expect(mockProcessImportQueueWithProgress).not.toHaveBeenCalled()
+		expect(mockReprocessStuckHealthReports).toHaveBeenCalled()
+	})
+
+	it('reprocesses stuck reports when discovery finds no new candidates', async () => {
+		mockRunMedicalDiscovery.mockResolvedValue({
+			run: {
+				filesScanned: 1,
+				medicalCount: 0,
+				reviewCount: 0,
+				ignoredCount: 0,
+				duplicateCount: 1,
+			},
+		})
+		mockReprocessStuckHealthReports.mockResolvedValue({
+			processed: 1,
+			failed: 0,
+			succeeded: 1,
+		})
+
+		const result = await runHealthImportJourney('user-1', ['folder-1'], vi.fn())
+
+		expect(result.outcome).toBe('success')
+		expect(result.importedThisRun).toBe(1)
+		expect(mockReprocessStuckHealthReports).toHaveBeenCalled()
 	})
 
 	it('does not mark pipeline phases failed when queue has no pending imports', async () => {

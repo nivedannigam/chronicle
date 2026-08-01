@@ -46,6 +46,7 @@ import {
 import {
 	isReportDisplayReady,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
+	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { supabase } from '@/lib/supabase'
@@ -416,7 +417,13 @@ async function importRegistryRecord(
 	await updateRegistryRecord(registryId, { importStatus: 'parsing' })
 	onImportPhase?.('metrics')
 
-	const processed = await processHealthReport(report.id as string)
+	const shouldForceReprocess =
+		Boolean(existingReport) &&
+		reportNeedsReprocess(existingReport as UploadedHealthReport)
+
+	const processed = await processHealthReport(report.id as string, {
+		force: shouldForceReprocess,
+	})
 
 	if (processed.status === 'completed') {
 		await updateRegistryRecord(registryId, {

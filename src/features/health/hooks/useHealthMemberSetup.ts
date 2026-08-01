@@ -5,7 +5,11 @@ import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
-import { countDisplayReadyReports } from '@/features/health/services/report-readiness.service'
+import {
+	countDisplayReadyReports,
+	countProcessingReports,
+	countReportsNeedingReprocess,
+} from '@/features/health/services/report-readiness.service'
 import { getConnectorConnection } from '@/features/connectors/services/connector-store.service'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
@@ -17,6 +21,8 @@ export interface HealthSetupState {
 	hasFolderForMember: boolean
 	needsReview: number
 	hasCompletedReports: boolean
+	reportsNeedingReprocess: number
+	processingReportsCount: number
 	currentStep: HealthSetupStep
 	memberAssignments: Array<{ folderName: string; externalFolderId: string }>
 	isLoading: boolean
@@ -59,8 +65,10 @@ export function useHealthMemberSetup() {
 		const driveConnected = driveQuery.data ?? false
 		const hasFolderForMember = memberAssignments.length > 0
 		const needsReview = importStatus.data?.needsReviewCount ?? 0
-		const hasCompletedReports =
-			countDisplayReadyReports(memberReports.data ?? []) > 0
+		const reports = memberReports.data ?? []
+		const hasCompletedReports = countDisplayReadyReports(reports) > 0
+		const reportsNeedingReprocess = countReportsNeedingReprocess(reports)
+		const processingReportsCount = countProcessingReports(reports)
 
 		let currentStep: HealthSetupStep = 'connect_drive'
 
@@ -68,8 +76,6 @@ export function useHealthMemberSetup() {
 			currentStep = 'assign_folder'
 		} else if (driveConnected && hasFolderForMember && needsReview > 0) {
 			currentStep = 'review_imports'
-		} else if (driveConnected && hasFolderForMember && !hasCompletedReports) {
-			currentStep = 'scan_import'
 		} else if (hasCompletedReports) {
 			currentStep = 'ready'
 		} else if (driveConnected && hasFolderForMember) {
@@ -81,10 +87,15 @@ export function useHealthMemberSetup() {
 			hasFolderForMember,
 			needsReview,
 			hasCompletedReports,
+			reportsNeedingReprocess,
+			processingReportsCount,
 			currentStep,
 			memberAssignments,
 			isLoading:
-				driveQuery.isLoading || sources.isLoading || importStatus.isLoading,
+				driveQuery.isLoading ||
+				sources.isLoading ||
+				importStatus.isLoading ||
+				memberReports.isLoading,
 		}
 	}, [
 		driveQuery.data,
@@ -93,6 +104,7 @@ export function useHealthMemberSetup() {
 		importStatus.data,
 		importStatus.isLoading,
 		memberReports.data,
+		memberReports.isLoading,
 		sources.isLoading,
 	])
 
@@ -104,6 +116,7 @@ export function useHealthMemberSetup() {
 				driveQuery.refetch(),
 				sources.refresh(),
 				importStatus.refetch(),
+				memberReports.refetch(),
 			])
 		},
 	}

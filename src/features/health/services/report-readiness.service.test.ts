@@ -4,6 +4,7 @@ import {
 	isReportDisplayReady,
 	metricsDisplayMessage,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
+	reportNeedsReprocess,
 	reportQualifiesForMetriclessCompletion,
 } from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
@@ -93,5 +94,34 @@ describe('report-readiness.service', () => {
 	it('exports the zero-metric extraction message used by the processing pipeline', () => {
 		expect(NO_LAB_METRICS_EXTRACTED_MESSAGE).toContain('OCR completed')
 		expect(NO_LAB_METRICS_EXTRACTED_MESSAGE).toContain('laboratory metrics')
+	})
+
+	it('flags parsed reports with zero metrics as needing reprocess', () => {
+		const report = createReport('parsed', {
+			parsed_data: { metrics: [], metadata: { reportType: 'blood_test' } },
+			processing_error:
+				'No laboratory metrics could be extracted from this report.',
+		})
+
+		expect(reportNeedsReprocess(report)).toBe(true)
+	})
+
+	it('does not flag display-ready completed reports for reprocess', () => {
+		const report = createReport('completed', {
+			parsed_data: {
+				metrics: [
+					{
+						canonicalId: 'hemoglobin',
+						displayName: 'Hemoglobin',
+						value: 14,
+						unit: 'g/dL',
+						status: 'normal',
+					},
+				],
+				metadata: { reportType: 'blood_test' },
+			},
+		})
+
+		expect(reportNeedsReprocess(report)).toBe(false)
 	})
 })

@@ -19,7 +19,9 @@ import { serializeParsedHealthReport } from '@/features/health/services/health-p
 import { persistHealthMetrics } from '@/features/health/services/health-metrics-persist.service'
 import {
 	healthReportQualifiesForMetriclessCompletion,
+	isReportDisplayReady,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
+	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
 import type {
 	HealthReportStatus,
@@ -33,7 +35,11 @@ const PENDING_STATUSES: HealthReportStatus[] = [
 	'parsed',
 ]
 
-const REPROCESSABLE_STATUSES: HealthReportStatus[] = ['completed', 'failed']
+const REPROCESSABLE_STATUSES: HealthReportStatus[] = [
+	'completed',
+	'failed',
+	'parsed',
+]
 
 type ReportUpdate = Partial<
 	Pick<
@@ -125,18 +131,19 @@ export async function processHealthReport(
 	const typedReport = report as UploadedHealthReport
 
 	if (typedReport.status === 'completed' && !options.force) {
-		createKnowledgeItemFromHealthReport(typedReport)
+		if (isReportDisplayReady(typedReport)) {
+			createKnowledgeItemFromHealthReport(typedReport)
+			return typedReport
+		}
+	} else if (!options.force && typedReport.status === 'processing') {
 		return typedReport
-	}
-
-	if (
+	} else if (!options.force && typedReport.status === 'failed') {
+		return typedReport
+	} else if (
 		!options.force &&
-		(typedReport.status === 'processing' || typedReport.status === 'parsed')
+		typedReport.status === 'parsed' &&
+		!reportNeedsReprocess(typedReport)
 	) {
-		return typedReport
-	}
-
-	if (typedReport.status === 'failed' && !options.force) {
 		return typedReport
 	}
 
@@ -517,7 +524,7 @@ export async function reprocessAllHealthReports(userId: string): Promise<{
 }> {
 	const { data, error } = await supabase
 		.from('health_reports')
-		.select('id, status')
+		.select('*')
 		.eq('user_id', userId)
 		.in('status', REPROCESSABLE_STATUSES)
 
@@ -529,8 +536,14 @@ export async function reprocessAllHealthReports(userId: string): Promise<{
 	let failed = 0
 
 	for (const row of data ?? []) {
+		const report = row as UploadedHealthReport
+
+		if (!reportNeedsReprocess(report)) {
+			continue
+		}
+
 		try {
-			await processHealthReport(row.id as string, { force: true })
+			await processHealthReport(report.id, { force: true })
 			processed += 1
 		} catch {
 			failed += 1
@@ -539,8 +552,66 @@ export async function reprocessAllHealthReports(userId: string): Promise<{
 
 	invalidateHealthKnowledgeCache(userId)
 	await persistHealthKnowledgeGraph(userId, null)
+	invalidateAfterHealthImport(userId)
 
 	return { processed, failed }
+}
+
+export async function reprocessStuckHealthReports(
+	userId: string,
+	options: { familyMemberId?: string | null } = {},
+): Promise<{ processed: number; failed: number; succeeded: number }> {
+	const { data, error } = await supabase
+		.from('health_reports')
+		.select('*')
+		.eq('user_id', userId)
+		.in('status', REPROCESSABLE_STATUSES)
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	let processed = 0
+	let failed = 0
+	let succeeded = 0
+
+	for (const row of data ?? []) {
+		const report = row as UploadedHealthReport
+
+		if (options.familyMemberId) {
+			const reportMemberId = report.family_member_id ?? null
+
+			if (reportMemberId !== options.familyMemberId) {
+				continue
+			}
+		}
+
+		if (!reportNeedsReprocess(report)) {
+			continue
+		}
+
+		processed += 1
+
+		try {
+			const result = await processHealthReport(report.id, { force: true })
+
+			if (isReportDisplayReady(result)) {
+				succeeded += 1
+			} else if (result.status === 'failed') {
+				failed += 1
+			}
+		} catch {
+			failed += 1
+		}
+	}
+
+	if (processed > 0) {
+		invalidateHealthKnowledgeCache(userId)
+		await persistHealthKnowledgeGraph(userId, options.familyMemberId ?? null)
+		invalidateAfterHealthImport(userId)
+	}
+
+	return { processed, failed, succeeded }
 }
 
 export function processPendingHealthReports(
@@ -554,11 +625,13 @@ export function processPendingHealthReports(
 		await chain
 
 		try {
+			const needsForce = reportNeedsReprocess(report)
+
 			if (report.status === 'uploaded') {
 				await enqueueHealthReportProcessing(report.user_id, report.id)
 			}
 
-			await processHealthReport(report.id)
+			await processHealthReport(report.id, { force: needsForce })
 		} catch {
 			// Individual failures are persisted on the report row
 		}
