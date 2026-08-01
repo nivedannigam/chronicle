@@ -188,4 +188,36 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
 		category: 'vitamin',
 		defaultUnit: 'µg/dL',
 	},
+	{
+		canonicalId: 'uibc',
+		displayName: 'UIBC',
+		aliases: [
+			'uibc',
+			'unsat iron binding capacity',
+			'unsat.iron-binding capacity',
+		],
+		category: 'vitamin',
+		defaultUnit: 'µg/dL',
+	},
+	{
+		canonicalId: 'tibc',
+		displayName: 'Total Iron Binding Capacity',
+		aliases: ['tibc', 'total iron binding capacity'],
+		category: 'vitamin',
+		defaultUnit: 'µg/dL',
+	},
+	{
+		canonicalId: 'iron-saturation',
+		displayName: 'Iron Saturation',
+		aliases: ['iron saturation', 'transferrin saturation'],
+		category: 'vitamin',
+		defaultUnit: '%',
+	},
+	{
+		canonicalId: 'ferritin',
+		displayName: 'Ferritin',
+		aliases: ['ferritin', 'serum ferritin'],
+		category: 'vitamin',
+		defaultUnit: 'ng/mL',
+	},
 ]

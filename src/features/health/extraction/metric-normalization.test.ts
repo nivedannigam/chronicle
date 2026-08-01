@@ -16,6 +16,15 @@ describe('normalizeMetricName', () => {
 
 		expect(result.canonicalId).toBe('ast')
 	})
+
+	it('does not map Iron Saturation to iron', () => {
+		expect(normalizeMetricName('Iron Saturation').canonicalId).toBe(
+			'iron-saturation',
+		)
+		expect(normalizeMetricName('Total Iron Binding Capacity').canonicalId).toBe(
+			'tibc',
+		)
+	})
 })
 
 describe('parseReportMetadata', () => {

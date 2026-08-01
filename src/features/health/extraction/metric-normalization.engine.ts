@@ -24,6 +24,11 @@ function aliasMatchesMetricName(alias: string, key: string): boolean {
 		return true
 	}
 
+	// Single-token aliases must match exactly — avoids "iron" matching "iron saturation".
+	if (!normalizedAlias.includes(' ')) {
+		return false
+	}
+
 	const pattern = new RegExp(
 		`\\b${escapeRegex(normalizedAlias).replace(/\s+/g, '\\s+')}\\b`,
 		'i',

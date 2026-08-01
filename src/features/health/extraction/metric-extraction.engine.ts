@@ -3,10 +3,7 @@ import type {
 	MetricResult,
 	MetricStatus,
 } from '@/features/health/domain/metric.types'
-import type {
-	OcrDocumentResult,
-	OcrTable,
-} from '@/features/document-intelligence/ocr'
+import type { OcrDocumentResult } from '@/features/document-intelligence/ocr'
 import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import {
 	evaluateMetricStatus,
@@ -14,105 +11,13 @@ import {
 	parseNumericValue,
 	parseReferenceRange,
 } from '@/features/health/extraction/reference-range.engine'
-import { isThyrocareOcrText } from '@/features/health/extraction/vendors/thyrocare-detection'
-import { extractThyrocareMetricsFromText } from '@/features/health/extraction/vendors/thyrocare-text.extractor'
+import {
+	extractMetricsFromLayouts,
+	formatLayoutExtractionSummary,
+} from '@/features/health/extraction/layouts/layout-extractor.registry'
+import type { RawMetricRow } from '@/features/health/extraction/layouts/layout-extractor.types'
 
-export type RawMetricRow = {
-	rawName: string
-	value: string
-	referenceRange: string
-	unit: string | null
-	confidence: number
-	source: 'table' | 'text'
-}
-
-const METRIC_ROW_PATTERN =
-	/^([A-Za-z0-9 ()/.%-]+?)\s{2,}(\S+)\s{2,}([\d.<>-]+(?:\s*-\s*[\d.]+)?)\s{2,}(.+)$/gm
-
-function getTableCell(
-	table: OcrTable,
-	row: number,
-	column: number,
-): string | null {
-	const cell = table.cells.find(
-		(item) => item.row === row && item.column === column,
-	)
-
-	return cell?.text?.trim() ?? null
-}
-
-function extractRowsFromTables(tables: OcrTable[]): RawMetricRow[] {
-	const rows: RawMetricRow[] = []
-
-	for (const table of tables) {
-		for (let row = 1; row < table.rows; row += 1) {
-			const rawName = getTableCell(table, row, 0)
-			const value = getTableCell(table, row, 1)
-			const referenceRange = getTableCell(table, row, 2) ?? ''
-			const unit = getTableCell(table, row, 3)
-
-			if (!rawName || !value) {
-				continue
-			}
-
-			const cellConfidence = table.cells
-				.filter((cell) => cell.row === row)
-				.map((cell) => cell.confidence ?? 0.95)
-			const confidence =
-				cellConfidence.length > 0
-					? cellConfidence.reduce((sum, item) => sum + item, 0) /
-						cellConfidence.length
-					: 0.95
-
-			rows.push({
-				rawName,
-				value,
-				referenceRange,
-				unit,
-				confidence,
-				source: 'table',
-			})
-		}
-	}
-
-	return rows
-}
-
-function extractRowsFromText(text: string): RawMetricRow[] {
-	const rows: RawMetricRow[] = []
-
-	for (const match of text.matchAll(METRIC_ROW_PATTERN)) {
-		const [, rawName, value, referenceRange, unit] = match
-
-		rows.push({
-			rawName: rawName.trim(),
-			value: value.trim(),
-			referenceRange: referenceRange.trim(),
-			unit: unit.trim(),
-			confidence: 0.88,
-			source: 'text',
-		})
-	}
-
-	return rows
-}
-
-function deduplicateRows(rows: RawMetricRow[]): RawMetricRow[] {
-	const bestByKey = new Map<string, RawMetricRow>()
-
-	for (const row of rows) {
-		const { canonicalId } = normalizeMetricName(row.rawName)
-		const key =
-			canonicalId ?? normalizeMetricName(row.rawName).displayName.toLowerCase()
-		const existing = bestByKey.get(key)
-
-		if (!existing || row.confidence > existing.confidence) {
-			bestByKey.set(key, row)
-		}
-	}
-
-	return [...bestByKey.values()]
-}
+export type { RawMetricRow } from '@/features/health/extraction/layouts/layout-extractor.types'
 
 function evaluateExtractedMetricStatus(
 	value: string,
@@ -195,28 +100,13 @@ export function extractMetricsFromOcr(
 	ocrDocument: OcrDocumentResult,
 ): MetricExtractionResult {
 	const warnings: string[] = []
-	const thyrocareRows = isThyrocareOcrText(ocrDocument.rawText)
-		? extractThyrocareMetricsFromText(ocrDocument.rawText)
-		: []
-	const fromTables = extractRowsFromTables(ocrDocument.tables)
-	const fromText =
-		fromTables.length > 0 || thyrocareRows.length > 0
-			? []
-			: extractRowsFromText(ocrDocument.rawText)
+	const { rows, strategiesUsed } = extractMetricsFromLayouts({
+		rawText: ocrDocument.rawText,
+		tables: ocrDocument.tables,
+		fileName: ocrDocument.metadata?.fileName,
+	})
 
-	if (
-		fromTables.length === 0 &&
-		fromText.length === 0 &&
-		thyrocareRows.length === 0
-	) {
-		warnings.push('No metric rows identified in OCR output.')
-	}
-
-	if (thyrocareRows.length > 0) {
-		warnings.push(
-			`Extracted ${thyrocareRows.length} metric row(s) using Thyrocare parser.`,
-		)
-	}
+	warnings.push(formatLayoutExtractionSummary(rows, strategiesUsed))
 
 	if (ocrDocument.tables.length > 1) {
 		warnings.push(
@@ -224,8 +114,7 @@ export function extractMetricsFromOcr(
 		)
 	}
 
-	const merged = deduplicateRows([...thyrocareRows, ...fromTables, ...fromText])
-	const unknownCount = merged.filter(
+	const unknownCount = rows.filter(
 		(row) => !normalizeMetricName(row.rawName).canonicalId,
 	).length
 
@@ -235,7 +124,7 @@ export function extractMetricsFromOcr(
 		)
 	}
 
-	const missingValues = merged.filter((row) => !row.value.trim()).length
+	const missingValues = rows.filter((row) => !row.value.trim()).length
 
 	if (missingValues > 0) {
 		warnings.push(
@@ -243,7 +132,7 @@ export function extractMetricsFromOcr(
 		)
 	}
 
-	const validRows = merged.filter((row) => row.value.trim())
+	const validRows = rows.filter((row) => row.value.trim())
 	const metricResults = validRows.map(toMetricResult)
 	const metrics = metricResults.map(toHealthMetric)
 	const normalizationMap = metricResults.map((result) => ({

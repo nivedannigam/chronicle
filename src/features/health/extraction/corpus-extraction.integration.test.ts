@@ -2,8 +2,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
-import { isThyrocareOcrText } from '@/features/health/extraction/vendors/thyrocare-detection'
-import { extractThyrocareMetricsFromText } from '@/features/health/extraction/vendors/thyrocare-text.extractor'
+import { extractMetricsFromLayouts } from '@/features/health/extraction/layouts/layout-extractor.registry'
+import type { RawMetricRow } from '@/features/health/extraction/layouts/layout-extractor.types'
 
 const FIXTURE_DIR = path.resolve(process.cwd(), '_fixtures/lab-reports')
 
@@ -21,8 +21,8 @@ const MINIMUM_PDFS = [
 type CorpusRow = {
 	filename: string
 	pages: number
-	thyrocare: boolean
 	metricCount: number
+	strategies: string
 	sampleMetrics: string
 	layoutHint: string
 }
@@ -35,9 +35,7 @@ async function extractPdfText(
 	return { text: parsed.text ?? '', pages: parsed.numpages ?? 0 }
 }
 
-function sampleMetricNames(
-	rows: ReturnType<typeof extractThyrocareMetricsFromText>,
-): string {
+function sampleMetricNames(rows: RawMetricRow[]): string {
 	return rows
 		.slice(0, 5)
 		.map((row) => row.rawName)
@@ -47,7 +45,7 @@ function sampleMetricNames(
 const fixturesPresent = existsSync(FIXTURE_DIR)
 
 describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
-	it('runs Thyrocare extractor across lab-report PDF corpus', async () => {
+	it('runs layout extractors across lab-report PDF corpus', async () => {
 		const pdfFiles = readdirSync(FIXTURE_DIR)
 			.filter((name) => name.toLowerCase().endsWith('.pdf'))
 			.sort()
@@ -63,16 +61,19 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 		for (const filename of pdfFiles) {
 			const filePath = path.join(FIXTURE_DIR, filename)
 			const { text, pages } = await extractPdfText(filePath)
-			const thyrocare = isThyrocareOcrText(text)
-			const rows = extractThyrocareMetricsFromText(text)
+			const { rows, strategiesUsed } = extractMetricsFromLayouts({
+				rawText: text,
+				tables: [],
+				fileName: filename,
+			})
 			const layoutHint =
 				rows.length === 0 ? text.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
 
 			table.push({
 				filename,
 				pages,
-				thyrocare,
 				metricCount: rows.length,
+				strategies: strategiesUsed.join(', ') || '(none)',
 				sampleMetrics: sampleMetricNames(rows),
 				layoutHint,
 			})
@@ -81,14 +82,14 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 		const header = [
 			'filename',
 			'pages',
-			'thyrocare?',
+			'strategies',
 			'metric count',
 			'sample metrics',
 		]
 		const colWidths = [
 			Math.max(header[0].length, ...table.map((r) => r.filename.length)),
 			5,
-			10,
+			24,
 			12,
 			40,
 		]
@@ -105,7 +106,7 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 				formatRow([
 					row.filename,
 					String(row.pages),
-					row.thyrocare ? 'yes' : 'no',
+					row.strategies,
 					String(row.metricCount),
 					row.sampleMetrics || '(none)',
 				]),
@@ -117,12 +118,23 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 
 		console.log('\n=== End corpus table ===\n')
 
-		// Sanity: March 2026 Thyrocare combo should yield many metrics when PDF text is extractable
 		const march2026 = table.find(
 			(r) => r.filename === 'March 2026 - Thyrocare Test 2.pdf',
 		)
-		if (march2026 && march2026.thyrocare) {
-			expect(march2026.metricCount).toBeGreaterThan(0)
+		if (march2026) {
+			expect(march2026.metricCount).toBeGreaterThan(15)
+		}
+
+		const ironTest = table.find((r) => r.filename === 'Iron Test 2026.pdf')
+		if (ironTest) {
+			expect(ironTest.metricCount).toBeGreaterThan(0)
+		}
+
+		const feb2023 = table.find(
+			(r) => r.filename === '2023 Feb - Complete Blood Test.pdf',
+		)
+		if (feb2023) {
+			expect(feb2023.metricCount).toBeGreaterThan(10)
 		}
 	}, 120_000)
 })

@@ -60,7 +60,7 @@ describe('thyrocare-text.extractor', () => {
 
 		expect(result.metrics.length).toBeGreaterThan(15)
 		expect(
-			result.warnings.some((warning) => warning.includes('Thyrocare')),
+			result.warnings.some((warning) => warning.includes('vertical-block')),
 		).toBe(true)
 	})
 
