@@ -44,7 +44,7 @@ describe('report-readiness.service', () => {
 		expect(getReportPipelinePhase(report)).toBe('ready')
 	})
 
-	it('does not treat completed reports without metrics as display-ready', () => {
+	it('allows metricless completion for health summary reports', () => {
 		const report = createReport('completed', {
 			parsed_data: {
 				metrics: [],
@@ -52,8 +52,9 @@ describe('report-readiness.service', () => {
 			},
 		})
 
-		expect(isReportDisplayReady(report)).toBe(false)
-		expect(getReportPipelinePhase(report)).toBe('processing')
+		expect(reportQualifiesForMetriclessCompletion(report)).toBe(true)
+		expect(isReportDisplayReady(report)).toBe(true)
+		expect(getReportPipelinePhase(report)).toBe('ready')
 	})
 
 	it('allows metricless completion for ecg reports', () => {

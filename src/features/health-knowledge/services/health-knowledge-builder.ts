@@ -17,6 +17,7 @@ import {
 	mapCategoryId,
 } from '@/features/health-knowledge/graph/metric-categories'
 import { getMetricRelationships } from '@/features/health-knowledge/graph/metric-relationships'
+import { resolveMetricCategoryId } from '@/features/health-knowledge/utils/metric-category-resolver'
 import type { KnowledgeGraphBuilder } from '@chronicle/core-knowledge'
 import type {
 	BuildHealthKnowledgeInput,
@@ -162,18 +163,20 @@ function dedupeObservations(
 	)
 }
 
-function resolveCategoryId(canonicalMetricId: string): MetricCategoryId {
+function resolveCategoryId(
+	canonicalMetricId: string,
+	displayName?: string,
+): MetricCategoryId {
 	const definition = findMetricDefinitionById(canonicalMetricId)
 
-	if (definition) {
-		return definition.categoryId
-	}
-
-	if (canonicalMetricId.startsWith('raw:')) {
-		return 'blood'
-	}
-
-	return mapCategoryId(canonicalMetricId.split('-')[0] ?? 'blood')
+	return resolveMetricCategoryId({
+		canonicalId: canonicalMetricId,
+		displayName,
+		definitionCategoryId: definition?.categoryId,
+		fallbackCategoryId: mapCategoryId(
+			canonicalMetricId.split('-')[0] ?? 'blood',
+		),
+	})
 }
 
 function buildMetricHistories(
@@ -199,7 +202,10 @@ function buildMetricHistories(
 			return {
 				canonicalMetricId,
 				displayName: definition?.displayName ?? latest.displayName,
-				categoryId: resolveCategoryId(canonicalMetricId),
+				categoryId: resolveCategoryId(
+					canonicalMetricId,
+					definition?.displayName ?? latest.displayName,
+				),
 				unit: latest.unit ?? definition?.defaultUnit ?? null,
 				observations: sorted,
 				trend: calculateTrend(sorted),
@@ -418,6 +424,7 @@ export function metricHistoriesToTrendSeries(
 		thyroid: C.accentBlue,
 		vitamin: C.greenAlt,
 		blood: C.photos,
+		urine: C.teal,
 	}
 
 	return histories

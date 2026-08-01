@@ -27,11 +27,38 @@ const SUMMARY_INTENTS = new Set<AskIntent>([
 	'latest_report',
 ])
 
+const MIN_CLASSIFIED_FOR_CONFIDENT_SUMMARY = 5
+
 function memberPrefix(memberName?: string | null): string {
 	return memberName ? `For ${memberName}, ` : ''
 }
 
-function reportContext(ranked: RankedEvidence): string {
+function formatReportDate(value: string): string {
+	return new Date(value).toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	})
+}
+
+function reportContext(
+	input: ClinicalResponseInput,
+	ranked: RankedEvidence,
+): string {
+	const coverage = input.coverage
+	const latest = coverage?.latestUsableReport
+
+	if (
+		coverage?.corpusCompleteness === 'partial' &&
+		latest &&
+		coverage.discoveredCount > coverage.displayReadyCount
+	) {
+		const dateLabel = formatReportDate(latest.date)
+		const labLabel = latest.lab || latest.title
+
+		return `Based on your ${dateLabel} ${labLabel} report (${coverage.displayReadyCount} of ${coverage.discoveredCount} files in your folder imported successfully)`
+	}
+
 	if (ranked.singleReport && ranked.latestReportLabel) {
 		return `Based on your latest available report (${ranked.latestReportLabel})`
 	}
@@ -43,6 +70,18 @@ function reportContext(ranked: RankedEvidence): string {
 	return 'Based on your Chronicle records'
 }
 
+function normalizeMetricValue(value: string): string {
+	const parts = value
+		.trim()
+		.split(/\s+/)
+		.filter(
+			(part, index, array) =>
+				index === 0 || part.toLowerCase() !== array[index - 1]?.toLowerCase(),
+		)
+
+	return parts.join(' ')
+}
+
 function formatMetricFinding(metric: RankedMetric): string {
 	const statusLabel =
 		metric.status === 'normal'
@@ -50,8 +89,9 @@ function formatMetricFinding(metric: RankedMetric): string {
 			: metric.status === 'borderline'
 				? 'borderline'
 				: metric.status
+	const value = normalizeMetricValue(metric.latestValue)
 
-	return `${metric.displayName}: ${metric.latestValue}${metric.unit ? ` ${metric.unit}` : ''} (${statusLabel})`
+	return `${metric.displayName}: ${value}${metric.unit ? ` ${metric.unit}` : ''} (${statusLabel})`
 }
 
 function buildAbnormalFindings(ranked: RankedEvidence): string[] {
@@ -73,8 +113,9 @@ function buildExecutiveSummary(
 	important: RankedMetric[],
 ): string {
 	const prefix = memberPrefix(input.memberName)
-	const context = reportContext(ranked)
+	const context = reportContext(input, ranked)
 	const intent = input.knowledge.intent
+	const classifiedCount = ranked.metrics.length
 
 	if (!input.dataAvailable) {
 		return prefix + "I don't have records in Chronicle that answer that yet."
@@ -90,12 +131,13 @@ function buildExecutiveSummary(
 
 	if (intent === 'metric_lookup' && important[0]) {
 		const metric = important[0]
-		return `${prefix}${context}, ${metric.displayName} is ${metric.latestValue}${metric.unit ? ` ${metric.unit}` : ''} (${metric.status === 'normal' ? 'within normal range' : metric.status}).`
+		return `${prefix}${context}, ${metric.displayName} is ${normalizeMetricValue(metric.latestValue)}${metric.unit ? ` ${metric.unit}` : ''} (${metric.status === 'normal' ? 'within normal range' : metric.status}).`
 	}
 
 	if (intent === 'compare_reports') {
 		if (ranked.singleReport) {
-			return `${prefix}${context}. A comparison requires at least two reports — import a prior or follow-up report to compare.`
+			const needed = Math.max(2 - ranked.reportCount, 1)
+			return `${prefix}${context}. A comparison requires at least two reports — import ${needed} more report${needed === 1 ? '' : 's'} to compare.`
 		}
 
 		return `${prefix}${context}, here is how your key markers compare across reports.`
@@ -113,6 +155,17 @@ function buildExecutiveSummary(
 	}
 
 	if (SUMMARY_INTENTS.has(intent) || intent === 'organ_status') {
+		if (
+			classifiedCount < MIN_CLASSIFIED_FOR_CONFIDENT_SUMMARY ||
+			input.coverage?.corpusCompleteness === 'partial'
+		) {
+			if (classifiedCount === 0) {
+				return `${prefix}${context}, your imported results are available but no clinically prioritized markers were extracted yet.`
+			}
+
+			return `${prefix}${context}, partial extraction — reprocess recommended for a complete clinical summary.`
+		}
+
 		if (ranked.abnormalCount > 0) {
 			return `${prefix}${context}, most markers look acceptable but ${ranked.abnormalCount} result${ranked.abnormalCount === 1 ? '' : 's'} need review.`
 		}
@@ -259,8 +312,16 @@ function buildRecommendations(
 	return recommendations.slice(0, 3)
 }
 
-function buildLimitations(intent: AskIntent, ranked: RankedEvidence): string[] {
+function buildLimitations(
+	intent: AskIntent,
+	ranked: RankedEvidence,
+	coverage?: ClinicalResponseInput['coverage'],
+): string[] {
 	const limitations: string[] = []
+
+	if (coverage?.limitations.length) {
+		limitations.push(...coverage.limitations)
+	}
 
 	if (ranked.singleReport && TREND_INTENTS.has(intent)) {
 		limitations.push(
@@ -275,16 +336,27 @@ function buildLimitations(intent: AskIntent, ranked: RankedEvidence): string[] {
 	}
 
 	if (
-		ranked.abnormalCount === 0 &&
 		ranked.metrics.length > 0 &&
+		ranked.metrics.length < MIN_CLASSIFIED_FOR_CONFIDENT_SUMMARY &&
 		SUMMARY_INTENTS.has(intent)
+	) {
+		limitations.push(
+			'Only a small subset of markers was classified — reprocess the report for fuller coverage.',
+		)
+	}
+
+	if (
+		ranked.abnormalCount === 0 &&
+		ranked.metrics.length >= MIN_CLASSIFIED_FOR_CONFIDENT_SUMMARY &&
+		SUMMARY_INTENTS.has(intent) &&
+		coverage?.corpusCompleteness !== 'partial'
 	) {
 		limitations.push(
 			'This summary reflects extracted markers only — it is not a comprehensive medical evaluation.',
 		)
 	}
 
-	return limitations.slice(0, 2)
+	return [...new Set(limitations)].slice(0, 4)
 }
 
 export function buildClinicalAnswer(
@@ -299,7 +371,7 @@ export function buildClinicalAnswer(
 		executiveSummary: buildExecutiveSummary(input, ranked, important),
 		keyFindings: buildKeyFindings(intent, ranked, important),
 		recommendations: buildRecommendations(intent, ranked),
-		limitations: buildLimitations(intent, ranked),
+		limitations: buildLimitations(intent, ranked, input.coverage),
 		rankedEvidence: ranked,
 		importantMetricIds: important.map((metric) => metric.canonicalId),
 		showTrendCards:

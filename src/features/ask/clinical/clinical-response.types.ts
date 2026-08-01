@@ -43,9 +43,12 @@ export interface ClinicalAnswer {
 	showComparisonLanguage: boolean
 }
 
+import type { HealthCoverageSnapshot } from '@/features/health/types/health-coverage.types'
+
 export interface ClinicalResponseInput {
 	knowledge: import('@/features/knowledge/retrieval/knowledge-retriever.types').RetrievedKnowledge
 	question: string
 	memberName?: string | null
 	dataAvailable: boolean
+	coverage?: HealthCoverageSnapshot | null
 }

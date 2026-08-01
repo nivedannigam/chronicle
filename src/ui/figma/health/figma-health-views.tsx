@@ -42,6 +42,89 @@ import {
 import { HealthSearchField } from '@/ui/figma/health/health-ui'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
+function reportBadge(report: HealthReportSummary): {
+	label: string
+	color: string
+} {
+	switch (report.badgeStatus) {
+		case 'partial':
+			return { label: 'Partial', color: FC.amber }
+		case 'needs_reprocess':
+			return { label: 'Needs reprocess', color: FC.orange }
+		case 'review':
+			return { label: 'Review', color: FC.amber }
+		case 'normal':
+			return { label: 'Normal', color: FC.green }
+		default:
+			return report.findings.length > 0
+				? { label: 'Review', color: FC.amber }
+				: { label: 'Normal', color: FC.green }
+	}
+}
+
+function CoverageBanner({
+	coverage,
+	onReprocess,
+}: {
+	coverage: NonNullable<HealthCompanionView['coverage']>
+	onReprocess?: () => void
+}) {
+	if (
+		coverage.corpusCompleteness !== 'partial' &&
+		coverage.failedCount === 0 &&
+		coverage.reportsNeedingReprocess.length === 0
+	) {
+		return null
+	}
+
+	return (
+		<div
+			style={{
+				...figmaCardStyle,
+				borderRadius: 18,
+				padding: '14px 16px',
+				marginBottom: 18,
+				border: `1px solid ${FC.amber}33`,
+				background: `${FC.amber}10`,
+			}}
+		>
+			<p
+				style={{
+					color: FC.fg,
+					fontSize: 13.5,
+					fontWeight: 600,
+					margin: '0 0 4px',
+				}}
+			>
+				Partial health coverage
+			</p>
+			<p style={{ color: FC.mid, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+				{coverage.summaryLine}
+			</p>
+			{coverage.reportsNeedingReprocess.length > 0 && onReprocess ? (
+				<button
+					type="button"
+					onClick={onReprocess}
+					style={{
+						marginTop: 10,
+						background: FC.amber,
+						border: 'none',
+						borderRadius: 100,
+						padding: '7px 12px',
+						fontSize: 12,
+						fontWeight: 700,
+						color: FC.bg,
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					Reprocess reports
+				</button>
+			) : null}
+		</div>
+	)
+}
+
 function attentionColor(item: HealthAttentionItem): string {
 	if (item.severity === 'high') return FC.orange
 	if (item.severity === 'medium') return FC.amber
@@ -157,6 +240,12 @@ export function FigmaHealthOverviewView({
 
 	return (
 		<div>
+			{companion.coverage ? (
+				<CoverageBanner
+					coverage={companion.coverage}
+					onReprocess={() => navigate(ROUTES.healthImport)}
+				/>
+			) : null}
 			<div
 				style={{
 					...figmaCardStyle,
@@ -681,8 +770,7 @@ export function FigmaHealthReportsView({
 			) : (
 				<div style={{ display: 'grid', gap: 12 }}>
 					{filtered.map((report) => {
-						const hasFindings = report.findings.length > 0
-						const statusColor = hasFindings ? FC.amber : FC.green
+						const badge = reportBadge(report)
 
 						return (
 							<div
@@ -701,8 +789,8 @@ export function FigmaHealthReportsView({
 										marginBottom: 12,
 									}}
 								>
-									<FigmaIconBox color={statusColor} size={40}>
-										<FileText size={17} color={statusColor} strokeWidth={1.8} />
+									<FigmaIconBox color={badge.color} size={40}>
+										<FileText size={17} color={badge.color} strokeWidth={1.8} />
 									</FigmaIconBox>
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<div
@@ -742,17 +830,17 @@ export function FigmaHealthReportsView({
 									</div>
 									<span
 										style={{
-											background: `${statusColor}14`,
-											border: `1px solid ${statusColor}28`,
+											background: `${badge.color}14`,
+											border: `1px solid ${badge.color}28`,
 											borderRadius: 100,
 											padding: '4px 10px',
-											color: statusColor,
+											color: badge.color,
 											fontSize: 11,
 											fontWeight: 700,
 											flexShrink: 0,
 										}}
 									>
-										{hasFindings ? 'Review' : 'Normal'}
+										{badge.label}
 									</span>
 								</div>
 
@@ -767,7 +855,7 @@ export function FigmaHealthReportsView({
 									{report.summary}
 								</p>
 
-								{hasFindings ? (
+								{report.findings.length > 0 ? (
 									<div
 										style={{
 											display: 'flex',
@@ -916,6 +1004,8 @@ export function FigmaHealthTimelineView({
 											padding: isCheckup ? '16px 16px 14px' : '14px 16px',
 											marginLeft: 8,
 											borderLeft: isCheckup ? `3px solid ${color}` : undefined,
+											borderStyle: event.isIncomplete ? 'dashed' : undefined,
+											opacity: event.isIncomplete ? 0.88 : 1,
 										}}
 									>
 										<p

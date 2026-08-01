@@ -165,7 +165,8 @@ export async function runHealthImport(
 
 		summary.reportsImported = pipelineSummary.imported
 		summary.skippedCount = pipelineSummary.duplicates + pipelineSummary.skipped
-		summary.failedCount = pipelineSummary.errors
+		// Keep registry-based failedCount from buildImportSummary — do not overwrite
+		// with this-run errors only (registry total is the canonical failed count).
 
 		const completedJob: HealthImportJob = {
 			...job,

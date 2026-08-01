@@ -43,7 +43,7 @@ describe('thyrocare-text.extractor', () => {
 		const rows = extractThyrocareMetricsFromText(text)
 		const names = rows.map((row) => row.rawName.toUpperCase())
 
-		expect(rows.length).toBeGreaterThan(15)
+		expect(rows.length).toBeGreaterThanOrEqual(75)
 		expect(names.some((name) => name.includes('HEMOGLOBIN'))).toBe(true)
 		expect(names.some((name) => name.includes('TOTAL CHOLESTEROL'))).toBe(true)
 		expect(names.some((name) => name.includes('LDL'))).toBe(true)

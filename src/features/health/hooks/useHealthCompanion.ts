@@ -7,6 +7,7 @@ import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSet
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { buildHealthCompanionView } from '@/features/health/services/health-companion.service'
+import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 const EMPTY_REPORTS: UploadedHealthReport[] = []
@@ -24,6 +25,7 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 	const dashboard = useHealthDashboard(reports)
 	const metricsQuery = useHealthMetrics()
 	const storedMetrics = metricsQuery.data ?? []
+	const coverage = useHealthCoverage({ uploadedReports: reports })
 
 	const proactiveInsights = userId
 		? healthInsightsService.getProactiveHealthInsights({
@@ -42,6 +44,7 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 				needsReview: setup.needsReview,
 				trendSeries: dashboard.trendSeries,
 				personId: userId,
+				coverage,
 			}),
 		[
 			dashboard.knowledgeGraph,
@@ -50,12 +53,14 @@ export function useHealthCompanion(uploadedReports?: UploadedHealthReport[]) {
 			proactiveInsights,
 			setup.needsReview,
 			userId,
+			coverage,
 		],
 	)
 
 	return {
 		...dashboard,
 		companion,
+		coverage,
 		reports,
 		isLoading: uploadedQuery.isLoading || setup.isLoading,
 		isError: uploadedQuery.isError,

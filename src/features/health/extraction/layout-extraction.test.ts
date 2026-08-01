@@ -152,6 +152,7 @@ describe('layout extractors', () => {
 			})
 			const bacteria = rows.find((row) => row.rawName === 'BACTERIA')
 
+			expect(rows.length).toBeGreaterThanOrEqual(75)
 			expect(bacteria?.value).toBe('ABSENT')
 		},
 	)

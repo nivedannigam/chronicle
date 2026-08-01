@@ -40,6 +40,7 @@ export interface HealthJourneyEvent {
 	kind: 'checkup' | 'finding' | 'improvement' | 'monitoring' | 'review'
 	reportId?: string
 	categoryId?: string
+	isIncomplete?: boolean
 }
 
 export interface MetricInsightGroup {
@@ -67,6 +68,9 @@ export interface HealthReportSummary {
 	findings: string[]
 	status: string
 	isReady: boolean
+	badgeStatus?: ReportBadgeStatus
+	classifiedCount?: number
+	unknownCount?: number
 }
 
 export interface HealthScoreReason {
@@ -99,6 +103,10 @@ export interface HealthInsightGroup {
 
 import type { TrendSeries } from '@/features/health/types'
 import type {
+	HealthCoverageSnapshot,
+	ReportBadgeStatus,
+} from '@/features/health/types/health-coverage.types'
+import type {
 	HealthSummary,
 	LongitudinalHealthProfile,
 } from '@/features/health-intelligence/types/health-profile.types'
@@ -120,4 +128,5 @@ export interface HealthCompanionView {
 	narrative: string[]
 	profile: LongitudinalHealthProfile | null
 	healthSummary: HealthSummary | null
+	coverage?: HealthCoverageSnapshot | null
 }

@@ -47,7 +47,7 @@ const HIGH_RISK_METRIC_IDS = new Set([
 ])
 
 const URINE_MICROSCOPY_PATTERN =
-	/\b(bacteria|casts|crystals|pus|epithelial|bile|yeast|mucus|amorphous|nitrite|protein|glucose|ketone|urobilinogen|ph|specific gravity|colour|color)\b/i
+	/\b(bacteria|casts|crystals|pus|epithelial|bile|yeast|mucus|amorphous|nitrite|leucocyte|leukocyte|parasite|urobilinogen|protein|glucose|ketone|ph|specific gravity|colour|color)\b/i
 
 const QUALITATIVE_NORMAL_VALUES =
 	/^(absent|negative|nil|not detected|none|normal)$/i

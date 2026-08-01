@@ -17,6 +17,7 @@ const CATEGORY_META: Record<
 	thyroid: { name: 'Thyroid', emoji: '🦋', color: C.accentBlue },
 	vitamin: { name: 'Vitamin', emoji: '🦴', color: C.greenAlt },
 	blood: { name: 'Blood', emoji: '🩸', color: C.photos },
+	urine: { name: 'Urine', emoji: '🧪', color: C.teal },
 }
 
 const CATEGORY_ALIASES: Record<string, MetricCategoryId> = {
@@ -28,6 +29,7 @@ const CATEGORY_ALIASES: Record<string, MetricCategoryId> = {
 	vitamin: 'vitamin',
 	'blood-count': 'blood',
 	blood: 'blood',
+	urine: 'urine',
 	general: 'blood',
 }
 

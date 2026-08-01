@@ -33,6 +33,9 @@ import { runIntelligencePipeline } from '@/features/intelligence/pipeline/chroni
 import { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'
 import { createEmptyContextPackage } from '@/features/intelligence/entities/knowledge-entities'
 import { toRetrievedKnowledge } from '@/features/intelligence/adapters/retrieved-knowledge.adapter'
+import { buildHealthCoverageSnapshot } from '@/features/health/services/health-coverage.service'
+import type { UploadedHealthReport } from '@/features/health/types'
+import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 
 let lastDebugInfo: AskDebugInfo | null = null
 
@@ -156,15 +159,27 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		}
 
 		const cacheKey = `${sessionKey}:${pipeline.detection.intent}:${pipeline.resolvedQuestion}:${knowledge.metrics.length}:${knowledge.reports.length}`
+		const memberForTurn = {
+			...personalContext.activeMember,
+			memberName:
+				input.memberName ?? personalContext.activeMember.memberName ?? null,
+		}
+		const coverage = buildHealthCoverageSnapshot({
+			uploadedReports: (input.uploadedReports ?? []) as UploadedHealthReport[],
+			importRegistry: input.connectorDocuments ?? [],
+			storedMetrics: (input.storedMetrics ?? []) as StoredHealthMetric[],
+			memberId: memberForTurn.memberId,
+		})
 		let turn = buildGroundedTurn({
 			question: input.question,
 			knowledge: pipeline.mergedKnowledge,
-			member: personalContext.activeMember,
+			member: memberForTurn,
 			domains: pipeline.activeDomains,
 			dataAvailable: pipeline.dataAvailable,
 			confidence: pipeline.detection.confidence,
 			uploadedReports: input.uploadedReports,
 			personalContext,
+			coverage,
 		})
 		let providerResponse = ''
 		const aiConfigured = isAskAiProviderConfigured()

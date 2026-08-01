@@ -17,7 +17,10 @@ import type { UploadedHealthReport } from '@/features/health/types'
 import {
 	countProcessingReports,
 	isReportDisplayReady,
+	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
+import { deriveReportBadgeStatus } from '@/features/health/services/health-coverage.service'
+import type { HealthCoverageSnapshot } from '@/features/health/types/health-coverage.types'
 import type {
 	HealthAttentionItem,
 	HealthChangeItem,
@@ -347,15 +350,18 @@ function buildInsightGroups(input: {
 					? 'Needs attention'
 					: 'Stable'
 
+		const defaultSummary =
+			group.id === 'urine'
+				? 'Routine urine microscopy findings recorded.'
+				: group.status === 'needs_attention'
+					? `${group.label} markers need monitoring based on your latest results.`
+					: `${group.label} markers look steady across recent reports.`
+
 		result.push({
 			id: group.id,
 			label: group.label,
 			color: group.color,
-			summary:
-				relatedInsight?.summary ??
-				(group.status === 'needs_attention'
-					? `${group.label} markers need monitoring based on your latest results.`
-					: `${group.label} markers look steady across recent reports.`),
+			summary: relatedInsight?.summary ?? defaultSummary,
 			trend,
 			evidence:
 				relatedInsight?.why ??
@@ -553,6 +559,14 @@ export function buildReportSummaries(
 				findings: abnormal,
 				status: report.status,
 				isReady: isReportDisplayReady(report),
+				classifiedCount,
+				unknownCount,
+				badgeStatus: deriveReportBadgeStatus({
+					classifiedCount,
+					unknownCount,
+					hasAbnormal: abnormal.length > 0,
+					needsReprocess: reportNeedsReprocess(report),
+				}),
 			}
 		})
 }
@@ -568,18 +582,24 @@ function buildJourneyEvents(input: {
 		(item) => item.status === 'completed',
 	)) {
 		const classified = classifyReportType(report)
+		const isReady = isReportDisplayReady(report)
 
 		events.push({
 			id: `checkup-${report.id}`,
 			date: classified.date,
 			displayDate: formatDisplayDate(classified.date),
 			title: getReportDisplayTitle(report),
-			summary: timelineSummaryForReport(classified),
+			summary: isReady
+				? timelineSummaryForReport(classified)
+				: 'Incomplete extraction — reprocess recommended',
 			kind:
 				classified.kind === 'ecg' || classified.kind === 'radiology'
 					? 'monitoring'
-					: 'checkup',
+					: isReady
+						? 'checkup'
+						: 'review',
 			reportId: report.id,
+			isIncomplete: !isReady,
 		})
 	}
 
@@ -708,6 +728,7 @@ export function buildHealthCompanionView(input: {
 	needsReview?: number
 	trendSeries?: import('@/features/health/types').TrendSeries[]
 	personId?: string
+	coverage?: HealthCoverageSnapshot | null
 }): HealthCompanionView {
 	const needsReview = input.needsReview ?? 0
 	const personId = input.personId ?? input.graph.profile.personId
@@ -722,11 +743,16 @@ export function buildHealthCompanionView(input: {
 		needsReview,
 		hasProcessingReports,
 	})
+	const resolvedStatus =
+		input.coverage?.corpusCompleteness === 'partial' &&
+		status === 'Looking Good'
+			? ('Partial Results' as const)
+			: status
 	const healthSummary = buildHealthSummary({
 		graph: input.graph,
 		profile,
 		insights: input.insights,
-		statusLabel: status,
+		statusLabel: resolvedStatus,
 	})
 	const attention = buildAttention({
 		graph: input.graph,
@@ -746,7 +772,7 @@ export function buildHealthCompanionView(input: {
 	})
 
 	return {
-		status,
+		status: resolvedStatus,
 		statusDetail: detail,
 		score,
 		scoreReasons: buildScoreReasons(metricGroups, score),
@@ -769,6 +795,7 @@ export function buildHealthCompanionView(input: {
 		narrative: buildNarrative(input.insights, healthSummary),
 		profile,
 		healthSummary,
+		coverage: input.coverage ?? null,
 	}
 }
 

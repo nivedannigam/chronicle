@@ -15,6 +15,7 @@ import {
 	shouldIncludeAnswerCards,
 } from '@/features/personalization/services/response-adapter.service'
 import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
+import type { HealthCoverageSnapshot } from '@/features/health/types/health-coverage.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import {
@@ -149,6 +150,7 @@ function buildGroundedAnswer(input: {
 	question: string
 	memberName?: string | null
 	dataAvailable: boolean
+	coverage?: HealthCoverageSnapshot | null
 }): string {
 	if (!input.dataAvailable || !input.knowledge) {
 		return [
@@ -165,6 +167,7 @@ function buildGroundedAnswer(input: {
 		question: input.question,
 		memberName: input.memberName,
 		dataAvailable: input.dataAvailable,
+		coverage: input.coverage,
 	})
 
 	return clinicalAnswerToProse(clinical)
@@ -179,6 +182,7 @@ export function buildGroundedTurn(input: {
 	confidence?: number
 	uploadedReports?: unknown[]
 	personalContext?: PersonalContext
+	coverage?: HealthCoverageSnapshot | null
 }): AskConversationTurn {
 	const timestamp = new Date().toISOString()
 	const knowledge =
@@ -216,6 +220,7 @@ export function buildGroundedTurn(input: {
 				question: input.question,
 				memberName: input.member.memberName,
 				dataAvailable: input.dataAvailable,
+				coverage: input.coverage,
 			})
 		: undefined
 
@@ -224,6 +229,7 @@ export function buildGroundedTurn(input: {
 		question: input.question,
 		memberName: input.member.memberName,
 		dataAvailable: input.dataAvailable,
+		coverage: input.coverage,
 	})
 
 	const adaptedAnswer = input.personalContext

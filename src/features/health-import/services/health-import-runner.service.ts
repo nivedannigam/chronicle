@@ -114,6 +114,22 @@ async function importRegistryRecord(
 		throw new Error('Password-protected PDFs are not supported')
 	}
 
+	const imageFilePattern = /\.(jpg|jpeg|png|gif|webp|heic)$/i
+	if (imageFilePattern.test(registry.file_name as string)) {
+		const message =
+			'This file is a photo, not a laboratory report. Upload a PDF lab report instead.'
+
+		await updateRegistryRecord(registryId, {
+			importStatus: 'failed',
+			registryStatus: 'failed',
+			errorMessage: message,
+		})
+
+		importStartTimes.delete(registryId)
+
+		return { reportId: registryId, outcome: 'failed' }
+	}
+
 	const fileSize = Number(registry.file_size ?? 0)
 
 	if (fileSize > HEALTH_REPORT_MAX_FILE_SIZE_BYTES) {

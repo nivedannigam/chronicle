@@ -12,7 +12,14 @@ export interface HealthMetricDefinition {
 }
 
 export type MetricCategoryId =
-	'heart' | 'liver' | 'kidney' | 'diabetes' | 'thyroid' | 'vitamin' | 'blood'
+	| 'heart'
+	| 'liver'
+	| 'kidney'
+	| 'diabetes'
+	| 'thyroid'
+	| 'vitamin'
+	| 'blood'
+	| 'urine'
 
 export interface MetricCategory {
 	id: MetricCategoryId

@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
+import { ROUTES } from '@/constants/routes'
 import { IMPORT_QUEUE_LABELS } from '@/core/connectors'
 import { ImportProgressList } from '@/features/health-import/components/ImportProgressList'
 import { formatDuration } from '@/features/health-import/services/import-summary.service'
 import { useHealthImport } from '@/features/health-import/hooks/useHealthImport'
+import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
 import { reprocessAllHealthReports } from '@/features/health/services/health-processing.service'
+import { groupImportFailures } from '@/features/health/services/health-coverage.service'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
 
@@ -14,9 +18,13 @@ interface ImportCenterProps {
 }
 
 export function ImportCenter({ userId }: ImportCenterProps) {
+	const navigate = useNavigate()
 	const importState = useHealthImport(userId)
+	const coverage = useHealthCoverage()
 	const [isReprocessing, setIsReprocessing] = useState(false)
 	const [reprocessMessage, setReprocessMessage] = useState<string | null>(null)
+	const failureGroups = groupImportFailures(importState.registry)
+	const failedCount = coverage.failedCount
 	const currentDocs =
 		importState.registry.filter(
 			(r) =>
@@ -61,6 +69,47 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+			{coverage.corpusCompleteness === 'partial' ? (
+				<div
+					style={{
+						background: `${C.orange}14`,
+						border: `1px solid ${C.orange}33`,
+						borderRadius: 18,
+						padding: '14px 16px',
+					}}
+				>
+					<div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+						Partial import coverage
+					</div>
+					<div
+						style={{
+							fontSize: 13,
+							color: C.textSec,
+							lineHeight: 1.5,
+							marginTop: 6,
+						}}
+					>
+						{coverage.summaryLine}
+					</div>
+					<button
+						type="button"
+						onClick={() => navigate(ROUTES.health)}
+						style={{
+							marginTop: 10,
+							background: 'none',
+							border: 'none',
+							padding: 0,
+							color: C.accentBlue,
+							fontSize: 12,
+							fontWeight: 700,
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+						}}
+					>
+						View health coverage →
+					</button>
+				</div>
+			) : null}
 			<div
 				style={{
 					background: C.card,
@@ -96,11 +145,7 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 						value={importState.buckets.skipped}
 						color={C.textMuted}
 					/>
-					<Bucket
-						label="Failed"
-						value={importState.buckets.failed}
-						color={C.red}
-					/>
+					<Bucket label="Failed" value={failedCount} color={C.red} />
 					<Bucket
 						label="Processing"
 						value={importState.buckets.processing}
@@ -142,6 +187,38 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 			</Section>
 
 			<Section title="Failed Imports">
+				{failedCount > 0 ? (
+					<div
+						style={{
+							display: 'flex',
+							flexWrap: 'wrap',
+							gap: 8,
+							marginBottom: 12,
+						}}
+					>
+						{failureGroups.download > 0 ? (
+							<BulkAction
+								label={`Retry download failures (${failureGroups.download})`}
+								onClick={() => void importState.retry()}
+								disabled={importState.isRunning}
+							/>
+						) : null}
+						{failureGroups.nonLab > 0 ? (
+							<BulkAction
+								label={`Skip non-lab documents (${failureGroups.nonLab})`}
+								onClick={() => void importState.retry()}
+								disabled={importState.isRunning}
+							/>
+						) : null}
+						{failureGroups.noMetrics > 0 ? (
+							<BulkAction
+								label={`Reprocess metric-less OCR successes (${failureGroups.noMetrics})`}
+								onClick={() => void handleReprocessAll()}
+								disabled={isReprocessing || importState.isRunning}
+							/>
+						) : null}
+					</div>
+				) : null}
 				<MiniList
 					items={failed
 						.slice(0, 8)
@@ -301,6 +378,37 @@ function Bucket({
 			<div style={{ fontSize: 10, color: C.textMuted }}>{label}</div>
 			<div style={{ fontSize: 16, fontWeight: 800, color }}>{value}</div>
 		</div>
+	)
+}
+
+function BulkAction({
+	label,
+	onClick,
+	disabled,
+}: {
+	label: string
+	onClick: () => void
+	disabled?: boolean
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			disabled={disabled}
+			style={{
+				background: C.card2,
+				border: `1px solid ${C.border}`,
+				borderRadius: 100,
+				padding: '6px 12px',
+				fontSize: 11,
+				fontWeight: 700,
+				color: C.textSec,
+				cursor: disabled ? 'not-allowed' : 'pointer',
+				fontFamily: 'inherit',
+			}}
+		>
+			{label}
+		</button>
 	)
 }
 

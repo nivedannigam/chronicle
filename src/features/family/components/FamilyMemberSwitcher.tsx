@@ -3,10 +3,21 @@ import { useMemo, useState } from 'react'
 import { C } from '@/constants/colors'
 import { MemberAvatar } from '@/features/family/components/MemberAvatar'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
+import { useUser } from '@/features/user/hooks/useUser'
 
 export function FamilyMemberSwitcher() {
 	const { members, selectedMember, setSelectedMemberId } = useFamilyContext()
+	const { profile } = useUser()
 	const [open, setOpen] = useState(false)
+
+	const displayName = selectedMember
+		? resolveMemberDisplayName({
+				profileName: profile?.name,
+				memberDisplayName: selectedMember.displayName,
+				isAccountOwner: selectedMember.isAccountOwner,
+			})
+		: 'Select member'
 
 	const activeMembers = useMemo(
 		() => members.filter((member) => member.status === 'active'),
@@ -42,7 +53,7 @@ export function FamilyMemberSwitcher() {
 						maxWidth: 140,
 					}}
 				>
-					{selectedMember.displayName}
+					{displayName}
 				</span>
 			</div>
 		) : null
@@ -83,7 +94,7 @@ export function FamilyMemberSwitcher() {
 						maxWidth: 140,
 					}}
 				>
-					{selectedMember?.displayName ?? 'Select member'}
+					{displayName}
 				</span>
 				<ChevronDown size={16} color={C.textMuted} />
 			</button>
@@ -145,7 +156,11 @@ export function FamilyMemberSwitcher() {
 									minWidth: 0,
 								}}
 							>
-								{member.displayName}
+								{resolveMemberDisplayName({
+									profileName: profile?.name,
+									memberDisplayName: member.displayName,
+									isAccountOwner: member.isAccountOwner,
+								})}
 							</span>
 						</button>
 					))}

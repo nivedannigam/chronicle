@@ -2,7 +2,12 @@ import { classifyReportType } from '@/features/health-intelligence/services/repo
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 
-const METRICLESS_COMPLETE_KINDS = new Set(['ecg', 'radiology'])
+const METRICLESS_COMPLETE_KINDS = new Set([
+	'ecg',
+	'radiology',
+	'health_summary',
+	'specialist_visit',
+])
 
 /** Shown when OCR succeeded but the lab parser found no metrics. */
 export const NO_LAB_METRICS_EXTRACTED_MESSAGE =
@@ -15,6 +20,11 @@ export function textIndicatesMetriclessReportType(text: string): boolean {
 		normalized.includes('ecg') ||
 		normalized.includes('electrocardiogram') ||
 		normalized.includes('ekg') ||
+		normalized.includes('tmt') ||
+		normalized.includes('treadmill') ||
+		normalized.includes('stress test') ||
+		normalized.includes('company wellness') ||
+		normalized.includes('wellness plan') ||
 		normalized.includes('mri') ||
 		normalized.includes(' ct ') ||
 		normalized.includes('x-ray') ||
