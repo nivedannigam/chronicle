@@ -4,6 +4,7 @@ export type HealthStatusLabel =
 	| 'Improving'
 	| 'Monitoring Required'
 	| 'Awaiting Data'
+	| 'Partial Results'
 
 export interface HealthAttentionItem {
 	id: string

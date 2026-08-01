@@ -426,6 +426,7 @@ export function buildTodaysSummary(input: {
 	expiringCount: number
 	greetingName: string
 	hasAnyData: boolean
+	familySetupCount?: number
 }): string {
 	if (!input.hasAnyData) {
 		return `${input.greetingName}, welcome to Chronicle. Connect health records or upload a document to get started.`
@@ -433,6 +434,10 @@ export function buildTodaysSummary(input: {
 
 	if (input.attentionCount > 0) {
 		return `${input.greetingName}, you have ${input.attentionCount} item${input.attentionCount === 1 ? '' : 's'} that need${input.attentionCount === 1 ? 's' : ''} your attention today.`
+	}
+
+	if ((input.familySetupCount ?? 0) > 0) {
+		return `${input.greetingName}, your records look clear. ${input.familySetupCount} family setup item${input.familySetupCount === 1 ? '' : 's'} remain.`
 	}
 
 	if (input.expiringCount > 0) {
@@ -495,6 +500,10 @@ export function buildCommandCenterBriefing(input: {
 		metricHistories: input.metricHistories,
 		accountOwnerMemberId,
 	})
+	const actionableAttention = attentionItems.filter(
+		(item) => item.tone !== 'info',
+	)
+	const familySetupCount = attentionItems.length - actionableAttention.length
 	const hasAnyData =
 		completedReports.length > 0 ||
 		input.documents.length > 0 ||
@@ -518,7 +527,8 @@ export function buildCommandCenterBriefing(input: {
 		}),
 		familyName: input.familyName ?? 'My Family',
 		todaySummary: buildTodaysSummary({
-			attentionCount: attentionItems.length,
+			attentionCount: actionableAttention.length,
+			familySetupCount,
 			reportCount: completedReports.length,
 			documentCount: input.documents.length,
 			expiringCount: expiringDocuments.length,

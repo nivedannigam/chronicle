@@ -63,6 +63,25 @@ export function getGreetingName(
 	return profileName?.trim() || selectedMemberName?.trim() || 'there'
 }
 
+export function resolveMemberDisplayName(input: {
+	profileName?: string | null
+	memberDisplayName?: string | null
+	isAccountOwner?: boolean
+}): string {
+	const profileFirst = input.profileName?.trim().split(/\s+/)[0]
+	const memberName = input.memberDisplayName?.trim()
+
+	if (
+		input.isAccountOwner &&
+		memberName?.toLowerCase() === 'me' &&
+		profileFirst
+	) {
+		return profileFirst
+	}
+
+	return memberName || profileFirst || 'there'
+}
+
 export function getTimeOfDayGreeting(date = new Date()): string {
 	const hour = date.getHours()
 

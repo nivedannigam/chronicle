@@ -25,6 +25,103 @@ const HEADER_LABEL =
 const URINE_TEST_NAMES =
 	/^(?:VOLUME|COLOUR|APPEARANCE|SPECIFIC GRAVITY|PH|URINARY PROTEIN|URINARY GLUCOSE|URINE KETONE|URINARY BILIRUBIN|UROBILINOGEN|BILE SALT|BILE PIGMENT|URINE BLOOD|NITRITE|LEUCOCYTE ESTERASE|MUCUS|RED BLOOD CELLS|URINARY LEUCOCYTES \(PUS CELLS\)|EPITHELIAL CELLS|CASTS|CRYSTALS|BACTERIA|YEAST|PARASITE)$/i
 
+function isQualitativeUrineValue(line: string): boolean {
+	const normalized = normalizeLine(line).toUpperCase()
+
+	return /^(?:NEGATIVE|POSITIVE|NON\s*REACTIVE|REACTIVE|ABSENT|PRESENT|NORMAL|CLEAR|PALE YELLOW|STRAW)$/.test(
+		normalized,
+	)
+}
+
+function isMethodLine(line: string): boolean {
+	return TECHNOLOGY_SUFFIX.test(normalizeLine(line))
+}
+
+function normalizeUrineQualitativeValue(line: string): string {
+	const normalized = normalizeLine(line)
+	const upper = normalized.toUpperCase()
+
+	if (upper === 'ABSENT' || normalized === 'Absent') {
+		return 'ABSENT'
+	}
+
+	return upper
+}
+
+function resolveUrineRowFields(input: {
+	field1: string
+	field2: string
+	field3: string
+	field4: string
+}): {
+	value: string
+	referenceRange: string
+	unit: string | null
+	advance: number
+} | null {
+	const { field1, field2, field3, field4 } = input
+
+	if (!field1) {
+		return null
+	}
+
+	if (isMethodLine(field1) && isQualitativeUrineValue(field2)) {
+		return {
+			value: normalizeUrineQualitativeValue(field2),
+			referenceRange: field2.toUpperCase() === 'ABSENT' ? 'ABSENT' : field2,
+			unit: field3 === '-' ? null : field3,
+			advance: isMethodLine(field4) ? 5 : 4,
+		}
+	}
+
+	if (
+		field1.toUpperCase() === 'ABSENT' &&
+		(field2 === 'Absent' || field2.toUpperCase() === 'ABSENT')
+	) {
+		return {
+			value: 'ABSENT',
+			referenceRange: field1,
+			unit: field3 === '-' ? null : field3,
+			advance: isMethodLine(field4) ? 5 : 4,
+		}
+	}
+
+	if (isQualitativeUrineValue(field1) && /[\d<>=]/.test(field2)) {
+		return {
+			value: normalizeUrineQualitativeValue(field1),
+			referenceRange: field2,
+			unit: field3 === '-' ? null : field3,
+			advance: isMethodLine(field4) ? 5 : 4,
+		}
+	}
+
+	if (/^[\d.]+$/.test(field1) || field1 === 'Normal') {
+		return {
+			value: field1,
+			referenceRange: field2,
+			unit: field3 === '-' ? null : field3,
+			advance: isMethodLine(field4) ? 5 : 4,
+		}
+	}
+
+	let value = field1
+	let referenceRange = field2
+	const unit = field3 === '-' ? null : field3
+
+	if (isMethodLine(value) && isQualitativeUrineValue(referenceRange)) {
+		value = normalizeUrineQualitativeValue(referenceRange)
+		referenceRange =
+			referenceRange.toUpperCase() === 'ABSENT' ? 'ABSENT' : referenceRange
+	}
+
+	return {
+		value,
+		referenceRange,
+		unit,
+		advance: isMethodLine(field4) ? 5 : 4,
+	}
+}
+
 function isSkippableLine(line: string): boolean {
 	if (!line || line === ':' || HEADER_LABEL.test(line)) {
 		return true
@@ -181,28 +278,27 @@ function parseUrineVertical(
 			break
 		}
 
-		const value = normalizeLine(lines[index + 1] ?? '')
-		const referenceRange = normalizeLine(lines[index + 2] ?? '')
-		const unit = normalizeLine(lines[index + 3] ?? '')
+		const resolved = resolveUrineRowFields({
+			field1: normalizeLine(lines[index + 1] ?? ''),
+			field2: normalizeLine(lines[index + 2] ?? ''),
+			field3: normalizeLine(lines[index + 3] ?? ''),
+			field4: normalizeLine(lines[index + 4] ?? ''),
+		})
 
-		if (!value) {
+		if (!resolved) {
 			break
 		}
 
 		pushMetricRow(
 			rows,
 			name,
-			value,
-			referenceRange,
-			unit === '-' ? null : unit,
+			resolved.value,
+			resolved.referenceRange,
+			resolved.unit,
 			LAYOUT_ID,
 			0.9,
 		)
-		index += 4
-
-		if (TECHNOLOGY_SUFFIX.test(normalizeLine(lines[index] ?? ''))) {
-			index += 1
-		}
+		index += resolved.advance
 	}
 
 	return { rows, nextIndex: index }

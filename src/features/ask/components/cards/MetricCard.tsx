@@ -11,9 +11,35 @@ function statusColor(status: AskMetricStatus): string {
 			return C.orange
 		case 'critical':
 			return C.red
+		case 'unknown':
+			return C.textMuted
 		default:
 			return C.greenAlt
 	}
+}
+
+function statusLabel(status: AskMetricStatus): string {
+	if (status === 'normal') return 'Normal'
+	if (status === 'unknown') return 'Reviewing'
+	return status
+}
+
+function formatCardDate(value: string | undefined): string | undefined {
+	if (!value?.trim()) {
+		return undefined
+	}
+
+	const date = new Date(value)
+
+	if (Number.isNaN(date.getTime())) {
+		return value
+	}
+
+	return date.toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	})
 }
 
 interface MetricCardProps {
@@ -55,7 +81,7 @@ export function MetricCard({ data }: MetricCardProps) {
 						flexShrink: 0,
 					}}
 				>
-					{data.status}
+					{statusLabel(data.status)}
 				</span>
 			</div>
 			<div
@@ -76,7 +102,9 @@ export function MetricCard({ data }: MetricCardProps) {
 			{data.reportTitle ? (
 				<div style={{ fontSize: 11, color: C.textSec }}>
 					{data.reportTitle}
-					{data.reportDate ? ` · ${data.reportDate}` : ''}
+					{formatCardDate(data.reportDate)
+						? ` · ${formatCardDate(data.reportDate)}`
+						: ''}
 				</div>
 			) : null}
 		</div>

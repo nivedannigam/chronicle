@@ -29,8 +29,45 @@ function formatTimestamp(iso: string): string {
 	})
 }
 
+function dedupeRetrievedReports(
+	reports: RetrievedKnowledge['reports'],
+): RetrievedKnowledge['reports'] {
+	const result: RetrievedKnowledge['reports'] = []
+	const seenKeys = new Set<string>()
+
+	for (const report of reports) {
+		if (report.title.endsWith('.pdf')) {
+			const hasParsedSibling = reports.some(
+				(item) =>
+					item.id !== report.id &&
+					!item.title.endsWith('.pdf') &&
+					(item.date === report.date || item.lab === report.lab),
+			)
+
+			if (hasParsedSibling) {
+				continue
+			}
+		}
+
+		const key = `${report.title.toLowerCase()}::${report.date}`
+
+		if (seenKeys.has(key)) {
+			continue
+		}
+
+		seenKeys.add(key)
+		result.push(report)
+	}
+
+	return result
+}
+
+function resolvedMetrics(knowledge: RetrievedKnowledge) {
+	return knowledge.metrics.filter((metric) => metric.status !== 'unknown')
+}
+
 function toRelatedReports(knowledge: RetrievedKnowledge): RelatedReportRef[] {
-	return knowledge.reports.map((report) => ({
+	return dedupeRetrievedReports(knowledge.reports).map((report) => ({
 		id: report.id,
 		title: report.title,
 		date: report.date,
@@ -38,11 +75,13 @@ function toRelatedReports(knowledge: RetrievedKnowledge): RelatedReportRef[] {
 }
 
 function toRelatedMetrics(knowledge: RetrievedKnowledge): RelatedMetricRef[] {
-	return knowledge.metrics.slice(0, 8).map((metric) => ({
-		name: metric.displayName,
-		value: metric.latestValue,
-		status: metric.status,
-	}))
+	return resolvedMetrics(knowledge)
+		.slice(0, 8)
+		.map((metric) => ({
+			name: metric.displayName,
+			value: metric.latestValue,
+			status: metric.status,
+		}))
 }
 
 function buildEvidenceCitations(
@@ -50,7 +89,7 @@ function buildEvidenceCitations(
 ): EvidenceCitation[] {
 	const citations: EvidenceCitation[] = []
 
-	for (const metric of knowledge.metrics.slice(0, 6)) {
+	for (const metric of resolvedMetrics(knowledge).slice(0, 6)) {
 		const report = knowledge.reports.find((item) => item.id === metric.reportId)
 		citations.push({
 			reportId: metric.reportId,
@@ -62,7 +101,7 @@ function buildEvidenceCitations(
 		})
 	}
 
-	for (const report of knowledge.reports.slice(0, 4)) {
+	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 4)) {
 		if (citations.some((citation) => citation.reportId === report.id)) {
 			continue
 		}
@@ -100,13 +139,13 @@ function buildEvidenceCitations(
 function buildEvidenceLines(knowledge: RetrievedKnowledge): string[] {
 	const lines: string[] = []
 
-	for (const metric of knowledge.metrics.slice(0, 4)) {
+	for (const metric of resolvedMetrics(knowledge).slice(0, 4)) {
 		lines.push(
-			`${metric.displayName}: ${metric.latestValue} (${metric.status}) — ${metric.reportTitle}, ${metric.observedAt}`,
+			`${metric.displayName}: ${metric.latestValue} (${metric.status}) — ${metric.reportTitle}, ${formatTimestamp(metric.observedAt)}`,
 		)
 	}
 
-	for (const report of knowledge.reports.slice(0, 2)) {
+	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 2)) {
 		lines.push(`${report.title} · ${report.lab} · ${report.date}`)
 	}
 
@@ -155,7 +194,7 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 		})
 	}
 
-	for (const metric of knowledge.metrics.slice(0, 4)) {
+	for (const metric of resolvedMetrics(knowledge).slice(0, 4)) {
 		cards.push({
 			type: 'metric',
 			id: `metric-${metric.canonicalId}`,
@@ -207,7 +246,7 @@ function buildCards(knowledge: RetrievedKnowledge): AnswerCardData[] {
 		}
 	}
 
-	for (const report of knowledge.reports.slice(0, 2)) {
+	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 2)) {
 		cards.push({
 			type: 'report',
 			id: `report-${report.id}`,

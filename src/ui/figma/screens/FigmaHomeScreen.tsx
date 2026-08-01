@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Sparkles } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { buildTodaysSummary } from '@/features/command-center/services/command-center.service'
 import { useCommandCenter } from '@/features/command-center/hooks/useCommandCenter'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
@@ -228,9 +229,19 @@ export function FigmaHomeScreen() {
 		return <HomePageSkeleton />
 	}
 
-	const statusOk = memberItems.length === 0
+	const statusOk =
+		memberItems.filter((item) => item.tone !== 'info').length === 0
 	const greet = timeGreeting()
 	const firstName = memberFirstName(briefing.greetingName)
+	const aiSummary = buildTodaysSummary({
+		attentionCount: memberItems.filter((item) => item.tone !== 'info').length,
+		familySetupCount: memberItems.filter((item) => item.tone === 'info').length,
+		reportCount: briefing.healthSnapshot.reportCount,
+		documentCount: briefing.documentCount,
+		expiringCount: briefing.expiringDocuments.length,
+		greetingName: firstName,
+		hasAnyData: briefing.hasAnyData,
+	})
 
 	return (
 		<>
@@ -291,7 +302,7 @@ export function FigmaHomeScreen() {
 							>
 								{statusOk
 									? 'Everything looks clear.'
-									: `${memberItems.length} things need you.`}
+									: `${memberItems.filter((item) => item.tone !== 'info').length} things need you.`}
 							</p>
 						</div>
 					</div>
@@ -341,7 +352,7 @@ export function FigmaHomeScreen() {
 							margin: 0,
 						}}
 					>
-						{briefing.todaySummary}
+						{aiSummary}
 					</p>
 					<button
 						type="button"

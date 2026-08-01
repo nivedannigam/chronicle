@@ -5,6 +5,39 @@ import type {
 
 const BORDERLINE_MARGIN = 0.1
 
+const QUALITATIVE_NORMAL = new Set([
+	'NEGATIVE',
+	'NON REACTIVE',
+	'NONREACTIVE',
+	'ABSENT',
+	'NORMAL',
+	'CLEAR',
+])
+
+const QUALITATIVE_ABNORMAL = new Set(['POSITIVE', 'REACTIVE', 'PRESENT'])
+
+export function normalizeQualitativeToken(value: string): string {
+	return value.trim().toUpperCase().replace(/\s+/g, ' ')
+}
+
+export function isQualitativeNormalValue(value: string): boolean {
+	return QUALITATIVE_NORMAL.has(normalizeQualitativeToken(value))
+}
+
+export function isQualitativeAbnormalValue(value: string): boolean {
+	return QUALITATIVE_ABNORMAL.has(normalizeQualitativeToken(value))
+}
+
+export function isQualitativeReference(value: string): boolean {
+	const normalized = normalizeQualitativeToken(value)
+
+	return (
+		QUALITATIVE_NORMAL.has(normalized) ||
+		QUALITATIVE_ABNORMAL.has(normalized) ||
+		normalized === 'ABSENT'
+	)
+}
+
 export function parseReferenceRange(
 	rawText: string,
 	unit: string | null,
@@ -68,11 +101,58 @@ export function parseNumericValue(value: string): number | null {
 	return Number.isNaN(parsed) ? null : parsed
 }
 
+export function evaluateQualitativeMetricStatus(
+	value: string,
+	referenceRange: ReferenceRange,
+): MetricStatus | null {
+	const normalizedValue = normalizeQualitativeToken(value)
+	const normalizedRef = normalizeQualitativeToken(referenceRange.rawText)
+
+	if (isQualitativeNormalValue(normalizedValue)) {
+		if (
+			!referenceRange.rawText.trim() ||
+			isQualitativeNormalValue(normalizedRef) ||
+			normalizedRef === normalizedValue
+		) {
+			return 'normal'
+		}
+	}
+
+	if (isQualitativeAbnormalValue(normalizedValue)) {
+		if (
+			isQualitativeNormalValue(normalizedRef) ||
+			normalizedRef === 'ABSENT' ||
+			normalizedRef === 'NEGATIVE'
+		) {
+			return 'high'
+		}
+	}
+
+	if (
+		isQualitativeReference(referenceRange.rawText) &&
+		isQualitativeNormalValue(normalizedRef) &&
+		!referenceRange.rawText.match(/\d/)
+	) {
+		return 'normal'
+	}
+
+	return null
+}
+
 export function evaluateMetricStatus(
 	numericValue: number | null,
 	referenceRange: ReferenceRange,
+	value?: string,
 ): MetricStatus {
 	if (numericValue == null) {
+		if (value) {
+			const qualitative = evaluateQualitativeMetricStatus(value, referenceRange)
+
+			if (qualitative) {
+				return qualitative
+			}
+		}
+
 		return 'unknown'
 	}
 

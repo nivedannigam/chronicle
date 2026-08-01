@@ -4,7 +4,9 @@ import path from 'node:path'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { extractGluedHorizontalMetrics } from '@/features/health/extraction/layouts/glued-horizontal.layout'
 import { extractSpacedHorizontalMetrics } from '@/features/health/extraction/layouts/spaced-horizontal.layout'
+import { extractVerticalBlockMetrics } from '@/features/health/extraction/layouts/vertical-block.layout'
 import { extractMetricsFromLayouts } from '@/features/health/extraction/layouts/layout-extractor.registry'
+import { extractMetricsFromOcr } from '@/features/health/extraction/metric-extraction.engine'
 
 const FIXTURE_DIR = path.resolve(process.cwd(), '_fixtures/lab-reports')
 
@@ -20,6 +22,35 @@ Ferritin:95.05ng/mL30-240
 const METROPOLIS_SNIPPET = `
 BILIRUBIN TOTAL 1.40 # mg/dl [0.30-1.20]
 SGOT 32 IU/L [15-41]
+`
+
+const THYROCARE_URINE_SNIPPET = `
+BILE SALT
+ABSENT
+Absent
+-
+Hays sulphur
+BILE PIGMENT
+ABSENT
+Absent
+-
+Ehrlich reaction
+BACTERIA
+ABSENT
+Absent
+-
+Microscopy
+`
+
+const THYROCARE_URINE_METHOD_FIRST_SNIPPET = `
+BACTERIA
+Microscopy
+ABSENT
+-
+BILE PIGMENT
+Ehrlich reaction
+ABSENT
+-
 `
 
 describe('layout extractors', () => {
@@ -52,6 +83,78 @@ describe('layout extractors', () => {
 		expect(strategiesUsed).toContain('spaced-horizontal')
 		expect(rows.length).toBeGreaterThanOrEqual(5)
 	})
+
+	it('parses Thyrocare urine qualitative rows as ABSENT values', () => {
+		const rows = extractVerticalBlockMetrics(THYROCARE_URINE_SNIPPET)
+		const bacteria = rows.find((row) => row.rawName === 'BACTERIA')
+		const bilePigment = rows.find((row) => row.rawName === 'BILE PIGMENT')
+		const bileSalt = rows.find((row) => row.rawName === 'BILE SALT')
+
+		expect(bacteria?.value).toBe('ABSENT')
+		expect(bilePigment?.value).toBe('ABSENT')
+		expect(bileSalt?.value).toBe('ABSENT')
+	})
+
+	it('parses urine rows when OCR places method before qualitative result', () => {
+		const rows = extractVerticalBlockMetrics(
+			THYROCARE_URINE_METHOD_FIRST_SNIPPET,
+		)
+		const bacteria = rows.find((row) => row.rawName === 'BACTERIA')
+		const bilePigment = rows.find((row) => row.rawName === 'BILE PIGMENT')
+
+		expect(bacteria?.value).toBe('ABSENT')
+		expect(bilePigment?.value).toBe('ABSENT')
+	})
+
+	it('marks qualitative ABSENT urine metrics as normal after extraction', () => {
+		const extraction = extractMetricsFromOcr({
+			rawText: THYROCARE_URINE_SNIPPET,
+			pages: [],
+			tables: [],
+			confidence: 1,
+			metadata: {
+				provider: 'mock',
+				mimeType: 'application/pdf',
+				fileName: 'urine-panel.pdf',
+				language: 'en',
+				pageCount: 1,
+				tableCount: 0,
+			},
+			processingTimeMs: 1,
+		})
+		const bacteria = extraction.metrics.find(
+			(metric) => metric.rawName === 'BACTERIA',
+		)
+
+		expect(bacteria?.value).toBe('ABSENT')
+		expect(bacteria?.status).toBe('normal')
+	})
+
+	it.skipIf(
+		!existsSync(
+			path.join(
+				process.cwd(),
+				'src/features/health/extraction/fixtures/thyrocare-combo-march-2026.ocr.txt',
+			),
+		),
+	)(
+		'extracts qualitative urine metrics from March 2026 Thyrocare fixture',
+		() => {
+			const fixturePath = path.join(
+				process.cwd(),
+				'src/features/health/extraction/fixtures/thyrocare-combo-march-2026.ocr.txt',
+			)
+			const rawText = readFileSync(fixturePath, 'utf8')
+			const { rows } = extractMetricsFromLayouts({
+				rawText,
+				tables: [],
+				fileName: 'March 2026 - Thyrocare Test 2.pdf',
+			})
+			const bacteria = rows.find((row) => row.rawName === 'BACTERIA')
+
+			expect(bacteria?.value).toBe('ABSENT')
+		},
+	)
 
 	it.skipIf(!existsSync(path.join(FIXTURE_DIR, 'Iron Test 2026.pdf')))(
 		'extracts iron panel from real Iron Test PDF',

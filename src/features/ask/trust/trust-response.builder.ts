@@ -17,6 +17,39 @@ import {
 } from '@/features/ask/trust/trust.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 
+function dedupeRetrievedReports(
+	reports: RetrievedKnowledge['reports'],
+): RetrievedKnowledge['reports'] {
+	const result: RetrievedKnowledge['reports'] = []
+	const seenKeys = new Set<string>()
+
+	for (const report of reports) {
+		if (report.title.endsWith('.pdf')) {
+			const hasParsedSibling = reports.some(
+				(item) =>
+					item.id !== report.id &&
+					!item.title.endsWith('.pdf') &&
+					(item.date === report.date || item.lab === report.lab),
+			)
+
+			if (hasParsedSibling) {
+				continue
+			}
+		}
+
+		const key = `${report.title.toLowerCase()}::${report.date}`
+
+		if (seenKeys.has(key)) {
+			continue
+		}
+
+		seenKeys.add(key)
+		result.push(report)
+	}
+
+	return result
+}
+
 function truncateExcerpt(text: string, maxLength = 160): string {
 	const cleaned = text.replace(/\s+/g, ' ').trim()
 
@@ -102,7 +135,7 @@ export function buildTrustEvidenceItems(input: {
 		})
 	}
 
-	for (const report of knowledge.reports.slice(0, 6)) {
+	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 6)) {
 		if (items.some((item) => item.reportId === report.id && !item.metricName)) {
 			continue
 		}

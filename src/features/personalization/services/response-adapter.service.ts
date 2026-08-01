@@ -41,7 +41,14 @@ function appendTrendContext(
 
 	const extras: string[] = []
 
-	for (const trend of knowledge.trends.slice(0, 2)) {
+	for (const trend of knowledge.trends
+		.filter(
+			(item) =>
+				item.direction !== 'unknown' &&
+				item.dataPointCount >= 2 &&
+				item.changePercent !== '—',
+		)
+		.slice(0, 2)) {
 		extras.push(
 			`${trend.displayName} is ${trend.direction} (${trend.changePercent} over ${trend.dataPointCount} readings).`,
 		)
@@ -51,7 +58,13 @@ function appendTrendContext(
 		const first = timeline.observations[0]
 		const last = timeline.observations[timeline.observations.length - 1]
 
-		if (first && last && first.id !== last.id) {
+		if (
+			first &&
+			last &&
+			first.id !== last.id &&
+			first.status !== 'unknown' &&
+			last.status !== 'unknown'
+		) {
 			extras.push(
 				`${timeline.displayName} moved from ${first.value} (${first.observedAt.slice(0, 10)}) to ${last.value} (${last.observedAt.slice(0, 10)}).`,
 			)

@@ -7,7 +7,11 @@ import type { OcrDocumentResult } from '@/features/document-intelligence/ocr'
 import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import {
 	evaluateMetricStatus,
+	evaluateQualitativeMetricStatus,
 	formatReferenceRange,
+	isQualitativeNormalValue,
+	isQualitativeReference,
+	normalizeQualitativeToken,
 	parseNumericValue,
 	parseReferenceRange,
 } from '@/features/health/extraction/reference-range.engine'
@@ -19,26 +23,34 @@ import type { RawMetricRow } from '@/features/health/extraction/layouts/layout-e
 
 export type { RawMetricRow } from '@/features/health/extraction/layouts/layout-extractor.types'
 
+const METHOD_LIKE_VALUE =
+	/^(?:Microscopy|Visual Determination|pH indicator|pKa change|PEI|GOD-POD|Nitroprusside|Diazo coupling|Hays sulphur|Ehrlich reaction|Peroxidase reaction|Esterase reaction)$/i
+
 function evaluateExtractedMetricStatus(
 	value: string,
 	referenceRange: ReturnType<typeof parseReferenceRange>,
 	numericValue: number | null,
 ): MetricStatus {
 	if (numericValue != null) {
-		return evaluateMetricStatus(numericValue, referenceRange)
+		return evaluateMetricStatus(numericValue, referenceRange, value)
 	}
 
-	const normalized = value.trim().toUpperCase()
+	const qualitative = evaluateQualitativeMetricStatus(value, referenceRange)
+
+	if (qualitative) {
+		return qualitative
+	}
+
+	const normalized = normalizeQualitativeToken(value)
+
+	if (isQualitativeNormalValue(normalized)) {
+		return 'normal'
+	}
 
 	if (
-		[
-			'NEGATIVE',
-			'NON REACTIVE',
-			'NONREACTIVE',
-			'ABSENT',
-			'NORMAL',
-			'CLEAR',
-		].includes(normalized)
+		METHOD_LIKE_VALUE.test(value.trim()) &&
+		isQualitativeReference(referenceRange.rawText) &&
+		isQualitativeNormalValue(normalizeQualitativeToken(referenceRange.rawText))
 	) {
 		return 'normal'
 	}
@@ -54,8 +66,17 @@ function toMetricResult(row: RawMetricRow): MetricResult {
 	const { canonicalId, displayName } = normalizeMetricName(row.rawName)
 	const referenceRange = parseReferenceRange(row.referenceRange, row.unit)
 	const numericValue = parseNumericValue(row.value)
+	let resolvedValue = row.value
+
+	if (
+		METHOD_LIKE_VALUE.test(resolvedValue.trim()) &&
+		isQualitativeReference(referenceRange.rawText)
+	) {
+		resolvedValue = normalizeQualitativeToken(referenceRange.rawText)
+	}
+
 	const status = evaluateExtractedMetricStatus(
-		row.value,
+		resolvedValue,
 		referenceRange,
 		numericValue,
 	)
@@ -64,7 +85,7 @@ function toMetricResult(row: RawMetricRow): MetricResult {
 		rawName: row.rawName,
 		canonicalId,
 		displayName,
-		value: row.value,
+		value: resolvedValue,
 		numericValue,
 		unit: row.unit,
 		referenceRange,

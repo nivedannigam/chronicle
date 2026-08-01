@@ -59,7 +59,28 @@ export function FigmaProfileScreen() {
 		: 'Account Owner'
 
 	const driveConnected = drive.connectionStatus === 'connected'
-	const lastSync = drive.latestSync?.completedAt ?? drive.latestSync?.startedAt
+	const registryLastSync = drive.registry.reduce<string | null>(
+		(latest, record) => {
+			const candidate = record.lastSyncAt ?? record.importedAt
+
+			if (!candidate) {
+				return latest
+			}
+
+			if (!latest) {
+				return candidate
+			}
+
+			return new Date(candidate).getTime() > new Date(latest).getTime()
+				? candidate
+				: latest
+		},
+		null,
+	)
+	const lastSync =
+		drive.latestSync?.completedAt ??
+		drive.latestSync?.startedAt ??
+		registryLastSync
 
 	const stats = useMemo(
 		() => [

@@ -8,6 +8,7 @@ import {
 import { buildDocumentsHubView } from '@/features/documents/services/document-intelligence.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
+import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 export interface AskHomeInsight {
@@ -49,11 +50,6 @@ function timeGreeting(): string {
 	return 'Good evening'
 }
 
-function firstName(input: string | null | undefined): string | null {
-	if (!input?.trim()) return null
-	return input.trim().split(/\s+/)[0] ?? null
-}
-
 export function buildAskHomeView(input: {
 	userId: string
 	userName?: string | null
@@ -62,20 +58,23 @@ export function buildAskHomeView(input: {
 	uploadedReports: UploadedHealthReport[]
 	documents: ChronicleDocument[]
 }): AskHomeView {
-	const memberFirst = firstName(input.selectedMember?.displayName)
-	const accountFirst = firstName(input.userName)
-	const name = memberFirst ?? accountFirst
+	const displayName = resolveMemberDisplayName({
+		profileName: input.userName,
+		memberDisplayName: input.selectedMember?.displayName,
+		isAccountOwner: input.selectedMember?.isAccountOwner,
+	})
 
-	const greeting = name ? `${timeGreeting()}, ${name}.` : `${timeGreeting()}.`
+	const greeting = `${timeGreeting()}, ${displayName}.`
 
-	const subGreeting = memberFirst
-		? `Ask anything about ${memberFirst}'s health, documents, or family context.`
-		: 'Your personal assistant across health, documents, and family.'
+	const subGreeting =
+		displayName !== 'there'
+			? `Ask anything about ${displayName}'s health, documents, or family context.`
+			: 'Your personal assistant across health, documents, and family.'
 
 	const suggestedQuestions = buildDynamicSuggestionChips({
 		uploadedReports: input.uploadedReports,
 		documents: input.documents,
-		memberName: input.selectedMember?.displayName ?? null,
+		memberName: displayName,
 		members: input.members,
 	})
 

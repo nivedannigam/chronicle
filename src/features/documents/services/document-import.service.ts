@@ -102,6 +102,7 @@ export function mergeDocumentsWithConnectorRecords(input: {
 	const pending = input.connectorRecords
 		.filter(isImportableConnectorDocument)
 		.filter((record) => !linkedExternalIds.has(record.externalFileId))
+		.filter((record) => !record.healthReportId)
 		.map((record) => ({
 			id: `connector-${record.id}`,
 			user_id: record.userId,

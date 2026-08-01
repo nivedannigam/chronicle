@@ -11,6 +11,7 @@ import { buildAskHomeView } from '@/features/ask/services/ask-home.service'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
@@ -59,10 +60,14 @@ export function FigmaAskScreen() {
 	const memberContext = useMemo(
 		() => ({
 			selectedMemberId,
-			selectedMemberName: selectedMember?.displayName ?? null,
+			selectedMemberName: resolveMemberDisplayName({
+				profileName: userName,
+				memberDisplayName: selectedMember?.displayName,
+				isAccountOwner: selectedMember?.isAccountOwner,
+			}),
 			members,
 		}),
-		[members, selectedMember?.displayName, selectedMemberId],
+		[members, selectedMember, selectedMemberId, userName],
 	)
 
 	const {

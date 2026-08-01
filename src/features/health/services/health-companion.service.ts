@@ -38,6 +38,7 @@ import {
 } from '@/features/health/services/health-parsed-report.service'
 
 const ABNORMAL = new Set(['low', 'high', 'critical', 'borderline'])
+const MIN_CLASSIFIED_FOR_SCORE = 5
 
 function formatDisplayDate(value: string): string {
 	return new Date(value).toLocaleDateString('en-US', {
@@ -56,6 +57,7 @@ function deriveStatus(input: {
 	const histories = input.graph.profile.metricHistories
 	let normalCount = 0
 	let totalWithStatus = 0
+	let unknownCount = 0
 	let abnormalCount = 0
 	let improvingCount = 0
 	let decliningCount = 0
@@ -68,6 +70,10 @@ function deriveStatus(input: {
 
 			if (latest.status === 'normal') {
 				normalCount += 1
+			}
+
+			if (latest.status === 'unknown') {
+				unknownCount += 1
 			}
 
 			if (ABNORMAL.has(latest.status)) {
@@ -87,10 +93,12 @@ function deriveStatus(input: {
 		}
 	}
 
+	const classifiedCount = totalWithStatus - unknownCount
 	const score =
-		totalWithStatus > 0
-			? Math.round((normalCount / totalWithStatus) * 100)
+		classifiedCount >= MIN_CLASSIFIED_FOR_SCORE
+			? Math.round((normalCount / classifiedCount) * 100)
 			: null
+	const unknownRatio = totalWithStatus > 0 ? unknownCount / totalWithStatus : 0
 
 	if (totalWithStatus === 0) {
 		return {
@@ -98,6 +106,22 @@ function deriveStatus(input: {
 			detail: input.hasProcessingReports
 				? 'Metrics are still being processed.'
 				: 'No laboratory metrics detected.',
+			score: null,
+		}
+	}
+
+	if (
+		score === null ||
+		unknownRatio > 0.5 ||
+		(score === 0 && classifiedCount < totalWithStatus)
+	) {
+		return {
+			status: 'Partial Results',
+			detail: input.hasProcessingReports
+				? 'Metrics are still being processed.'
+				: unknownCount > 0
+					? `${unknownCount} result${unknownCount === 1 ? '' : 's'} still being classified.`
+					: 'Import complete — review your metrics below.',
 			score: null,
 		}
 	}
@@ -134,6 +158,14 @@ function deriveStatus(input: {
 		}
 	}
 
+	if (score === 0) {
+		return {
+			status: 'Partial Results',
+			detail: 'Some results still need classification.',
+			score: null,
+		}
+	}
+
 	return {
 		status: 'Looking Good',
 		detail: `${score}% of markers in range`,
@@ -165,8 +197,11 @@ function humanMetricStatus(
 	return `${displayName} is stable`
 }
 
-function buildScoreReasons(groups: MetricInsightGroup[]): HealthScoreReason[] {
-	if (groups.length === 0) {
+function buildScoreReasons(
+	groups: MetricInsightGroup[],
+	score: number | null,
+): HealthScoreReason[] {
+	if (groups.length === 0 || score === null) {
 		return []
 	}
 
@@ -491,11 +526,18 @@ export function buildReportSummaries(
 				)
 
 			let summary: string
+			const metrics = parsed?.metrics ?? []
+			const unknownCount = metrics.filter(
+				(metric) => metric.status === 'unknown',
+			).length
+			const classifiedCount = metrics.length - unknownCount
 
 			if (metricCount === 0) {
 				summary = 'No laboratory metrics detected in this report.'
 			} else if (abnormal.length > 0) {
 				summary = `${abnormal.length} finding${abnormal.length === 1 ? '' : 's'} noted · ${metricCount} results reviewed`
+			} else if (unknownCount > 0) {
+				summary = `${classifiedCount} classified · ${unknownCount} still being reviewed`
 			} else {
 				summary = `All reviewed markers within expected range · ${metricCount} results`
 			}
@@ -531,7 +573,7 @@ function buildJourneyEvents(input: {
 			id: `checkup-${report.id}`,
 			date: classified.date,
 			displayDate: formatDisplayDate(classified.date),
-			title: classified.displayKind,
+			title: getReportDisplayTitle(report),
 			summary: timelineSummaryForReport(classified),
 			kind:
 				classified.kind === 'ecg' || classified.kind === 'radiology'
@@ -707,7 +749,7 @@ export function buildHealthCompanionView(input: {
 		status,
 		statusDetail: detail,
 		score,
-		scoreReasons: buildScoreReasons(metricGroups),
+		scoreReasons: buildScoreReasons(metricGroups, score),
 		attention,
 		changes,
 		nextSteps: buildNextSteps({ attention, needsReview }),
@@ -740,6 +782,8 @@ export function getStatusColor(status: HealthStatusLabel): string {
 			return C.orange
 		case 'Awaiting Data':
 			return C.accentBlue
+		case 'Partial Results':
+			return C.orange
 		default:
 			return C.red
 	}

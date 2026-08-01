@@ -151,6 +151,9 @@ export function FigmaHealthOverviewView({
 	const ringColor = figmaHealthScoreColor(companion.score)
 	const latestReport = companion.recentReports[0]
 	const showScore = companion.score !== null
+	const isPartialData =
+		companion.status === 'Partial Results' ||
+		companion.status === 'Awaiting Data'
 
 	return (
 		<div>
@@ -310,7 +313,9 @@ export function FigmaHealthOverviewView({
 								lineHeight: 1.5,
 							}}
 						>
-							No significant issues detected. Your latest results look steady.
+							{isPartialData
+								? 'Results are still being classified.'
+								: 'No significant issues detected. Your latest results look steady.'}
 						</p>
 					</div>
 				</SectionBlock>
@@ -390,7 +395,9 @@ export function FigmaHealthOverviewView({
 								lineHeight: 1.5,
 							}}
 						>
-							No significant changes detected since your previous report.
+							{isPartialData
+								? 'Import complete — compare changes after more results are classified.'
+								: 'No significant changes detected since your previous report.'}
 						</p>
 					</div>
 				)}
@@ -991,7 +998,13 @@ export function FigmaHealthMetricsView({
 			stable: all.filter(
 				(item) =>
 					item.groupStatus === 'stable' &&
+					item.status === 'normal' &&
 					!['high', 'low', 'critical', 'borderline'].includes(item.status),
+			),
+			tracked: all.filter(
+				(item) =>
+					item.status === 'unknown' ||
+					(item.groupStatus === 'stable' && item.status !== 'normal'),
 			),
 		}
 	}, [companion.metricGroups])
@@ -1092,6 +1105,7 @@ export function FigmaHealthMetricsView({
 			{renderSection('Needs attention', sections.attention)}
 			{renderSection('Recently changed', sections.improving)}
 			{renderSection('Stable & tracked', sections.stable)}
+			{renderSection('All tracked', sections.tracked)}
 		</div>
 	)
 }

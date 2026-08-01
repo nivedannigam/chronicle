@@ -17,6 +17,8 @@ export function figmaHealthStatusHeadline(
 			return "You're trending in the right direction."
 		case 'Monitoring Required':
 			return 'A few markers need watching.'
+		case 'Partial Results':
+			return 'Results are still being classified.'
 		case 'Awaiting Data':
 			return 'Waiting for laboratory metrics.'
 		default:
@@ -26,9 +28,10 @@ export function figmaHealthStatusHeadline(
 
 export function figmaMetricStatusColor(status: string): string {
 	if (status === 'normal') return FC.green
+	if (status === 'unknown') return FC.dim
 	if (status === 'critical' || status === 'high') return FC.orange
 	if (status === 'low' || status === 'borderline') return FC.amber
-	return FC.green
+	return FC.mid
 }
 
 export function figmaMetricStatusLabel(
@@ -37,6 +40,7 @@ export function figmaMetricStatusLabel(
 ): string {
 	if (trendLabel) return trendLabel
 	if (status === 'normal') return 'Normal'
+	if (status === 'unknown') return 'Reviewing'
 	if (status === 'low') return 'Low ↓'
 	if (status === 'high') return 'Slightly high ↑'
 	if (status === 'critical') return 'Above range ↑'
