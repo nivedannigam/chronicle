@@ -43,7 +43,10 @@ import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
 } from '@/features/health/services/health-processing.service'
-import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
+import {
+	isReportDisplayReady,
+	NO_LAB_METRICS_EXTRACTED_MESSAGE,
+} from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { supabase } from '@/lib/supabase'
 import type { ConnectorSyncMode } from '@/core/connectors'
@@ -436,8 +439,8 @@ async function importRegistryRecord(
 
 	const partialError =
 		processed.processing_error ??
-		(processed.status === 'parsed'
-			? 'No laboratory metrics could be extracted from this report.'
+		(processed.status === 'failed' || processed.status === 'parsed'
+			? NO_LAB_METRICS_EXTRACTED_MESSAGE
 			: 'Processing failed')
 
 	await updateRegistryRecord(registryId, {
@@ -448,12 +451,15 @@ async function importRegistryRecord(
 
 	await safeTransitionWorkflowItem({
 		registryId,
-		toState: processed.status === 'parsed' ? 'PENDING_REVIEW' : 'FAILED',
+		toState: 'FAILED',
 		context: {
 			userId,
 			reportId: report.id as string,
 			failureReason: partialError,
-			failedStage: processed.status === 'parsed' ? 'PARSING' : 'OCR',
+			failedStage:
+				processed.status === 'failed' || processed.status === 'parsed'
+					? 'PARSING'
+					: 'OCR',
 		},
 	})
 

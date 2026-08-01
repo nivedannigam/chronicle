@@ -3,6 +3,7 @@ import {
 	getReportPipelinePhase,
 	isReportDisplayReady,
 	metricsDisplayMessage,
+	NO_LAB_METRICS_EXTRACTED_MESSAGE,
 	reportQualifiesForMetriclessCompletion,
 } from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
@@ -87,5 +88,10 @@ describe('report-readiness.service', () => {
 				storedMetricCount: 0,
 			}),
 		).toBe('No laboratory metrics detected.')
+	})
+
+	it('exports the zero-metric extraction message used by the processing pipeline', () => {
+		expect(NO_LAB_METRICS_EXTRACTED_MESSAGE).toContain('OCR completed')
+		expect(NO_LAB_METRICS_EXTRACTED_MESSAGE).toContain('laboratory metrics')
 	})
 })

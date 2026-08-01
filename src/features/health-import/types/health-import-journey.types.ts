@@ -48,8 +48,8 @@ export const IMPORT_JOURNEY_STEPS: {
 	{ phase: 'detection', label: 'File Discovery' },
 	{ phase: 'download', label: 'Download' },
 	{ phase: 'ocr', label: 'OCR' },
-	{ phase: 'metrics', label: 'Health Import' },
-	{ phase: 'summary', label: 'Complete' },
+	{ phase: 'metrics', label: 'Extract Metrics' },
+	{ phase: 'summary', label: 'Done' },
 ]
 
 export interface ImportQueueRunResult {

@@ -4,6 +4,10 @@ import type { UploadedHealthReport } from '@/features/health/types'
 
 const METRICLESS_COMPLETE_KINDS = new Set(['ecg', 'radiology'])
 
+/** Shown when OCR succeeded but the lab parser found no metrics. */
+export const NO_LAB_METRICS_EXTRACTED_MESSAGE =
+	'OCR completed but no laboratory metrics were extracted from this report.'
+
 export function textIndicatesMetriclessReportType(text: string): boolean {
 	const normalized = text.toLowerCase()
 

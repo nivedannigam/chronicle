@@ -95,6 +95,11 @@ export function ImportJourneyStep({
 			>
 				<div>📁 {successInfo.folderName}</div>
 				{memberLabel ? <div style={{ marginTop: 4 }}>{memberLabel}</div> : null}
+				{phase === 'summary' && outcome === 'candidates_found' ? (
+					<div style={{ marginTop: 8, fontWeight: 600, color: C.text }}>
+						Approve reports to start import
+					</div>
+				) : null}
 			</div>
 
 			<div
@@ -117,7 +122,9 @@ export function ImportJourneyStep({
 					const summaryLabel =
 						step.phase === 'summary' && outcome === 'candidates_found'
 							? 'Needs review'
-							: step.label
+							: step.phase === 'summary' && outcome === 'success'
+								? 'Complete'
+								: step.label
 
 					return (
 						<JourneyStepRow
