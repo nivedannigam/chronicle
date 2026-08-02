@@ -1,4 +1,4 @@
-/** Hardcoded during gateway stabilization — ignore frontend model selection. */
+/** Default Gemini model when the client does not specify one. */
 export const GEMINI_MODEL = 'gemini-3.5-flash-lite'
 
 export const GEMINI_BASE_URL =

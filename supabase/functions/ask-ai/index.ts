@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GEMINI_MODEL } from './constants.ts'
-import { callGeminiSimplified, GeminiRequestError } from './gemini.ts'
+import { callGemini, GeminiRequestError, resolveGeminiModel } from './gemini.ts'
 import { logRequestFailed, logSelectedProvider } from './logging.ts'
 import type {
 	AskAiRequestBody,
@@ -85,6 +85,7 @@ serve(async (request) => {
 		const promptStarted = performance.now()
 		const body = (await request.json()) as AskAiRequestBody
 		timings.promptMs = Math.round(performance.now() - promptStarted)
+		const chosenModel = resolveGeminiModel(body)
 
 		console.log('Request received')
 		console.log('Provider', body.provider ?? 'unspecified')
@@ -98,7 +99,8 @@ serve(async (request) => {
 				action: body.action ?? 'complete',
 				provider: body.provider ?? 'unspecified',
 				requestedModel: body.model ?? null,
-				chosenModel: GEMINI_MODEL,
+				chosenModel,
+				messageCount: body.messages?.length ?? 0,
 			}),
 		)
 
@@ -160,9 +162,10 @@ async function handlePing(input: {
 	logSelectedProvider('gemini')
 
 	try {
-		const geminiResult = await callGeminiSimplified({
+		const geminiResult = await callGemini({
 			correlationId: input.correlationId,
 			body: input.body,
+			mode: 'ping',
 		})
 
 		input.timings.geminiMs = Math.round(geminiResult.geminiMs)
@@ -171,7 +174,7 @@ async function handlePing(input: {
 		return jsonResponse({
 			success: true,
 			provider: 'gemini',
-			model: GEMINI_MODEL,
+			model: geminiResult.model,
 			reply: geminiResult.reply,
 			latencyMs: Math.round(performance.now() - input.startedAt),
 			correlationId: input.correlationId,
@@ -195,9 +198,10 @@ async function handleGeminiComplete(input: {
 	startedAt: number
 }): Promise<Response> {
 	try {
-		const geminiResult = await callGeminiSimplified({
+		const geminiResult = await callGemini({
 			correlationId: input.correlationId,
 			body: input.body,
+			mode: 'complete',
 		})
 
 		input.timings.geminiMs = Math.round(geminiResult.geminiMs)
@@ -206,7 +210,7 @@ async function handleGeminiComplete(input: {
 		return jsonResponse({
 			content: geminiResult.reply,
 			provider: 'gemini',
-			model: GEMINI_MODEL,
+			model: geminiResult.model,
 			correlationId: input.correlationId,
 			usage: geminiResult.usage,
 			latencyMs: Math.round(performance.now() - input.startedAt),
@@ -231,9 +235,10 @@ function handleFailure(input: {
 	const finalizedTimings = finalizeTimings(input.timings, input.startedAt)
 
 	if (input.error instanceof GeminiRequestError) {
+		const model = resolveGeminiModel({})
 		const payload: ProviderErrorPayload = {
 			provider: 'gemini',
-			model: GEMINI_MODEL,
+			model,
 			status: input.error.status,
 			message: input.error.message,
 			correlationId: input.correlationId,

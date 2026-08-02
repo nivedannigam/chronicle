@@ -4,7 +4,12 @@ import {
 	SIMPLIFIED_PING_PROMPT,
 } from './constants.ts'
 import { logAskAiStart, logGeminiResponse, logTokenUsage } from './logging.ts'
-import type { AskAiRequestBody, GeminiCallResult, TokenUsage } from './types.ts'
+import type {
+	AskAiMessage,
+	AskAiRequestBody,
+	GeminiCallResult,
+	TokenUsage,
+} from './types.ts'
 
 export function resolveGeminiApiKey(): string | null {
 	return (
@@ -12,11 +17,16 @@ export function resolveGeminiApiKey(): string | null {
 	)
 }
 
+export function resolveGeminiModel(body: AskAiRequestBody): string {
+	const requested = body.model?.trim()
+	return requested || GEMINI_MODEL
+}
+
 export function buildGeminiRequestUrl(model: string, apiKey: string): string {
 	return `${GEMINI_BASE_URL}/${model}:generateContent?key=${apiKey}`
 }
 
-export function buildSimplifiedGeminiBody(): Record<string, unknown> {
+export function buildPingGeminiBody(): Record<string, unknown> {
 	return {
 		contents: [
 			{
@@ -24,6 +34,96 @@ export function buildSimplifiedGeminiBody(): Record<string, unknown> {
 			},
 		],
 	}
+}
+
+function mapRoleToGeminiContent(role: string): 'user' | 'model' {
+	return role === 'assistant' ? 'model' : 'user'
+}
+
+export function mapMessagesToGeminiContents(messages: AskAiMessage[]): {
+	systemInstruction?: { parts: Array<{ text: string }> }
+	contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>
+} {
+	const systemParts: string[] = []
+	const contents: Array<{
+		role: 'user' | 'model'
+		parts: Array<{ text: string }>
+	}> = []
+
+	for (const message of messages) {
+		const content = message.content?.trim()
+
+		if (!content) {
+			continue
+		}
+
+		if (message.role === 'system' || message.role === 'developer') {
+			systemParts.push(content)
+			continue
+		}
+
+		contents.push({
+			role: mapRoleToGeminiContent(message.role),
+			parts: [{ text: content }],
+		})
+	}
+
+	if (contents.length === 0) {
+		contents.push({
+			role: 'user',
+			parts: [{ text: 'Respond according to the system instructions.' }],
+		})
+	}
+
+	return {
+		systemInstruction:
+			systemParts.length > 0
+				? { parts: [{ text: systemParts.join('\n\n') }] }
+				: undefined,
+		contents,
+	}
+}
+
+export function buildGeminiGenerateBody(
+	body: AskAiRequestBody,
+): Record<string, unknown> {
+	const messages = body.messages ?? []
+
+	if (messages.length === 0) {
+		throw new GeminiRequestError({
+			status: 400,
+			message: 'Ask AI request is missing messages.',
+			providerResponse: 'messages array is required for complete requests',
+		})
+	}
+
+	const mapped = mapMessagesToGeminiContents(messages)
+	const generationConfig: Record<string, unknown> = {}
+
+	if (typeof body.temperature === 'number') {
+		generationConfig.temperature = body.temperature
+	}
+
+	if (typeof body.maxTokens === 'number') {
+		generationConfig.maxOutputTokens = body.maxTokens
+	}
+
+	if (body.responseFormat === 'json') {
+		generationConfig.responseMimeType = 'application/json'
+	}
+
+	return {
+		...(mapped.systemInstruction
+			? { systemInstruction: mapped.systemInstruction }
+			: {}),
+		contents: mapped.contents,
+		...(Object.keys(generationConfig).length > 0 ? { generationConfig } : {}),
+	}
+}
+
+/** @deprecated Use buildPingGeminiBody */
+export function buildSimplifiedGeminiBody(): Record<string, unknown> {
+	return buildPingGeminiBody()
 }
 
 export function computeIncomingPromptSize(body: AskAiRequestBody): number {
@@ -73,16 +173,23 @@ function parseGeminiPayload(rawBody: string): {
 	}
 }
 
-export async function callGeminiSimplified(input: {
+export async function callGemini(input: {
 	correlationId: string
 	body: AskAiRequestBody
+	mode: 'ping' | 'complete'
 }): Promise<GeminiCallResult> {
 	const apiKey = resolveGeminiApiKey()
-	const model = GEMINI_MODEL
+	const model = resolveGeminiModel(input.body)
 	const requestUrl = buildGeminiRequestUrl(model, apiKey ?? '')
-	const requestBody = buildSimplifiedGeminiBody()
+	const requestBody =
+		input.mode === 'ping'
+			? buildPingGeminiBody()
+			: buildGeminiGenerateBody(input.body)
 	const messageCount = input.body.messages?.length ?? 0
-	const promptSizeChars = computeIncomingPromptSize(input.body)
+	const promptSizeChars =
+		input.mode === 'ping'
+			? SIMPLIFIED_PING_PROMPT.length
+			: computeIncomingPromptSize(input.body)
 
 	logAskAiStart({
 		correlationId: input.correlationId,
@@ -91,7 +198,7 @@ export async function callGeminiSimplified(input: {
 		requestUrl,
 		apiKeyPresent: Boolean(apiKey),
 		promptSizeChars,
-		messageCount,
+		messageCount: input.mode === 'ping' ? 1 : messageCount,
 		responseFormat: input.body.responseFormat ?? 'text',
 	})
 
@@ -143,7 +250,19 @@ export async function callGeminiSimplified(input: {
 		rawBody,
 		geminiMs,
 		parseMs,
+		model,
 	}
+}
+
+/** @deprecated Use callGemini */
+export async function callGeminiSimplified(input: {
+	correlationId: string
+	body: AskAiRequestBody
+}): Promise<GeminiCallResult> {
+	return callGemini({
+		...input,
+		mode: input.body.action === 'ping' ? 'ping' : 'complete',
+	})
 }
 
 export class GeminiRequestError extends Error {

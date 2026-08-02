@@ -11,6 +11,8 @@ export interface AskAiRequestBody {
 	model?: string
 	messages?: AskAiMessage[]
 	responseFormat?: 'text' | 'json'
+	temperature?: number
+	maxTokens?: number
 }
 
 export interface TokenUsage {
@@ -34,6 +36,7 @@ export interface GeminiCallResult {
 	rawBody: string
 	geminiMs: number
 	parseMs: number
+	model: string
 }
 
 export interface ProviderErrorPayload {
