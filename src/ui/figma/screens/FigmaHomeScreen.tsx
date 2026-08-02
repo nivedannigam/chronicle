@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Sparkles } from 'lucide-react'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import { buildTodaysSummary } from '@/features/command-center/services/command-center.service'
 import { useCommandCenter } from '@/features/command-center/hooks/useCommandCenter'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
 import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
 import { OnboardingFlow, useOnboarding } from '@/features/onboarding'
 import { memberFirstName, memberInitial } from '@/ui/figma/home/home-ui'
@@ -181,7 +182,13 @@ export function FigmaHomeScreen() {
 	const briefing = useCommandCenter()
 	const navigate = useNavigate()
 	const { members, selectedMemberId, setSelectedMemberId } = useFamilyContext()
+	const coverage = useHealthCoverage()
 	const { isVisible, completeStep, dismiss } = useOnboarding()
+
+	const healthModulePath =
+		coverage.failedCount > 0
+			? healthSettingsSection('import-issues')
+			: ROUTES.health
 
 	const showSkeleton =
 		briefing.loading.family &&
@@ -702,7 +709,7 @@ export function FigmaHomeScreen() {
 					}}
 				>
 					{[
-						{ emoji: '❤️', label: 'Health', path: ROUTES.health },
+						{ emoji: '❤️', label: 'Health', path: healthModulePath },
 						{ emoji: '📄', label: 'Docs', path: ROUTES.documents },
 						{ emoji: '🤖', label: 'Ask AI', path: ROUTES.ask },
 					].map((module) => (

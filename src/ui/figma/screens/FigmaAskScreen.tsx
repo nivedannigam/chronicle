@@ -84,6 +84,7 @@ export function FigmaAskScreen() {
 		error,
 		regeneratingTurnId,
 		activeSessionId,
+		lastRouting,
 	} = useAskChronicle(
 		userId,
 		uploadedQuery.data ?? [],
@@ -175,6 +176,20 @@ export function FigmaAskScreen() {
 				}
 				paddingBottom={12}
 			/>
+
+			{import.meta.env.DEV && lastRouting ? (
+				<div
+					style={{
+						padding: '0 22px 8px',
+						fontSize: 11,
+						fontWeight: 600,
+						color: '#64748b',
+						fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+					}}
+				>
+					Ask routing: {lastRouting}
+				</div>
+			) : null}
 
 			{error ? (
 				<div style={{ padding: '0 22px 10px' }}>

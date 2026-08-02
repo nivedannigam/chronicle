@@ -10,7 +10,7 @@ import {
 	ShieldCheck,
 } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
@@ -88,7 +88,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				void handlePrimaryAction()
 				return
 			case 'review_imports':
-				navigate(ROUTES.healthImportReview)
+				navigate(healthSettingsSection('review'))
 				return
 			default:
 				return
@@ -108,7 +108,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				navigate(ROUTES.healthFolderSetup)
 				return
 			case 'review_imports':
-				navigate(ROUTES.healthImportReview)
+				navigate(healthSettingsSection('review'))
 				return
 			case 'scan_import': {
 				const folderIds = setup.memberAssignments.map(

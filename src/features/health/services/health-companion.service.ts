@@ -1,5 +1,5 @@
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import {
 	buildHealthSummary,
 	buildLongitudinalHealthProfile,
@@ -484,7 +484,7 @@ function buildNextSteps(input: {
 			title: 'Review imported reports',
 			reason: 'Unreviewed reports may be missing from your health summary.',
 			actionLabel: 'Review now',
-			actionPath: ROUTES.healthImportReview,
+			actionPath: healthSettingsSection('review'),
 		})
 	}
 

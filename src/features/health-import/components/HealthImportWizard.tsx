@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import { ImportProgressList } from '@/features/health-import/components/ImportProgressList'
 import { ImportSummaryCard } from '@/features/health-import/components/ImportSummaryCard'
 import { useHealthImport } from '@/features/health-import/hooks/useHealthImport'
@@ -103,7 +103,7 @@ export function HealthImportWizard({
 					<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 						<button
 							type="button"
-							onClick={() => navigate(ROUTES.healthImportReview)}
+							onClick={() => navigate(healthSettingsSection('review'))}
 							disabled={importState.discovery.pdfCount === 0}
 							style={primaryButtonStyle}
 						>

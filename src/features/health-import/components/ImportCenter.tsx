@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
 import { ROUTES } from '@/constants/routes'
@@ -8,7 +8,12 @@ import { ImportProgressList } from '@/features/health-import/components/ImportPr
 import { formatDuration } from '@/features/health-import/services/import-summary.service'
 import { useHealthImport } from '@/features/health-import/hooks/useHealthImport'
 import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
-import { reprocessAllHealthReports } from '@/features/health/services/health-processing.service'
+import {
+	listReportsEligibleForAiReprocess,
+	reprocessAllHealthReports,
+	reprocessFailedReportsWithAi,
+} from '@/features/health/services/health-processing.service'
+import { AI_BULK_REPROCESS_CONFIRMATION } from '@/features/health/services/health-ai-extraction.service'
 import { groupImportFailures } from '@/features/health/services/health-coverage.service'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
@@ -22,7 +27,9 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 	const importState = useHealthImport(userId)
 	const coverage = useHealthCoverage()
 	const [isReprocessing, setIsReprocessing] = useState(false)
+	const [isAiReprocessing, setIsAiReprocessing] = useState(false)
 	const [reprocessMessage, setReprocessMessage] = useState<string | null>(null)
+	const [aiEligibleCount, setAiEligibleCount] = useState(0)
 	const failureGroups = groupImportFailures(importState.registry)
 	const failedCount = coverage.failedCount
 	const currentDocs =
@@ -37,6 +44,26 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 		(r) => r.importStatus === 'completed',
 	)
 	const failed = importState.registry.filter((r) => r.importStatus === 'failed')
+
+	useEffect(() => {
+		let cancelled = false
+
+		void listReportsEligibleForAiReprocess(userId)
+			.then((reports) => {
+				if (!cancelled) {
+					setAiEligibleCount(reports.length)
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setAiEligibleCount(0)
+				}
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [userId, failedCount, importState.registry.length])
 
 	const handleReprocessAll = async () => {
 		const confirmed = window.confirm(
@@ -64,6 +91,41 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 			)
 		} finally {
 			setIsReprocessing(false)
+		}
+	}
+
+	const handleReprocessFailedWithAi = async () => {
+		if (aiEligibleCount === 0) {
+			return
+		}
+
+		const confirmed = window.confirm(
+			AI_BULK_REPROCESS_CONFIRMATION(aiEligibleCount),
+		)
+
+		if (!confirmed) {
+			return
+		}
+
+		setIsAiReprocessing(true)
+		setReprocessMessage(null)
+
+		try {
+			const result = await reprocessFailedReportsWithAi(userId)
+			void queryClient.invalidateQueries({
+				queryKey: uploadedHealthReportsQueryKey(userId),
+			})
+			const refreshed = await listReportsEligibleForAiReprocess(userId)
+			setAiEligibleCount(refreshed.length)
+			setReprocessMessage(
+				`AI reprocessed ${result.processed} report${result.processed === 1 ? '' : 's'}${result.failed > 0 ? ` (${result.failed} still failed)` : ''}.`,
+			)
+		} catch (error) {
+			setReprocessMessage(
+				error instanceof Error ? error.message : 'AI reprocess failed',
+			)
+		} finally {
+			setIsAiReprocessing(false)
 		}
 	}
 
@@ -214,7 +276,18 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 							<BulkAction
 								label={`Reprocess metric-less OCR successes (${failureGroups.noMetrics})`}
 								onClick={() => void handleReprocessAll()}
-								disabled={isReprocessing || importState.isRunning}
+								disabled={
+									isReprocessing || importState.isRunning || isAiReprocessing
+								}
+							/>
+						) : null}
+						{aiEligibleCount > 0 ? (
+							<BulkAction
+								label={`Retry failed with AI (${aiEligibleCount})`}
+								onClick={() => void handleReprocessFailedWithAi()}
+								disabled={
+									isAiReprocessing || isReprocessing || importState.isRunning
+								}
 							/>
 						) : null}
 					</div>
@@ -266,7 +339,7 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 				<button
 					type="button"
 					onClick={() => void handleReprocessAll()}
-					disabled={isReprocessing || importState.isRunning}
+					disabled={isReprocessing || importState.isRunning || isAiReprocessing}
 					style={{
 						display: 'inline-flex',
 						alignItems: 'center',
@@ -292,6 +365,40 @@ export function ImportCenter({ userId }: ImportCenterProps) {
 					)}
 					Reprocess all reports
 				</button>
+				{aiEligibleCount > 0 ? (
+					<button
+						type="button"
+						onClick={() => void handleReprocessFailedWithAi()}
+						disabled={
+							isAiReprocessing || isReprocessing || importState.isRunning
+						}
+						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: 8,
+							background: C.card2,
+							border: `1px solid ${C.border}`,
+							borderRadius: 100,
+							padding: '8px 14px',
+							fontSize: 12,
+							fontWeight: 700,
+							color: C.textSec,
+							cursor: isAiReprocessing ? 'not-allowed' : 'pointer',
+							fontFamily: 'inherit',
+							marginTop: 10,
+						}}
+					>
+						{isAiReprocessing ? (
+							<Loader2
+								size={14}
+								style={{ animation: 'spin 1s linear infinite' }}
+							/>
+						) : (
+							<Sparkles size={14} />
+						)}
+						Retry failed with AI ({aiEligibleCount})
+					</button>
+				) : null}
 				{reprocessMessage ? (
 					<div style={{ fontSize: 12, color: C.textSec, marginTop: 10 }}>
 						{reprocessMessage}

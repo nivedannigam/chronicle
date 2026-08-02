@@ -30,6 +30,8 @@ export interface ProcessingDebugInfo {
 	normalizationMap: Array<{ raw: string; canonical: string }>
 	extractedMetricCount: number
 	warnings: string[]
+	extractionMethod?: 'deterministic' | 'llm'
+	validationStatus?: 'complete' | 'partial'
 }
 
 export interface HealthReport {

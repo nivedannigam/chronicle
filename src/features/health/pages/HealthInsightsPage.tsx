@@ -87,10 +87,10 @@ export function HealthInsightsPage() {
 		return (
 			<DashboardEmptyState
 				title="No insights yet"
-				message="Your reports are imported, but Chronicle needs structured lab numbers to generate guidance. Try reprocessing from the report detail screen."
+				message="Your reports are imported, but Chronicle needs structured lab numbers to generate guidance. Try reprocessing from Health Setup."
 				emoji="✨"
-				actionLabel="View reports"
-				onAction={() => navigate(ROUTES.healthReports)}
+				actionLabel={HEALTH_COPY.goToSetup}
+				onAction={() => navigate(ROUTES.healthSettings)}
 			/>
 		)
 	}

@@ -1,3 +1,4 @@
+import { mapErrorToUserMessage } from '@/shared/ai/errors/ai-errors'
 import type { AskConversationTurn } from '@/features/ask/types'
 import type { BetaExperienceId } from '@/features/ask/beta/beta-experiences'
 import type { HealthKnowledge } from '@/features/health-knowledge/types/health-knowledge-object.types'
@@ -160,19 +161,5 @@ export function platformResponseToAskTurn(input: {
 }
 
 export function formatPlatformErrorForUser(error: unknown): string {
-	const message = error instanceof Error ? error.message : 'AI summary failed'
-
-	if (/timed out/i.test(message)) {
-		return 'The AI summary request timed out. Here is what Chronicle found from your imported data instead.'
-	}
-
-	if (/quota|rate limit/i.test(message)) {
-		return 'AI capacity is temporarily limited. Here is a grounded summary from your health records.'
-	}
-
-	if (/validation failed|invalid json/i.test(message)) {
-		return 'Chronicle could not validate the AI response. Here is a grounded summary from your health records.'
-	}
-
-	return 'AI summary is temporarily unavailable. Here is a grounded summary from your health records.'
+	return mapErrorToUserMessage(error)
 }

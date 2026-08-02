@@ -15,6 +15,14 @@ const corsHeaders = {
 		'authorization, x-client-info, apikey, content-type',
 }
 
+const DEBUG_ASK_AI = Deno.env.get('DEBUG_ASK_AI') === 'true'
+
+function debugLog(...args: unknown[]) {
+	if (DEBUG_ASK_AI) {
+		console.log(...args)
+	}
+}
+
 serve(async (request) => {
 	if (request.method === 'OPTIONS') {
 		return new Response('ok', { headers: corsHeaders })
@@ -34,15 +42,15 @@ serve(async (request) => {
 		const authStarted = performance.now()
 		const authHeader = request.headers.get('Authorization')
 
-		console.log('Authorization header exists:', Boolean(authHeader))
-		console.log(
+		debugLog('Authorization header exists:', Boolean(authHeader))
+		debugLog(
 			'Authorization header uses Bearer scheme:',
 			authHeader?.startsWith('Bearer ') ?? false,
 		)
 
 		if (!authHeader) {
-			console.log('auth.getUser error:', 'Missing Authorization header')
-			console.log('user id:', null)
+			debugLog('auth.getUser error:', 'Missing Authorization header')
+			debugLog('user id:', null)
 
 			return jsonResponse({ error: 'Unauthorized', correlationId }, 401)
 		}
@@ -59,8 +67,8 @@ serve(async (request) => {
 			error: authError,
 		} = await userClient.auth.getUser(jwt)
 
-		console.log('auth.getUser error:', authError?.message ?? null)
-		console.log('user id:', user?.id ?? null)
+		debugLog('auth.getUser error:', authError?.message ?? null)
+		debugLog('user id:', user?.id ?? null)
 
 		timings.authMs = Math.round(performance.now() - authStarted)
 

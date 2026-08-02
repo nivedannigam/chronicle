@@ -15,7 +15,14 @@ import {
 	formatReportTypeLabel,
 } from '@/features/health/services/health-parsed-report.service'
 import { getHealthReportSignedUrl } from '@/features/health/services/health-upload.service'
-import { reprocessHealthReport } from '@/features/health/services/health-processing.service'
+import {
+	reprocessHealthReport,
+	reprocessHealthReportWithAi,
+} from '@/features/health/services/health-processing.service'
+import {
+	AI_REPROCESS_CONFIRMATION,
+	reportEligibleForAiReprocess,
+} from '@/features/health/services/health-ai-extraction.service'
 import { metricsDisplayMessage } from '@/features/health/services/report-readiness.service'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
@@ -46,6 +53,7 @@ export function HealthReportDetailPage() {
 	const navigate = useNavigate()
 	const detail = useHealthReportDetail(reportId)
 	const [isReprocessing, setIsReprocessing] = useState(false)
+	const [isAiReprocessing, setIsAiReprocessing] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [actionError, setActionError] = useState<string | null>(null)
 
@@ -72,6 +80,7 @@ export function HealthReportDetailPage() {
 				})
 			: ''
 	const showFailedBanner = uploaded.status === 'failed'
+	const canReprocessWithAi = reportEligibleForAiReprocess(uploaded)
 	const subtitle = [
 		getReportDisplayDate(uploaded, parsed),
 		parsed ? formatReportTypeLabel(parsed.metadata.reportType) : null,
@@ -98,6 +107,34 @@ export function HealthReportDetailPage() {
 			)
 		} finally {
 			setIsReprocessing(false)
+		}
+	}
+
+	const handleReprocessWithAi = async () => {
+		if (!reportId || !canReprocessWithAi) {
+			return
+		}
+
+		const confirmed = window.confirm(AI_REPROCESS_CONFIRMATION)
+
+		if (!confirmed) {
+			return
+		}
+
+		setIsAiReprocessing(true)
+		setActionError(null)
+
+		try {
+			await reprocessHealthReportWithAi(reportId)
+			void queryClient.invalidateQueries({
+				queryKey: uploadedHealthReportsQueryKey(uploaded.user_id),
+			})
+		} catch (error) {
+			setActionError(
+				error instanceof Error ? error.message : 'Could not reprocess with AI.',
+			)
+		} finally {
+			setIsAiReprocessing(false)
 		}
 	}
 
@@ -195,8 +232,18 @@ export function HealthReportDetailPage() {
 							: USER_VOCAB.actions.reprocess
 					}
 					onClick={() => void handleReprocess()}
-					disabled={isReprocessing}
+					disabled={isReprocessing || isAiReprocessing}
 				/>
+				{canReprocessWithAi ? (
+					<HealthActionChip
+						icon={RefreshCw}
+						label={
+							isAiReprocessing ? 'Reprocessing with AI…' : 'Reprocess with AI'
+						}
+						onClick={() => void handleReprocessWithAi()}
+						disabled={isReprocessing || isAiReprocessing}
+					/>
+				) : null}
 				<HealthActionChip
 					icon={Trash2}
 					label={isDeleting ? 'Deleting…' : 'Delete'}

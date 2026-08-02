@@ -154,6 +154,8 @@ export interface AskRecentQuestion {
 	turn?: AskConversationTurn
 }
 
+export type AskRoutingLabel = 'production-ai' | 'grounded' | 'explainability'
+
 export interface AskQuestionInput {
 	userId: string
 	question: string
@@ -163,6 +165,7 @@ export interface AskQuestionResult {
 	turn: AskConversationTurn
 	intent: string
 	implementation: 'mock-reasoning' | 'grounded-only' | 'ai-provider'
+	routing?: AskRoutingLabel
 	debug?: AskDebugInfo
 }
 

@@ -11,7 +11,12 @@ import {
 	TrendingDown,
 	TrendingUp,
 } from 'lucide-react'
-import { healthMetricPath, healthReportPath, ROUTES } from '@/constants/routes'
+import {
+	healthMetricPath,
+	healthReportPath,
+	healthSettingsSection,
+	ROUTES,
+} from '@/constants/routes'
 import type {
 	HealthAttentionItem,
 	HealthChangeItem,
@@ -243,7 +248,7 @@ export function FigmaHealthOverviewView({
 			{companion.coverage ? (
 				<CoverageBanner
 					coverage={companion.coverage}
-					onReprocess={() => navigate(ROUTES.healthImport)}
+					onReprocess={() => navigate(healthSettingsSection('import'))}
 				/>
 			) : null}
 			<div
@@ -737,7 +742,7 @@ export function FigmaHealthReportsView({
 					</span>
 					<button
 						type="button"
-						onClick={() => navigate(ROUTES.healthImportReview)}
+						onClick={() => navigate(healthSettingsSection('review'))}
 						style={{
 							background: FC.amber,
 							borderRadius: 10,

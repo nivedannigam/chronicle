@@ -2,7 +2,7 @@ import { Check, FolderOpen, Loader2, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { BottomSheet } from '@/components/layout/mobile'
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import {
 	formatMemberLabel,
 	getNonRedundantAliases,
@@ -166,7 +166,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 				}}
 				onReview={() => {
 					onClose()
-					navigate(ROUTES.healthImportReview)
+					navigate(healthSettingsSection('review'))
 				}}
 				onReconnect={() => {
 					onClose()

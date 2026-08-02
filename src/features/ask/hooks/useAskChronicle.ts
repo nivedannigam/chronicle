@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { askReasoningEngine } from '@/features/ask/services/ask-engine.factory'
-import {
-	clearConversationTurns,
-	loadConversationTurns,
-	loadRecentQuestionsFromTurns,
-	saveConversationTurns,
-} from '@/features/ask/services/conversation-persistence.service'
+import { loadRecentQuestionsFromTurns } from '@/features/ask/services/conversation-persistence.service'
 import {
 	createAskSession,
+	deleteAskSession,
+	ensureAskSession,
+	initializeAskSessions,
 	loadSessionTurns,
-	migrateLegacySessions,
+	resolveActiveAskSession,
 	upsertSessionFromTurns,
 } from '@/features/ask/services/ask-session.service'
 import {
 	classifyAskError,
+	formatAskErrorMessage,
 	type AskErrorKind,
 } from '@/features/ask/components/AskErrorBanner'
 import {
@@ -22,7 +21,7 @@ import {
 } from '@/features/ask/services/ask-history.service'
 import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { aiService } from '@/features/ai/services/ai.service'
-import type { AskConversationTurn } from '@/features/ask/types'
+import type { AskConversationTurn, AskRoutingLabel } from '@/features/ask/types'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
@@ -40,15 +39,32 @@ export interface AskMemberContext {
 
 function loadSessionState(sessionKey: string, sessionId: string) {
 	hydrateConversationMemoryFromStorage(sessionKey)
-	const turns =
-		loadSessionTurns(sessionId).length > 0
-			? loadSessionTurns(sessionId)
-			: loadConversationTurns(sessionKey)
+
+	if (!sessionId) {
+		return {
+			turns: [],
+			recentQuestions: [],
+		}
+	}
+
+	const turns = loadSessionTurns(sessionId)
 
 	return {
 		turns,
 		recentQuestions: loadRecentQuestionsFromTurns(turns),
 	}
+}
+
+function resolveInitialSessionId(
+	userId: string,
+	memberId: string | null,
+): string {
+	if (typeof window === 'undefined' || !userId) {
+		return ''
+	}
+
+	initializeAskSessions(userId)
+	return resolveActiveAskSession({ userId, memberId })?.id ?? ''
 }
 
 export function useAskChronicle(
@@ -73,21 +89,13 @@ export function useAskChronicle(
 		kind: AskErrorKind
 		message?: string
 	} | null>(null)
+	const [lastRouting, setLastRouting] = useState<AskRoutingLabel | null>(null)
 	const [regeneratingTurnId, setRegeneratingTurnId] = useState<string | null>(
 		null,
 	)
-	const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-		if (typeof window === 'undefined' || !userId) {
-			return ''
-		}
-
-		migrateLegacySessions(userId)
-		return createAskSession({
-			userId,
-			memberId,
-			memberName: memberContext?.selectedMemberName ?? null,
-		}).id
-	})
+	const [activeSessionId, setActiveSessionId] = useState<string>(() =>
+		resolveInitialSessionId(userId, memberId),
+	)
 
 	const [sessionState, setSessionState] = useState(() => ({
 		sessionKey,
@@ -96,29 +104,27 @@ export function useAskChronicle(
 	}))
 
 	const activeRequestRef = useRef(0)
-	const migratedRef = useRef(false)
+	const initializedRef = useRef(false)
 
 	useEffect(() => {
-		if (!userId || migratedRef.current) {
+		if (!userId || initializedRef.current) {
 			return
 		}
 
-		migrateLegacySessions(userId)
-		migratedRef.current = true
+		initializeAskSessions(userId)
+		initializedRef.current = true
 	}, [userId])
 
 	if (sessionState.sessionKey !== sessionKey) {
-		const nextSession = createAskSession({
-			userId,
-			memberId,
-			memberName: memberContext?.selectedMemberName ?? null,
-		})
+		initializeAskSessions(userId)
+		const nextSessionId =
+			resolveActiveAskSession({ userId, memberId })?.id ?? ''
 
-		setActiveSessionId(nextSession.id)
+		setActiveSessionId(nextSessionId)
 		setSessionState({
 			sessionKey,
-			sessionId: nextSession.id,
-			...loadSessionState(sessionKey, nextSession.id),
+			sessionId: nextSessionId,
+			...loadSessionState(sessionKey, nextSessionId),
 		})
 		setStreamingAnswer(null)
 		setPendingQuestion(null)
@@ -128,16 +134,23 @@ export function useAskChronicle(
 	const { turns, recentQuestions } = sessionState
 
 	const persistTurns = useCallback(
-		(nextTurns: AskConversationTurn[], sessionId = activeSessionId) => {
-			saveConversationTurns(sessionKey, nextTurns)
+		(
+			nextTurns: AskConversationTurn[],
+			sessionId = activeSessionId,
+			memberName = memberContext?.selectedMemberName ?? null,
+		) => {
+			if (!sessionId) {
+				return
+			}
+
 			upsertSessionFromTurns({
 				sessionId,
 				turns: nextTurns,
 				memberId,
-				memberName: memberContext?.selectedMemberName ?? null,
+				memberName,
 			})
 		},
-		[activeSessionId, memberContext?.selectedMemberName, memberId, sessionKey],
+		[activeSessionId, memberContext?.selectedMemberName, memberId],
 	)
 
 	const cancel = useCallback(() => {
@@ -149,7 +162,10 @@ export function useAskChronicle(
 	}, [])
 
 	const clearConversation = useCallback(() => {
-		clearConversationTurns(sessionKey)
+		if (activeSessionId) {
+			deleteAskSession(activeSessionId)
+		}
+
 		conversationMemory.clear(sessionKey)
 
 		const nextSession = createAskSession({
@@ -168,13 +184,18 @@ export function useAskChronicle(
 		setStreamingAnswer(null)
 		setPendingQuestion(null)
 		setError(null)
-	}, [memberContext?.selectedMemberName, memberId, sessionKey, userId])
+	}, [
+		activeSessionId,
+		memberContext?.selectedMemberName,
+		memberId,
+		sessionKey,
+		userId,
+	])
 
 	const loadConversation = useCallback(
 		(sessionId: string) => {
 			const loadedTurns = loadSessionTurns(sessionId)
 			hydrateConversationMemoryFromStorage(sessionKey)
-			saveConversationTurns(sessionKey, loadedTurns)
 
 			setActiveSessionId(sessionId)
 			setSessionState({
@@ -198,6 +219,22 @@ export function useAskChronicle(
 			setStreamingAnswer('')
 			setPendingQuestion(question)
 			setError(null)
+
+			const resolved = ensureAskSession({
+				userId,
+				memberId,
+				memberName: memberContext?.selectedMemberName ?? null,
+			})
+			const sessionId = resolved.id
+
+			if (sessionId !== activeSessionId) {
+				setActiveSessionId(sessionId)
+			}
+
+			const currentTurns =
+				sessionId === sessionState.sessionId
+					? turns
+					: loadSessionTurns(sessionId)
 
 			try {
 				const result = await askReasoningEngine.answerQuestion({
@@ -225,26 +262,31 @@ export function useAskChronicle(
 				let nextTurns: AskConversationTurn[]
 
 				if (options?.replaceTurnId) {
-					nextTurns = turns
+					nextTurns = currentTurns
 						.filter((turn) => turn.id !== options.replaceTurnId)
 						.concat(result.turn)
 				} else {
-					nextTurns = [...turns, result.turn]
+					nextTurns = [...currentTurns, result.turn]
 				}
 
-				persistTurns(nextTurns)
+				persistTurns(
+					nextTurns,
+					sessionId,
+					memberContext?.selectedMemberName ?? null,
+				)
 
 				syncRecentQuestionsFromTurns(nextTurns)
 				addRecentQuestion(question, result.turn)
 
 				setSessionState({
 					sessionKey,
-					sessionId: activeSessionId,
+					sessionId,
 					turns: nextTurns,
 					recentQuestions: loadRecentQuestionsFromTurns(nextTurns),
 				})
 				setStreamingAnswer(null)
 				setPendingQuestion(null)
+				setLastRouting(result.routing ?? null)
 
 				return {
 					id: result.turn.id,
@@ -259,7 +301,8 @@ export function useAskChronicle(
 
 				const kind = classifyAskError(caught)
 				const message =
-					caught instanceof Error ? caught.message : 'Something went wrong.'
+					formatAskErrorMessage(caught) ??
+					(caught instanceof Error ? caught.message : 'Something went wrong.')
 
 				setError({ kind, message })
 				setStreamingAnswer(null)
@@ -282,8 +325,9 @@ export function useAskChronicle(
 			memberContext,
 			sessionKey,
 			activeSessionId,
-			personalPreferences,
+			sessionState.sessionId,
 			turns,
+			personalPreferences,
 			persistTurns,
 		],
 	)
@@ -358,5 +402,6 @@ export function useAskChronicle(
 		activeSessionId,
 		error,
 		regeneratingTurnId,
+		lastRouting,
 	}
 }

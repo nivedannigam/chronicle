@@ -1,5 +1,6 @@
 import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react'
 import { C } from '@/constants/colors'
+import { classifyGeminiFailure } from '@/shared/ai/errors/ai-errors'
 
 export type AskErrorKind =
 	'no_data' | 'timeout' | 'llm_failure' | 'network' | 'provider' | 'unknown'
@@ -123,30 +124,78 @@ export function AskErrorBanner({
 }
 
 export function classifyAskError(error: unknown): AskErrorKind {
-	const message =
-		error instanceof Error
-			? error.message.toLowerCase()
-			: String(error).toLowerCase()
+	const message = error instanceof Error ? error.message : String(error)
+	const providerResponse =
+		error instanceof Error &&
+		'providerResponse' in error &&
+		typeof error.providerResponse === 'string'
+			? error.providerResponse
+			: undefined
+	const statusCode =
+		error instanceof Error &&
+		'statusCode' in error &&
+		typeof error.statusCode === 'number'
+			? error.statusCode
+			: undefined
+	const normalized = `${message} ${providerResponse ?? ''}`.toLowerCase()
+	const geminiFailure = classifyGeminiFailure({
+		statusCode,
+		message,
+		providerResponse,
+	})
 
-	if (/network|fetch|offline|connection/i.test(message)) {
+	if (/network|fetch|offline|connection/i.test(normalized)) {
 		return 'network'
 	}
 
-	if (/timeout|timed out|abort/i.test(message)) {
+	if (geminiFailure.kind === 'timeout') {
 		return 'timeout'
 	}
 
-	if (/provider|api key|unauthorized|429|503/i.test(message)) {
+	if (geminiFailure.kind === 'auth') {
 		return 'provider'
 	}
 
-	if (/no data|not enough|empty/i.test(message)) {
+	if (geminiFailure.kind === 'billing' || geminiFailure.kind === 'rate_limit') {
+		return 'provider'
+	}
+
+	if (geminiFailure.kind === 'model_not_found') {
+		return 'llm_failure'
+	}
+
+	if (/provider|api key|unauthorized|429|503/i.test(normalized)) {
+		return 'provider'
+	}
+
+	if (/no data|not enough|empty/i.test(normalized)) {
 		return 'no_data'
 	}
 
-	if (/llm|model|completion|json/i.test(message)) {
+	if (/llm|model|completion|json|validation/i.test(normalized)) {
 		return 'llm_failure'
 	}
 
 	return 'unknown'
+}
+
+export function formatAskErrorMessage(error: unknown): string | undefined {
+	if (!(error instanceof Error)) {
+		return undefined
+	}
+
+	const providerResponse =
+		'providerResponse' in error && typeof error.providerResponse === 'string'
+			? error.providerResponse
+			: undefined
+	const statusCode =
+		'statusCode' in error && typeof error.statusCode === 'number'
+			? error.statusCode
+			: undefined
+
+	return classifyGeminiFailure({
+		statusCode,
+		message: error.message,
+		providerResponse,
+	}).userMessage
 }

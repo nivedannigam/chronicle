@@ -1,55 +1,41 @@
 import type { AskConversationTurn } from '@/features/ask/types'
+import {
+	findLatestSessionForMember,
+	loadTurnsForSessionKey,
+	saveSessionTurns as saveIndexedSessionTurns,
+} from '@/features/ask/services/ask-session.service'
 
-const STORAGE_KEY = 'chronicle:ask:conversations'
 const MAX_TURNS_PER_SESSION = 20
 
-interface StoredConversations {
-	[sessionKey: string]: AskConversationTurn[]
-}
-
-function readStore(): StoredConversations {
-	if (typeof window === 'undefined') {
-		return {}
-	}
-
-	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY)
-
-		if (!raw) {
-			return {}
-		}
-
-		return JSON.parse(raw) as StoredConversations
-	} catch {
-		return {}
-	}
-}
-
-function writeStore(store: StoredConversations): void {
-	if (typeof window === 'undefined') {
-		return
-	}
-
-	try {
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-	} catch {
-		// Ignore quota errors in beta.
-	}
-}
-
+/** Indexed ask sessions are the source of truth for conversation history. */
 export function loadConversationTurns(
 	sessionKey: string,
 ): AskConversationTurn[] {
-	return readStore()[sessionKey] ?? []
+	return loadTurnsForSessionKey(sessionKey)
 }
 
 export function saveConversationTurns(
 	sessionKey: string,
 	turns: AskConversationTurn[],
 ): void {
-	const store = readStore()
-	store[sessionKey] = turns.slice(-MAX_TURNS_PER_SESSION)
-	writeStore(store)
+	const separatorIndex = sessionKey.indexOf(':')
+
+	if (separatorIndex <= 0) {
+		return
+	}
+
+	const userId = sessionKey.slice(0, separatorIndex)
+	const memberId =
+		sessionKey.slice(separatorIndex + 1) === 'default'
+			? null
+			: sessionKey.slice(separatorIndex + 1)
+	const session = findLatestSessionForMember(userId, memberId)
+
+	if (!session) {
+		return
+	}
+
+	saveIndexedSessionTurns(session.id, turns.slice(-MAX_TURNS_PER_SESSION))
 }
 
 export function appendConversationTurn(
@@ -64,9 +50,7 @@ export function appendConversationTurn(
 }
 
 export function clearConversationTurns(sessionKey: string): void {
-	const store = readStore()
-	delete store[sessionKey]
-	writeStore(store)
+	saveConversationTurns(sessionKey, [])
 }
 
 export function loadRecentQuestionsFromTurns(

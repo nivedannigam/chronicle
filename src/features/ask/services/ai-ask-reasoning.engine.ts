@@ -14,7 +14,11 @@ import {
 } from '@/features/ask/services/grounded-response.builder'
 import { loadConversationTurns } from '@/features/ask/services/conversation-persistence.service'
 import { buildExplainabilityTurn } from '@/features/ask/trust/explainability-response.builder'
-import type { AskDebugInfo, AskQuestionResult } from '@/features/ask/types'
+import type {
+	AskDebugInfo,
+	AskQuestionResult,
+	AskRoutingLabel,
+} from '@/features/ask/types'
 import {
 	buildMemorySessionKey,
 	resolveMemberFromQuestion,
@@ -169,6 +173,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 					turn: explainTurn,
 					intent: 'explain_response',
 					implementation: 'grounded-only',
+					routing: 'explainability',
 					debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
 				}
 			}
@@ -233,6 +238,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 				turn: configTurn,
 				intent: pipeline.detection.intent,
 				implementation: 'grounded-only',
+				routing: 'grounded',
 				debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
 			}
 		}
@@ -254,6 +260,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			question: input.question,
 			legacyIntent: pipeline.detection.intent,
 		})
+		const productionAiAttempted =
+			productionAiEnabled && coverage.displayReadyCount > 0
 		const aiConfigured = isAskAiProviderConfigured()
 		let usedProvider = productionAiEnabled
 			? 'gemini-platform'
@@ -280,7 +288,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		if (betaGroundedTurn) {
 			turn = betaGroundedTurn
 			usedProvider = 'beta-grounded'
-		} else if (productionAiEnabled) {
+		} else if (productionAiAttempted) {
 			try {
 				const platformResult = await runProductionHealthAi({
 					userId: input.userId,
@@ -471,9 +479,14 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			turn,
 			intent: pipeline.detection.intent,
 			implementation: aiConfigured ? 'ai-provider' : 'grounded-only',
+			routing: resolveAskRouting(productionAiAttempted),
 			debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
 		}
 	}
+}
+
+function resolveAskRouting(productionAiAttempted: boolean): AskRoutingLabel {
+	return productionAiAttempted ? 'production-ai' : 'grounded'
 }
 
 export const aiAskReasoningEngine = new AiAskReasoningEngine()

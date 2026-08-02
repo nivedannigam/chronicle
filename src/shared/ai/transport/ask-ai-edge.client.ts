@@ -96,16 +96,18 @@ export async function invokeAskAiEdgeFunction(
 
 	const authDiagnostics = await getAskAiAuthDiagnostics()
 
-	console.log('Calling Ask AI')
-	console.log('Provider', provider)
-	console.log('Model', model)
-	console.log('Ask AI auth diagnostics', {
-		currentUser: authDiagnostics.currentUser,
-		sessionExists: authDiagnostics.sessionExists,
-		accessTokenExists: authDiagnostics.accessTokenExists,
-		authorizationHeaderWillBeSent:
-			authDiagnostics.authorizationHeaderWillBeSent,
-	})
+	if (import.meta.env.DEV) {
+		console.log('Calling Ask AI')
+		console.log('Provider', provider)
+		console.log('Model', model)
+		console.log('Ask AI auth diagnostics', {
+			currentUser: authDiagnostics.currentUser,
+			sessionExists: authDiagnostics.sessionExists,
+			accessTokenExists: authDiagnostics.accessTokenExists,
+			authorizationHeaderWillBeSent:
+				authDiagnostics.authorizationHeaderWillBeSent,
+		})
+	}
 
 	let session
 

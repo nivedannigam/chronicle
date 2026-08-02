@@ -65,6 +65,7 @@ export const HOME_COPY = {
 export const HEALTH_COPY = {
 	setupTab: 'Setup',
 	settingsTab: 'Setup',
+	goToSetup: 'Go to Setup',
 	emptyAddReports: 'Set up health records',
 	reviewWaiting: 'Reports waiting for your OK',
 	insightsIntro:

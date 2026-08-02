@@ -220,4 +220,32 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
 		category: 'vitamin',
 		defaultUnit: 'ng/mL',
 	},
+	{
+		canonicalId: 'sodium',
+		displayName: 'Sodium',
+		aliases: ['sodium', 'serum sodium', 'na'],
+		category: 'general',
+		defaultUnit: 'mmol/L',
+	},
+	{
+		canonicalId: 'potassium',
+		displayName: 'Potassium',
+		aliases: ['potassium', 'serum potassium', 'k'],
+		category: 'general',
+		defaultUnit: 'mmol/L',
+	},
+	{
+		canonicalId: 'chloride',
+		displayName: 'Chloride',
+		aliases: ['chloride', 'serum chloride', 'cl'],
+		category: 'general',
+		defaultUnit: 'mmol/L',
+	},
+	{
+		canonicalId: 'cea',
+		displayName: 'CEA',
+		aliases: ['cea', 'carcino embryonic antigen', 'carcinoembryonic antigen'],
+		category: 'general',
+		defaultUnit: 'ng/mL',
+	},
 ]

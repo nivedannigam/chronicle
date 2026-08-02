@@ -42,6 +42,42 @@ Absent
 Microscopy
 `
 
+const THYROCARE_ELECTROLYTE_SNIPPET = `
+143I.S.E
+mmol/l
+SODIUM
+Adults: 136-145 mmol/l
+Reference Range :
+Method :
+ION SELECTIVE ELECTRODE
+4.6I.S.E
+mmol/l
+POTASSIUM
+ADULTS: 3.5-5.1 MMOL/L
+Reference Range :
+Method :
+ION SELECTIVE ELECTRODE
+109I.S.E
+mmol/l
+CHLORIDE
+ADULTS: 98-107 MMOL/L
+`
+
+const SVASTH_CEA_SNIPPET = `
+TestResultUnitBiological Ref. Range
+Carcino Embryonic Antigen:2.10ng/mL
+Non-Smoking : <3
+Smoking: <5
+`
+
+const QTEST_MULTI_LINE_SNIPPET = `
+Test DescriptionValue(s)UnitsReference Range
+BSF
+Blood Glucose Fasting
+Method : Enzymatic (Hexokinase)
+89mg/dL70 - 110
+`
+
 const THYROCARE_URINE_METHOD_FIRST_SNIPPET = `
 BACTERIA
 Microscopy
@@ -82,6 +118,36 @@ describe('layout extractors', () => {
 		expect(strategiesUsed).toContain('glued-horizontal')
 		expect(strategiesUsed).toContain('spaced-horizontal')
 		expect(rows.length).toBeGreaterThanOrEqual(5)
+	})
+
+	it('extracts Thyrocare I.S.E electrolyte panels from inverted vertical blocks', () => {
+		const rows = extractVerticalBlockMetrics(THYROCARE_ELECTROLYTE_SNIPPET)
+		const names = rows.map((row) => row.rawName.toUpperCase())
+
+		expect(names).toContain('SODIUM')
+		expect(names).toContain('POTASSIUM')
+		expect(names).toContain('CHLORIDE')
+		expect(rows.find((row) => row.rawName === 'SODIUM')?.value).toBe('143')
+	})
+
+	it('extracts Svasth CEA reports from glued name:value+unit lines', () => {
+		const rows = extractGluedHorizontalMetrics(SVASTH_CEA_SNIPPET)
+		const cea = rows.find((row) =>
+			/carcino embryonic antigen/i.test(row.rawName),
+		)
+
+		expect(cea?.value).toBe('2.10')
+		expect(cea?.unit).toMatch(/ng\/ml/i)
+	})
+
+	it('extracts Qtest multi-line panels when method lines sit between name and value', () => {
+		const rows = extractGluedHorizontalMetrics(QTEST_MULTI_LINE_SNIPPET)
+		const glucose = rows.find((row) =>
+			/blood glucose fasting/i.test(row.rawName),
+		)
+
+		expect(glucose?.value).toBe('89')
+		expect(glucose?.unit).toMatch(/mg\/dL/i)
 	})
 
 	it('parses Thyrocare urine qualitative rows as ABSENT values', () => {

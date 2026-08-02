@@ -1,0 +1,202 @@
+import type { HealthReport } from '@/features/document-intelligence/domain/health-report.domain'
+import type {
+	HealthMetric,
+	MetricStatus,
+} from '@/features/document-intelligence/domain/metric.types'
+import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
+import {
+	invokeExtractMetricsAiEdgeFunction,
+	type ExtractMetricsAiEdgeMetric,
+} from '@/shared/ai/transport/extract-metrics-ai-edge.client'
+import type { UploadedHealthReport } from '@/features/health/types'
+import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+
+const AI_METRIC_CONFIDENCE = 0.55
+const MAX_AI_METRICS = 100
+
+const VALID_STATUSES = new Set<MetricStatus>([
+	'normal',
+	'high',
+	'low',
+	'borderline',
+	'critical',
+	'unknown',
+])
+
+export function reportEligibleForAiReprocess(
+	report: UploadedHealthReport,
+): boolean {
+	return Boolean(report.extracted_text?.trim())
+}
+
+export function validateAiExtractedMetrics(
+	metrics: ExtractMetricsAiEdgeMetric[],
+): ExtractMetricsAiEdgeMetric[] {
+	const valid = metrics
+		.filter(
+			(metric) =>
+				typeof metric.rawName === 'string' &&
+				metric.rawName.trim().length > 0 &&
+				typeof metric.value === 'string' &&
+				metric.value.trim().length > 0,
+		)
+		.slice(0, MAX_AI_METRICS)
+
+	if (valid.length === 0) {
+		throw new Error(
+			'AI extraction returned no usable laboratory metrics. Try deterministic reprocess or a clearer PDF.',
+		)
+	}
+
+	return valid
+}
+
+function normalizeAiStatus(status: string): MetricStatus {
+	return VALID_STATUSES.has(status as MetricStatus)
+		? (status as MetricStatus)
+		: 'unknown'
+}
+
+function toHealthMetric(
+	metric: ExtractMetricsAiEdgeMetric,
+	index: number,
+): HealthMetric {
+	const normalized = normalizeMetricName(metric.rawName)
+	const referenceRange = metric.referenceRange ?? {
+		rawText: '',
+		lowerLimit: null,
+		upperLimit: null,
+		unit: null,
+	}
+
+	return {
+		id: `ai-metric-${index + 1}`,
+		canonicalId: normalized.canonicalId ?? `raw:${metric.rawName}`,
+		displayName: metric.displayName?.trim() || normalized.displayName,
+		rawName: metric.rawName.trim(),
+		value: metric.value.trim(),
+		numericValue: parseNumeric(metric.value),
+		unit: metric.unit?.trim() || null,
+		referenceRange: {
+			rawText: referenceRange.rawText ?? '',
+			lowerLimit:
+				typeof referenceRange.lowerLimit === 'number'
+					? referenceRange.lowerLimit
+					: null,
+			upperLimit:
+				typeof referenceRange.upperLimit === 'number'
+					? referenceRange.upperLimit
+					: null,
+			unit: referenceRange.unit ?? metric.unit ?? null,
+		},
+		status: normalizeAiStatus(metric.status),
+		confidence: AI_METRIC_CONFIDENCE,
+	}
+}
+
+function parseNumeric(value: string): number | null {
+	const match = value.replace(/,/g, '').match(/-?\d+(?:\.\d+)?/)
+
+	if (!match) {
+		return null
+	}
+
+	const parsed = Number.parseFloat(match[0])
+	return Number.isFinite(parsed) ? parsed : null
+}
+
+export async function buildHealthReportFromAiExtraction(input: {
+	report: UploadedHealthReport
+}): Promise<HealthReport> {
+	const extractedText = input.report.extracted_text?.trim()
+
+	if (!extractedText) {
+		throw new Error(
+			'This report has no stored OCR text. Run a standard import first.',
+		)
+	}
+
+	const existing = getParsedHealthReport(input.report)
+	const aiResult = await invokeExtractMetricsAiEdgeFunction({
+		extractedText,
+		fileName: input.report.file_name,
+	})
+
+	const validatedMetrics = validateAiExtractedMetrics(aiResult.metrics)
+	const metrics = validatedMetrics.map(toHealthMetric)
+	const metadata = {
+		reportType:
+			aiResult.metadata.reportType ??
+			existing?.metadata.reportType ??
+			'general',
+		laboratory:
+			aiResult.metadata.laboratory ?? existing?.metadata.laboratory ?? '',
+		reportDate:
+			aiResult.metadata.reportDate ??
+			existing?.metadata.reportDate ??
+			input.report.report_date,
+		collectionDate: existing?.metadata.collectionDate ?? null,
+		referenceNumber: existing?.metadata.referenceNumber ?? null,
+		patientName:
+			aiResult.metadata.patientName ?? existing?.metadata.patientName ?? null,
+		doctorName: existing?.metadata.doctorName ?? null,
+		testNames: metrics.map((metric) => metric.displayName),
+		sourceDocumentId: input.report.id,
+		parserVersion: 'ai-text-v1',
+		ocrConfidence:
+			input.report.ocr_confidence ?? existing?.metadata.ocrConfidence ?? 0,
+		pageCount: input.report.ocr_page_count ?? existing?.metadata.pageCount ?? 0,
+		ocrProvider:
+			input.report.ocr_provider ?? existing?.metadata.ocrProvider ?? '',
+		ocrProcessingTimeMs:
+			input.report.ocr_processing_time_ms ??
+			existing?.metadata.ocrProcessingTimeMs ??
+			0,
+	}
+
+	return {
+		id: input.report.id,
+		documentId: input.report.id,
+		metadata,
+		metrics,
+		metricResults: metrics.map((metric) => ({
+			rawName: metric.rawName,
+			canonicalId: metric.canonicalId,
+			displayName: metric.displayName,
+			value: metric.value,
+			numericValue: metric.numericValue,
+			unit: metric.unit,
+			referenceRange: metric.referenceRange,
+			status: metric.status,
+			confidence: metric.confidence,
+			source: 'text' as const,
+		})),
+		extractedText,
+		createdAt: input.report.processed_at ?? new Date().toISOString(),
+		debug: {
+			ocrProvider: metadata.ocrProvider,
+			ocrProcessingTimeMs: metadata.ocrProcessingTimeMs,
+			ocrConfidence: metadata.ocrConfidence,
+			pageCount: metadata.pageCount,
+			tableCount: 0,
+			parsedFields: {},
+			normalizationMap: metrics.map((metric) => ({
+				raw: metric.rawName,
+				canonical: metric.displayName,
+			})),
+			extractedMetricCount: metrics.length,
+			warnings: [
+				'Metrics extracted with AI from stored OCR text — verify before clinical use.',
+				...aiResult.warnings,
+			],
+			extractionMethod: 'llm',
+			validationStatus: 'partial',
+		},
+	}
+}
+
+export const AI_REPROCESS_CONFIRMATION =
+	'Reprocess with AI sends stored OCR text to Gemini (~$0.002–0.004 per report). AI results may be incomplete — verify metrics before relying on them.\n\nContinue?'
+
+export const AI_BULK_REPROCESS_CONFIRMATION = (count: number) =>
+	`Retry ${count} failed report${count === 1 ? '' : 's'} with AI?\n\nOnly reports with stored OCR text are included. Estimated cost: ~$${(count * 0.003).toFixed(2)}.\n\nContinue?`

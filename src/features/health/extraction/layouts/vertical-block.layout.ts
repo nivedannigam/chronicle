@@ -11,7 +11,10 @@ import {
 const LAYOUT_ID = 'vertical-block' as const
 
 const TECHNOLOGY_SUFFIX =
-	/^(?:PHOTOMETRY|CALCULATED|IMMUNOASSAY|C\.M\.I\.A|H\.P\.L\.C|I\.S\.E|Flow Cytometry|SLS-Hemoglobin Method|CPH Detection|HF & EI|Calculated|Microscopy|Visual Determination|pH indicator|pKa change|PEI|GOD-POD|Nitroprusside|Diazo coupling|Hays sulphur|Ehrlich reaction|Peroxidase reaction|Esterase reaction)$/i
+	/^(?:PHOTOMETRY|CALCULATED|IMMUNOASSAY|C\.M\.I\.A|H\.P\.L\.C|I\.S\.E|C\.L\.I\.A|Flow Cytometry|SLS-Hemoglobin Method|CPH Detection|HF & EI|Calculated|Microscopy|Visual Determination|pH indicator|pKa change|PEI|GOD-POD|Nitroprusside|Diazo coupling|Hays sulphur|Ehrlich reaction|Peroxidase reaction|Esterase reaction)$/i
+
+const INVERTED_TECH_LINE =
+	/^([\d.]+)(I\.S\.E|C\.L\.I\.A|C\.M\.I\.A|PHOTOMETRY|IMMUNOASSAY|H\.P\.L\.C|CALCULATED)$/i
 
 const UNIT_TOKENS =
 	/^(?:mg\/dL|g\/dL|gm\/dL|mL\/min\/1\.73 m2|%|Ratio|U\/L|mL|fL|pq|X 10[\^³]*\s*\/\s*μL|X 10[\^³]*\/μL|cells\/HPF|μL|mmol\/l|OD ratio|-)$/i
@@ -151,6 +154,110 @@ export function splitTechnologyPrefix(line: string): {
 	return {
 		technology: match[1],
 		rawName: match[2].trim(),
+	}
+}
+
+function extractReferenceRange(referenceLine: string): string {
+	const refMatch = referenceLine.match(/([\d.]+\s*-\s*[\d.]+|[<>]\s*[\d.]+)/i)
+
+	if (refMatch) {
+		return refMatch[1].replace(/\s+/g, '')
+	}
+
+	return normalizeLine(referenceLine)
+}
+
+function parseInvertedTechnologyBlock(
+	lines: string[],
+	startIndex: number,
+): { row: RawMetricRow | null; nextIndex: number } {
+	const mashed = normalizeLine(lines[startIndex] ?? '')
+	const match = mashed.match(INVERTED_TECH_LINE)
+
+	if (!match) {
+		return { row: null, nextIndex: startIndex }
+	}
+
+	const value = match[1]
+	const unit = normalizeLine(lines[startIndex + 1] ?? '')
+	const rawName = normalizeLine(lines[startIndex + 2] ?? '')
+	const referenceLine = normalizeLine(lines[startIndex + 3] ?? '')
+
+	if (
+		!UNIT_TOKENS.test(unit) ||
+		!rawName ||
+		/^(?:Reference Range|Method|Clinical Significance|UNITS|VALUE|TEST NAME)/i.test(
+			rawName,
+		)
+	) {
+		return { row: null, nextIndex: startIndex }
+	}
+
+	let nextIndex = startIndex + 4
+
+	while (nextIndex < lines.length) {
+		const candidate = normalizeLine(lines[nextIndex] ?? '')
+
+		if (!candidate) {
+			nextIndex += 1
+			continue
+		}
+
+		if (INVERTED_TECH_LINE.test(candidate.replace(/\s/g, ''))) {
+			break
+		}
+
+		if (URINE_TEST_NAMES.test(candidate)) {
+			break
+		}
+
+		if (
+			/^(?:Physical Examination|Chemical Examination|Microscopic Examination|COMPLETE URINOGRAM)/i.test(
+				candidate,
+			)
+		) {
+			break
+		}
+
+		if (/^~~ End of report/i.test(candidate)) {
+			break
+		}
+
+		if (
+			UNIT_TOKENS.test(candidate) &&
+			/^[\d.]+$/.test(normalizeLine(lines[nextIndex + 1] ?? ''))
+		) {
+			break
+		}
+
+		if (
+			/^(?:Reference Range|Method|Clinical Significance|ION SELECTIVE|DEFICIENCY|INSUFFICIENCY|SUFFICIENCY|\* To Obtain)/i.test(
+				candidate,
+			)
+		) {
+			nextIndex += 1
+			continue
+		}
+
+		if (candidate.length > 100) {
+			nextIndex += 1
+			continue
+		}
+
+		break
+	}
+
+	return {
+		row: {
+			rawName,
+			value,
+			referenceRange: extractReferenceRange(referenceLine),
+			unit,
+			confidence: 0.93,
+			source: 'text',
+			layoutId: LAYOUT_ID,
+		},
+		nextIndex,
 	}
 }
 
@@ -438,6 +545,22 @@ function parseVerticalBlocks(lines: string[]): RawMetricRow[] {
 		if (mashed) {
 			rows.push(mashed)
 			index += 1
+			continue
+		}
+
+		const invertedTech = parseInvertedTechnologyBlock(lines, index)
+
+		if (invertedTech.row) {
+			pushMetricRow(
+				rows,
+				invertedTech.row.rawName,
+				invertedTech.row.value,
+				invertedTech.row.referenceRange,
+				invertedTech.row.unit,
+				LAYOUT_ID,
+				invertedTech.row.confidence,
+			)
+			index = invertedTech.nextIndex
 			continue
 		}
 

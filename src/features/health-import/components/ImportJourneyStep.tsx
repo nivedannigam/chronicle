@@ -1,7 +1,7 @@
 import { Check, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import type { AssignmentSuccessInfo } from '@/features/family/types/family.types'
 import {
 	IMPORT_JOURNEY_STEPS,
@@ -143,7 +143,7 @@ export function ImportJourneyStep({
 					result={result}
 					onReview={() => {
 						onClose()
-						navigate(ROUTES.healthImportReview)
+						navigate(healthSettingsSection('review'))
 					}}
 				/>
 			) : null}
@@ -164,7 +164,7 @@ export function ImportJourneyStep({
 					}}
 					onReview={() => {
 						onClose()
-						navigate(ROUTES.healthImportReview)
+						navigate(healthSettingsSection('review'))
 					}}
 					onReconnect={() => {
 						onClose()

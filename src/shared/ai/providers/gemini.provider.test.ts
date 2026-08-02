@@ -9,10 +9,57 @@ vi.mock('@/shared/ai/transport/ask-ai-edge.client', () => ({
 			this.name = 'AskAiEdgeConfigurationError'
 		}
 	},
+	AskAiEdgeInvokeError: class AskAiEdgeInvokeError extends Error {
+		readonly statusCode?: number
+		readonly correlationId?: string
+		readonly providerResponse?: string
+
+		constructor(
+			message: string,
+			options?: {
+				statusCode?: number
+				correlationId?: string
+				providerResponse?: string
+			},
+		) {
+			super(message)
+			this.name = 'AskAiEdgeInvokeError'
+			this.statusCode = options?.statusCode
+			this.correlationId = options?.correlationId
+			this.providerResponse = options?.providerResponse
+		}
+	},
 	isAskAiEdgeConfigured: vi.fn(() => false),
 }))
 
 describe('GeminiProvider', () => {
+	it('maps prepay credit depletion to billing guidance', async () => {
+		const { invokeAskAiEdgeFunction, AskAiEdgeInvokeError } =
+			await import('@/shared/ai/transport/ask-ai-edge.client')
+		const { GeminiProvider } =
+			await import('@/shared/ai/providers/gemini.provider')
+
+		vi.mocked(invokeAskAiEdgeFunction).mockRejectedValueOnce(
+			new AskAiEdgeInvokeError('Resource exhausted', {
+				statusCode: 429,
+				providerResponse: 'Prepayment credits depleted',
+			}),
+		)
+
+		const gemini = new GeminiProvider()
+
+		await expect(
+			gemini.generate({
+				requestId: 'req-billing',
+				messages: [{ role: 'user', content: 'hello' }],
+				responseFormat: 'json',
+			}),
+		).rejects.toMatchObject({
+			code: 'billing_depleted',
+			message: expect.stringMatching(/prepay credits are depleted/i),
+		})
+	})
+
 	it('surfaces configuration errors from the ask-ai edge client', async () => {
 		const { invokeAskAiEdgeFunction, AskAiEdgeConfigurationError } =
 			await import('@/shared/ai/transport/ask-ai-edge.client')

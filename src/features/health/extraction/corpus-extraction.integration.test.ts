@@ -136,5 +136,24 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 		if (feb2023) {
 			expect(feb2023.metricCount).toBeGreaterThan(10)
 		}
+
+		const serumElectrolytes = table.find(
+			(r) => r.filename === '2023 Feb - Serum Electrolytes.pdf',
+		)
+		if (serumElectrolytes) {
+			expect(serumElectrolytes.metricCount).toBeGreaterThanOrEqual(3)
+		}
+
+		const ceaTest = table.find((r) => r.filename === 'CEA Test Feb 2026.pdf')
+		if (ceaTest) {
+			expect(ceaTest.metricCount).toBeGreaterThanOrEqual(1)
+		}
+
+		const mar2024 = table.find(
+			(r) => r.filename === '2024 Mar - Full Body Checkup.pdf',
+		)
+		if (mar2024) {
+			expect(mar2024.metricCount).toBeGreaterThan(10)
+		}
 	}, 120_000)
 })

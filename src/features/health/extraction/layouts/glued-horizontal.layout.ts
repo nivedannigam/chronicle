@@ -12,7 +12,41 @@ import {
 const LAYOUT_ID = 'glued-horizontal' as const
 
 const GLUED_UNIT =
-	/(?:mg\/dL|mg\/dl|g\/dL|gm\/dL|ug\/dl|μg\/dL|U\/L|IU\/L|mL|fL|%|Ratio|mmol\/l|pg\/mL|ng\/mL|cells\/HPF|μL|mL\/min\/1\.73\s*m2)/i
+	/(?:mg\/dL|mg\/dl|g\/dL|gm\/dL|ug\/dl|μg\/dL|U\/L|IU\/L|mL|fL|%|Ratio|mmol\/l|mmol\/L|pg\/mL|ng\/mL|ng\/ml|cells\/HPF|μL|mL\/min\/1\.73\s*m2)/i
+
+function findPriorMetricName(lines: string[], index: number): string | null {
+	for (let i = index - 1; i >= Math.max(0, index - 5); i -= 1) {
+		const prior = normalizeLine(lines[i] ?? '')
+
+		if (!prior || isNoiseLine(prior)) {
+			continue
+		}
+
+		if (/^Method\s*:/i.test(prior)) {
+			continue
+		}
+
+		if (
+			/^Test Description|^INTERPRETATION|^MEAN GLUCOSE|^NOTE\s*:/i.test(prior)
+		) {
+			continue
+		}
+
+		if (
+			/^[A-Z0-9]{2,6}$/i.test(prior) &&
+			prior.length <= 6 &&
+			!/\s/.test(prior)
+		) {
+			continue
+		}
+
+		if (looksLikeMetricName(prior)) {
+			return prior
+		}
+	}
+
+	return null
+}
 
 function looksLikeMetricName(name: string): boolean {
 	if (name.length < 2 || name.length > 80) {
@@ -30,12 +64,42 @@ function looksLikeMetricName(name: string): boolean {
 	return /[A-Za-z]{2,}/.test(name)
 }
 
-function parseGluedLine(line: string): {
+function parseGluedLine(
+	line: string,
+	lines: string[],
+	index: number,
+): {
 	rawName: string
 	value: string
 	unit: string
 	referenceRange: string
 } | null {
+	// Carcino Embryonic Antigen:2.10ng/mL (reference on following lines)
+	const colonValueUnitOnly = line.match(
+		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:([\d.]+)(ng\/mL|ng\/ml|mg\/dL|mg\/dl|ug\/dL|μg\/dL|U\/L|IU\/L|mmol\/l|mmol\/L)$/i,
+	)
+
+	if (colonValueUnitOnly) {
+		const [, rawName, value, unit] = colonValueUnitOnly
+
+		if (looksLikeMetricName(rawName)) {
+			let referenceRange = ''
+			const nextLine = normalizeLine(lines[index + 1] ?? '')
+			const refMatch = nextLine.match(/[<>=]\s*[\d.]+/)
+
+			if (refMatch) {
+				referenceRange = refMatch[0].replace(/\s+/g, '')
+			}
+
+			return {
+				rawName,
+				value,
+				unit,
+				referenceRange,
+			}
+		}
+	}
+
 	// Blood Sugar Fasting:87.5mg/dl70-110  |  Total Iron Binding Capacity :363ug/dl255-450
 	const colonMatch = line.match(
 		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:([\d.]+)([A-Za-z%/μ^³.]+)([\d.]+\s*-\s*[\d.]+|[<>]\s*[\d.]+)$/i,
@@ -87,7 +151,7 @@ export function extractGluedHorizontalMetrics(text: string): RawMetricRow[] {
 			continue
 		}
 
-		const parsed = parseGluedLine(line)
+		const parsed = parseGluedLine(line, lines, index)
 
 		if (parsed) {
 			pushMetricRow(
@@ -102,15 +166,15 @@ export function extractGluedHorizontalMetrics(text: string): RawMetricRow[] {
 			continue
 		}
 
-		// Handle multi-line Qtest: test name on prior line, glued value on current
+		// Handle multi-line Qtest: test name on prior line(s), glued value on current
 		const valueOnlyMatch = line.match(
 			/^([\d.]+)([A-Za-z%/μ^³.]+)([\d.]+\s*-\s*[\d.]+|[<>][\d.]+)$/i,
 		)
 
-		if (valueOnlyMatch && index > 0) {
-			const prior = normalizeLine(lines[index - 1])
+		if (valueOnlyMatch) {
+			const prior = findPriorMetricName(lines, index)
 
-			if (looksLikeMetricName(prior) && !isNoiseLine(prior)) {
+			if (prior) {
 				const [, value, unit, referenceRange] = valueOnlyMatch
 
 				if (GLUED_UNIT.test(unit)) {

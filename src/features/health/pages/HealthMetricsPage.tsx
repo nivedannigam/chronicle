@@ -90,10 +90,10 @@ export function HealthMetricsPage() {
 			return (
 				<DashboardEmptyState
 					title="Some reports need attention"
-					message={`${pipelineState.failedCount} report${pipelineState.failedCount === 1 ? '' : 's'} could not be parsed. Open the report to retry processing or upload a clearer PDF.`}
+					message={`${pipelineState.failedCount} report${pipelineState.failedCount === 1 ? '' : 's'} could not be parsed. Retry or reprocess from Health Setup.`}
 					emoji="⚠️"
-					actionLabel="View reports"
-					onAction={() => navigate(ROUTES.healthReports)}
+					actionLabel={HEALTH_COPY.goToSetup}
+					onAction={() => navigate(ROUTES.healthSettings)}
 				/>
 			)
 		}
@@ -101,10 +101,10 @@ export function HealthMetricsPage() {
 		return (
 			<DashboardEmptyState
 				title="No lab numbers extracted yet"
-				message="Your reports are imported, but Chronicle did not find structured metrics. Try reprocessing from the report detail screen, or upload a clearer lab PDF."
+				message="Your reports are imported, but Chronicle did not find structured metrics. Try reprocessing from Health Setup, or upload a clearer lab PDF."
 				emoji="📊"
-				actionLabel="View reports"
-				onAction={() => navigate(ROUTES.healthReports)}
+				actionLabel={HEALTH_COPY.goToSetup}
+				onAction={() => navigate(ROUTES.healthSettings)}
 			/>
 		)
 	}

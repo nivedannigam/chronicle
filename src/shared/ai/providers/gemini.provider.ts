@@ -1,6 +1,7 @@
 import { estimateTokenCost } from '@/shared/ai/cost/cost-pricing'
 import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
 import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
+import { classifyGeminiFailure } from '@/shared/ai/errors/ai-errors'
 import {
 	AskAiEdgeConfigurationError,
 	AskAiEdgeInvokeError,
@@ -15,6 +16,9 @@ import type {
 export class GeminiProviderError extends Error {
 	readonly code:
 		| 'not_configured'
+		| 'auth_required'
+		| 'billing_depleted'
+		| 'model_not_found'
 		| 'timeout'
 		| 'quota_exceeded'
 		| 'rate_limit'
@@ -27,6 +31,9 @@ export class GeminiProviderError extends Error {
 		message: string,
 		code:
 			| 'not_configured'
+			| 'auth_required'
+			| 'billing_depleted'
+			| 'model_not_found'
 			| 'timeout'
 			| 'quota_exceeded'
 			| 'rate_limit'
@@ -49,38 +56,27 @@ function classifyGeminiError(error: unknown): GeminiProviderError {
 
 	if (error instanceof AskAiEdgeInvokeError) {
 		const status = error.statusCode ?? 502
-		const lower =
-			`${error.message} ${error.providerResponse ?? ''}`.toLowerCase()
+		const classified = classifyGeminiFailure({
+			statusCode: status,
+			message: error.message,
+			providerResponse: error.providerResponse,
+		})
 
-		if (status === 429 || lower.includes('rate limit')) {
-			return new GeminiProviderError(
-				'Gemini rate limit reached. Please try again shortly.',
-				'rate_limit',
-				status,
-			)
-		}
+		const codeByKind = {
+			auth: 'auth_required',
+			billing: 'billing_depleted',
+			rate_limit: 'rate_limit',
+			model_not_found: 'model_not_found',
+			timeout: 'timeout',
+			validation: 'invalid_json',
+			generic: 'api_error',
+		} as const
 
-		if (
-			status === 403 ||
-			lower.includes('quota') ||
-			lower.includes('billing')
-		) {
-			return new GeminiProviderError(
-				'Gemini quota exceeded. Please try again later.',
-				'quota_exceeded',
-				status,
-			)
-		}
-
-		if (status === 408 || lower.includes('timeout')) {
-			return new GeminiProviderError(
-				'Gemini request timed out.',
-				'timeout',
-				status,
-			)
-		}
-
-		return new GeminiProviderError(error.message, 'api_error', status)
+		return new GeminiProviderError(
+			classified.userMessage,
+			codeByKind[classified.kind],
+			classified.statusCode ?? status,
+		)
 	}
 
 	if (error instanceof DOMException && error.name === 'AbortError') {

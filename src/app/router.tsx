@@ -21,7 +21,7 @@ import {
 	HealthTimelinePage,
 } from '@/features/health'
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
-import { ImportReviewPage, OcrPreviewPage } from '@/features/medical-discovery'
+import { OcrPreviewPage } from '@/features/medical-discovery'
 import { HomePage } from '@/features/home'
 import { MailPage } from '@/features/mail'
 import {
@@ -51,7 +51,11 @@ import { DocumentsCategoryPage } from '@/features/documents/pages/DocumentsCateg
 import { TimelinePage } from '@/features/timeline'
 import { SearchPage } from '@/features/search'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
+import {
+	DEFAULT_AUTHENTICATED_ROUTE,
+	healthSettingsSection,
+	ROUTES,
+} from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
 
 export function AppRouter() {
@@ -190,7 +194,7 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.healthImportReview}
-						element={<ImportReviewPage />}
+						element={<Navigate to={healthSettingsSection('review')} replace />}
 					/>
 
 					<Route path={ROUTES.health} element={<HealthLayout />}>

@@ -21,12 +21,16 @@ import {
 	healthReportQualifiesForMetriclessCompletion,
 	isReportDisplayReady,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
+	reportHasExtractedText,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
+import { buildHealthReportFromAiExtraction } from '@/features/health/services/health-ai-extraction.service'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
 } from '@/features/health/types'
+
+export type HealthExtractionMode = 'deterministic' | 'llm_text'
 
 const PENDING_STATUSES: HealthReportStatus[] = [
 	'uploaded',
@@ -116,8 +120,12 @@ export async function enqueueHealthReportProcessing(
 
 export async function processHealthReport(
 	reportId: string,
-	options: { force?: boolean } = {},
+	options: { force?: boolean; extractionMode?: HealthExtractionMode } = {},
 ): Promise<UploadedHealthReport> {
+	if (options.extractionMode === 'llm_text') {
+		return processHealthReportWithAiText(reportId, options)
+	}
+
 	const { data: report, error: fetchError } = await supabase
 		.from('health_reports')
 		.select('*')
@@ -516,6 +524,272 @@ export async function reprocessHealthReport(
 	reportId: string,
 ): Promise<UploadedHealthReport> {
 	return processHealthReport(reportId, { force: true })
+}
+
+export async function reprocessHealthReportWithAi(
+	reportId: string,
+): Promise<UploadedHealthReport> {
+	return processHealthReport(reportId, {
+		force: true,
+		extractionMode: 'llm_text',
+	})
+}
+
+export async function listReportsEligibleForAiReprocess(
+	userId: string,
+): Promise<UploadedHealthReport[]> {
+	const { data, error } = await supabase
+		.from('health_reports')
+		.select('*')
+		.eq('user_id', userId)
+		.in('status', REPROCESSABLE_STATUSES)
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	return (data ?? [])
+		.map((row) => row as UploadedHealthReport)
+		.filter(
+			(report) =>
+				reportNeedsReprocess(report) && reportHasExtractedText(report),
+		)
+}
+
+export async function reprocessFailedReportsWithAi(userId: string): Promise<{
+	processed: number
+	failed: number
+	skipped: number
+}> {
+	const eligible = await listReportsEligibleForAiReprocess(userId)
+	let processed = 0
+	let failed = 0
+
+	for (const report of eligible) {
+		try {
+			const result = await processHealthReport(report.id, {
+				force: true,
+				extractionMode: 'llm_text',
+			})
+
+			if (isReportDisplayReady(result)) {
+				processed += 1
+			} else {
+				failed += 1
+			}
+		} catch {
+			failed += 1
+		}
+	}
+
+	if (processed > 0) {
+		invalidateHealthKnowledgeCache(userId)
+		await persistHealthKnowledgeGraph(userId, null)
+		invalidateAfterHealthImport(userId)
+	}
+
+	return {
+		processed,
+		failed,
+		skipped: 0,
+	}
+}
+
+async function processHealthReportWithAiText(
+	reportId: string,
+	options: { force?: boolean } = {},
+): Promise<UploadedHealthReport> {
+	const { data: report, error: fetchError } = await supabase
+		.from('health_reports')
+		.select('*')
+		.eq('id', reportId)
+		.single()
+
+	if (fetchError || !report) {
+		throw new Error(fetchError?.message ?? 'Report not found.')
+	}
+
+	const typedReport = report as UploadedHealthReport
+
+	if (!reportHasExtractedText(typedReport)) {
+		throw new Error(
+			'This report has no stored OCR text. Run a standard reprocess first.',
+		)
+	}
+
+	if (
+		!options.force &&
+		typedReport.status === 'completed' &&
+		isReportDisplayReady(typedReport)
+	) {
+		return typedReport
+	}
+
+	if (!options.force && typedReport.status === 'processing') {
+		return typedReport
+	}
+
+	const processedAt = new Date().toISOString()
+
+	try {
+		await updateReportStatus(reportId, {
+			status: 'processing',
+			processing_error: null,
+		})
+		await updateQueueStatus(reportId, 'processing', {
+			started_at: processedAt,
+			error_message: null,
+		})
+
+		startPipelineStage({
+			reportId,
+			stage: 'PARSING',
+			nextStage: 'INDEXING',
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'PARSING',
+			context: {
+				userId: typedReport.user_id,
+				reportId,
+				progress: { label: 'AI metric extraction' },
+			},
+		})
+
+		const healthReport = await buildHealthReportFromAiExtraction({
+			report: typedReport,
+		})
+		const serializedParsedData = serializeParsedHealthReport(healthReport)
+		const parsedReportUpdate = {
+			extracted_text: typedReport.extracted_text,
+			parsed_data: serializedParsedData,
+			ocr_page_count: typedReport.ocr_page_count,
+			ocr_confidence: typedReport.ocr_confidence,
+			ocr_provider: typedReport.ocr_provider,
+			ocr_processing_time_ms: typedReport.ocr_processing_time_ms,
+			ocr_metadata: typedReport.ocr_metadata,
+			report_type: healthReport.metadata.reportType,
+			report_date: healthReport.metadata.reportDate ?? typedReport.report_date,
+			processed_at: processedAt,
+			processing_error: null,
+		}
+
+		await updateReportStatus(reportId, {
+			status: 'parsed',
+			...parsedReportUpdate,
+		})
+		await updateQueueStatus(reportId, 'parsed', { error_message: null })
+
+		const persistedMetricCount = await persistHealthMetrics({
+			userId: typedReport.user_id,
+			reportId,
+			familyMemberId: typedReport.family_member_id ?? null,
+			healthReport,
+			reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
+		})
+
+		if (persistedMetricCount === 0) {
+			throw new Error(NO_LAB_METRICS_EXTRACTED_MESSAGE)
+		}
+
+		completePipelineStage({
+			reportId,
+			stage: 'PARSING',
+			nextStage: 'INDEXING',
+			details: {
+				metricCount: persistedMetricCount,
+				extractionMode: 'llm_text',
+			},
+		})
+
+		startPipelineStage({
+			reportId,
+			stage: 'INDEXING',
+			nextStage: 'READY',
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'INDEXING',
+			context: {
+				userId: typedReport.user_id,
+				reportId,
+				progress: { label: 'Saving AI metrics' },
+			},
+		})
+
+		createKnowledgeItemFromHealthReport({
+			...typedReport,
+			status: 'parsed',
+			...parsedReportUpdate,
+		})
+
+		await persistHealthKnowledgeGraph(
+			typedReport.user_id,
+			typedReport.family_member_id ?? null,
+		)
+
+		completePipelineStage({
+			reportId,
+			stage: 'INDEXING',
+			nextStage: 'READY',
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'READY',
+			context: { userId: typedReport.user_id, reportId },
+		})
+
+		await updateReportStatus(reportId, {
+			status: 'completed',
+			...parsedReportUpdate,
+		})
+		await updateQueueStatus(reportId, 'completed', {
+			completed_at: processedAt,
+			error_message: null,
+		})
+
+		const completedReport: UploadedHealthReport = {
+			...typedReport,
+			status: 'completed',
+			...parsedReportUpdate,
+		}
+
+		invalidateHealthKnowledgeCache(completedReport.user_id)
+		invalidateAfterHealthImport(completedReport.user_id)
+
+		return completedReport
+	} catch (error) {
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'PARSING',
+			error,
+		})
+
+		await updateReportStatus(reportId, {
+			status: 'failed',
+			processing_error: errorDetail.userMessage,
+		})
+		await updateQueueStatus(reportId, 'failed', {
+			completed_at: processedAt,
+			error_message: errorDetail.userMessage,
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'FAILED',
+			context: {
+				userId: typedReport.user_id,
+				reportId,
+				failureReason: errorDetail.userMessage,
+				failedStage: 'PARSING',
+				errorDetail,
+			},
+		})
+
+		throw new Error(errorDetail.userMessage)
+	}
 }
 
 export async function reprocessAllHealthReports(userId: string): Promise<{

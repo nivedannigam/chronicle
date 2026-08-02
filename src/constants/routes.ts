@@ -90,3 +90,9 @@ export function documentPath(documentId: string) {
 export function documentsCategoryPath(categoryId: string) {
 	return `/documents/category/${categoryId}`
 }
+
+export type HealthSettingsSection = 'review' | 'import' | 'import-issues'
+
+export function healthSettingsSection(section: HealthSettingsSection) {
+	return `${ROUTES.healthSettings}#${section}`
+}

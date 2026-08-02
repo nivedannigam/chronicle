@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { AlertTriangle, Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
+import { ImportCenter } from '@/features/health-import/components/ImportCenter'
 import { ImportJourneyStep } from '@/features/health-import/components/ImportJourneyStep'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
@@ -13,16 +14,19 @@ import type {
 	ImportJourneyPhase,
 	ImportJourneyResult,
 } from '@/features/health-import/types/health-import-journey.types'
+import { ImportReviewPanel } from '@/features/medical-discovery/components/ImportReviewPanel'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { OcrProviderStatusPanel } from '@/features/health/components/OcrStatusBanner'
 import { useOcrProviderStatus } from '@/features/health/hooks/useOcrProviderStatus'
+import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function HealthSettingsPage() {
 	const navigate = useNavigate()
+	const location = useLocation()
 	const { user } = useAuth()
 	const userId = user?.id
 	const { selectedMember, selectedMemberId } = useFamilyContext()
@@ -30,6 +34,7 @@ export function HealthSettingsPage() {
 	const { assignments, isLoading, refresh } = useHealthSources(userId)
 	const importStatus = useHealthImportStatus(userId)
 	const ocrStatus = useOcrProviderStatus(userId)
+	const coverage = useHealthCoverage()
 
 	const [isScanning, setIsScanning] = useState(false)
 	const [journeyPhase, setJourneyPhase] =
@@ -43,6 +48,20 @@ export function HealthSettingsPage() {
 	const [journeyResult, setJourneyResult] =
 		useState<ImportJourneyResult | null>(null)
 	const [journeyError, setJourneyError] = useState<string | null>(null)
+
+	useEffect(() => {
+		const sectionId = location.hash.replace('#', '').trim()
+
+		if (!sectionId) {
+			return
+		}
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(sectionId)
+				?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		})
+	}, [location.hash])
 
 	if (!userId) {
 		return (
@@ -132,6 +151,54 @@ export function HealthSettingsPage() {
 				status={ocrStatus.data}
 				isLoading={ocrStatus.isLoading}
 			/>
+
+			{coverage.failedCount > 0 ? (
+				<div
+					id="import-issues"
+					style={{
+						...figmaCardStyle,
+						borderRadius: 18,
+						padding: '14px 16px',
+						display: 'flex',
+						alignItems: 'flex-start',
+						gap: 12,
+						marginBottom: 20,
+						border: `1px solid ${FC.amber}33`,
+						background: `${FC.amber}10`,
+					}}
+				>
+					<AlertTriangle
+						size={18}
+						color={FC.amber}
+						strokeWidth={1.8}
+						style={{ flexShrink: 0, marginTop: 1 }}
+					/>
+					<div style={{ flex: 1 }}>
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 14,
+								fontWeight: 600,
+								margin: '0 0 4px',
+							}}
+						>
+							{coverage.failedCount} import issue
+							{coverage.failedCount === 1 ? '' : 's'}
+						</p>
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 13,
+								lineHeight: 1.5,
+								margin: 0,
+							}}
+						>
+							{coverage.summaryLine}
+						</p>
+					</div>
+				</div>
+			) : null}
+
 			{showSetupGuide ? <HealthSetupGuide compact /> : null}
 
 			<div style={{ marginBottom: 12 }}>
@@ -335,85 +402,64 @@ export function HealthSettingsPage() {
 				</div>
 			)}
 
-			<div style={{ marginBottom: 12 }}>
-				<FigmaHealthSectionLabel>Import</FigmaHealthSectionLabel>
-			</div>
-			<div
-				style={{
-					...figmaCardStyle,
-					borderRadius: 20,
-					padding: '16px 18px',
-					display: 'flex',
-					alignItems: 'center',
-					gap: 13,
-					marginBottom: 12,
-				}}
-			>
-				<FigmaIconBox color={FC.blue} size={40}>
-					<RefreshCw size={17} color={FC.blue} strokeWidth={1.8} />
-				</FigmaIconBox>
-				<div style={{ flex: 1 }}>
-					<p
+			{!showSetupGuide ? (
+				<>
+					<div style={{ marginBottom: 12 }}>
+						<FigmaHealthSectionLabel>Import</FigmaHealthSectionLabel>
+					</div>
+					<div
 						style={{
-							color: FC.fg,
-							fontSize: 14.5,
-							fontWeight: 600,
-							marginBottom: 3,
-							marginTop: 0,
+							...figmaCardStyle,
+							borderRadius: 20,
+							padding: '16px 18px',
+							display: 'flex',
+							alignItems: 'center',
+							gap: 13,
+							marginBottom: 12,
 						}}
 					>
-						Scan for new reports
-					</p>
-					<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
-						{folderIds.length > 0
-							? `${folderIds.length} folder${folderIds.length === 1 ? '' : 's'} ready`
-							: 'Assign a folder first'}
-					</p>
-				</div>
-				<button
-					type="button"
-					onClick={() => void handleScanNow()}
-					disabled={isScanning || folderIds.length === 0}
-					style={{
-						background: FC.blue,
-						borderRadius: 12,
-						padding: '7px 16px',
-						cursor:
-							isScanning || folderIds.length === 0 ? 'default' : 'pointer',
-						border: 'none',
-						opacity: isScanning || folderIds.length === 0 ? 0.5 : 1,
-						fontFamily: 'inherit',
-					}}
-				>
-					<span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
-						{isScanning ? 'Scanning…' : 'Scan now'}
-					</span>
-				</button>
-			</div>
-
-			{setup.needsReview > 0 ? (
-				<button
-					type="button"
-					onClick={() => navigate(ROUTES.healthImportReview)}
-					style={{
-						width: '100%',
-						background: 'rgba(245,158,11,0.09)',
-						border: '1px solid rgba(245,158,11,0.22)',
-						borderRadius: 18,
-						padding: '15px 20px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						cursor: 'pointer',
-						marginBottom: 24,
-						fontFamily: 'inherit',
-					}}
-				>
-					<span style={{ color: FC.amber, fontSize: 14, fontWeight: 600 }}>
-						Review {setup.needsReview} pending report
-						{setup.needsReview === 1 ? '' : 's'}
-					</span>
-				</button>
+						<FigmaIconBox color={FC.blue} size={40}>
+							<RefreshCw size={17} color={FC.blue} strokeWidth={1.8} />
+						</FigmaIconBox>
+						<div style={{ flex: 1 }}>
+							<p
+								style={{
+									color: FC.fg,
+									fontSize: 14.5,
+									fontWeight: 600,
+									marginBottom: 3,
+									marginTop: 0,
+								}}
+							>
+								Scan for new reports
+							</p>
+							<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
+								{folderIds.length > 0
+									? `${folderIds.length} folder${folderIds.length === 1 ? '' : 's'} ready`
+									: 'Assign a folder first'}
+							</p>
+						</div>
+						<button
+							type="button"
+							onClick={() => void handleScanNow()}
+							disabled={isScanning || folderIds.length === 0}
+							style={{
+								background: FC.blue,
+								borderRadius: 12,
+								padding: '7px 16px',
+								cursor:
+									isScanning || folderIds.length === 0 ? 'default' : 'pointer',
+								border: 'none',
+								opacity: isScanning || folderIds.length === 0 ? 0.5 : 1,
+								fontFamily: 'inherit',
+							}}
+						>
+							<span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
+								{isScanning ? 'Scanning…' : 'Scan now'}
+							</span>
+						</button>
+					</div>
+				</>
 			) : null}
 
 			{journeyResult || journeyError || isScanning ? (
@@ -438,6 +484,24 @@ export function HealthSettingsPage() {
 							setJourneyError(null)
 						}}
 					/>
+				</div>
+			) : null}
+
+			{setup.needsReview > 0 ? (
+				<div id="review" style={{ marginBottom: 24 }}>
+					<div style={{ marginBottom: 12 }}>
+						<FigmaHealthSectionLabel>Review reports</FigmaHealthSectionLabel>
+					</div>
+					<ImportReviewPanel userId={userId} />
+				</div>
+			) : null}
+
+			{!showSetupGuide ? (
+				<div id="import" style={{ marginBottom: 24 }}>
+					<div style={{ marginBottom: 12 }}>
+						<FigmaHealthSectionLabel>Import queue</FigmaHealthSectionLabel>
+					</div>
+					<ImportCenter userId={userId} />
 				</div>
 			) : null}
 
