@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
@@ -19,8 +19,13 @@ import { DashboardEmptyState } from '@/features/health/components/dashboard/Dash
 import { HealthSetupGuide } from '@/features/health/components/HealthSetupGuide'
 import { OcrProviderStatusPanel } from '@/features/health/components/OcrStatusBanner'
 import { useOcrProviderStatus } from '@/features/health/hooks/useOcrProviderStatus'
-import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
+import { useHealthImport } from '@/features/health-import/hooks/useHealthImport'
+import {
+	buildSetupReportRows,
+	buildSetupSummaryLine,
+} from '@/features/health-import/utils/setup-report-list.utils'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -29,12 +34,30 @@ export function HealthSettingsPage() {
 	const location = useLocation()
 	const { user } = useAuth()
 	const userId = user?.id
-	const { selectedMember, selectedMemberId } = useFamilyContext()
+	const { selectedMember, selectedMemberId, accountOwnerMemberId } =
+		useFamilyContext()
 	const setup = useHealthMemberSetup()
 	const { assignments, isLoading, refresh } = useHealthSources(userId)
 	const importStatus = useHealthImportStatus(userId)
+	const healthImport = useHealthImport(userId)
+	const { data: memberReports = [] } = useMemberHealthReports()
 	const ocrStatus = useOcrProviderStatus(userId)
-	const coverage = useHealthCoverage()
+
+	const setupSummary = useMemo(() => {
+		const rows = buildSetupReportRows({
+			registry: healthImport.registry,
+			reports: memberReports,
+			memberId: selectedMemberId,
+			accountOwnerMemberId,
+		})
+
+		return buildSetupSummaryLine(rows)
+	}, [
+		healthImport.registry,
+		memberReports,
+		selectedMemberId,
+		accountOwnerMemberId,
+	])
 
 	const [isScanning, setIsScanning] = useState(false)
 	const [journeyPhase, setJourneyPhase] =
@@ -420,8 +443,7 @@ export function HealthSettingsPage() {
 							paddingLeft: 2,
 						}}
 					>
-						{coverage.displayReadyCount} ready · {coverage.failedCount} failed ·{' '}
-						{coverage.processingCount} processing
+						{setupSummary}
 					</p>
 				</>
 			) : null}

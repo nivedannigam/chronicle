@@ -1,3 +1,4 @@
+import type { ImportQueueStatus } from '@/core/connectors'
 import { IMPORT_QUEUE_LABELS, isImportQueueActive } from '@/core/connectors'
 import {
 	getParsedHealthReport,
@@ -7,6 +8,7 @@ import {
 import { reportEligibleForAiReprocess } from '@/features/health/services/health-ai-extraction.service'
 import {
 	isReportDisplayReady,
+	isReportProcessing,
 	metricsDisplayMessage,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
@@ -26,6 +28,25 @@ const STATUS_SORT_RANK: Record<SetupReportRowStatus, number> = {
 	processing: 3,
 	ready: 4,
 }
+
+const REPORT_STATUS_LABELS: Record<string, string> = {
+	uploaded: 'Uploaded',
+	queued: 'Queued',
+	processing: 'Processing',
+	parsed: 'Parsing',
+	completed: 'Finalizing',
+}
+
+const ACTIVE_REGISTRY_STATUSES = new Set<ImportQueueStatus>([
+	'discovered',
+	'queued',
+	'downloading',
+	'imported',
+	'ocr',
+	'parsing',
+	'knowledge_graph',
+	'retry',
+])
 
 export function filterRegistryForMember(
 	registry: ConnectorDocumentRecord[],
@@ -50,6 +71,10 @@ export function filterRegistryForMember(
 	})
 }
 
+/**
+ * Report terminal states win over stale registry importStatus (e.g. registry still "ocr"
+ * while health_reports.status is already failed).
+ */
 export function deriveSetupReportStatus(input: {
 	registry: ConnectorDocumentRecord | null
 	report: UploadedHealthReport | null
@@ -60,37 +85,38 @@ export function deriveSetupReportStatus(input: {
 		return 'skipped'
 	}
 
-	if (registry?.importStatus === 'failed' || report?.status === 'failed') {
-		return 'failed'
-	}
-
-	if (report && reportNeedsReprocess(report)) {
-		return 'needs_reprocess'
-	}
-
-	if (
-		(registry && isImportQueueActive(registry.importStatus)) ||
-		(registry &&
-			!['completed', 'failed', 'skipped', 'cancelled'].includes(
-				registry.importStatus,
-			) &&
-			registry.importStatus !== 'retry')
-	) {
-		return 'processing'
-	}
-
-	if (registry?.importStatus === 'retry') {
-		return 'processing'
-	}
-
 	if (report) {
 		if (isReportDisplayReady(report)) {
 			return 'ready'
 		}
 
-		if (report.status !== 'completed') {
+		if (report.status === 'failed') {
+			return 'failed'
+		}
+
+		if (reportNeedsReprocess(report)) {
+			return 'needs_reprocess'
+		}
+
+		if (isReportProcessing(report)) {
 			return 'processing'
 		}
+	}
+
+	if (registry?.importStatus === 'failed') {
+		return 'failed'
+	}
+
+	if (
+		registry &&
+		(isImportQueueActive(registry.importStatus) ||
+			ACTIVE_REGISTRY_STATUSES.has(registry.importStatus))
+	) {
+		return 'processing'
+	}
+
+	if (report?.status === 'completed') {
+		return 'needs_reprocess'
 	}
 
 	if (registry?.importStatus === 'completed' && !report) {
@@ -98,6 +124,88 @@ export function deriveSetupReportStatus(input: {
 	}
 
 	return registry ? 'processing' : 'failed'
+}
+
+function currentFailureMessage(input: {
+	registry: ConnectorDocumentRecord | null
+	report: UploadedHealthReport | null
+}): string | null {
+	const { registry, report } = input
+
+	if (report?.processing_error?.trim()) {
+		return report.processing_error.trim()
+	}
+
+	if (registry?.errorMessage?.trim()) {
+		return registry.errorMessage.trim()
+	}
+
+	return null
+}
+
+export function inferFailedStageFromMessage(
+	message: string | null | undefined,
+): string | null {
+	if (!message) {
+		return null
+	}
+
+	const lower = message.toLowerCase()
+
+	if (
+		lower.includes('download') ||
+		lower.includes('google drive') ||
+		lower.includes('reconnect drive')
+	) {
+		return 'Downloading'
+	}
+
+	if (lower.includes('ocr')) {
+		return 'OCR'
+	}
+
+	if (
+		lower.includes('parser') ||
+		lower.includes('metrics') ||
+		lower.includes('laboratory')
+	) {
+		return 'Parsing'
+	}
+
+	if (lower.includes('photo') || lower.includes('not a lab')) {
+		return 'Validation'
+	}
+
+	return null
+}
+
+function inferFailedStage(input: {
+	registry: ConnectorDocumentRecord | null
+	report: UploadedHealthReport | null
+}): string | null {
+	const message = currentFailureMessage(input)
+
+	if (input.registry && input.registry.importStatus !== 'failed') {
+		const label = IMPORT_QUEUE_LABELS[input.registry.importStatus]
+
+		if (label && label !== 'Failed') {
+			return label
+		}
+	}
+
+	const fromMessage = inferFailedStageFromMessage(message)
+
+	if (fromMessage) {
+		return fromMessage
+	}
+
+	if (input.report?.status === 'failed') {
+		return (
+			inferFailedStageFromMessage(input.report.processing_error) ?? 'Parsing'
+		)
+	}
+
+	return null
 }
 
 function deriveSetupReportReason(input: {
@@ -113,24 +221,13 @@ function deriveSetupReportReason(input: {
 
 	if (status === 'failed') {
 		return (
-			report?.processing_error ??
-			registry?.errorMessage ??
+			currentFailureMessage({ registry, report }) ??
 			'Import or processing failed'
 		)
 	}
 
 	if (status === 'needs_reprocess' && report) {
 		return metricsDisplayMessage({ report, storedMetricCount: 0 })
-	}
-
-	if (status === 'processing') {
-		if (registry?.errorMessage) {
-			return registry.errorMessage
-		}
-
-		if (report?.processing_error) {
-			return report.processing_error
-		}
 	}
 
 	return null
@@ -142,12 +239,7 @@ function deriveStageLabel(input: {
 	report: UploadedHealthReport | null
 }): string | null {
 	if (input.status !== 'processing') {
-		return input.registry?.importStatus === 'failed' ||
-			input.report?.status === 'failed'
-			? input.registry?.importStatus
-				? IMPORT_QUEUE_LABELS[input.registry.importStatus]
-				: null
-			: null
+		return null
 	}
 
 	if (input.registry) {
@@ -155,27 +247,39 @@ function deriveStageLabel(input: {
 	}
 
 	if (input.report) {
-		return input.report.status === 'completed'
-			? 'Finalizing'
-			: input.report.status
+		return REPORT_STATUS_LABELS[input.report.status] ?? input.report.status
 	}
 
 	return null
 }
 
-function deriveFailedStage(input: {
+function buildErrorLog(input: {
+	status: SetupReportRowStatus
 	registry: ConnectorDocumentRecord | null
 	report: UploadedHealthReport | null
+	failedStage: string | null
 }): string | null {
-	if (input.registry?.importStatus === 'failed') {
-		return IMPORT_QUEUE_LABELS[input.registry.importStatus]
+	if (input.status !== 'failed' && input.status !== 'needs_reprocess') {
+		return null
 	}
 
-	if (input.report?.status === 'failed') {
-		return input.report.status
+	const message = currentFailureMessage({
+		registry: input.registry,
+		report: input.report,
+	})
+
+	if (!message) {
+		return null
 	}
 
-	return null
+	const parts = [`Error: ${message}`]
+	const stage = input.failedStage ?? inferFailedStageFromMessage(message)
+
+	if (stage) {
+		parts.push(`Stage: ${stage}`)
+	}
+
+	return parts.join('\n')
 }
 
 function buildRowModel(input: {
@@ -198,15 +302,9 @@ function buildRowModel(input: {
 	const subtitle = [date, lab].filter(Boolean).join(' · ')
 	const reason = deriveSetupReportReason({ status, registry, report })
 	const stageLabel = deriveStageLabel({ status, registry, report })
-	const failedStage = deriveFailedStage({ registry, report })
-	const errorParts = [
-		report?.processing_error ? `Error: ${report.processing_error}` : null,
-		failedStage ? `Stage: ${failedStage}` : null,
-		registry?.errorMessage && registry.errorMessage !== report?.processing_error
-			? `Import: ${registry.errorMessage}`
-			: null,
-	].filter(Boolean)
+	const failedStage = inferFailedStage({ registry, report })
 	const reportId = report?.id ?? registry?.healthReportId ?? null
+	const aiEligible = report ? reportEligibleForAiReprocess(report) : false
 
 	return {
 		key: registry?.id ?? report?.id ?? title,
@@ -218,18 +316,19 @@ function buildRowModel(input: {
 		reason,
 		stageLabel,
 		failedStage,
-		errorLog: errorParts.length > 0 ? errorParts.join('\n') : null,
+		errorLog: buildErrorLog({ status, registry, report, failedStage }),
 		sortDate:
 			report?.report_date ??
 			report?.uploaded_at ??
 			registry?.importedAt ??
 			registry?.lastSyncAt ??
 			'',
-		canReimport:
-			status === 'failed' && Boolean(registry?.id ?? report?.id ?? null),
+		canReimport: status === 'failed' && Boolean(registry?.id ?? reportId),
 		canReprocess:
-			Boolean(reportId) && status !== 'processing' && status !== 'skipped',
-		canReprocessWithAi: report ? reportEligibleForAiReprocess(report) : false,
+			Boolean(reportId) &&
+			(status === 'failed' || status === 'needs_reprocess'),
+		canReprocessWithAi:
+			aiEligible && (status === 'failed' || status === 'needs_reprocess'),
 		canViewReport: Boolean(reportId) && status === 'ready',
 	}
 }
@@ -253,23 +352,23 @@ export function buildSetupReportRows(
 	const rows: SetupReportRowModel[] = []
 
 	for (const record of registry) {
-		const report = record.healthReportId
+		const linkedReport = record.healthReportId
 			? (reportById.get(record.healthReportId) ?? null)
 			: null
 
-		if (report) {
-			linkedReportIds.add(report.id)
+		if (linkedReport) {
+			linkedReportIds.add(linkedReport.id)
 		}
 
-		rows.push(buildRowModel({ registry: record, report }))
+		rows.push(buildRowModel({ registry: record, report: linkedReport }))
 	}
 
-	for (const report of input.reports) {
-		if (linkedReportIds.has(report.id)) {
+	for (const memberReport of input.reports) {
+		if (linkedReportIds.has(memberReport.id)) {
 			continue
 		}
 
-		rows.push(buildRowModel({ registry: null, report }))
+		rows.push(buildRowModel({ registry: null, report: memberReport }))
 	}
 
 	return rows.sort(compareSetupReportRows)
@@ -292,20 +391,18 @@ export function filterSetupReportRows(
 	rows: SetupReportRowModel[],
 	filter: SetupReportListFilter,
 ): SetupReportRowModel[] {
-	if (filter === 'all') {
-		return rows
+	switch (filter) {
+		case 'all':
+			return rows
+		case 'ready':
+			return rows.filter((row) => row.status === 'ready')
+		case 'needs_attention':
+			return rows.filter(
+				(row) => row.status === 'failed' || row.status === 'needs_reprocess',
+			)
+		case 'skipped':
+			return rows.filter((row) => row.status === 'skipped')
 	}
-
-	if (filter === 'ready') {
-		return rows.filter((row) => row.status === 'ready')
-	}
-
-	return rows.filter(
-		(row) =>
-			row.status === 'failed' ||
-			row.status === 'needs_reprocess' ||
-			row.status === 'skipped',
-	)
 }
 
 export function countSetupRowsByFilter(rows: SetupReportRowModel[]): {
@@ -313,20 +410,46 @@ export function countSetupRowsByFilter(rows: SetupReportRowModel[]): {
 	needsAttention: number
 	ready: number
 	failed: number
+	needsReprocess: number
+	processing: number
+	skipped: number
 } {
-	const needsAttention = rows.filter(
-		(row) =>
-			row.status === 'failed' ||
-			row.status === 'needs_reprocess' ||
-			row.status === 'skipped',
-	).length
-
 	return {
 		all: rows.length,
-		needsAttention,
+		needsAttention: rows.filter(
+			(row) => row.status === 'failed' || row.status === 'needs_reprocess',
+		).length,
 		ready: rows.filter((row) => row.status === 'ready').length,
 		failed: rows.filter((row) => row.status === 'failed').length,
+		needsReprocess: rows.filter((row) => row.status === 'needs_reprocess')
+			.length,
+		processing: rows.filter((row) => row.status === 'processing').length,
+		skipped: rows.filter((row) => row.status === 'skipped').length,
 	}
+}
+
+/** Summary aligned with visible setup row counts (excludes skipped from incomplete). */
+export function buildSetupSummaryLine(rows: SetupReportRowModel[]): string {
+	const counts = countSetupRowsByFilter(rows)
+	const parts = [`${counts.ready} ready`]
+
+	if (counts.failed > 0) {
+		parts.push(`${counts.failed} failed`)
+	}
+
+	if (counts.needsReprocess > 0) {
+		parts.push(`${counts.needsReprocess} need reprocess`)
+	}
+
+	if (counts.processing > 0) {
+		parts.push(`${counts.processing} processing`)
+	}
+
+	if (counts.skipped > 0) {
+		parts.push(`${counts.skipped} skipped`)
+	}
+
+	return parts.join(' · ')
 }
 
 export function setupReportStatusLabel(status: SetupReportRowStatus): string {

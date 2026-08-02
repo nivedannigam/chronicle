@@ -5,7 +5,8 @@ import type { UploadedHealthReport } from '@/features/health/types'
 export type SetupReportRowStatus =
 	'ready' | 'processing' | 'failed' | 'needs_reprocess' | 'skipped'
 
-export type SetupReportListFilter = 'all' | 'needs_attention' | 'ready'
+export type SetupReportListFilter =
+	'all' | 'needs_attention' | 'ready' | 'skipped'
 
 export interface SetupReportRowModel {
 	/** Stable key for React lists — registry id, report id, or synthetic. */

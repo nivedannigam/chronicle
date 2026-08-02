@@ -320,6 +320,13 @@ export function HealthImportReportList({
 					active={filter === 'ready'}
 					onClick={() => setFilter('ready')}
 				/>
+				{counts.skipped > 0 ? (
+					<HealthFilterChip
+						label={`Skipped (${counts.skipped})`}
+						active={filter === 'skipped'}
+						onClick={() => setFilter('skipped')}
+					/>
+				) : null}
 			</div>
 
 			{importState.isLoading ? (

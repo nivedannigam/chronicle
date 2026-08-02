@@ -3,6 +3,7 @@ import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { UploadedHealthReport } from '@/features/health/types'
 import {
 	buildSetupReportRows,
+	buildSetupSummaryLine,
 	compareSetupReportRows,
 	deriveSetupReportStatus,
 	filterSetupReportRows,
@@ -129,6 +130,28 @@ describe('deriveSetupReportStatus', () => {
 			}),
 		).toBe('processing')
 	})
+
+	it('prefers report failed over active registry ocr', () => {
+		expect(
+			deriveSetupReportStatus({
+				registry: registry({ importStatus: 'ocr' }),
+				report: report({
+					id: 'r4',
+					status: 'failed',
+					processing_error: 'No parser registered for document: ecg.pdf',
+				}),
+			}),
+		).toBe('failed')
+	})
+
+	it('prefers display-ready report over stale registry processing', () => {
+		expect(
+			deriveSetupReportStatus({
+				registry: registry({ importStatus: 'ocr', healthReportId: 'r5' }),
+				report: report({ id: 'r5' }),
+			}),
+		).toBe('ready')
+	})
 })
 
 describe('buildSetupReportRows', () => {
@@ -182,10 +205,15 @@ describe('buildSetupReportRows', () => {
 })
 
 describe('filterSetupReportRows', () => {
-	it('filters needs_attention to failed and needs_reprocess', () => {
+	it('filters needs_attention to failed and needs_reprocess only', () => {
 		const rows = buildSetupReportRows({
 			registry: [
 				registry({ id: 'a', importStatus: 'failed' }),
+				registry({
+					id: 'dup',
+					importStatus: 'skipped',
+					errorMessage: 'Duplicate file — already imported',
+				}),
 				registry({
 					id: 'b',
 					importStatus: 'completed',
@@ -204,6 +232,77 @@ describe('filterSetupReportRows', () => {
 
 		const filtered = filterSetupReportRows(rows, 'needs_attention')
 		expect(filtered.every((row) => row.status !== 'ready')).toBe(true)
-		expect(filtered.length).toBeGreaterThan(0)
+		expect(filtered.every((row) => row.status !== 'skipped')).toBe(true)
+		expect(filtered.length).toBe(2)
+	})
+})
+
+describe('buildSetupReportRows error display', () => {
+	it('uses report processing_error and ignores stale registry error in log', () => {
+		const rows = buildSetupReportRows({
+			registry: [
+				registry({
+					id: 'reg-stale',
+					importStatus: 'failed',
+					healthReportId: 'r-stale',
+					errorMessage:
+						'Google Drive download failed. Reconnect Drive and retry.',
+				}),
+			],
+			reports: [
+				report({
+					id: 'r-stale',
+					status: 'failed',
+					processing_error: 'No parser registered for document: ecg.pdf',
+				}),
+			],
+			memberId: 'member-1',
+			accountOwnerMemberId: 'member-1',
+		})
+
+		const row = rows[0]
+		expect(row?.reason).toBe('No parser registered for document: ecg.pdf')
+		expect(row?.errorLog).toContain('No parser registered')
+		expect(row?.errorLog).not.toContain('Google Drive download failed')
+		expect(row?.errorLog).toContain('Stage: Parsing')
+	})
+
+	it('disables AI reprocess on ready reports', () => {
+		const rows = buildSetupReportRows({
+			registry: [
+				registry({
+					id: 'reg-ready',
+					importStatus: 'completed',
+					healthReportId: 'r-ready',
+				}),
+			],
+			reports: [report({ id: 'r-ready', extracted_text: 'hemoglobin 12' })],
+			memberId: 'member-1',
+			accountOwnerMemberId: 'member-1',
+		})
+
+		expect(rows[0]?.status).toBe('ready')
+		expect(rows[0]?.canReprocessWithAi).toBe(false)
+		expect(rows[0]?.canViewReport).toBe(true)
+	})
+})
+
+describe('buildSetupSummaryLine', () => {
+	it('includes skipped and need reprocess counts', () => {
+		const rows = buildSetupReportRows({
+			registry: [
+				registry({
+					id: 'skip',
+					importStatus: 'skipped',
+					errorMessage: 'Duplicate file — already imported',
+				}),
+				registry({ id: 'fail', importStatus: 'failed' }),
+			],
+			reports: [],
+			memberId: 'member-1',
+			accountOwnerMemberId: 'member-1',
+		})
+
+		expect(buildSetupSummaryLine(rows)).toBe('0 ready · 1 failed · 1 skipped')
 	})
 })

@@ -82,17 +82,30 @@ export function SetupReportRow({
 							{row.reason}
 						</p>
 					) : null}
-					{row.status === 'processing' && row.stageLabel ? (
-						<p
-							style={{
-								color: FC.blue,
-								fontSize: 12,
-								fontWeight: 500,
-								margin: '6px 0 0',
-							}}
-						>
-							{row.stageLabel}
-						</p>
+					{row.status === 'processing' ? (
+						<>
+							{row.stageLabel ? (
+								<p
+									style={{
+										color: FC.blue,
+										fontSize: 12,
+										fontWeight: 500,
+										margin: '6px 0 0',
+									}}
+								>
+									{row.stageLabel}
+								</p>
+							) : null}
+							<p
+								style={{
+									color: FC.dim,
+									fontSize: 12,
+									margin: row.stageLabel ? '4px 0 0' : '6px 0 0',
+								}}
+							>
+								This may take a few minutes.
+							</p>
+						</>
 					) : null}
 				</div>
 				<span
@@ -143,7 +156,8 @@ export function SetupReportRow({
 							onClick={() => onReprocess(row)}
 						/>
 					) : null}
-					{row.canReprocessWithAi ? (
+					{row.canReprocessWithAi &&
+					(row.status === 'failed' || row.status === 'needs_reprocess') ? (
 						<RowAction
 							label={isBusy ? 'AI…' : 'Reprocess with AI'}
 							icon={Sparkles}
