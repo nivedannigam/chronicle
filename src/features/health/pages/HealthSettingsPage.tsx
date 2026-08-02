@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
+import { Cloud, Eye, Folder, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
@@ -151,53 +151,6 @@ export function HealthSettingsPage() {
 				status={ocrStatus.data}
 				isLoading={ocrStatus.isLoading}
 			/>
-
-			{coverage.failedCount > 0 ? (
-				<div
-					id="import-issues"
-					style={{
-						...figmaCardStyle,
-						borderRadius: 18,
-						padding: '14px 16px',
-						display: 'flex',
-						alignItems: 'flex-start',
-						gap: 12,
-						marginBottom: 20,
-						border: `1px solid ${FC.amber}33`,
-						background: `${FC.amber}10`,
-					}}
-				>
-					<AlertTriangle
-						size={18}
-						color={FC.amber}
-						strokeWidth={1.8}
-						style={{ flexShrink: 0, marginTop: 1 }}
-					/>
-					<div style={{ flex: 1 }}>
-						<p
-							style={{
-								color: FC.fg,
-								fontSize: 14,
-								fontWeight: 600,
-								margin: '0 0 4px',
-							}}
-						>
-							{coverage.failedCount} import issue
-							{coverage.failedCount === 1 ? '' : 's'}
-						</p>
-						<p
-							style={{
-								color: FC.mid,
-								fontSize: 13,
-								lineHeight: 1.5,
-								margin: 0,
-							}}
-						>
-							{coverage.summaryLine}
-						</p>
-					</div>
-				</div>
-			) : null}
 
 			{showSetupGuide ? <HealthSetupGuide compact /> : null}
 
@@ -459,6 +412,17 @@ export function HealthSettingsPage() {
 							</span>
 						</button>
 					</div>
+					<p
+						style={{
+							color: FC.dim,
+							fontSize: 12.5,
+							margin: '0 0 24px',
+							paddingLeft: 2,
+						}}
+					>
+						{coverage.displayReadyCount} ready · {coverage.failedCount} failed ·{' '}
+						{coverage.processingCount} processing
+					</p>
 				</>
 			) : null}
 
@@ -499,7 +463,7 @@ export function HealthSettingsPage() {
 			{!showSetupGuide ? (
 				<div id="import" style={{ marginBottom: 24 }}>
 					<div style={{ marginBottom: 12 }}>
-						<FigmaHealthSectionLabel>Import queue</FigmaHealthSectionLabel>
+						<FigmaHealthSectionLabel>Reports</FigmaHealthSectionLabel>
 					</div>
 					<ImportCenter userId={userId} />
 				</div>
