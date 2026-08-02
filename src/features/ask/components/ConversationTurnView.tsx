@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChevronUp } from 'lucide-react'
 import { AskMarkdownContent } from '@/features/ask/components/AskMarkdownContent'
 import { AskMessageActions } from '@/features/ask/components/AskMessageActions'
 import { AskStreamingSkeleton } from '@/features/ask/components/AskStreamingSkeleton'
@@ -31,6 +32,7 @@ interface ConversationTurnViewProps {
 	onContinue?: () => void
 	isRegenerating?: boolean
 	showUserBubble?: boolean
+	onCollapse?: () => void
 }
 
 export function ConversationTurnView({
@@ -43,6 +45,7 @@ export function ConversationTurnView({
 	onContinue,
 	isRegenerating = false,
 	showUserBubble = true,
+	onCollapse,
 }: ConversationTurnViewProps) {
 	const trust = turn.trust
 	const showTyping = isTyping && !turn.answer.trim()
@@ -166,10 +169,35 @@ export function ConversationTurnView({
 				<div
 					style={{
 						display: 'flex',
-						justifyContent: 'flex-end',
+						justifyContent: 'space-between',
+						alignItems: 'center',
 						marginTop: 10,
 					}}
 				>
+					{onCollapse ? (
+						<button
+							type="button"
+							onClick={onCollapse}
+							style={{
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: 4,
+								fontSize: 11,
+								fontWeight: 600,
+								color: FC.dim,
+								background: 'transparent',
+								border: 'none',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								padding: 0,
+							}}
+						>
+							<ChevronUp size={12} />
+							Collapse
+						</button>
+					) : (
+						<span />
+					)}
 					<span style={{ fontSize: 11, color: FC.dim }}>
 						{turn.displayTimestamp}
 					</span>

@@ -2,8 +2,11 @@ import {
 	BETA_ASK_QUESTION_GROUPS,
 	BETA_EXPERIENCES,
 } from '@/features/ask/beta/beta-experiences'
-import type { AskSessionMeta } from '@/features/ask/services/ask-session.service'
-import { listAskSessions } from '@/features/ask/services/ask-session.service'
+import {
+	listAskSessions,
+	listAskSessionsForHome,
+	type AskSessionMeta,
+} from '@/features/ask/services/ask-session.service'
 import {
 	buildDynamicSuggestionChips,
 	type DynamicSuggestionChip,
@@ -12,6 +15,7 @@ import { buildDocumentsHubView } from '@/features/documents/services/document-in
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
+import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 export interface AskHomeInsight {
@@ -41,6 +45,8 @@ export interface AskHomeView {
 		questions: string[]
 	}>
 	recentSessions: AskSessionMeta[]
+	totalSessionCount: number
+	showClearHistoryHint: boolean
 	quickActions: AskQuickAction[]
 	recentInsights: AskHomeInsight[]
 }
@@ -92,7 +98,13 @@ export function buildAskHomeView(input: {
 		}),
 	].slice(0, 8)
 
-	const recentSessions = listAskSessions(input.userId).slice(0, 5)
+	const recentSessions = listAskSessionsForHome(input.userId)
+	const totalSessionCount = listAskSessions(input.userId).length
+	const displayReadyCount =
+		input.uploadedReports.filter(isReportDisplayReady).length
+	const showClearHistoryHint =
+		displayReadyCount === 0 &&
+		listAskSessions(input.userId).some((session) => session.turnCount > 0)
 
 	const documentsHub = buildDocumentsHubView({
 		documents: input.documents,
@@ -150,6 +162,8 @@ export function buildAskHomeView(input: {
 			questions: [...group.questions],
 		})),
 		recentSessions,
+		totalSessionCount,
+		showClearHistoryHint,
 		quickActions: [
 			{
 				id: 'search',

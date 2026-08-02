@@ -8,6 +8,7 @@ import { ConversationHistoryDrawer } from '@/features/ask/components/Conversatio
 import { ConversationThread } from '@/features/ask/components/ConversationThread'
 import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
 import { buildAskHomeView } from '@/features/ask/services/ask-home.service'
+import { clearAllAskSessions } from '@/features/ask/services/ask-session.service'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
@@ -269,8 +270,32 @@ export function FigmaAskScreen() {
 
 						{home.recentSessions.length > 0 ? (
 							<div>
-								<div style={{ marginBottom: 10 }}>
+								<div
+									style={{
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'space-between',
+										marginBottom: 10,
+									}}
+								>
 									<AskSectionLabel>Recent conversations</AskSectionLabel>
+									{home.totalSessionCount > home.recentSessions.length ? (
+										<button
+											type="button"
+											onClick={() => setHistoryOpen(true)}
+											style={{
+												fontSize: 12,
+												fontWeight: 600,
+												color: FC.indigo,
+												background: 'transparent',
+												border: 'none',
+												cursor: 'pointer',
+												fontFamily: 'inherit',
+											}}
+										>
+											View all conversations
+										</button>
+									) : null}
 								</div>
 								<div
 									style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
@@ -286,6 +311,50 @@ export function FigmaAskScreen() {
 										/>
 									))}
 								</div>
+							</div>
+						) : null}
+
+						{home.showClearHistoryHint ? (
+							<div
+								style={{
+									borderRadius: 14,
+									padding: '12px 14px',
+									background: `${FC.amber}10`,
+									border: `1px solid ${FC.amber}22`,
+								}}
+							>
+								<p
+									style={{
+										margin: 0,
+										fontSize: 13,
+										color: FC.mid,
+										lineHeight: 1.5,
+									}}
+								>
+									No health reports are ready yet — Ask answers will be limited.
+									You can{' '}
+									<button
+										type="button"
+										onClick={() => {
+											clearAllAskSessions(userId)
+											clearConversation()
+										}}
+										style={{
+											fontSize: 13,
+											fontWeight: 600,
+											color: FC.indigo,
+											background: 'transparent',
+											border: 'none',
+											cursor: 'pointer',
+											fontFamily: 'inherit',
+											padding: 0,
+											textDecoration: 'underline',
+										}}
+									>
+										clear old test conversations
+									</button>
+									.
+								</p>
 							</div>
 						) : null}
 					</div>
@@ -310,6 +379,43 @@ export function FigmaAskScreen() {
 					flexShrink: 0,
 				}}
 			>
+				{turns.length >= 5 ? (
+					<div
+						style={{
+							marginBottom: 10,
+							padding: '8px 12px',
+							borderRadius: 12,
+							background: `${FC.indigo}10`,
+							border: `1px solid ${FC.indigo}22`,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: 10,
+						}}
+					>
+						<span style={{ fontSize: 12, color: FC.mid }}>
+							Long thread — start a new conversation
+						</span>
+						<button
+							type="button"
+							onClick={() => clearConversation()}
+							style={{
+								fontSize: 11,
+								fontWeight: 700,
+								color: FC.indigo,
+								background: 'transparent',
+								border: `1px solid ${FC.indigo}33`,
+								borderRadius: 100,
+								padding: '5px 10px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								flexShrink: 0,
+							}}
+						>
+							New chat
+						</button>
+					</div>
+				) : null}
 				<FigmaAskComposer
 					taRef={taRef}
 					input={input}
@@ -373,6 +479,9 @@ export function FigmaAskScreen() {
 				onNewConversation={() => {
 					clearConversation()
 					setHistoryOpen(false)
+				}}
+				onClearAll={() => {
+					clearConversation()
 				}}
 			/>
 		</div>

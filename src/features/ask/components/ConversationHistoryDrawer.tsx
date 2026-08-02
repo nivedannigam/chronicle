@@ -1,11 +1,28 @@
-import { useMemo, useState, type CSSProperties } from 'react'
-import { Check, MessageSquare, Pencil, Search, Trash2, X } from 'lucide-react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+	Archive,
+	ArchiveRestore,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	MessageSquare,
+	Pencil,
+	Search,
+	Star,
+	Trash2,
+	X,
+} from 'lucide-react'
 import { C } from '@/constants/colors'
 import {
+	archiveAskSession,
+	clearAllAskSessions,
 	deleteAskSession,
-	listAskSessions,
+	groupAskSessionsForDrawer,
+	pinAskSession,
 	renameAskSession,
 	searchAskSessions,
+	unarchiveAskSession,
+	unpinAskSession,
 	type AskSessionMeta,
 } from '@/features/ask/services/ask-session.service'
 
@@ -16,6 +33,7 @@ interface ConversationHistoryDrawerProps {
 	onClose: () => void
 	onSelectSession: (sessionId: string) => void
 	onNewConversation: () => void
+	onClearAll?: () => void
 }
 
 export function ConversationHistoryDrawer({
@@ -25,21 +43,43 @@ export function ConversationHistoryDrawer({
 	onClose,
 	onSelectSession,
 	onNewConversation,
+	onClearAll,
 }: ConversationHistoryDrawerProps) {
 	const [query, setQuery] = useState('')
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [editTitle, setEditTitle] = useState('')
 	const [refreshKey, setRefreshKey] = useState(0)
+	const [showArchived, setShowArchived] = useState(false)
+	const [olderOpen, setOlderOpen] = useState(false)
+	const [clearConfirm, setClearConfirm] = useState(false)
 
-	const sessions = useMemo(() => {
+	const searchResults = useMemo(() => {
 		void refreshKey
-		return query.trim()
-			? searchAskSessions(userId, query)
-			: listAskSessions(userId)
+		return query.trim() ? searchAskSessions(userId, query) : null
 	}, [userId, query, refreshKey])
+
+	const groups = useMemo(() => {
+		void refreshKey
+		return groupAskSessionsForDrawer(userId, { includeArchived: showArchived })
+	}, [userId, refreshKey, showArchived])
+
+	const bumpRefresh = () => setRefreshKey((value) => value + 1)
 
 	if (!open) {
 		return null
+	}
+
+	const handleClearAll = () => {
+		if (!clearConfirm) {
+			setClearConfirm(true)
+			return
+		}
+
+		clearAllAskSessions(userId)
+		setClearConfirm(false)
+		bumpRefresh()
+		onClearAll?.()
+		onNewConversation()
 	}
 
 	return (
@@ -156,11 +196,51 @@ export function ConversationHistoryDrawer({
 							fontWeight: 700,
 							cursor: 'pointer',
 							fontFamily: 'inherit',
+							marginBottom: 8,
 						}}
 					>
 						<MessageSquare size={15} />
 						New conversation
 					</button>
+
+					<div style={{ display: 'flex', gap: 8 }}>
+						<button
+							type="button"
+							onClick={() => setShowArchived((value) => !value)}
+							style={{
+								flex: 1,
+								fontSize: 11,
+								fontWeight: 600,
+								color: showArchived ? C.accent : C.textMuted,
+								background: showArchived ? C.accentDim : 'transparent',
+								border: `1px solid ${C.border}`,
+								borderRadius: 8,
+								padding: '6px 8px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							{showArchived ? 'Hide archived' : 'Show archived'}
+						</button>
+						<button
+							type="button"
+							onClick={handleClearAll}
+							style={{
+								flex: 1,
+								fontSize: 11,
+								fontWeight: 600,
+								color: clearConfirm ? C.red : C.textMuted,
+								background: clearConfirm ? `${C.red}12` : 'transparent',
+								border: `1px solid ${clearConfirm ? `${C.red}44` : C.border}`,
+								borderRadius: 8,
+								padding: '6px 8px',
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							{clearConfirm ? 'Confirm clear all' : 'Clear all'}
+						</button>
+					</div>
 				</div>
 
 				<div
@@ -170,52 +250,302 @@ export function ConversationHistoryDrawer({
 						padding: '8px 10px 16px',
 					}}
 				>
-					{sessions.length === 0 ? (
-						<div
-							style={{
-								fontSize: 13,
-								color: C.textMuted,
-								textAlign: 'center',
-								padding: '24px 12px',
-							}}
-						>
-							{query.trim()
-								? 'No conversations match your search.'
-								: 'No conversations yet. Ask your first question!'}
-						</div>
+					{searchResults ? (
+						searchResults.length === 0 ? (
+							<EmptyState message="No conversations match your search." />
+						) : (
+							searchResults.map((session) => (
+								<SessionRow
+									key={session.id}
+									session={session}
+									isActive={session.id === activeSessionId}
+									isEditing={editingId === session.id}
+									editTitle={editTitle}
+									onEditTitleChange={setEditTitle}
+									onStartEdit={() => {
+										setEditingId(session.id)
+										setEditTitle(session.title)
+									}}
+									onSaveEdit={() => {
+										renameAskSession(session.id, editTitle)
+										setEditingId(null)
+										bumpRefresh()
+									}}
+									onCancelEdit={() => setEditingId(null)}
+									onSelect={() => {
+										onSelectSession(session.id)
+										onClose()
+									}}
+									onDelete={() => {
+										deleteAskSession(session.id)
+										bumpRefresh()
+									}}
+									onTogglePin={() => {
+										if (session.pinned) {
+											unpinAskSession(session.id)
+										} else {
+											pinAskSession(session.id)
+										}
+										bumpRefresh()
+									}}
+									onToggleArchive={() => {
+										if (session.archived) {
+											unarchiveAskSession(session.id)
+										} else {
+											archiveAskSession(session.id)
+										}
+										bumpRefresh()
+									}}
+								/>
+							))
+						)
 					) : (
-						sessions.map((session) => (
-							<SessionRow
-								key={session.id}
-								session={session}
-								isActive={session.id === activeSessionId}
-								isEditing={editingId === session.id}
-								editTitle={editTitle}
-								onEditTitleChange={setEditTitle}
-								onStartEdit={() => {
-									setEditingId(session.id)
-									setEditTitle(session.title)
-								}}
-								onSaveEdit={() => {
-									renameAskSession(session.id, editTitle)
-									setEditingId(null)
-									setRefreshKey((value) => value + 1)
-								}}
-								onCancelEdit={() => setEditingId(null)}
-								onSelect={() => {
-									onSelectSession(session.id)
-									onClose()
-								}}
-								onDelete={() => {
-									deleteAskSession(session.id)
-									setRefreshKey((value) => value + 1)
-								}}
-							/>
-						))
+						<>
+							{groups.pinned.length > 0 ? (
+								<SessionSection title="Pinned">
+									{groups.pinned.map((session) => (
+										<SessionRow
+											key={session.id}
+											session={session}
+											isActive={session.id === activeSessionId}
+											isEditing={editingId === session.id}
+											editTitle={editTitle}
+											onEditTitleChange={setEditTitle}
+											onStartEdit={() => {
+												setEditingId(session.id)
+												setEditTitle(session.title)
+											}}
+											onSaveEdit={() => {
+												renameAskSession(session.id, editTitle)
+												setEditingId(null)
+												bumpRefresh()
+											}}
+											onCancelEdit={() => setEditingId(null)}
+											onSelect={() => {
+												onSelectSession(session.id)
+												onClose()
+											}}
+											onDelete={() => {
+												deleteAskSession(session.id)
+												bumpRefresh()
+											}}
+											onTogglePin={() => {
+												unpinAskSession(session.id)
+												bumpRefresh()
+											}}
+											onToggleArchive={() => {
+												archiveAskSession(session.id)
+												bumpRefresh()
+											}}
+										/>
+									))}
+								</SessionSection>
+							) : null}
+
+							{groups.recent.length > 0 ? (
+								<SessionSection title="Recent">
+									{groups.recent.map((session) => (
+										<SessionRow
+											key={session.id}
+											session={session}
+											isActive={session.id === activeSessionId}
+											isEditing={editingId === session.id}
+											editTitle={editTitle}
+											onEditTitleChange={setEditTitle}
+											onStartEdit={() => {
+												setEditingId(session.id)
+												setEditTitle(session.title)
+											}}
+											onSaveEdit={() => {
+												renameAskSession(session.id, editTitle)
+												setEditingId(null)
+												bumpRefresh()
+											}}
+											onCancelEdit={() => setEditingId(null)}
+											onSelect={() => {
+												onSelectSession(session.id)
+												onClose()
+											}}
+											onDelete={() => {
+												deleteAskSession(session.id)
+												bumpRefresh()
+											}}
+											onTogglePin={() => {
+												pinAskSession(session.id)
+												bumpRefresh()
+											}}
+											onToggleArchive={() => {
+												archiveAskSession(session.id)
+												bumpRefresh()
+											}}
+										/>
+									))}
+								</SessionSection>
+							) : null}
+
+							{groups.older.length > 0 ? (
+								<div style={{ marginBottom: 8 }}>
+									<button
+										type="button"
+										onClick={() => setOlderOpen((value) => !value)}
+										style={{
+											width: '100%',
+											display: 'flex',
+											alignItems: 'center',
+											gap: 6,
+											padding: '8px 4px',
+											background: 'transparent',
+											border: 'none',
+											cursor: 'pointer',
+											fontFamily: 'inherit',
+											fontSize: 11,
+											fontWeight: 700,
+											color: C.textMuted,
+											textTransform: 'uppercase',
+											letterSpacing: '0.04em',
+										}}
+									>
+										{olderOpen ? (
+											<ChevronDown size={14} />
+										) : (
+											<ChevronRight size={14} />
+										)}
+										Older ({groups.older.length})
+									</button>
+									{olderOpen
+										? groups.older.map((session) => (
+												<SessionRow
+													key={session.id}
+													session={session}
+													isActive={session.id === activeSessionId}
+													isEditing={editingId === session.id}
+													editTitle={editTitle}
+													onEditTitleChange={setEditTitle}
+													onStartEdit={() => {
+														setEditingId(session.id)
+														setEditTitle(session.title)
+													}}
+													onSaveEdit={() => {
+														renameAskSession(session.id, editTitle)
+														setEditingId(null)
+														bumpRefresh()
+													}}
+													onCancelEdit={() => setEditingId(null)}
+													onSelect={() => {
+														onSelectSession(session.id)
+														onClose()
+													}}
+													onDelete={() => {
+														deleteAskSession(session.id)
+														bumpRefresh()
+													}}
+													onTogglePin={() => {
+														pinAskSession(session.id)
+														bumpRefresh()
+													}}
+													onToggleArchive={() => {
+														archiveAskSession(session.id)
+														bumpRefresh()
+													}}
+												/>
+											))
+										: null}
+								</div>
+							) : null}
+
+							{showArchived && groups.archived.length > 0 ? (
+								<SessionSection title="Archived">
+									{groups.archived.map((session) => (
+										<SessionRow
+											key={session.id}
+											session={session}
+											isActive={session.id === activeSessionId}
+											isEditing={editingId === session.id}
+											editTitle={editTitle}
+											onEditTitleChange={setEditTitle}
+											onStartEdit={() => {
+												setEditingId(session.id)
+												setEditTitle(session.title)
+											}}
+											onSaveEdit={() => {
+												renameAskSession(session.id, editTitle)
+												setEditingId(null)
+												bumpRefresh()
+											}}
+											onCancelEdit={() => setEditingId(null)}
+											onSelect={() => {
+												onSelectSession(session.id)
+												onClose()
+											}}
+											onDelete={() => {
+												deleteAskSession(session.id)
+												bumpRefresh()
+											}}
+											onTogglePin={() => {
+												pinAskSession(session.id)
+												bumpRefresh()
+											}}
+											onToggleArchive={() => {
+												unarchiveAskSession(session.id)
+												bumpRefresh()
+											}}
+										/>
+									))}
+								</SessionSection>
+							) : null}
+
+							{groups.pinned.length === 0 &&
+							groups.recent.length === 0 &&
+							groups.older.length === 0 &&
+							groups.archived.length === 0 ? (
+								<EmptyState message="No conversations yet. Ask your first question!" />
+							) : null}
+						</>
 					)}
 				</div>
 			</aside>
 		</>
+	)
+}
+
+function SessionSection({
+	title,
+	children,
+}: {
+	title: string
+	children: ReactNode
+}) {
+	return (
+		<div style={{ marginBottom: 12 }}>
+			<div
+				style={{
+					fontSize: 11,
+					fontWeight: 700,
+					color: C.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.04em',
+					padding: '4px 4px 8px',
+				}}
+			>
+				{title}
+			</div>
+			{children}
+		</div>
+	)
+}
+
+function EmptyState({ message }: { message: string }) {
+	return (
+		<div
+			style={{
+				fontSize: 13,
+				color: C.textMuted,
+				textAlign: 'center',
+				padding: '24px 12px',
+			}}
+		>
+			{message}
+		</div>
 	)
 }
 
@@ -230,6 +560,8 @@ function SessionRow({
 	onCancelEdit,
 	onSelect,
 	onDelete,
+	onTogglePin,
+	onToggleArchive,
 }: {
 	session: AskSessionMeta
 	isActive: boolean
@@ -241,6 +573,8 @@ function SessionRow({
 	onCancelEdit: () => void
 	onSelect: () => void
 	onDelete: () => void
+	onTogglePin: () => void
+	onToggleArchive: () => void
 }) {
 	return (
 		<div
@@ -314,16 +648,28 @@ function SessionRow({
 				>
 					<div
 						style={{
-							fontSize: 13,
-							fontWeight: 600,
-							color: C.text,
+							display: 'flex',
+							alignItems: 'center',
+							gap: 6,
 							marginBottom: 4,
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap',
 						}}
 					>
-						{session.title}
+						{session.pinned ? (
+							<Star size={12} color={C.accent} fill={C.accent} />
+						) : null}
+						<div
+							style={{
+								flex: 1,
+								fontSize: 13,
+								fontWeight: 600,
+								color: C.text,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+							}}
+						>
+							{session.title}
+						</div>
 					</div>
 					<div
 						style={{
@@ -349,6 +695,42 @@ function SessionRow({
 						padding: '0 8px 8px',
 					}}
 				>
+					<button
+						type="button"
+						onClick={(event) => {
+							event.stopPropagation()
+							onTogglePin()
+						}}
+						style={iconButtonStyle}
+						aria-label={
+							session.pinned ? 'Unpin conversation' : 'Pin conversation'
+						}
+					>
+						<Star
+							size={13}
+							color={session.pinned ? C.accent : C.textMuted}
+							fill={session.pinned ? C.accent : 'none'}
+						/>
+					</button>
+					<button
+						type="button"
+						onClick={(event) => {
+							event.stopPropagation()
+							onToggleArchive()
+						}}
+						style={iconButtonStyle}
+						aria-label={
+							session.archived
+								? 'Unarchive conversation'
+								: 'Archive conversation'
+						}
+					>
+						{session.archived ? (
+							<ArchiveRestore size={13} color={C.textMuted} />
+						) : (
+							<Archive size={13} color={C.textMuted} />
+						)}
+					</button>
 					<button
 						type="button"
 						onClick={(event) => {

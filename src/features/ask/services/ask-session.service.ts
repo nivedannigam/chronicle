@@ -16,7 +16,14 @@ export interface AskSessionMeta {
 	updatedAt: string
 	turnCount: number
 	preview: string
+	pinned?: boolean
+	archived?: boolean
 }
+
+export const MAX_PINNED_ASK_SESSIONS = 3
+const RECENT_SESSION_DAYS = 7
+const RECENT_SESSION_CAP = 5
+const HOME_SESSION_CAP = 3
 
 function readIndex(): AskSessionMeta[] {
 	if (typeof window === 'undefined') {
@@ -37,10 +44,27 @@ function normalizeSessionMeta(session: AskSessionMeta): AskSessionMeta {
 
 	return {
 		...session,
+		pinned: session.pinned === true,
+		archived: session.archived === true,
 		sessionKey:
 			session.sessionKey ??
 			(userId ? buildMemorySessionKey(userId, session.memberId) : null),
 	}
+}
+
+export function sortAskSessions(sessions: AskSessionMeta[]): AskSessionMeta[] {
+	return [...sessions].sort((left, right) => {
+		const leftPinned = left.pinned ? 1 : 0
+		const rightPinned = right.pinned ? 1 : 0
+
+		if (leftPinned !== rightPinned) {
+			return rightPinned - leftPinned
+		}
+
+		return (
+			new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+		)
+	})
 }
 
 function writeIndex(sessions: AskSessionMeta[]): void {
@@ -163,13 +187,60 @@ export function saveSessionTurns(
 	}
 }
 
-export function listAskSessions(userId: string): AskSessionMeta[] {
-	return readIndex()
-		.filter((session) => session.id.startsWith(`${userId}:`))
-		.sort(
-			(a, b) =>
-				new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-		)
+export function listAskSessions(
+	userId: string,
+	options?: { includeArchived?: boolean },
+): AskSessionMeta[] {
+	const includeArchived = options?.includeArchived ?? false
+
+	return sortAskSessions(
+		readIndex()
+			.filter((session) => session.id.startsWith(`${userId}:`))
+			.filter((session) => includeArchived || !session.archived),
+	)
+}
+
+export function listArchivedAskSessions(userId: string): AskSessionMeta[] {
+	return sortAskSessions(
+		readIndex().filter(
+			(session) =>
+				session.id.startsWith(`${userId}:`) && session.archived === true,
+		),
+	)
+}
+
+export function listAskSessionsForHome(userId: string): AskSessionMeta[] {
+	return listAskSessions(userId).slice(0, HOME_SESSION_CAP)
+}
+
+export interface AskSessionDrawerGroups {
+	pinned: AskSessionMeta[]
+	recent: AskSessionMeta[]
+	older: AskSessionMeta[]
+	archived: AskSessionMeta[]
+}
+
+export function groupAskSessionsForDrawer(
+	userId: string,
+	options?: { includeArchived?: boolean },
+): AskSessionDrawerGroups {
+	const includeArchived = options?.includeArchived ?? false
+	const active = listAskSessions(userId)
+	const pinned = active.filter((session) => session.pinned)
+	const unpinned = active.filter((session) => !session.pinned)
+	const recentCutoff = Date.now() - RECENT_SESSION_DAYS * 24 * 60 * 60 * 1000
+	const recent = unpinned
+		.filter((session) => new Date(session.updatedAt).getTime() >= recentCutoff)
+		.slice(0, RECENT_SESSION_CAP)
+	const recentIds = new Set(recent.map((session) => session.id))
+	const older = unpinned.filter((session) => !recentIds.has(session.id))
+
+	return {
+		pinned,
+		recent,
+		older,
+		archived: includeArchived ? listArchivedAskSessions(userId) : [],
+	}
 }
 
 export function searchAskSessions(
@@ -182,11 +253,63 @@ export function searchAskSessions(
 		return listAskSessions(userId)
 	}
 
-	return listAskSessions(userId).filter(
+	return listAskSessions(userId, { includeArchived: true }).filter(
 		(session) =>
 			session.title.toLowerCase().includes(normalized) ||
 			session.preview.toLowerCase().includes(normalized),
 	)
+}
+
+function updateSessionMeta(
+	sessionId: string,
+	patch: Partial<Pick<AskSessionMeta, 'pinned' | 'archived' | 'title'>>,
+): AskSessionMeta | null {
+	const index = readIndex()
+	const session = index.find((entry) => entry.id === sessionId)
+
+	if (!session) {
+		return null
+	}
+
+	Object.assign(session, patch, { updatedAt: new Date().toISOString() })
+	writeIndex(index)
+	return session
+}
+
+export function pinAskSession(sessionId: string): 'ok' | 'limit' {
+	const userId = parseUserIdFromSessionId(sessionId)
+
+	if (!userId) {
+		return 'limit'
+	}
+
+	const pinned = listAskSessions(userId).filter((session) => session.pinned)
+
+	if (pinned.length >= MAX_PINNED_ASK_SESSIONS) {
+		const oldestPinned = [...pinned].sort(
+			(a, b) =>
+				new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
+		)[0]
+
+		if (oldestPinned && oldestPinned.id !== sessionId) {
+			updateSessionMeta(oldestPinned.id, { pinned: false })
+		}
+	}
+
+	updateSessionMeta(sessionId, { pinned: true, archived: false })
+	return 'ok'
+}
+
+export function unpinAskSession(sessionId: string): void {
+	updateSessionMeta(sessionId, { pinned: false })
+}
+
+export function archiveAskSession(sessionId: string): void {
+	updateSessionMeta(sessionId, { archived: true, pinned: false })
+}
+
+export function unarchiveAskSession(sessionId: string): void {
+	updateSessionMeta(sessionId, { archived: false })
 }
 
 export function findLatestSessionForMember(
@@ -471,6 +594,11 @@ export function deleteAskSession(sessionId: string): void {
 }
 
 /** Remove all Ask sessions for a user from browser storage. */
+export function clearAllAskSessions(userId: string): void {
+	clearAllAskSessionsForUser(userId)
+}
+
+/** @deprecated Use clearAllAskSessions */
 export function clearAllAskSessionsForUser(userId: string): void {
 	if (typeof window === 'undefined' || !userId) {
 		return
