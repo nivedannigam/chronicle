@@ -9,10 +9,10 @@ import {
 } from '@/features/health-import/utils/setup-report-list.utils'
 
 function registry(
-	overrides: Partial<ConnectorDocumentRecord> &
-		Pick<ConnectorDocumentRecord, 'id'>,
+	overrides: Partial<ConnectorDocumentRecord> & { id?: string } = {},
 ): ConnectorDocumentRecord {
 	return {
+		id: 'reg-test',
 		userId: 'user-1',
 		connectorId: 'google-drive',
 		externalFileId: 'ext-1',
