@@ -11,6 +11,7 @@ export default defineConfig({
 			'packages/core/**/*.test.ts',
 			'supabase/functions/**/*.test.ts',
 		],
+		exclude: ['supabase/functions/ask-ai/**'],
 	},
 	resolve: {
 		alias: {

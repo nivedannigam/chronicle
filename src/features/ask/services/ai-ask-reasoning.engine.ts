@@ -42,6 +42,10 @@ import {
 	runProductionHealthAi,
 	shouldUseProductionAi,
 } from '@/features/ask/services/summarize-latest-report.service'
+import {
+	getProductionAiConfigurationError,
+	isLlmHealthQuestion,
+} from '@/shared/ai/errors/ai-errors'
 import { resolveBetaExperience } from '@/features/ask/beta/beta-experience-resolver'
 import { buildBetaExperienceTurn } from '@/features/ask/beta/beta-domain-handlers'
 import { recordBetaExperienceUsage } from '@/features/ask/beta/beta-observability.service'
@@ -182,6 +186,57 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			storedMetrics: (input.storedMetrics ?? []) as StoredHealthMetric[],
 			memberId: memberForTurn.memberId,
 		})
+
+		const llmHealthQuestion = isLlmHealthQuestion({
+			question: input.question,
+			legacyIntent: pipeline.detection.intent,
+		})
+		const configurationError =
+			llmHealthQuestion && betaExperience?.route !== 'grounded'
+				? getProductionAiConfigurationError()
+				: null
+
+		if (configurationError) {
+			const timestamp = new Date().toISOString()
+			const configTurn = {
+				id: crypto.randomUUID(),
+				question: input.question,
+				answer: configurationError,
+				cards: [],
+				relatedReports: [],
+				relatedMetrics: [],
+				citations: [],
+				evidence: [],
+				followUpQuestions: [],
+				memberId: memberForTurn.memberId,
+				memberName: memberForTurn.memberName,
+				domains: pipeline.activeDomains,
+				dataAvailable: false,
+				confidence: 0,
+				confidenceLevel: 'low' as const,
+				timestamp,
+				displayTimestamp: new Date(timestamp).toLocaleString('en-US', {
+					month: 'short',
+					day: 'numeric',
+					hour: 'numeric',
+					minute: '2-digit',
+				}),
+			}
+
+			conversationMemory.addTurn(sessionKey, configTurn, {
+				intent: pipeline.detection.intent,
+				categoryId: pipeline.detection.categoryId,
+				metricName: pipeline.detection.metricName,
+			})
+
+			return {
+				turn: configTurn,
+				intent: pipeline.detection.intent,
+				implementation: 'grounded-only',
+				debug: import.meta.env.DEV ? (lastDebugInfo ?? undefined) : undefined,
+			}
+		}
+
 		let turn = buildGroundedTurn({
 			question: input.question,
 			knowledge: pipeline.mergedKnowledge,
@@ -256,9 +311,11 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			} catch (error) {
 				turn = {
 					...turn,
-					answer: `${formatPlatformErrorForUser(error)}\n\n${turn.answer}`,
+					answer: formatPlatformErrorForUser(error),
+					confidence: Math.min(turn.confidence, 0.35),
+					confidenceLevel: 'low',
 				}
-				usedProvider = 'grounded'
+				usedProvider = 'gemini-platform-error'
 			}
 		} else if (aiConfigured) {
 			try {

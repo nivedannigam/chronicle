@@ -103,6 +103,8 @@ export async function callGeminiSimplified(input: {
 		})
 	}
 
+	console.log('Gemini request started')
+
 	const geminiStarted = performance.now()
 	const response = await fetch(requestUrl, {
 		method: 'POST',
@@ -130,6 +132,8 @@ export async function callGeminiSimplified(input: {
 	const parsed = parseGeminiPayload(rawBody)
 	const parseMs = performance.now() - parseStarted
 
+	console.log('Gemini request completed')
+	console.log(`Latency: ${Math.round(geminiMs)}ms`)
 	logTokenUsage(parsed.usage)
 
 	return {

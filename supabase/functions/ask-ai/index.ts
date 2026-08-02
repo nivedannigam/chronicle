@@ -73,6 +73,9 @@ serve(async (request) => {
 		const body = (await request.json()) as AskAiRequestBody
 		timings.promptMs = Math.round(performance.now() - promptStarted)
 
+		console.log('Request received')
+		console.log('Provider', body.provider ?? 'unspecified')
+		console.log('Model', body.model ?? GEMINI_MODEL)
 		console.log(
 			JSON.stringify({
 				service: 'ask-ai',

@@ -6,6 +6,11 @@ export {
 } from './services/ai-observability.service'
 export { createAskAiProvider } from './providers/ai-provider.factory'
 export {
+	registerAskAiInvoker,
+	getAskAiInvoker,
+	invokeAskAiThroughRegistry,
+} from './transport/ask-ai-invoker.ts'
+export {
 	askAiConfig,
 	isAskAiProviderConfigured,
 	type AskAiProviderType,

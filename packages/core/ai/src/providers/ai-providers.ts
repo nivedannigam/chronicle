@@ -1,4 +1,5 @@
-import type { AiCompletionResponse, AiProvider, AiStreamChunk } from '../types'
+import type { AiProvider, AiStreamChunk } from '../types'
+import { invokeAskAiThroughRegistry } from '../transport/ask-ai-invoker.ts'
 
 export type { AiProvider }
 
@@ -10,49 +11,21 @@ export interface ProviderCallOptions {
 	azureDeployment?: string
 }
 
-async function parseProxyResponse(
-	response: Response,
-): Promise<AiCompletionResponse> {
-	const payload = (await response.json()) as {
-		content: string
-		provider: AiCompletionResponse['provider']
-		model: string
-		usage: AiCompletionResponse['usage']
-		latencyMs: number
-	}
-
-	return payload
-}
-
 export function createOpenAiProvider(options: ProviderCallOptions): AiProvider {
 	return {
 		name: 'openai',
 		async complete(request) {
-			const startedAt = performance.now()
-
 			if (options.proxyUrl) {
-				const response = await fetch(options.proxyUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						provider: 'openai',
-						model: options.model,
-						messages: request.messages,
-						responseFormat: request.responseFormat ?? 'json',
-					}),
-					signal: request.signal,
-				})
-
-				if (!response.ok) {
-					throw new Error(`OpenAI proxy failed (${response.status})`)
-				}
-
-				return parseProxyResponse(response)
+				throw new Error(
+					'Unsupported provider requested. Use gemini via supabase.functions.invoke("ask-ai").',
+				)
 			}
 
 			if (!options.apiKey) {
 				throw new Error('OpenAI API key is not configured.')
 			}
+
+			const startedAt = performance.now()
 
 			const response = await fetch(
 				'https://api.openai.com/v1/chat/completions',
@@ -111,23 +84,9 @@ export function createAzureOpenAiProvider(
 		name: 'azure-openai',
 		async complete(request) {
 			if (options.proxyUrl) {
-				const response = await fetch(options.proxyUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						provider: 'azure-openai',
-						model: options.model,
-						messages: request.messages,
-						responseFormat: request.responseFormat ?? 'json',
-					}),
-					signal: request.signal,
-				})
-
-				if (!response.ok) {
-					throw new Error(`Azure OpenAI proxy failed (${response.status})`)
-				}
-
-				return parseProxyResponse(response)
+				throw new Error(
+					'Unsupported provider requested. Use gemini via supabase.functions.invoke("ask-ai").',
+				)
 			}
 
 			if (
@@ -190,29 +149,36 @@ export function createGeminiProvider(options: ProviderCallOptions): AiProvider {
 	return {
 		name: 'gemini',
 		async complete(request) {
-			if (options.proxyUrl) {
-				const response = await fetch(options.proxyUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						provider: 'gemini',
-						model: options.model,
-						messages: request.messages,
-						responseFormat: request.responseFormat ?? 'json',
-					}),
-					signal: request.signal,
-				})
+			console.log('Calling Ask AI')
+			console.log('Provider', 'gemini')
+			console.log('Model', options.model)
 
-				if (!response.ok) {
-					throw new Error(`Gemini proxy failed (${response.status})`)
-				}
+			const payload = await invokeAskAiThroughRegistry({
+				provider: 'gemini',
+				model: options.model,
+				messages: request.messages,
+				responseFormat: request.responseFormat ?? 'json',
+			})
 
-				return parseProxyResponse(response)
+			return {
+				content: String(payload.content ?? ''),
+				provider: 'gemini',
+				model: String(payload.model ?? options.model),
+				usage: {
+					promptTokens:
+						(payload.usage as { promptTokens?: number } | undefined)
+							?.promptTokens ?? 0,
+					completionTokens:
+						(payload.usage as { completionTokens?: number } | undefined)
+							?.completionTokens ?? 0,
+					totalTokens:
+						(payload.usage as { totalTokens?: number } | undefined)
+							?.totalTokens ?? 0,
+				},
+				latencyMs:
+					(payload.latencyMs as number | undefined) ??
+					Math.round(performance.now()),
 			}
-
-			throw new Error(
-				'Gemini requires VITE_ASK_PROXY_URL for server-side calls.',
-			)
 		},
 	}
 }
@@ -222,23 +188,9 @@ export function createClaudeProvider(options: ProviderCallOptions): AiProvider {
 		name: 'claude',
 		async complete(request) {
 			if (options.proxyUrl) {
-				const response = await fetch(options.proxyUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						provider: 'claude',
-						model: options.model,
-						messages: request.messages,
-						responseFormat: request.responseFormat ?? 'json',
-					}),
-					signal: request.signal,
-				})
-
-				if (!response.ok) {
-					throw new Error(`Claude proxy failed (${response.status})`)
-				}
-
-				return parseProxyResponse(response)
+				throw new Error(
+					'Unsupported provider requested. Use gemini via supabase.functions.invoke("ask-ai").',
+				)
 			}
 
 			if (!options.apiKey) {

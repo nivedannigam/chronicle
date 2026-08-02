@@ -2,6 +2,7 @@ import type {
 	AIPlatformConfig,
 	AIProviderId,
 } from '@/shared/ai/types/ai-platform.types'
+import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
 
 function readEnv(name: string): string | undefined {
 	const viteName = `VITE_${name}`
@@ -18,10 +19,11 @@ function readEnv(name: string): string | undefined {
 	return undefined
 }
 
-function readProvider(
-	value: string | undefined,
-	proxyUrl: string,
-): AIProviderId {
+export function isSupabaseClientConfigured(): boolean {
+	return Boolean(readEnv('SUPABASE_URL') && readEnv('SUPABASE_ANON_KEY'))
+}
+
+function readProvider(value: string | undefined): AIProviderId {
 	switch (value?.toLowerCase()) {
 		case 'openai':
 			return 'openai'
@@ -32,32 +34,22 @@ function readProvider(
 		case 'mock':
 			return 'mock'
 		default:
-			return proxyUrl ? 'gemini' : 'mock'
+			return isSupabaseClientConfigured() ? 'gemini' : 'mock'
 	}
 }
 
 export function loadAIPlatformConfig(
 	overrides: Partial<AIPlatformConfig> = {},
 ): AIPlatformConfig {
-	const proxyUrl =
-		overrides.proxyUrl ??
-		readEnv('AI_PROXY_URL') ??
-		readEnv('ASK_PROXY_URL') ??
-		''
-
 	return {
-		provider:
-			overrides.provider ?? readProvider(readEnv('AI_PROVIDER'), proxyUrl),
-		model:
-			overrides.model ??
-			readEnv('AI_MODEL') ??
-			(proxyUrl ? 'gemini-2.0-flash' : 'mock-model'),
+		provider: overrides.provider ?? readProvider(readEnv('AI_PROVIDER')),
+		model: overrides.model ?? readEnv('AI_MODEL') ?? GEMINI_MODEL,
 		timeoutMs: overrides.timeoutMs ?? Number(readEnv('AI_TIMEOUT') ?? 30_000),
 		maxTokens: overrides.maxTokens ?? Number(readEnv('AI_MAX_TOKENS') ?? 4096),
 		temperature:
 			overrides.temperature ?? Number(readEnv('AI_TEMPERATURE') ?? 0.2),
 		maxRetries: overrides.maxRetries ?? Number(readEnv('AI_MAX_RETRIES') ?? 1),
-		proxyUrl,
+		proxyUrl: overrides.proxyUrl ?? '',
 	}
 }
 
@@ -65,5 +57,23 @@ export const defaultAIPlatformConfig = loadAIPlatformConfig()
 
 export function isAIPlatformConfigured(): boolean {
 	const config = loadAIPlatformConfig()
-	return config.provider === 'mock' || Boolean(config.proxyUrl)
+	return config.provider === 'gemini' && isSupabaseClientConfigured()
+}
+
+export function getAIPlatformConfigurationError(): string | null {
+	if (isAIPlatformConfigured()) {
+		return null
+	}
+
+	if (!isSupabaseClientConfigured()) {
+		return 'Ask AI requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+	}
+
+	const config = loadAIPlatformConfig()
+
+	if (config.provider !== 'gemini') {
+		return `Ask AI requires provider gemini via supabase.functions.invoke("ask-ai"). Current provider: ${config.provider}.`
+	}
+
+	return 'Ask AI is not configured.'
 }

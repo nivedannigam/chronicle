@@ -1,4 +1,7 @@
-import { isAIPlatformConfigured } from '@/shared/ai/config/ai-platform.config'
+import {
+	getAIPlatformConfigurationError,
+	isAIPlatformConfigured,
+} from '@/shared/ai/config/ai-platform.config'
 import {
 	isLlmSupportedIntent,
 	type ChronicleIntent,
@@ -27,20 +30,31 @@ export function isProductionAiIntent(intent: string): boolean {
 	return mapped ? isLlmSupportedIntent(mapped) : false
 }
 
-export function isProductionAiQuestion(input: {
+export function isLlmHealthQuestion(input: {
 	question: string
 	legacyIntent?: string
 }): boolean {
-	if (!isAIPlatformConfigured()) {
-		return false
-	}
-
 	if (input.legacyIntent && isProductionAiIntent(input.legacyIntent)) {
 		return true
 	}
 
 	const classified = healthIntentClassifier.classify(input.question)
 	return isLlmSupportedIntent(classified.intent)
+}
+
+export function isProductionAiQuestion(input: {
+	question: string
+	legacyIntent?: string
+}): boolean {
+	return isLlmHealthQuestion(input) && isAIPlatformConfigured()
+}
+
+export function getProductionAiConfigurationError(): string | null {
+	if (isAIPlatformConfigured()) {
+		return null
+	}
+
+	return getAIPlatformConfigurationError()
 }
 
 export function mapErrorToUserMessage(error: unknown): string {

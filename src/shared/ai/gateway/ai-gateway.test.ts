@@ -42,7 +42,7 @@ describe('AIGateway', () => {
 		expect(getAIObservabilityLog().length).toBeGreaterThan(0)
 	})
 
-	it('gemini provider requires proxy configuration', async () => {
+	it('gemini provider surfaces ask-ai configuration errors', async () => {
 		const gemini = new GeminiProvider()
 
 		await expect(
@@ -51,6 +51,6 @@ describe('AIGateway', () => {
 				messages: [{ role: 'user', content: 'hello' }],
 				responseFormat: 'json',
 			}),
-		).rejects.toMatchObject({ code: 'not_configured' })
+		).rejects.toMatchObject({ name: 'GeminiProviderError' })
 	})
 })
