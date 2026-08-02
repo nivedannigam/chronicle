@@ -34,12 +34,22 @@ serve(async (request) => {
 		const authStarted = performance.now()
 		const authHeader = request.headers.get('Authorization')
 
+		console.log('Authorization header exists:', Boolean(authHeader))
+		console.log(
+			'Authorization header uses Bearer scheme:',
+			authHeader?.startsWith('Bearer ') ?? false,
+		)
+
 		if (!authHeader) {
+			console.log('auth.getUser error:', 'Missing Authorization header')
+			console.log('user id:', null)
+
 			return jsonResponse({ error: 'Unauthorized', correlationId }, 401)
 		}
 
 		const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 		const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+		const jwt = authHeader.replace(/^Bearer\s+/i, '').trim()
 		const userClient = createClient(supabaseUrl, anonKey, {
 			global: { headers: { Authorization: authHeader } },
 		})
@@ -47,7 +57,10 @@ serve(async (request) => {
 		const {
 			data: { user },
 			error: authError,
-		} = await userClient.auth.getUser()
+		} = await userClient.auth.getUser(jwt)
+
+		console.log('auth.getUser error:', authError?.message ?? null)
+		console.log('user id:', user?.id ?? null)
 
 		timings.authMs = Math.round(performance.now() - authStarted)
 

@@ -1,4 +1,9 @@
 import { supabase } from '@/lib/supabase'
+import {
+	getAskAiAuthDiagnostics,
+	requireSupabaseSession,
+	SupabaseAuthRequiredError,
+} from '@/lib/supabase-session'
 import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
 import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
 
@@ -89,9 +94,30 @@ export async function invokeAskAiEdgeFunction(
 	const provider = body.provider
 	const model = body.model || config.model || GEMINI_MODEL
 
+	const authDiagnostics = await getAskAiAuthDiagnostics()
+
 	console.log('Calling Ask AI')
 	console.log('Provider', provider)
 	console.log('Model', model)
+	console.log('Ask AI auth diagnostics', {
+		currentUser: authDiagnostics.currentUser,
+		sessionExists: authDiagnostics.sessionExists,
+		accessTokenExists: authDiagnostics.accessTokenExists,
+		authorizationHeaderWillBeSent:
+			authDiagnostics.authorizationHeaderWillBeSent,
+	})
+
+	let session
+
+	try {
+		session = await requireSupabaseSession()
+	} catch (error) {
+		if (error instanceof SupabaseAuthRequiredError) {
+			throw new AskAiEdgeConfigurationError(error.message)
+		}
+
+		throw error
+	}
 
 	const { data, error } = await supabase.functions.invoke('ask-ai', {
 		body: {
@@ -102,10 +128,20 @@ export async function invokeAskAiEdgeFunction(
 			temperature: body.temperature,
 			maxTokens: body.maxTokens,
 		},
+		headers: {
+			Authorization: `Bearer ${session.access_token}`,
+		},
 	})
 
 	if (error) {
-		throw new AskAiEdgeInvokeError(error.message)
+		throw new AskAiEdgeInvokeError(
+			error.message.includes('401') || error.message.includes('Unauthorized')
+				? 'Ask AI authentication failed. Sign in again and retry.'
+				: error.message,
+			{
+				statusCode: error.message.includes('401') ? 401 : undefined,
+			},
+		)
 	}
 
 	const payload = data as {
