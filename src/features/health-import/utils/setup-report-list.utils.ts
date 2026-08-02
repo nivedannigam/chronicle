@@ -20,6 +20,7 @@ import type {
 	SetupReportRowModel,
 	SetupReportRowStatus,
 } from '@/features/health-import/types/setup-report-list.types'
+import { PHOTO_IMPORT_SKIP_MESSAGE } from '@/features/health-import/constants/import-file-rules'
 
 const STATUS_SORT_RANK: Record<SetupReportRowStatus, number> = {
 	failed: 0,
@@ -47,6 +48,22 @@ const ACTIVE_REGISTRY_STATUSES = new Set<ImportQueueStatus>([
 	'knowledge_graph',
 	'retry',
 ])
+
+function isLegacyPhotoFailureMessage(
+	message: string | null | undefined,
+): boolean {
+	if (!message) {
+		return false
+	}
+
+	const lower = message.toLowerCase()
+
+	return (
+		message === PHOTO_IMPORT_SKIP_MESSAGE ||
+		lower.includes('photo') ||
+		lower.includes('not a laboratory report')
+	)
+}
 
 export function filterRegistryForMember(
 	registry: ConnectorDocumentRecord[],
@@ -82,6 +99,13 @@ export function deriveSetupReportStatus(input: {
 	const { registry, report } = input
 
 	if (registry?.importStatus === 'skipped') {
+		return 'skipped'
+	}
+
+	if (
+		registry?.importStatus === 'failed' &&
+		isLegacyPhotoFailureMessage(registry.errorMessage)
+	) {
 		return 'skipped'
 	}
 
@@ -403,6 +427,21 @@ export function filterSetupReportRows(
 		case 'skipped':
 			return rows.filter((row) => row.status === 'skipped')
 	}
+}
+
+/** Default list hides skipped duplicates unless showDuplicates is enabled. */
+export function applySetupListVisibility(
+	rows: SetupReportRowModel[],
+	filter: SetupReportListFilter,
+	showDuplicates: boolean,
+): SetupReportRowModel[] {
+	const filtered = filterSetupReportRows(rows, filter)
+
+	if (showDuplicates || filter === 'skipped') {
+		return filtered
+	}
+
+	return filtered.filter((row) => row.status !== 'skipped')
 }
 
 export function countSetupRowsByFilter(rows: SetupReportRowModel[]): {

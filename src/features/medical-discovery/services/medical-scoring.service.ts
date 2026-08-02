@@ -105,6 +105,10 @@ export function isIgnoredFile(input: ScoreMedicalFileInput): boolean {
 	const name = normalize(input.fileName)
 	const mime = normalize(input.mimeType)
 
+	if (mime.startsWith('image/')) {
+		return true
+	}
+
 	if (!isSupportedMedicalMime(mime)) {
 		return true
 	}

@@ -2,6 +2,10 @@ import {
 	formatFileTooLargeError,
 	HEALTH_REPORT_MAX_FILE_SIZE_BYTES,
 } from '@/features/health-import/constants/import-limits'
+import {
+	isPhotoImportFile,
+	PHOTO_IMPORT_SKIP_MESSAGE,
+} from '@/features/health-import/constants/import-file-rules'
 import type { ImportQueueRunResult } from '@/features/health-import/types/health-import-journey.types'
 import type {
 	ImportPhase,
@@ -115,19 +119,22 @@ async function importRegistryRecord(
 	}
 
 	const imageFilePattern = /\.(jpg|jpeg|png|gif|webp|heic)$/i
-	if (imageFilePattern.test(registry.file_name as string)) {
-		const message =
-			'This file is a photo, not a laboratory report. Upload a PDF lab report instead.'
-
+	if (
+		imageFilePattern.test(registry.file_name as string) ||
+		isPhotoImportFile(
+			registry.file_name as string,
+			registry.mime_type as string | null,
+		)
+	) {
 		await updateRegistryRecord(registryId, {
-			importStatus: 'failed',
-			registryStatus: 'failed',
-			errorMessage: message,
+			importStatus: 'skipped',
+			registryStatus: 'duplicate',
+			errorMessage: PHOTO_IMPORT_SKIP_MESSAGE,
 		})
 
 		importStartTimes.delete(registryId)
 
-		return { reportId: registryId, outcome: 'failed' }
+		return { reportId: registryId, outcome: 'skipped_unsupported' }
 	}
 
 	const fileSize = Number(registry.file_size ?? 0)

@@ -25,6 +25,10 @@ import {
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
 import { buildHealthReportFromAiExtraction } from '@/features/health/services/health-ai-extraction.service'
+import {
+	clearRegistryErrorForReport,
+	syncRegistryWithReportOutcome,
+} from '@/features/health-import/services/registry-report-sync.service'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
@@ -160,6 +164,7 @@ export async function processHealthReport(
 			status: 'processing',
 			processing_error: null,
 		})
+		await clearRegistryErrorForReport(reportId)
 		await updateQueueStatus(reportId, 'processing', {
 			started_at: new Date().toISOString(),
 			error_message: null,
@@ -356,6 +361,11 @@ export async function processHealthReport(
 			invalidateHealthKnowledgeCache(typedReport.user_id)
 			invalidateAfterHealthImport(typedReport.user_id)
 
+			await syncRegistryWithReportOutcome(reportId, {
+				status: 'failed',
+				errorMessage: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+			})
+
 			return {
 				...typedReport,
 				...parsedReportUpdate,
@@ -477,6 +487,8 @@ export async function processHealthReport(
 		invalidateHealthKnowledgeCache(completedReport.user_id)
 		invalidateAfterHealthImport(completedReport.user_id)
 
+		await syncRegistryWithReportOutcome(reportId, { status: 'completed' })
+
 		return completedReport
 	} catch (error) {
 		const errorDetail = buildWorkflowErrorDetail({
@@ -514,6 +526,11 @@ export async function processHealthReport(
 				failedStage: 'OCR',
 				errorDetail,
 			},
+		})
+
+		await syncRegistryWithReportOutcome(reportId, {
+			status: 'failed',
+			errorMessage: errorDetail.userMessage,
 		})
 
 		throw new Error(errorDetail.userMessage)

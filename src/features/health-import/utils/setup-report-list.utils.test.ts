@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { UploadedHealthReport } from '@/features/health/types'
 import {
+	applySetupListVisibility,
 	buildSetupReportRows,
 	buildSetupSummaryLine,
 	compareSetupReportRows,
@@ -284,6 +285,40 @@ describe('buildSetupReportRows error display', () => {
 		expect(rows[0]?.status).toBe('ready')
 		expect(rows[0]?.canReprocessWithAi).toBe(false)
 		expect(rows[0]?.canViewReport).toBe(true)
+	})
+})
+
+describe('applySetupListVisibility', () => {
+	it('hides skipped rows from all until showDuplicates is enabled', () => {
+		const rows = buildSetupReportRows({
+			registry: [
+				registry({
+					id: 'skip',
+					importStatus: 'skipped',
+					errorMessage: 'Duplicate file — already imported',
+				}),
+				registry({ id: 'fail', importStatus: 'failed' }),
+			],
+			reports: [],
+			memberId: 'member-1',
+			accountOwnerMemberId: 'member-1',
+		})
+
+		expect(applySetupListVisibility(rows, 'all', false)).toHaveLength(1)
+		expect(applySetupListVisibility(rows, 'all', true)).toHaveLength(2)
+	})
+
+	it('maps legacy photo failure registry rows to skipped', () => {
+		expect(
+			deriveSetupReportStatus({
+				registry: registry({
+					importStatus: 'failed',
+					errorMessage:
+						'This file is a photo, not a laboratory report. Upload a PDF lab report instead.',
+				}),
+				report: null,
+			}),
+		).toBe('skipped')
 	})
 })
 

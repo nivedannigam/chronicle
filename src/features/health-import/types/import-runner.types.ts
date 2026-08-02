@@ -10,6 +10,7 @@ export {
 	isFileTooLargeError,
 }
 
-export type ImportRegistryOutcome = 'imported' | 'skipped_existing' | 'failed'
+export type ImportRegistryOutcome =
+	'imported' | 'skipped_existing' | 'skipped_unsupported' | 'failed'
 
 export type ImportPhase = 'download' | 'ocr' | 'metrics'

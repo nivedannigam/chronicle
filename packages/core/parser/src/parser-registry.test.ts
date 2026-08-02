@@ -25,6 +25,43 @@ describe('document-type detector', () => {
 		expect(detectDocumentType(input)).toBe('health_report')
 	})
 
+	it('detects ecg and tmt filenames as health reports', () => {
+		for (const fileName of [
+			'2026 March ECG.pdf',
+			'Feb 2026 - TMT.pdf',
+			'company-wellness-plan.pdf',
+		]) {
+			expect(
+				detectDocumentType({
+					documentId: 'doc-ecg',
+					fileName,
+					mimeType: 'application/pdf',
+					ocrDocument: {
+						rawText: 'Clinical summary only.',
+						pages: [
+							{
+								pageNumber: 1,
+								text: 'Clinical summary only.',
+								confidence: 0.9,
+							},
+						],
+						tables: [],
+						confidence: 0.9,
+						metadata: {
+							provider: 'mock',
+							mimeType: 'application/pdf',
+							fileName,
+							language: 'en',
+							pageCount: 1,
+							tableCount: 0,
+						},
+						processingTimeMs: 100,
+					},
+				}),
+			).toBe('health_report')
+		}
+	})
+
 	it('detects passports from passport keywords', () => {
 		const input = {
 			documentId: 'doc-2',

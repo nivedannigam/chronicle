@@ -5,9 +5,9 @@ import { SetupReportRow } from '@/features/health-import/components/SetupReportR
 import { useHealthImport } from '@/features/health-import/hooks/useHealthImport'
 import type { SetupReportListFilter } from '@/features/health-import/types/setup-report-list.types'
 import {
+	applySetupListVisibility,
 	buildSetupReportRows,
 	countSetupRowsByFilter,
-	filterSetupReportRows,
 } from '@/features/health-import/utils/setup-report-list.utils'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import {
@@ -38,7 +38,8 @@ export function HealthImportReportList({
 	const importState = useHealthImport(userId)
 	const { data: reports = [] } = useMemberHealthReports()
 	const { selectedMemberId, accountOwnerMemberId } = useFamilyContext()
-	const [filter, setFilter] = useState<SetupReportListFilter>('all')
+	const [filter, setFilter] = useState<SetupReportListFilter>('needs_attention')
+	const [showDuplicates, setShowDuplicates] = useState(false)
 	const [busyRowKey, setBusyRowKey] = useState<string | null>(null)
 	const [isBulkRetrying, setIsBulkRetrying] = useState(false)
 	const [isBulkReprocessing, setIsBulkReprocessing] = useState(false)
@@ -58,8 +59,8 @@ export function HealthImportReportList({
 	)
 
 	const filteredRows = useMemo(
-		() => filterSetupReportRows(rows, filter),
-		[rows, filter],
+		() => applySetupListVisibility(rows, filter, showDuplicates),
+		[rows, filter, showDuplicates],
 	)
 
 	const counts = useMemo(() => countSetupRowsByFilter(rows), [rows])
@@ -304,9 +305,11 @@ export function HealthImportReportList({
 				</div>
 			) : null}
 
-			<div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+			<div
+				style={{ display: 'flex', gap: 8, overflowX: 'auto', flexWrap: 'wrap' }}
+			>
 				<HealthFilterChip
-					label={`All (${counts.all})`}
+					label={`All (${counts.all - (showDuplicates ? 0 : counts.skipped)})`}
 					active={filter === 'all'}
 					onClick={() => setFilter('all')}
 				/>
@@ -322,9 +325,13 @@ export function HealthImportReportList({
 				/>
 				{counts.skipped > 0 ? (
 					<HealthFilterChip
-						label={`Skipped (${counts.skipped})`}
-						active={filter === 'skipped'}
-						onClick={() => setFilter('skipped')}
+						label={
+							showDuplicates
+								? `Hide duplicates (${counts.skipped})`
+								: `Show duplicates (${counts.skipped})`
+						}
+						active={showDuplicates}
+						onClick={() => setShowDuplicates((open) => !open)}
 					/>
 				) : null}
 			</div>

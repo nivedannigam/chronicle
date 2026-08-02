@@ -70,6 +70,19 @@ describe('report-readiness.service', () => {
 		expect(isReportDisplayReady(report)).toBe(true)
 	})
 
+	it('allows metricless completion for tmt filename without metrics', () => {
+		const report = createReport('completed', {
+			file_name: 'Feb 2026 - TMT.pdf',
+			parsed_data: {
+				metrics: [],
+				metadata: { reportType: 'general' },
+			},
+		})
+
+		expect(reportQualifiesForMetriclessCompletion(report)).toBe(true)
+		expect(isReportDisplayReady(report)).toBe(true)
+	})
+
 	it('treats parsed reports as still processing', () => {
 		expect(getReportPipelinePhase(createReport('parsed'))).toBe('processing')
 	})

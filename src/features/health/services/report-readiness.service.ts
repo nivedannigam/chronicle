@@ -25,6 +25,7 @@ export function textIndicatesMetriclessReportType(text: string): boolean {
 		normalized.includes('stress test') ||
 		normalized.includes('company wellness') ||
 		normalized.includes('wellness plan') ||
+		normalized.includes('wellness') ||
 		normalized.includes('mri') ||
 		normalized.includes(' ct ') ||
 		normalized.includes('x-ray') ||
@@ -37,7 +38,18 @@ export function textIndicatesMetriclessReportType(text: string): boolean {
 export function reportQualifiesForMetriclessCompletion(
 	report: UploadedHealthReport,
 ): boolean {
-	return METRICLESS_COMPLETE_KINDS.has(classifyReportType(report).kind)
+	if (METRICLESS_COMPLETE_KINDS.has(classifyReportType(report).kind)) {
+		return true
+	}
+
+	const parsed = getParsedHealthReport(report)
+	const searchable = [
+		report.file_name,
+		parsed?.metadata.reportType ?? '',
+		parsed?.metadata.laboratory ?? '',
+	].join(' ')
+
+	return textIndicatesMetriclessReportType(searchable)
 }
 
 export function healthReportQualifiesForMetriclessCompletion(input: {

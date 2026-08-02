@@ -15,6 +15,10 @@ import {
 	isFileTooLargeError,
 } from '@/features/health-import/constants/import-limits'
 import {
+	isPhotoImportFile,
+	PHOTO_IMPORT_SKIP_MESSAGE,
+} from '@/features/health-import/constants/import-file-rules'
+import {
 	importRegistryRecord,
 	processImportQueueWithProgress,
 } from '@/features/health-import/services/health-import-runner.service'
@@ -153,6 +157,18 @@ export async function queueApprovedImports(
 
 	for (const row of approved) {
 		try {
+			const fileName = row.file_name as string
+			const mimeType = row.mime_type as string
+
+			if (isPhotoImportFile(fileName, mimeType)) {
+				await updateRegistryRecord(row.id as string, {
+					importStatus: 'skipped',
+					errorMessage: PHOTO_IMPORT_SKIP_MESSAGE,
+				})
+				summary.skipped += 1
+				continue
+			}
+
 			const fileSize = Number(row.file_size ?? 0)
 
 			if (fileSize > HEALTH_REPORT_MAX_FILE_SIZE_BYTES) {

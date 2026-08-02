@@ -32,6 +32,16 @@ function classifyFromText(text: string): ReportTimelineKind {
 	}
 
 	if (
+		normalized.includes('tmt') ||
+		normalized.includes('treadmill') ||
+		normalized.includes('stress test') ||
+		normalized.includes('company wellness') ||
+		normalized.includes('wellness plan')
+	) {
+		return 'health_summary'
+	}
+
+	if (
 		normalized.includes('mri') ||
 		normalized.includes(' ct ') ||
 		normalized.includes('x-ray') ||

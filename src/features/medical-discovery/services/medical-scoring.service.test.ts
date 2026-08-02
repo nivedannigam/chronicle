@@ -34,6 +34,17 @@ describe('scoreMedicalFile', () => {
 		expect(result.category).toBe('ignored')
 	})
 
+	it('ignores photo files for auto-import discovery', () => {
+		const result = scoreMedicalFile({
+			fileName: 'IMG_8104.jpg',
+			mimeType: 'image/jpeg',
+			folderPath: 'Health',
+			isAssignedHealthFolder: true,
+		})
+
+		expect(result.category).toBe('ignored')
+	})
+
 	it('boosts confidence for PDFs in assigned health folders', () => {
 		const withoutFolder = scoreMedicalFile({
 			fileName: 'Lab Results.pdf',
