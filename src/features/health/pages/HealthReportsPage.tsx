@@ -6,15 +6,15 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { buildProductReportCards } from '@/features/health/services/health-product.mapper'
-import { FigmaHealthReportsListView } from '@/ui/figma/health/FigmaHealthReportsListView'
+import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
+import { FigmaHealthVisitsListView } from '@/ui/figma/health/FigmaHealthVisitsListView'
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
 	const { reports, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 
-	const cards = useMemo(() => buildProductReportCards(reports), [reports])
+	const visits = useMemo(() => buildHealthVisits(reports), [reports])
 
 	if (isLoading) {
 		return <ListSkeleton rows={4} />
@@ -23,17 +23,17 @@ export function HealthReportsPage() {
 	if (isError) {
 		return (
 			<InlineErrorBanner
-				message="Could not load your medical records."
+				message="Could not load your health visits."
 				onRetry={() => void refetch()}
 			/>
 		)
 	}
 
-	if (!hasImportedReports && cards.length === 0) {
+	if (!hasImportedReports && visits.length === 0) {
 		return (
 			<DashboardEmptyState
-				title={HEALTH_COPY.emptyReportsTitle}
-				message={HEALTH_COPY.emptyReportsBody}
+				title={HEALTH_COPY.emptyVisitsTitle}
+				message={HEALTH_COPY.emptyVisitsBody}
 				emoji="📋"
 				actionLabel={HEALTH_COPY.connectDrive}
 				onAction={() => navigate(ROUTES.profileConnectionsDrive)}
@@ -43,5 +43,5 @@ export function HealthReportsPage() {
 		)
 	}
 
-	return <FigmaHealthReportsListView reports={cards} rawReports={reports} />
+	return <FigmaHealthVisitsListView visits={visits} rawReports={reports} />
 }

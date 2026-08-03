@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useImportAttentionSummary } from '@/features/health-import/hooks/useImportAttentionSummary'
 import { FigmaHealthSettingsView } from '@/ui/figma/health/FigmaHealthSettingsView'
 
 export function HealthSettingsPage() {
@@ -19,6 +20,7 @@ export function HealthSettingsPage() {
 	const { assignments, isLoading, refresh } = useHealthSources(userId)
 	const driveConnector = useGoogleDriveConnector(userId)
 	const [isDisconnecting, setIsDisconnecting] = useState(false)
+	const importAttention = useImportAttentionSummary(userId)
 
 	const memberAssignments = useMemo(() => {
 		if (!selectedMemberId) {
@@ -82,6 +84,8 @@ export function HealthSettingsPage() {
 			onExport={() => navigate(ROUTES.settingsData)}
 			onDisconnect={() => void handleDisconnect()}
 			isDisconnecting={isDisconnecting}
+			importCenterAttentionCount={importAttention.needsAttentionCount}
+			onOpenImportCenter={() => navigate(ROUTES.healthImportCenter)}
 		/>
 	)
 }

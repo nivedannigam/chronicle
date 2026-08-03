@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Cloud, Download, Eye, Folder, Unplug } from 'lucide-react'
+import { Cloud, Download, Eye, Folder, Inbox, Unplug } from 'lucide-react'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -20,6 +20,8 @@ export function FigmaHealthSettingsView({
 	onExport,
 	onDisconnect,
 	isDisconnecting,
+	importCenterAttentionCount = 0,
+	onOpenImportCenter,
 }: {
 	driveConnected: boolean
 	memberLabel: string
@@ -32,6 +34,8 @@ export function FigmaHealthSettingsView({
 	onExport: () => void
 	onDisconnect: () => void
 	isDisconnecting?: boolean
+	importCenterAttentionCount?: number
+	onOpenImportCenter: () => void
 }) {
 	return (
 		<div style={{ paddingBottom: 32 }}>
@@ -89,6 +93,21 @@ export function FigmaHealthSettingsView({
 						/>
 					))
 				)}
+			</Section>
+
+			<Section label="Import Center">
+				<Row
+					icon={Inbox}
+					color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
+					title="Import Center"
+					subtitle={
+						importCenterAttentionCount > 0
+							? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
+							: 'Recent activity and anything Chronicle needs from you'
+					}
+					actionLabel="Open"
+					onAction={onOpenImportCenter}
+				/>
 			</Section>
 
 			<Section label="Privacy">

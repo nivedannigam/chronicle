@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, MessageCircle } from 'lucide-react'
-import { ROUTES, healthReportPath } from '@/constants/routes'
+import { ROUTES, healthVisitPath } from '@/constants/routes'
 import type { HealthCompanionView } from '@/features/health/types/health-companion.types'
+import type { HealthVisit } from '@/features/health/types/health-visit.types'
 import {
 	buildHealthGreeting,
 	buildHealthSummarySentence,
-	buildVisitSummarySentence,
 	HEALTH_ASK_SUGGESTIONS,
-	pickLatestVisit,
 	formatChangeLabel,
 } from '@/features/health/services/health-product.mapper'
 import { figmaHealthScoreColor } from '@/ui/figma/health/figma-health-formatters'
@@ -36,10 +35,12 @@ export function FigmaHealthHomeView({
 	companion,
 	memberName,
 	hasReports,
+	latestVisit,
 }: {
 	companion: HealthCompanionView
 	memberName: string | null
 	hasReports: boolean
+	latestVisit: HealthVisit | null
 }) {
 	const navigate = useNavigate()
 	const greeting = buildHealthGreeting(memberName)
@@ -47,7 +48,7 @@ export function FigmaHealthHomeView({
 		companion.status,
 		hasReports,
 	)
-	const latestVisit = pickLatestVisit(companion)
+	const latestVisitCard = latestVisit
 	const changes = companion.changes.slice(0, 3)
 	const watchItems = companion.attention.slice(0, 4)
 	const ringColor = figmaHealthScoreColor(companion.score)
@@ -116,11 +117,11 @@ export function FigmaHealthHomeView({
 				</div>
 			</SectionBlock>
 
-			{latestVisit ? (
+			{latestVisitCard ? (
 				<SectionBlock label="Latest health visit">
 					<button
 						type="button"
-						onClick={() => navigate(healthReportPath(latestVisit.id))}
+						onClick={() => navigate(healthVisitPath(latestVisitCard.id))}
 						style={{
 							...figmaCardStyle,
 							borderRadius: 20,
@@ -140,10 +141,10 @@ export function FigmaHealthHomeView({
 								margin: '0 0 6px',
 							}}
 						>
-							{latestVisit.title}
+							{latestVisitCard.title}
 						</p>
 						<p style={{ color: FC.mid, fontSize: 12.5, margin: '0 0 10px' }}>
-							{latestVisit.displayDate} · {latestVisit.hospital}
+							{latestVisitCard.displayMonthYear} · {latestVisitCard.hospital}
 						</p>
 						<p
 							style={{
@@ -153,7 +154,9 @@ export function FigmaHealthHomeView({
 								margin: 0,
 							}}
 						>
-							{buildVisitSummarySentence(latestVisit)}
+							{latestVisitCard.reportCount > 1
+								? `${latestVisitCard.reportCount} reports · ${latestVisitCard.summaryLine}`
+								: latestVisitCard.summaryLine}
 						</p>
 					</button>
 				</SectionBlock>

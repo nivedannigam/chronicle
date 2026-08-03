@@ -79,6 +79,9 @@ export const HEALTH_COPY = {
 	emptyReportsTitle: 'No reports yet',
 	emptyReportsBody:
 		'When health reports are added, they will appear here as a simple list.',
+	emptyVisitsTitle: 'No health visits yet',
+	emptyVisitsBody:
+		'When health records are added, Chronicle will organize them into visits — the way you remember care, not as loose PDFs.',
 	/** @deprecated Legacy pages — routes redirect to Home */
 	goToSetup: 'Connect health records',
 	emptyAddReports: 'Connect Google Drive',

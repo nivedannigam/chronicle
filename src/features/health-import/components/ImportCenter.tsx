@@ -1,10 +1,11 @@
-import { HealthImportReportList } from '@/features/health-import/components/HealthImportReportList'
+import { HealthImportCenterPage } from '@/features/health/pages/HealthImportCenterPage'
 
 interface ImportCenterProps {
 	userId: string
 }
 
-/** Unified setup report list — replaces legacy registry grid and section stacks. */
+/** Consumer Import Center — calm presentation over existing import state. */
 export function ImportCenter({ userId }: ImportCenterProps) {
-	return <HealthImportReportList userId={userId} />
+	void userId
+	return <HealthImportCenterPage />
 }

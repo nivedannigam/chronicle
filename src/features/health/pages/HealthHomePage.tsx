@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import { useAuth } from '@/features/auth'
+import { HealthImportAttentionBanner } from '@/features/health/components/HealthImportAttentionBanner'
+import { useImportAttentionSummary } from '@/features/health-import/hooks/useImportAttentionSummary'
 import {
 	DashboardEmptyState,
 	DashboardSkeleton,
@@ -10,14 +13,31 @@ import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
 import { FigmaHealthHomeView } from '@/ui/figma/health/FigmaHealthHomeView'
+import {
+	buildHealthVisits,
+	pickLatestHealthVisit,
+} from '@/features/health/services/health-visit.mapper'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function HealthHomePage() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { selectedMember } = useFamilyContext()
-	const { companion, hasImportedReports, isLoading, isError, refetch } =
-		useHealthCompanion()
+	const {
+		companion,
+		reports,
+		hasImportedReports,
+		isLoading,
+		isError,
+		refetch,
+	} = useHealthCompanion()
+
+	const latestVisit = useMemo(() => {
+		const visits = buildHealthVisits(reports)
+		return pickLatestHealthVisit(visits)
+	}, [reports])
+
+	const importAttention = useImportAttentionSummary(user?.id)
 
 	const memberName = resolveMemberDisplayName({
 		profileName:
@@ -57,11 +77,17 @@ export function HealthHomePage() {
 	}
 
 	return (
-		<FigmaHealthHomeView
-			companion={companion}
-			memberName={memberName}
-			hasReports={hasImportedReports}
-		/>
+		<>
+			{importAttention.message ? (
+				<HealthImportAttentionBanner message={importAttention.message} />
+			) : null}
+			<FigmaHealthHomeView
+				companion={companion}
+				memberName={memberName}
+				hasReports={hasImportedReports}
+				latestVisit={latestVisit}
+			/>
+		</>
 	)
 }
 

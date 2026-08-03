@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
@@ -5,15 +6,15 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { filterMajorHistoryEvents } from '@/features/health/services/health-product.mapper'
+import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { FigmaHealthHistoryView } from '@/ui/figma/health/FigmaHealthHistoryView'
 
 export function HealthHistoryPage() {
 	const navigate = useNavigate()
-	const { companion, hasImportedReports, isLoading, isError, refetch } =
+	const { reports, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 
-	const events = filterMajorHistoryEvents(companion.journeyEvents)
+	const visits = useMemo(() => buildHealthVisits(reports), [reports])
 
 	if (isLoading) {
 		return <ListSkeleton rows={5} height={64} />
@@ -28,7 +29,7 @@ export function HealthHistoryPage() {
 		)
 	}
 
-	if (!hasImportedReports || events.length === 0) {
+	if (!hasImportedReports || visits.length === 0) {
 		return (
 			<DashboardEmptyState
 				title={HEALTH_COPY.emptyHistoryTitle}
@@ -42,5 +43,5 @@ export function HealthHistoryPage() {
 		)
 	}
 
-	return <FigmaHealthHistoryView events={events} />
+	return <FigmaHealthHistoryView visits={visits} />
 }

@@ -21,6 +21,7 @@ export const ROUTES = {
 	more: '/more',
 	health: '/health',
 	healthReports: '/health/reports',
+	healthVisit: '/health/visits/:visitId',
 	healthHistory: '/health/history',
 	healthAsk: '/health/ask',
 	healthTimeline: '/health/timeline',
@@ -28,6 +29,7 @@ export const ROUTES = {
 	healthInsights: '/health/insights',
 	healthSettings: '/health/settings',
 	healthSettingsImport: '/health/settings/import',
+	healthImportCenter: '/health/import-center',
 	healthFolderSetup: '/health/settings/folders',
 	healthTrends: '/health/metrics',
 	healthCompare: '/health/compare',
@@ -76,6 +78,10 @@ export function familyMemberEditPath(memberId: string) {
 
 export function healthReportPath(reportId: string) {
 	return `/health/reports/${reportId}`
+}
+
+export function healthVisitPath(visitId: string) {
+	return `/health/visits/${visitId}`
 }
 
 export function healthMetricPath(metricId: string) {

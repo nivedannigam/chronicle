@@ -1,6 +1,5 @@
 import type {
 	HealthChangeItem,
-	HealthCompanionView,
 	HealthJourneyEvent,
 	HealthReportSummary,
 	HealthStatusLabel,
@@ -213,13 +212,6 @@ export function groupHistoryEventsByYear(
 	return [...map.entries()].sort(
 		(a, b) => Number.parseInt(b[0], 10) - Number.parseInt(a[0], 10),
 	)
-}
-
-export function pickLatestVisit(
-	companion: HealthCompanionView,
-): HealthReportSummary | null {
-	const ready = companion.recentReports.find((report) => report.isReady)
-	return ready ?? companion.recentReports[0] ?? null
 }
 
 export const HEALTH_ASK_SUGGESTIONS = [
