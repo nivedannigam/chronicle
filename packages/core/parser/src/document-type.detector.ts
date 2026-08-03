@@ -19,7 +19,10 @@ export function textIndicatesHealthReportDocument(text: string): boolean {
 		normalized.includes('lab') ||
 		normalized.includes('checkup') ||
 		normalized.includes('check-up') ||
-		normalized.includes('health report')
+		normalized.includes('health report') ||
+		normalized.includes('health summary') ||
+		normalized.includes('comprehensive health') ||
+		normalized.includes('health dashboard')
 	)
 }
 

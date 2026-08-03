@@ -13,6 +13,7 @@ function makeReport(input: {
 	laboratory?: string
 	reportType?: string
 	status?: UploadedHealthReport['status']
+	parsed_data?: UploadedHealthReport['parsed_data']
 }): UploadedHealthReport {
 	return {
 		id: input.id,
@@ -24,7 +25,7 @@ function makeReport(input: {
 		uploaded_at: `${input.date}T10:00:00.000Z`,
 		report_date: input.date,
 		report_type: input.reportType ?? 'general',
-		parsed_data: {
+		parsed_data: input.parsed_data ?? {
 			metrics: [],
 			metadata: {
 				reportDate: input.date,
@@ -125,6 +126,42 @@ describe('buildHealthVisits', () => {
 
 		expect(visits[0]?.status).toBe('organizing')
 		expect(visits[0]?.summaryLine).toBe('Still organizing results')
+	})
+
+	it('shows needs-help summary copy for grouped visits with failed reports', () => {
+		const visits = buildHealthVisits([
+			makeReport({
+				id: 'r1',
+				fileName: 'Feb 2026 Company plan.pdf',
+				date: '2026-02-01',
+				status: 'failed',
+			}),
+			makeReport({
+				id: 'r2',
+				fileName: 'Feb 2026.pdf',
+				date: '2026-02-02',
+				status: 'completed',
+				parsed_data: {
+					metrics: [
+						{
+							canonicalId: 'hemoglobin',
+							displayName: 'Hemoglobin',
+							value: 14,
+							unit: 'g/dL',
+							status: 'normal',
+						},
+					],
+					metadata: {
+						reportDate: '2026-02-02',
+						laboratory: 'Apollo',
+						reportType: 'blood-count',
+					},
+				},
+			}),
+		])
+
+		expect(visits[0]?.status).toBe('needs_help')
+		expect(visits[0]?.summaryParagraph).toContain('could not finish organizing')
 	})
 })
 

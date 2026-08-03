@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, FolderInput, RefreshCw } from 'lucide-react'
+import { Check, FolderInput, RefreshCw, Sparkles } from 'lucide-react'
 import { healthVisitPath } from '@/constants/routes'
 import type {
 	ImportCenterViewModel,
@@ -16,6 +16,7 @@ export function FigmaImportCenterView({
 	onIgnore,
 	onChooseMember,
 	onTryAgain,
+	onReprocessWithAi,
 	onMove,
 }: {
 	view: ImportCenterViewModel
@@ -28,6 +29,7 @@ export function FigmaImportCenterView({
 		reportId: string | null
 		itemId: string
 	}) => void
+	onReprocessWithAi: (input: { reportId: string; itemId: string }) => void
 	onMove: () => void
 }) {
 	const navigate = useNavigate()
@@ -156,6 +158,14 @@ export function FigmaImportCenterView({
 									itemId: item.id,
 								})
 							}
+							onReprocessWithAi={() => {
+								if (item.reportId) {
+									onReprocessWithAi({
+										reportId: item.reportId,
+										itemId: item.id,
+									})
+								}
+							}}
 							onMove={onMove}
 						/>
 					))
@@ -199,6 +209,7 @@ function HelpCard({
 	onIgnore,
 	onChooseMember,
 	onTryAgain,
+	onReprocessWithAi,
 	onMove,
 }: {
 	item: ImportHelpItem
@@ -207,6 +218,7 @@ function HelpCard({
 	onIgnore: () => void
 	onChooseMember: (memberId: string) => void
 	onTryAgain: () => void
+	onReprocessWithAi: () => void
 	onMove: () => void
 }) {
 	return (
@@ -275,6 +287,14 @@ function HelpCard({
 							disabled={isBusy}
 							onClick={onTryAgain}
 						/>
+						{item.canReprocessWithAi && item.reportId ? (
+							<ActionButton
+								label={isBusy ? 'AI…' : 'Reprocess with AI'}
+								icon={<Sparkles size={14} />}
+								disabled={isBusy}
+								onClick={onReprocessWithAi}
+							/>
+						) : null}
 						<ActionButton
 							label="Move"
 							icon={<FolderInput size={14} />}

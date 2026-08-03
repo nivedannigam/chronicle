@@ -60,6 +60,7 @@ export function HealthImportCenterPage() {
 				void center.handleChooseMember(registryId, memberId)
 			}
 			onTryAgain={(input) => void center.handleTryAgain(input)}
+			onReprocessWithAi={(input) => void center.handleReprocessWithAi(input)}
 			onMove={center.handleMove}
 		/>
 	)

@@ -12,7 +12,11 @@ import {
 import { buildSetupReportRows } from '@/features/health-import/utils/setup-report-list.utils'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
-import { reprocessHealthReport } from '@/features/health/services/health-processing.service'
+import {
+	reprocessHealthReport,
+	reprocessHealthReportWithAi,
+} from '@/features/health/services/health-processing.service'
+import { AI_REPROCESS_CONFIRMATION } from '@/features/health/services/health-ai-extraction.service'
 import { useImportReview } from '@/features/medical-discovery/hooks/useImportReview'
 import { useUser } from '@/features/user/hooks/useUser'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
@@ -148,6 +152,24 @@ export function useImportCenterView(userId: string | undefined) {
 		}
 	}
 
+	const handleReprocessWithAi = async (input: {
+		reportId: string
+		itemId: string
+	}) => {
+		if (!window.confirm(AI_REPROCESS_CONFIRMATION)) {
+			return
+		}
+
+		setBusyItemId(input.itemId)
+
+		try {
+			await reprocessHealthReportWithAi(input.reportId)
+			await refreshAll()
+		} finally {
+			setBusyItemId(null)
+		}
+	}
+
 	const handleMove = () => {
 		navigate(ROUTES.healthFolderSetup)
 	}
@@ -160,6 +182,7 @@ export function useImportCenterView(userId: string | undefined) {
 		handleIgnore,
 		handleChooseMember,
 		handleTryAgain,
+		handleReprocessWithAi,
 		handleMove,
 	}
 }

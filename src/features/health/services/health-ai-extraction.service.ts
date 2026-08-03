@@ -10,6 +10,7 @@ import {
 } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import { healthReportQualifiesForMetriclessCompletion } from '@/features/health/services/report-readiness.service'
 
 const AI_METRIC_CONFIDENCE = 0.55
 const MAX_AI_METRICS = 100
@@ -49,6 +50,31 @@ export function validateAiExtractedMetrics(
 	}
 
 	return valid
+}
+
+export function resolveAiExtractedMetrics(input: {
+	metrics: ExtractMetricsAiEdgeMetric[]
+	report: UploadedHealthReport
+}): ExtractMetricsAiEdgeMetric[] {
+	if (input.metrics.length > 0) {
+		return validateAiExtractedMetrics(input.metrics)
+	}
+
+	const existing = getParsedHealthReport(input.report)
+
+	if (
+		healthReportQualifiesForMetriclessCompletion({
+			metadata: {
+				reportType: existing?.metadata.reportType,
+				laboratory: existing?.metadata.laboratory,
+			},
+			fileName: input.report.file_name,
+		})
+	) {
+		return []
+	}
+
+	return validateAiExtractedMetrics(input.metrics)
 }
 
 function normalizeAiStatus(status: string): MetricStatus {
@@ -122,7 +148,10 @@ export async function buildHealthReportFromAiExtraction(input: {
 		fileName: input.report.file_name,
 	})
 
-	const validatedMetrics = validateAiExtractedMetrics(aiResult.metrics)
+	const validatedMetrics = resolveAiExtractedMetrics({
+		metrics: aiResult.metrics,
+		report: input.report,
+	})
 	const metrics = validatedMetrics.map(toHealthMetric)
 	const metadata = {
 		reportType:

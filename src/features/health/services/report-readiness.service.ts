@@ -13,6 +13,28 @@ const METRICLESS_COMPLETE_KINDS = new Set([
 export const NO_LAB_METRICS_EXTRACTED_MESSAGE =
 	'OCR completed but no laboratory metrics were extracted from this report.'
 
+/** Reports in processing longer than this are treated as stuck and need attention. */
+export const REPORT_PROCESSING_STALE_MS = 20 * 60 * 1000
+
+function normalizeReportTypeKind(reportType: string): string {
+	return reportType
+		.trim()
+		.toLowerCase()
+		.replace(/[\s-]+/g, '_')
+}
+
+function metadataReportTypeIsMetricless(
+	reportType: string | undefined,
+): boolean {
+	if (!reportType?.trim()) {
+		return false
+	}
+
+	return METRICLESS_COMPLETE_KINDS.has(
+		normalizeReportTypeKind(reportType) as 'ecg',
+	)
+}
+
 export function textIndicatesMetriclessReportType(text: string): boolean {
 	const normalized = text.toLowerCase()
 
@@ -25,6 +47,12 @@ export function textIndicatesMetriclessReportType(text: string): boolean {
 		normalized.includes('stress test') ||
 		normalized.includes('company wellness') ||
 		normalized.includes('wellness plan') ||
+		normalized.includes('company plan') ||
+		normalized.includes('health summary') ||
+		normalized.includes('comprehensive health') ||
+		normalized.includes('health dashboard') ||
+		(normalized.includes('summary') && normalized.includes('health')) ||
+		normalized.includes('discharge') ||
 		normalized.includes('mri') ||
 		normalized.includes(' ct ') ||
 		normalized.includes('x-ray') ||
@@ -55,6 +83,10 @@ export function healthReportQualifiesForMetriclessCompletion(input: {
 	metadata: { reportType?: string; laboratory?: string }
 	fileName?: string
 }): boolean {
+	if (metadataReportTypeIsMetricless(input.metadata.reportType)) {
+		return true
+	}
+
 	const searchable = [
 		input.metadata.reportType ?? '',
 		input.metadata.laboratory ?? '',
@@ -62,6 +94,23 @@ export function healthReportQualifiesForMetriclessCompletion(input: {
 	].join(' ')
 
 	return textIndicatesMetriclessReportType(searchable)
+}
+
+export function isReportStuckInProcessing(
+	report: UploadedHealthReport,
+	nowMs = Date.now(),
+): boolean {
+	if (!isReportProcessing(report)) {
+		return false
+	}
+
+	const startedAt = Date.parse(report.uploaded_at)
+
+	if (Number.isNaN(startedAt)) {
+		return false
+	}
+
+	return nowMs - startedAt >= REPORT_PROCESSING_STALE_MS
 }
 
 const PROCESSING_STATUSES = new Set([

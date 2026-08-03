@@ -127,7 +127,11 @@ describe('deriveSetupReportStatus', () => {
 		expect(
 			deriveSetupReportStatus({
 				registry: registry({ importStatus: 'ocr' }),
-				report: report({ id: 'r3', status: 'processing' }),
+				report: report({
+					id: 'r3',
+					status: 'processing',
+					uploaded_at: new Date().toISOString(),
+				}),
 			}),
 		).toBe('processing')
 	})
@@ -152,6 +156,22 @@ describe('deriveSetupReportStatus', () => {
 				report: report({ id: 'r5' }),
 			}),
 		).toBe('ready')
+	})
+
+	it('maps long-running processing reports to needs_reprocess', () => {
+		expect(
+			deriveSetupReportStatus({
+				registry: registry({
+					importStatus: 'parsing',
+					healthReportId: 'r-stuck',
+				}),
+				report: report({
+					id: 'r-stuck',
+					status: 'processing',
+					uploaded_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+				}),
+			}),
+		).toBe('needs_reprocess')
 	})
 })
 

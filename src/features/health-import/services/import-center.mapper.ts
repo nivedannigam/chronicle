@@ -29,6 +29,7 @@ export interface ImportHelpItem {
 	registryId: string | null
 	reportId: string | null
 	rowKey: string | null
+	canReprocessWithAi?: boolean
 	memberOptions?: Array<{ id: string; label: string }>
 }
 
@@ -152,6 +153,7 @@ export function mapSetupRowToHelpItem(
 		registryId: row.registryId,
 		reportId: row.reportId,
 		rowKey: row.key,
+		canReprocessWithAi: row.canReprocessWithAi,
 	}
 }
 

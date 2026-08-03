@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+	resolveAiExtractedMetrics,
 	validateAiExtractedMetrics,
 	reportEligibleForAiReprocess,
 } from '@/features/health/services/health-ai-extraction.service'
@@ -42,5 +43,20 @@ describe('health-ai-extraction.service', () => {
 		expect(() => validateAiExtractedMetrics([])).toThrow(
 			/no usable laboratory metrics/i,
 		)
+	})
+
+	it('allows empty AI metrics for metricless report types', () => {
+		const metrics = resolveAiExtractedMetrics({
+			metrics: [],
+			report: {
+				file_name: '2023 - 2026 Health Summary.pdf',
+				parsed_data: {
+					metrics: [],
+					metadata: { reportType: 'health-summary' },
+				},
+			} as unknown as UploadedHealthReport,
+		})
+
+		expect(metrics).toEqual([])
 	})
 })

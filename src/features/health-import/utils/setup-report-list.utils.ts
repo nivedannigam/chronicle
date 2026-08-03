@@ -9,6 +9,7 @@ import { reportEligibleForAiReprocess } from '@/features/health/services/health-
 import {
 	isReportDisplayReady,
 	isReportProcessing,
+	isReportStuckInProcessing,
 	metricsDisplayMessage,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
@@ -119,6 +120,10 @@ export function deriveSetupReportStatus(input: {
 		}
 
 		if (reportNeedsReprocess(report)) {
+			return 'needs_reprocess'
+		}
+
+		if (isReportStuckInProcessing(report)) {
 			return 'needs_reprocess'
 		}
 

@@ -361,6 +361,18 @@ function buildSummaryParagraph(input: {
 			? ` at ${input.hospital}`
 			: ''
 
+	if (input.status === 'needs_help') {
+		if (input.reportCount > 1) {
+			return `This ${input.title.toLowerCase()} includes ${input.reportCount} documents${location}, but Chronicle could not finish organizing every one. Open the documents below to retry or review what failed.`
+		}
+
+		return `Chronicle could not finish organizing this visit${location}. Open the document below to retry or review what failed.`
+	}
+
+	if (input.status === 'organizing') {
+		return `Chronicle is still organizing the documents from this visit${location}.`
+	}
+
 	if (input.reportCount > 1) {
 		if (input.findingCount > 0) {
 			return `This ${input.title.toLowerCase()} included ${input.reportCount} documents${location}. Chronicle found ${input.findingCount} result${input.findingCount === 1 ? '' : 's'} worth a closer look across the visit.`

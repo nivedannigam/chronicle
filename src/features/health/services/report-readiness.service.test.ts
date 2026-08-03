@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
 	getReportPipelinePhase,
+	healthReportQualifiesForMetriclessCompletion,
 	isReportDisplayReady,
 	isReportFullyClassified,
+	isReportStuckInProcessing,
 	metricsDisplayMessage,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
 	reportNeedsReprocess,
 	reportQualifiesForMetriclessCompletion,
+	REPORT_PROCESSING_STALE_MS,
 } from '@/features/health/services/report-readiness.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 
@@ -43,6 +46,38 @@ describe('report-readiness.service', () => {
 
 		expect(isReportDisplayReady(report)).toBe(true)
 		expect(getReportPipelinePhase(report)).toBe('ready')
+	})
+
+	it('allows metricless completion for health summary filename during processing', () => {
+		expect(
+			healthReportQualifiesForMetriclessCompletion({
+				metadata: { reportType: 'health-summary' },
+				fileName: '2023 - 2026 Health Summary.pdf',
+			}),
+		).toBe(true)
+	})
+
+	it('allows metricless completion for company plan wellness documents', () => {
+		expect(
+			healthReportQualifiesForMetriclessCompletion({
+				metadata: { reportType: 'general' },
+				fileName: 'Feb 2026 Company plan.pdf',
+			}),
+		).toBe(true)
+	})
+
+	it('detects reports stuck in processing', () => {
+		const recent = createReport('processing', {
+			uploaded_at: new Date().toISOString(),
+		})
+		const stale = createReport('processing', {
+			uploaded_at: new Date(
+				Date.now() - REPORT_PROCESSING_STALE_MS - 1_000,
+			).toISOString(),
+		})
+
+		expect(isReportStuckInProcessing(stale)).toBe(true)
+		expect(isReportStuckInProcessing(recent)).toBe(false)
 	})
 
 	it('allows metricless completion for health summary reports', () => {
