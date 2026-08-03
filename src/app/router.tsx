@@ -9,16 +9,16 @@ import { AskPage } from '@/features/ask'
 import { ConnectorDebugPage } from '@/features/connectors'
 import '@/features/connectors/services/connector-bootstrap'
 import {
+	HealthAskPage,
 	HealthComparePage,
-	HealthDashboardPage,
-	HealthInsightsPage,
+	HealthHistoryPage,
+	HealthHomePage,
+	HealthImportConsolePage,
 	HealthLayout,
-	HealthMetricsPage,
 	HealthReportDetailPage,
 	HealthReportsPage,
 	HealthSettingsPage,
 	HealthFolderSetupPage,
-	HealthTimelinePage,
 } from '@/features/health'
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
 import { OcrPreviewPage } from '@/features/medical-discovery'
@@ -51,11 +51,7 @@ import { DocumentsCategoryPage } from '@/features/documents/pages/DocumentsCateg
 import { TimelinePage } from '@/features/timeline'
 import { SearchPage } from '@/features/search'
 import { AppLayout } from '@/components/layout/AppLayout'
-import {
-	DEFAULT_AUTHENTICATED_ROUTE,
-	healthSettingsSection,
-	ROUTES,
-} from '@/constants/routes'
+import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
 
 export function AppRouter() {
@@ -178,7 +174,7 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.settingsImport}
-						element={<Navigate to={ROUTES.healthSettings} replace />}
+						element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 					/>
 					<Route
 						path={ROUTES.connectorsGoogleDrive}
@@ -186,27 +182,44 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.healthImport}
-						element={<Navigate to={ROUTES.healthSettings} replace />}
+						element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 					/>
 					<Route
 						path={ROUTES.healthTrends}
-						element={<Navigate to={ROUTES.healthMetrics} replace />}
+						element={<Navigate to={ROUTES.health} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImportReview}
-						element={<Navigate to={healthSettingsSection('review')} replace />}
+						element={
+							<Navigate to={`${ROUTES.healthSettingsImport}#review`} replace />
+						}
 					/>
 
 					<Route path={ROUTES.health} element={<HealthLayout />}>
-						<Route index element={<HealthDashboardPage />} />
+						<Route index element={<HealthHomePage />} />
+						<Route path="history" element={<HealthHistoryPage />} />
 						<Route path="reports" element={<HealthReportsPage />} />
-						<Route path="timeline" element={<HealthTimelinePage />} />
-						<Route path="metrics" element={<HealthMetricsPage />} />
-						<Route path="insights" element={<HealthInsightsPage />} />
+						<Route path="ask" element={<HealthAskPage />} />
 						<Route path="settings" element={<HealthSettingsPage />} />
+						<Route
+							path="settings/import"
+							element={<HealthImportConsolePage />}
+						/>
 						<Route
 							path="settings/folders"
 							element={<HealthFolderSetupPage />}
+						/>
+						<Route
+							path="timeline"
+							element={<Navigate to={ROUTES.healthHistory} replace />}
+						/>
+						<Route
+							path="metrics"
+							element={<Navigate to={ROUTES.health} replace />}
+						/>
+						<Route
+							path="insights"
+							element={<Navigate to={ROUTES.health} replace />}
 						/>
 					</Route>
 
@@ -237,11 +250,11 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthImportDebug}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthKnowledgeDebug}
-								element={<Navigate to={ROUTES.healthInsights} replace />}
+								element={<Navigate to={ROUTES.health} replace />}
 							/>
 							<Route
 								path={ROUTES.healthValidation}
@@ -249,11 +262,11 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthDiscovery}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportWizard}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthCompare}
@@ -268,19 +281,19 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthDiscovery}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportWizard}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportDebug}
-								element={<Navigate to={ROUTES.healthSettings} replace />}
+								element={<Navigate to={ROUTES.healthSettingsImport} replace />}
 							/>
 							<Route
 								path={ROUTES.healthKnowledgeDebug}
-								element={<Navigate to={ROUTES.healthInsights} replace />}
+								element={<Navigate to={ROUTES.health} replace />}
 							/>
 							<Route
 								path={ROUTES.healthCompare}

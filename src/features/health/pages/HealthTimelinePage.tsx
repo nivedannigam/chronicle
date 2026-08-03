@@ -1,41 +1,7 @@
-import { useNavigate } from 'react-router-dom'
-import { HEALTH_COPY } from '@/constants/product-copy'
+import { Navigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
-import { ListSkeleton } from '@/components/common/ListSkeleton'
-import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
-import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { FigmaHealthTimelineView } from '@/ui/figma/health/figma-health-views'
 
+/** @deprecated Timeline was renamed to History */
 export function HealthTimelinePage() {
-	const navigate = useNavigate()
-	const { companion, hasImportedReports, isLoading, isError, refetch } =
-		useHealthCompanion()
-
-	if (isLoading) {
-		return <ListSkeleton rows={5} height={64} />
-	}
-
-	if (isError) {
-		return (
-			<InlineErrorBanner
-				message="Could not load your health timeline."
-				onRetry={() => void refetch()}
-			/>
-		)
-	}
-
-	if (!hasImportedReports || companion.journeyEvents.length === 0) {
-		return (
-			<DashboardEmptyState
-				title="Your health journey will appear here"
-				message="Checkups, findings, and improvements from your reports will show up as a readable timeline — not an upload log."
-				emoji="🩺"
-				actionLabel={HEALTH_COPY.emptyAddReports}
-				onAction={() => navigate(ROUTES.healthSettings)}
-			/>
-		)
-	}
-
-	return <FigmaHealthTimelineView events={companion.journeyEvents} />
+	return <Navigate to={ROUTES.healthHistory} replace />
 }

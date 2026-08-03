@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
@@ -6,35 +5,35 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { buildProductReportCards } from '@/features/health/services/health-product.mapper'
-import { FigmaHealthReportsListView } from '@/ui/figma/health/FigmaHealthReportsListView'
+import { filterMajorHistoryEvents } from '@/features/health/services/health-product.mapper'
+import { FigmaHealthHistoryView } from '@/ui/figma/health/FigmaHealthHistoryView'
 
-export function HealthReportsPage() {
+export function HealthHistoryPage() {
 	const navigate = useNavigate()
-	const { reports, hasImportedReports, isLoading, isError, refetch } =
+	const { companion, hasImportedReports, isLoading, isError, refetch } =
 		useHealthCompanion()
 
-	const cards = useMemo(() => buildProductReportCards(reports), [reports])
+	const events = filterMajorHistoryEvents(companion.journeyEvents)
 
 	if (isLoading) {
-		return <ListSkeleton rows={4} />
+		return <ListSkeleton rows={5} height={64} />
 	}
 
 	if (isError) {
 		return (
 			<InlineErrorBanner
-				message="Could not load your medical records."
+				message="Could not load your health history."
 				onRetry={() => void refetch()}
 			/>
 		)
 	}
 
-	if (!hasImportedReports && cards.length === 0) {
+	if (!hasImportedReports || events.length === 0) {
 		return (
 			<DashboardEmptyState
-				title={HEALTH_COPY.emptyReportsTitle}
-				message={HEALTH_COPY.emptyReportsBody}
-				emoji="📋"
+				title={HEALTH_COPY.emptyHistoryTitle}
+				message={HEALTH_COPY.emptyHistoryBody}
+				emoji="🩺"
 				actionLabel={HEALTH_COPY.connectDrive}
 				onAction={() => navigate(ROUTES.profileConnectionsDrive)}
 				secondaryActionLabel={HEALTH_COPY.chooseFolder}
@@ -43,5 +42,5 @@ export function HealthReportsPage() {
 		)
 	}
 
-	return <FigmaHealthReportsListView reports={cards} rawReports={reports} />
+	return <FigmaHealthHistoryView events={events} />
 }

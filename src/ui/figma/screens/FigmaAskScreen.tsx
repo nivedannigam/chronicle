@@ -31,7 +31,11 @@ import {
 	FigmaScreenHeader,
 } from '@/ui/figma/shell/FigmaScreenHeader'
 
-export function FigmaAskScreen() {
+export function FigmaAskScreen({
+	consumerMode = false,
+}: {
+	consumerMode?: boolean
+}) {
 	const navigate = useNavigate()
 	const [searchParams, setSearchParams] = useSearchParams()
 	const { user } = useAuth()
@@ -178,7 +182,7 @@ export function FigmaAskScreen() {
 				paddingBottom={12}
 			/>
 
-			{import.meta.env.DEV && lastRouting ? (
+			{import.meta.env.DEV && !consumerMode && lastRouting ? (
 				<div
 					style={{
 						padding: '0 22px 8px',

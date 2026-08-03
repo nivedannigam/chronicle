@@ -24,6 +24,11 @@ export const USER_VOCAB = {
 		reviewReports: 'Review reports',
 		setupHealth: 'Set up health records',
 	},
+	productReportStatus: {
+		ready: 'Ready',
+		organizing: 'Still Organizing',
+		needsHelp: 'Needs Your Help',
+	},
 	sections: {
 		extractedMetrics: 'Results from this visit',
 		reportDetails: 'Visit details',

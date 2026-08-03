@@ -63,13 +63,25 @@ export const HOME_COPY = {
 } as const
 
 export const HEALTH_COPY = {
-	setupTab: 'Setup',
-	settingsTab: 'Setup',
-	goToSetup: 'Go to Setup',
-	emptyAddReports: 'Set up health records',
-	reviewWaiting: 'Reports waiting for your OK',
-	insightsIntro:
-		'A plain-language summary of what your records mean — written for you.',
+	homeTab: 'Home',
+	historyTab: 'History',
+	reportsTab: 'Reports',
+	askTab: 'Ask',
+	settingsTab: 'Settings',
+	emptyTitle: 'Your health story starts here.',
+	emptyBody:
+		'Connect Google Drive and choose a health folder — Chronicle will organize your records for you.',
+	connectDrive: 'Connect Google Drive',
+	chooseFolder: 'Choose health folder',
+	emptyHistoryTitle: 'Your health history will appear here',
+	emptyHistoryBody:
+		'Checkups and meaningful changes from your reports will show up here over time.',
+	emptyReportsTitle: 'No reports yet',
+	emptyReportsBody:
+		'When health reports are added, they will appear here as a simple list.',
+	/** @deprecated Legacy pages — routes redirect to Home */
+	goToSetup: 'Connect health records',
+	emptyAddReports: 'Connect Google Drive',
 } as const
 
 export const ASK_COPY = {

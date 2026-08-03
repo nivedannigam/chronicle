@@ -1,14 +1,14 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-	BarChart2,
-	GitCommitHorizontal,
-	LayoutGrid,
-	Lightbulb,
+	History,
+	Home,
+	MessageCircle,
 	ScrollText,
-	SlidersHorizontal,
+	Settings,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { HEALTH_COPY } from '@/constants/product-copy'
 import { AppShell } from '@/components/layout/mobile'
 import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
 import {
@@ -26,46 +26,39 @@ const HEALTH_TABS: {
 	end?: boolean
 }[] = [
 	{
-		id: 'overview',
-		label: 'Overview',
+		id: 'home',
+		label: HEALTH_COPY.homeTab,
 		path: ROUTES.health,
-		Icon: LayoutGrid,
+		Icon: Home,
 		color: FC.green,
 		end: true,
 	},
 	{
+		id: 'history',
+		label: HEALTH_COPY.historyTab,
+		path: ROUTES.healthHistory,
+		Icon: History,
+		color: FC.purple,
+	},
+	{
 		id: 'reports',
-		label: 'Reports',
+		label: HEALTH_COPY.reportsTab,
 		path: ROUTES.healthReports,
 		Icon: ScrollText,
 		color: FC.blue,
 	},
 	{
-		id: 'timeline',
-		label: 'Timeline',
-		path: ROUTES.healthTimeline,
-		Icon: GitCommitHorizontal,
-		color: FC.purple,
-	},
-	{
-		id: 'metrics',
-		label: 'Metrics',
-		path: ROUTES.healthMetrics,
-		Icon: BarChart2,
-		color: FC.amber,
-	},
-	{
-		id: 'insights',
-		label: 'Insights',
-		path: ROUTES.healthInsights,
-		Icon: Lightbulb,
+		id: 'ask',
+		label: HEALTH_COPY.askTab,
+		path: ROUTES.healthAsk,
+		Icon: MessageCircle,
 		color: FC.teal,
 	},
 	{
-		id: 'setup',
-		label: 'Setup',
+		id: 'settings',
+		label: HEALTH_COPY.settingsTab,
 		path: ROUTES.healthSettings,
-		Icon: SlidersHorizontal,
+		Icon: Settings,
 		color: FC.mid,
 	},
 ]

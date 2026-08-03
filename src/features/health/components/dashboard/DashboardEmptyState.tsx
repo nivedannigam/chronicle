@@ -7,6 +7,8 @@ interface DashboardEmptyStateProps {
 	emoji?: string
 	actionLabel?: string
 	onAction?: () => void
+	secondaryActionLabel?: string
+	onSecondaryAction?: () => void
 }
 
 export function DashboardEmptyState({
@@ -15,6 +17,8 @@ export function DashboardEmptyState({
 	emoji = '📋',
 	actionLabel,
 	onAction,
+	secondaryActionLabel,
+	onSecondaryAction,
 }: DashboardEmptyStateProps) {
 	return (
 		<FigmaCard
@@ -46,23 +50,51 @@ export function DashboardEmptyState({
 				{message}
 			</div>
 			{actionLabel && onAction ? (
-				<button
-					type="button"
-					onClick={onAction}
+				<div
 					style={{
-						background: C.accentDim,
-						border: '1px solid rgba(108,111,255,0.25)',
-						borderRadius: 100,
-						padding: '8px 14px',
-						fontSize: 12,
-						fontWeight: 700,
-						color: C.accent,
-						cursor: 'pointer',
-						fontFamily: 'inherit',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: 8,
+						alignItems: 'center',
 					}}
 				>
-					{actionLabel}
-				</button>
+					<button
+						type="button"
+						onClick={onAction}
+						style={{
+							background: C.accentDim,
+							border: '1px solid rgba(108,111,255,0.25)',
+							borderRadius: 100,
+							padding: '8px 14px',
+							fontSize: 12,
+							fontWeight: 700,
+							color: C.accent,
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+						}}
+					>
+						{actionLabel}
+					</button>
+					{secondaryActionLabel && onSecondaryAction ? (
+						<button
+							type="button"
+							onClick={onSecondaryAction}
+							style={{
+								background: 'transparent',
+								border: `1px solid ${C.border}`,
+								borderRadius: 100,
+								padding: '8px 14px',
+								fontSize: 12,
+								fontWeight: 600,
+								color: C.textMuted,
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							{secondaryActionLabel}
+						</button>
+					) : null}
+				</div>
 			) : null}
 		</FigmaCard>
 	)
