@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr/providers/mock-ocr.templates'
 import {
+	formatDoctorNameDisplay,
 	formatLaboratoryDisplayName,
 	formatPatientNameDisplay,
 	identifyReportType,
@@ -197,5 +198,11 @@ describe('resolveLaboratory via parseReportMetadata', () => {
 describe('formatPatientNameDisplay', () => {
 	it('rejects template placeholders', () => {
 		expect(formatPatientNameDisplay('DBO/Age/Gender')).toBeNull()
+	})
+
+	it('trims pathologist suffix from doctor display names', () => {
+		expect(
+			formatDoctorNameDisplay('Dr. P. Pallavi Rath Consultant MD Pathologist'),
+		).toBe('Dr. P. Pallavi Rath')
 	})
 })

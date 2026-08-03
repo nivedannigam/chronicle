@@ -203,8 +203,15 @@ function isPlausibleReferenceNumber(value: string): boolean {
 	return /^[A-Za-z0-9-]+$/.test(cleaned)
 }
 
+function normalizeDoctorCandidate(value: string): string {
+	return cleanPersonName(value)
+		.replace(/\s+Consultant\s+MD\s+Pathologist.*$/i, '')
+		.replace(/\s+MD\s+Pathologist.*$/i, '')
+		.trim()
+}
+
 function isPlausibleDoctorName(value: string): boolean {
-	const cleaned = cleanPersonName(value)
+	const cleaned = normalizeDoctorCandidate(value)
 
 	if (cleaned.length < 3 || IMPLAUSIBLE_DOCTOR_PATTERN.test(cleaned)) {
 		return false
@@ -254,11 +261,17 @@ export function formatDoctorNameDisplay(
 ): string | null {
 	const raw = doctorName?.trim()
 
-	if (!raw || !isPlausibleDoctorName(raw)) {
+	if (!raw) {
 		return null
 	}
 
-	return cleanPersonName(raw)
+	const cleaned = normalizeDoctorCandidate(raw)
+
+	if (!cleaned || !isPlausibleDoctorName(cleaned)) {
+		return null
+	}
+
+	return cleaned
 }
 
 export function formatLaboratoryDisplayName(
@@ -324,19 +337,19 @@ function resolveDoctorName(text: string): string | null {
 	const referral = text.match(REFERRAL_PATTERN)?.[1]?.trim()
 
 	if (referral && isPlausibleDoctorName(referral)) {
-		return cleanPersonName(referral)
+		return normalizeDoctorCandidate(referral)
 	}
 
 	const signature = text.match(DOCTOR_SIGNATURE_PATTERN)?.[0]?.trim()
 
 	if (signature && isPlausibleDoctorName(signature)) {
-		return cleanPersonName(signature)
+		return normalizeDoctorCandidate(signature)
 	}
 
 	const explicit = text.match(DOCTOR_PATTERN)?.[1]?.trim()
 
 	if (explicit && isPlausibleDoctorName(explicit)) {
-		return cleanPersonName(explicit)
+		return normalizeDoctorCandidate(explicit)
 	}
 
 	return null

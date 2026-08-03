@@ -5,6 +5,7 @@ import type {
 	RawMetricRow,
 } from '@/features/health/extraction/layouts/layout-extractor.types'
 import { dedupeMetricRows } from '@/features/health/extraction/layouts/layout-extractor.utils'
+import { normalizeDocumentAiOcrText } from '@/features/health/extraction/layouts/document-ai-text-normalizer'
 import { gluedHorizontalLayoutExtractor } from '@/features/health/extraction/layouts/glued-horizontal.layout'
 import { looseTextLayoutExtractor } from '@/features/health/extraction/layouts/loose-text.layout'
 import { ocrTableLayoutExtractor } from '@/features/health/extraction/layouts/ocr-table.layout'
@@ -36,11 +37,17 @@ function countByLayout(
 export function extractMetricsFromLayouts(
 	input: LayoutExtractorInput,
 ): LayoutExtractionResult {
+	const normalizedText = normalizeDocumentAiOcrText(input.rawText)
+	const normalizedInput: LayoutExtractorInput = {
+		...input,
+		rawText: normalizedText,
+	}
+
 	const allRows: RawMetricRow[] = []
 	const strategiesUsed = new Set<LabLayoutId>()
 
 	for (const extractor of LAYOUT_EXTRACTORS) {
-		const rows = extractor.extract(input)
+		const rows = extractor.extract(normalizedInput)
 
 		if (rows.length > 0) {
 			strategiesUsed.add(extractor.id)
