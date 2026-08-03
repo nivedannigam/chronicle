@@ -1,4 +1,8 @@
 import {
+	formatDoctorNameDisplay,
+	formatLaboratoryDisplayName,
+	formatPatientNameDisplay,
+	formatReferenceNumberDisplay,
 	identifyReportType,
 	resolveReportDateFromFileName,
 } from '@/features/health/extraction/health-metadata.parser'
@@ -122,22 +126,26 @@ function normalizeMetadata(
 	return {
 		reportType:
 			typeof metadata.reportType === 'string' ? metadata.reportType : 'general',
-		laboratory:
-			typeof metadata.laboratory === 'string' ? metadata.laboratory : '',
+		laboratory: formatLaboratoryDisplayName(
+			typeof metadata.laboratory === 'string' ? metadata.laboratory : null,
+		),
 		reportDate:
 			typeof metadata.reportDate === 'string' ? metadata.reportDate : null,
 		collectionDate:
 			typeof metadata.collectionDate === 'string'
 				? metadata.collectionDate
 				: null,
-		referenceNumber:
+		referenceNumber: formatReferenceNumberDisplay(
 			typeof metadata.referenceNumber === 'string'
 				? metadata.referenceNumber
 				: null,
-		patientName:
+		),
+		patientName: formatPatientNameDisplay(
 			typeof metadata.patientName === 'string' ? metadata.patientName : null,
-		doctorName:
+		),
+		doctorName: formatDoctorNameDisplay(
 			typeof metadata.doctorName === 'string' ? metadata.doctorName : null,
+		),
 		testNames: Array.isArray(metadata.testNames)
 			? metadata.testNames.filter(
 					(item): item is string => typeof item === 'string',
@@ -314,4 +322,10 @@ export function countLegacyApproximateOcrReports(
 		(report) =>
 			report.status === 'completed' && hasLegacyApproximateOcr(report),
 	).length
+}
+
+export function formatMetricDisplayValue(value: string): string {
+	const trimmed = value.trim().replace(/^:\s*/, '')
+
+	return trimmed.length > 0 ? trimmed : value
 }

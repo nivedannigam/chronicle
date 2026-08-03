@@ -9,6 +9,7 @@ import {
 	getParsedHealthReport,
 	getReportDisplayDate,
 } from '@/features/health/services/health-parsed-report.service'
+import { formatLaboratoryDisplayName } from '@/features/health/extraction/health-metadata.parser'
 import {
 	buildProductReportCard,
 	mapProductReportStatus,
@@ -37,7 +38,8 @@ interface ReportVisitContext {
 }
 
 function normalizeHospital(value: string | null | undefined): string {
-	const trimmed = (value ?? '').trim().toLowerCase()
+	const display = formatLaboratoryDisplayName(value, '')
+	const trimmed = display.trim().toLowerCase()
 
 	if (!trimmed || trimmed === UNKNOWN_LAB) {
 		return ''
@@ -130,7 +132,7 @@ function buildReportContext(report: UploadedHealthReport): ReportVisitContext {
 		dateMs: parseDateMs(date),
 		date,
 		hospitalKey: normalizeHospital(parsed?.metadata.laboratory),
-		hospital: parsed?.metadata.laboratory?.trim() || 'Medical center',
+		hospital: formatLaboratoryDisplayName(parsed?.metadata.laboratory),
 		visitTitleHint: extractVisitTitleHint(report.file_name),
 		kind: classified.kind,
 	}
@@ -323,7 +325,19 @@ function formatMonthYear(value: string): string {
 	})
 }
 
-function buildSummaryLine(findingCount: number, reportCount: number): string {
+function buildSummaryLine(
+	findingCount: number,
+	reportCount: number,
+	status: ProductReportStatus,
+): string {
+	if (status === 'organizing') {
+		return 'Still organizing results'
+	}
+
+	if (status === 'needs_help') {
+		return 'Needs your help'
+	}
+
 	if (findingCount > 0) {
 		return `${findingCount} important finding${findingCount === 1 ? '' : 's'}`
 	}
@@ -411,7 +425,7 @@ function buildVisitFromCluster(contexts: ReportVisitContext[]): HealthVisit {
 		statusLabel: card.statusLabel,
 	}))
 
-	const summaryLine = buildSummaryLine(findingCount, reportCount)
+	const summaryLine = buildSummaryLine(findingCount, reportCount, status)
 
 	return {
 		id: buildVisitId(reportIds),

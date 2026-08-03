@@ -11,9 +11,9 @@ import {
 	getReportDisplayDate,
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
+import { formatLaboratoryDisplayName } from '@/features/health/extraction/health-metadata.parser'
 import {
 	isReportDisplayReady,
-	isReportFullyClassified,
 	isReportProcessing,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
@@ -62,16 +62,8 @@ export function mapProductReportStatus(
 		return 'organizing'
 	}
 
-	if (isReportFullyClassified(report)) {
-		return 'ready'
-	}
-
 	if (isReportDisplayReady(report)) {
-		return 'organizing'
-	}
-
-	if (report.status === 'completed') {
-		return 'organizing'
+		return 'ready'
 	}
 
 	return 'needs_help'
@@ -97,7 +89,7 @@ export function buildProductReportCard(
 		title: getReportDisplayTitle(report),
 		date,
 		displayDate: formatDisplayDate(date),
-		hospital: parsed?.metadata.laboratory ?? 'Medical center',
+		hospital: formatLaboratoryDisplayName(parsed?.metadata.laboratory),
 		documentType: resolveDocumentTypeLabel(report),
 		status,
 		statusLabel: PRODUCT_STATUS_LABEL[status],
@@ -114,6 +106,27 @@ export function buildProductReportCards(
 				Date.parse(getReportDisplayDate(a)),
 		)
 		.map(buildProductReportCard)
+}
+
+/** User-facing status for report detail — aligns with visit cards while preserving import failures. */
+export function getProductReportStatusLabel(
+	report: UploadedHealthReport,
+): string {
+	if (report.status === 'failed') {
+		return USER_VOCAB.reportStatus.failed
+	}
+
+	return PRODUCT_STATUS_LABEL[mapProductReportStatus(report)]
+}
+
+export function getProductReportStatusColor(
+	report: UploadedHealthReport,
+): 'ready' | 'organizing' | 'needs_help' | 'failed' {
+	if (report.status === 'failed') {
+		return 'failed'
+	}
+
+	return mapProductReportStatus(report)
 }
 
 export function buildHealthGreeting(name: string | null): string {

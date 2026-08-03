@@ -605,7 +605,11 @@ export function buildReportSummaries(
 			return {
 				id: report.id,
 				title: getReportDisplayTitle(report),
-				hospital: parsed?.metadata.laboratory ?? 'Medical center',
+				hospital:
+					parsed?.metadata.laboratory &&
+					parsed.metadata.laboratory !== 'Medical center'
+						? parsed.metadata.laboratory
+						: 'Medical center',
 				doctor: parsed?.metadata.doctorName ?? undefined,
 				date: getReportDisplayDate(report, parsed),
 				displayDate: formatDisplayDate(getReportDisplayDate(report, parsed)),

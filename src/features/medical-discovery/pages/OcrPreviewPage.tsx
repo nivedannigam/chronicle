@@ -111,7 +111,7 @@ export function OcrPreviewPage() {
 				}}
 			>
 				<Meta label="Patient" value={parsed?.metadata?.patientName ?? '—'} />
-				<Meta label="Hospital" value={parsed?.metadata?.laboratory ?? '—'} />
+				<Meta label="Hospital" value={parsed?.metadata?.laboratory || '—'} />
 				<Meta label="Doctor" value={parsed?.metadata?.doctorName ?? '—'} />
 				<Meta label="Report Date" value={report.report_date ?? '—'} />
 				<Meta

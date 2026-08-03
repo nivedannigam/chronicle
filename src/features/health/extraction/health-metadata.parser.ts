@@ -1,9 +1,16 @@
 import type { OcrDocumentResult } from '@/features/document-intelligence/ocr'
 import type { ReportMetadata } from '@/features/health/domain/health-report.domain'
 
-const LAB_PATTERN = /(?:Laboratory|Lab(?: Name)?)\s*[:.-]?\s*(.+)/i
-const PATIENT_PATTERN = /(?:Patient(?: Name)?)\s*[:.-]?\s*(.+)/i
-const DOCTOR_PATTERN = /(?:Doctor|Ref(?:erred)? By|Consultant)\s*[:.-]?\s*(.+)/i
+const LABORATORY_LABEL_PATTERN =
+	/(?:Laboratory|Lab Name)\s*[:.-]\s*(.+?)(?:\n|$)/i
+const ORGANIZATION_PATTERN =
+	/Organization\s*:\s*(.+?)(?:\n|Patient|Registered|DBO|Sample|Ref\.|$)/i
+const PATIENT_NAME_PATTERN =
+	/Patient(?: Name)?\s*:\s*(.+?)(?=Registered on|Collected on|Reported on|Printed on|Referral|Organization|DBO\/Age|$)/i
+const REFERRAL_PATTERN =
+	/Referral\s*:\s*(.+?)(?=Printed on|Organization|Reported on|$)/i
+const DOCTOR_SIGNATURE_PATTERN = /^Dr\.?\s+[A-Za-z][\w.\s-]+$/im
+const DOCTOR_PATTERN = /(?:Doctor|Ref(?:erred)? By)\s*[:.-]\s*(.+?)(?:\n|$)/i
 const REPORT_DATE_PATTERN =
 	/(?:Report Date|Date of Report|Report Released on \(RRT\))\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{2}\s+[A-Za-z]{3}\s+\d{4}(?:\s+\d{2}:\d{2})?)/i
 const THYROCARE_RRT_DATE_PATTERN =
@@ -11,7 +18,8 @@ const THYROCARE_RRT_DATE_PATTERN =
 const COLLECTION_DATE_PATTERN =
 	/(?:Collection Date|Sample Date|Collected On|Sample Collected on \(SCT\))\s*[:.-]?\s*(\d{2}[-/][A-Za-z]{3}[-/]\d{4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{2}\s+[A-Za-z]{3}\s+\d{4}(?:\s+\d{2}:\d{2})?)/i
 const REFERENCE_NUMBER_PATTERN =
-	/(?:Reference(?: No|Number)?|Accession(?: No|Number)?|Lab ID)\s*[:.-]?\s*([A-Za-z0-9-]+)/i
+	/(?:Reference(?:\s+(?:No|Number))|Accession(?:\s+(?:No|Number))|Lab ID)\s*:\s*([A-Za-z0-9-]+)/i
+const PATIENT_ID_PATTERN = /Patient ID\s*:\s*(\d+)/i
 
 const FILENAME_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 	{
@@ -107,24 +115,247 @@ function parseDate(rawDate: string | null): string | null {
 	return parsed.toISOString().slice(0, 10)
 }
 
+const KNOWN_LAB_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
+	{ pattern: /\bQtest\b/i, name: 'Qtest' },
+	{ pattern: /\bSvasth\b/i, name: 'Svasth' },
+	{ pattern: /\bMetropolis\b/i, name: 'Metropolis Healthcare' },
+	{ pattern: /\bSRL\b/i, name: 'SRL Diagnostics' },
+	{ pattern: /S\s*&\s*D\s*Diagnostics/i, name: 'S&D Diagnostics' },
+]
+
+const IMPLAUSIBLE_LAB_PATTERN =
+	/^(no|yes|unknown|technologist|pathologist|lab technologist|& diagnostics)$/i
+
+function cleanLaboratoryCandidate(value: string): string {
+	return value
+		.replace(/\s+/g, ' ')
+		.replace(/[|].*$/, '')
+		.trim()
+}
+
+function isPlausibleLaboratoryName(value: string): boolean {
+	const cleaned = cleanLaboratoryCandidate(value)
+
+	if (cleaned.length < 3) {
+		return false
+	}
+
+	if (IMPLAUSIBLE_LAB_PATTERN.test(cleaned)) {
+		return false
+	}
+
+	if (/^&\s/i.test(cleaned) && !/S\s*&\s*D/i.test(cleaned)) {
+		return false
+	}
+
+	if (
+		/technologist|pathologist/i.test(cleaned) &&
+		!/diagnostic|laboratory|\blab\b/i.test(cleaned)
+	) {
+		return false
+	}
+
+	return true
+}
+
+function recoverLaboratoryFromText(text: string): string | null {
+	for (const { pattern, name } of KNOWN_LAB_PATTERNS) {
+		if (pattern.test(text)) {
+			return name
+		}
+	}
+
+	if (/&\s*Diagnostics/i.test(text) && /S\s*&\s*D|S&D/i.test(text)) {
+		return 'S&D Diagnostics'
+	}
+
+	return null
+}
+
+const TEMPLATE_PLACEHOLDER_PATTERN =
+	/^(?:DBO\/Age\/Gender|Patient Name|NAME|N\/A|Unknown)$/i
+
+const IMPLAUSIBLE_REFERENCE_PATTERN =
+	/^(?:temperature|absent|normal|negative|positive|present|reactive|nonreactive)$/i
+
+const IMPLAUSIBLE_DOCTOR_PATTERN =
+	/^(?:MD Pathologist|Lab Technologist|Consultant MD Pathologist|Pathologist|Technologist|SELF)$/i
+
+function cleanPersonName(value: string): string {
+	return value.replace(/\s+/g, ' ').trim()
+}
+
+function isTemplatePlaceholder(value: string): boolean {
+	return TEMPLATE_PLACEHOLDER_PATTERN.test(cleanPersonName(value))
+}
+
+function isPlausibleReferenceNumber(value: string): boolean {
+	const cleaned = value.trim()
+
+	if (cleaned.length < 2 || cleaned.length > 40) {
+		return false
+	}
+
+	if (IMPLAUSIBLE_REFERENCE_PATTERN.test(cleaned)) {
+		return false
+	}
+
+	return /^[A-Za-z0-9-]+$/.test(cleaned)
+}
+
+function isPlausibleDoctorName(value: string): boolean {
+	const cleaned = cleanPersonName(value)
+
+	if (cleaned.length < 3 || IMPLAUSIBLE_DOCTOR_PATTERN.test(cleaned)) {
+		return false
+	}
+
+	if (/^Dr\.?\s/i.test(cleaned) || /^DR\.?\s/i.test(cleaned)) {
+		return true
+	}
+
+	if (/pathologist|technologist|consultant/i.test(cleaned)) {
+		return false
+	}
+
+	return /[A-Za-z]{2,}/.test(cleaned)
+}
+
+export function formatReferenceNumberDisplay(
+	referenceNumber?: string | null,
+): string | null {
+	const raw = referenceNumber?.trim()
+
+	if (!raw || !isPlausibleReferenceNumber(raw)) {
+		return null
+	}
+
+	return raw
+}
+
+export function formatPatientNameDisplay(
+	patientName?: string | null,
+): string | null {
+	const raw = patientName?.trim()
+
+	if (!raw || isTemplatePlaceholder(raw)) {
+		return null
+	}
+
+	if (/^DBO\/Age\/Gender/i.test(raw)) {
+		return null
+	}
+
+	return cleanPersonName(raw)
+}
+
+export function formatDoctorNameDisplay(
+	doctorName?: string | null,
+): string | null {
+	const raw = doctorName?.trim()
+
+	if (!raw || !isPlausibleDoctorName(raw)) {
+		return null
+	}
+
+	return cleanPersonName(raw)
+}
+
+export function formatLaboratoryDisplayName(
+	laboratory?: string | null,
+	fallback = 'Medical center',
+): string {
+	const raw = laboratory?.trim()
+
+	if (!raw || /^unknown laboratory$/i.test(raw)) {
+		return fallback
+	}
+
+	if (!isPlausibleLaboratoryName(raw)) {
+		return fallback
+	}
+
+	return cleanLaboratoryCandidate(raw)
+}
+
 function resolveLaboratory(text: string, fileName: string): string {
+	const searchable = `${text}\n${fileName}`
+
 	if (/Clinically Tested by\s*:\s*Thyrocare/i.test(text)) {
 		return 'Thyrocare Technologies Ltd'
 	}
 
-	if (
-		/thyrocare|Sohrabh Hall|Aarogyam|HDFC COMBO/i.test(`${text}\n${fileName}`)
-	) {
+	if (/thyrocare|Sohrabh Hall|Aarogyam|HDFC COMBO/i.test(searchable)) {
 		return 'Thyrocare'
 	}
 
-	const explicit = text.match(LAB_PATTERN)?.[1]?.trim()
+	const organization = text.match(ORGANIZATION_PATTERN)?.[1]?.trim()
 
-	if (explicit && !/^unknown$/i.test(explicit) && explicit.length < 80) {
-		return explicit
+	if (organization && isPlausibleLaboratoryName(organization)) {
+		return cleanLaboratoryCandidate(organization)
+	}
+
+	const explicit = text.match(LABORATORY_LABEL_PATTERN)?.[1]?.trim()
+
+	if (explicit && isPlausibleLaboratoryName(explicit) && explicit.length < 80) {
+		return cleanLaboratoryCandidate(explicit)
+	}
+
+	const recovered = recoverLaboratoryFromText(searchable)
+
+	if (recovered) {
+		return recovered
 	}
 
 	return 'Unknown Laboratory'
+}
+
+function resolvePatientName(text: string): string | null {
+	const match = text.match(PATIENT_NAME_PATTERN)?.[1]?.trim()
+
+	if (!match || isTemplatePlaceholder(match)) {
+		return null
+	}
+
+	return cleanPersonName(match)
+}
+
+function resolveDoctorName(text: string): string | null {
+	const referral = text.match(REFERRAL_PATTERN)?.[1]?.trim()
+
+	if (referral && isPlausibleDoctorName(referral)) {
+		return cleanPersonName(referral)
+	}
+
+	const signature = text.match(DOCTOR_SIGNATURE_PATTERN)?.[0]?.trim()
+
+	if (signature && isPlausibleDoctorName(signature)) {
+		return cleanPersonName(signature)
+	}
+
+	const explicit = text.match(DOCTOR_PATTERN)?.[1]?.trim()
+
+	if (explicit && isPlausibleDoctorName(explicit)) {
+		return cleanPersonName(explicit)
+	}
+
+	return null
+}
+
+function resolveReferenceNumber(text: string): string | null {
+	const patientId = text.match(PATIENT_ID_PATTERN)?.[1]?.trim()
+
+	if (patientId && isPlausibleReferenceNumber(patientId)) {
+		return patientId
+	}
+
+	const match = text.match(REFERENCE_NUMBER_PATTERN)?.[1]?.trim()
+
+	if (!match || !isPlausibleReferenceNumber(match)) {
+		return null
+	}
+
+	return match
 }
 
 export function resolveReportDateFromFileName(fileName: string): string | null {
@@ -264,8 +495,8 @@ export function parseReportMetadata(
 		laboratory: resolveLaboratory(text, fileName),
 		reportDate: resolveReportDate(text, fileName),
 		collectionDate: parseDate(text.match(COLLECTION_DATE_PATTERN)?.[1] ?? null),
-		referenceNumber: text.match(REFERENCE_NUMBER_PATTERN)?.[1]?.trim() ?? null,
-		patientName: text.match(PATIENT_PATTERN)?.[1]?.trim() ?? null,
-		doctorName: text.match(DOCTOR_PATTERN)?.[1]?.trim() ?? null,
+		referenceNumber: resolveReferenceNumber(text),
+		patientName: resolvePatientName(text),
+		doctorName: resolveDoctorName(text),
 	}
 }

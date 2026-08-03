@@ -1,5 +1,6 @@
 import { C } from '@/constants/colors'
 import type { HealthMetric, MetricStatus } from '@/features/health/types'
+import { formatMetricDisplayValue } from '@/features/health/services/health-parsed-report.service'
 import { FigmaCard } from '@/ui/figma/components/primitives'
 
 function statusColor(status: MetricStatus): string {
@@ -97,7 +98,7 @@ export function ExtractedMetricsList({ metrics }: ExtractedMetricsListProps) {
 									letterSpacing: '-0.02em',
 								}}
 							>
-								{metric.value}
+								{formatMetricDisplayValue(metric.value)}
 							</span>
 							{metric.reference ? (
 								<span style={{ fontSize: 12, color: C.textMuted }}>

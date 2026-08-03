@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Download, RefreshCw, Trash2 } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { USER_VOCAB, formatReportStatus } from '@/constants/user-vocabulary'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { ExtractedMetricsList } from '@/features/health/components/ExtractedMetricsList'
@@ -14,6 +14,10 @@ import {
 	getReportDisplayTitle,
 	formatReportTypeLabel,
 } from '@/features/health/services/health-parsed-report.service'
+import {
+	getProductReportStatusColor,
+	getProductReportStatusLabel,
+} from '@/features/health/services/health-product.mapper'
 import { getHealthReportSignedUrl } from '@/features/health/services/health-upload.service'
 import {
 	reprocessHealthReport,
@@ -81,6 +85,8 @@ export function HealthReportDetailPage() {
 			: ''
 	const showFailedBanner = uploaded.status === 'failed'
 	const canReprocessWithAi = reportEligibleForAiReprocess(uploaded)
+	const statusLabel = getProductReportStatusLabel(uploaded)
+	const statusTone = getProductReportStatusColor(uploaded)
 	const subtitle = [
 		getReportDisplayDate(uploaded, parsed),
 		parsed ? formatReportTypeLabel(parsed.metadata.reportType) : null,
@@ -188,7 +194,13 @@ export function HealthReportDetailPage() {
 				onBack={() => navigate(ROUTES.healthReports)}
 				title={getReportDisplayTitle(uploaded)}
 				subtitle={subtitle}
-				badge={<ReportStatusBadge status={uploaded.status} />}
+				badge={
+					<ReportStatusBadge
+						status={uploaded.status}
+						label={statusLabel}
+						productTone={statusTone}
+					/>
+				}
 			/>
 
 			{showFailedBanner && uploaded.processing_error ? (
@@ -208,11 +220,11 @@ export function HealthReportDetailPage() {
 				rows={[
 					{
 						label: 'Hospital / Lab',
-						value: parsed?.metadata.laboratory ?? '—',
+						value: parsed?.metadata.laboratory || '—',
 					},
-					{ label: 'Doctor', value: parsed?.metadata.doctorName ?? '—' },
+					{ label: 'Doctor', value: parsed?.metadata.doctorName || '—' },
 					{ label: 'Source', value: reportSourceLabel(uploaded) },
-					{ label: 'Status', value: formatReportStatus(uploaded.status) },
+					{ label: 'Status', value: statusLabel },
 				]}
 			/>
 

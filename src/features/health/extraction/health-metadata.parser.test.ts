@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr/providers/mock-ocr.templates'
 import {
+	formatLaboratoryDisplayName,
+	formatPatientNameDisplay,
 	identifyReportType,
 	parseReportMetadata,
 	resolveReportDateFromFileName,
@@ -107,5 +109,93 @@ describe('parseReportMetadata with mock OCR', () => {
 		expect(
 			parseFromMockFileName('2023 - 2026 Health Summary').reportType,
 		).not.toBe('diabetes')
+	})
+})
+
+describe('formatLaboratoryDisplayName', () => {
+	it('rejects OCR junk like & Diagnostics', () => {
+		expect(formatLaboratoryDisplayName('& Diagnostics')).toBe('Medical center')
+	})
+
+	it('rejects single-word OCR noise', () => {
+		expect(formatLaboratoryDisplayName('No')).toBe('Medical center')
+		expect(formatLaboratoryDisplayName('Technologist')).toBe('Medical center')
+	})
+
+	it('keeps valid laboratory names', () => {
+		expect(formatLaboratoryDisplayName('Qtest Kharadi')).toBe('Qtest Kharadi')
+		expect(formatLaboratoryDisplayName('Thyrocare')).toBe('Thyrocare')
+	})
+})
+
+function mockOcrDocument(rawText: string) {
+	return {
+		rawText,
+		tables: [],
+		pages: [],
+		confidence: 0.95,
+		processingTimeMs: 1200,
+		metadata: {
+			provider: 'mock',
+			mimeType: 'application/pdf',
+			fileName: 'Blood Test.pdf',
+			pageCount: 1,
+			tableCount: 0,
+		},
+	}
+}
+
+describe('resolveLaboratory via parseReportMetadata', () => {
+	it('parses Organization: label from Qtest-style reports', () => {
+		const metadata = parseReportMetadata(
+			mockOcrDocument(
+				'Organization:Qtest Kharadi\nPatient Name: John Doe\nReport Date: 10 Mar 2026',
+			),
+			'Blood Test.pdf',
+		)
+
+		expect(metadata.laboratory).toBe('Qtest Kharadi')
+	})
+
+	it('does not match Lab Technologist as a laboratory name', () => {
+		const metadata = parseReportMetadata(
+			mockOcrDocument(
+				'Lab Technologist: Dr Smith\nLaboratory: Metropolis Healthcare',
+			),
+			'Blood Test.pdf',
+		)
+
+		expect(metadata.laboratory).toBe('Metropolis Healthcare')
+	})
+
+	it('parses Qtest glued header from real report layout', () => {
+		const metadata = parseReportMetadata(
+			mockOcrDocument(
+				'Patient Name:MR. NIVEDAN NIGAMRegistered on:23/04/2026 08:24:55\nDBO/Age/Gender:24/05/1980 / 45 Yrs. / MCollected on:23/04/2026 08:25:42\nPatient ID:17920Reported on:23/04/2026 10:04:50\nReferral:DR. SELFPrinted on:23/04/2026 15:11:34\nOrganization:QTEST KHARADI',
+			),
+			'Iron Test 2026.pdf',
+		)
+
+		expect(metadata.laboratory).toBe('QTEST KHARADI')
+		expect(metadata.patientName).toBe('MR. NIVEDAN NIGAM')
+		expect(metadata.doctorName).toBe('DR. SELF')
+		expect(metadata.referenceNumber).toBe('17920')
+	})
+
+	it('rejects junk reference numbers like temperature', () => {
+		const metadata = parseReportMetadata(
+			mockOcrDocument(
+				'Reference Range: temperature\nPatient ID:7051Reported on:02/07/2025',
+			),
+			'Report.pdf',
+		)
+
+		expect(metadata.referenceNumber).toBe('7051')
+	})
+})
+
+describe('formatPatientNameDisplay', () => {
+	it('rejects template placeholders', () => {
+		expect(formatPatientNameDisplay('DBO/Age/Gender')).toBeNull()
 	})
 })

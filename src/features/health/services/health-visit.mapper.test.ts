@@ -112,6 +112,20 @@ describe('buildHealthVisits', () => {
 
 		expect(visits).toHaveLength(2)
 	})
+
+	it('shows organizing summary when visit reports are still processing', () => {
+		const visits = buildHealthVisits([
+			makeReport({
+				id: 'r1',
+				fileName: '2026-03-10 Blood Test.pdf',
+				date: '2026-03-10',
+				status: 'processing',
+			}),
+		])
+
+		expect(visits[0]?.status).toBe('organizing')
+		expect(visits[0]?.summaryLine).toBe('Still organizing results')
+	})
 })
 
 describe('findHealthVisit', () => {

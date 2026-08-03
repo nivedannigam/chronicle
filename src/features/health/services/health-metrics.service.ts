@@ -1,6 +1,7 @@
 import { filterReportsForMember } from '@/features/family/utils/member-display'
 import { mapMetricStatusToUi } from '@/features/health/extraction/metric-extraction.engine'
 import { formatReferenceRange } from '@/features/health/extraction/reference-range.engine'
+import { formatMetricDisplayValue } from '@/features/health/services/health-parsed-report.service'
 import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import type { HealthMetric as UiHealthMetric } from '@/features/health/types'
 import {
@@ -149,7 +150,9 @@ export function storedMetricsToUiMetrics(
 ): UiHealthMetric[] {
 	return metrics.map((metric) => ({
 		name: metric.display_name,
-		value: metric.unit ? `${metric.value} ${metric.unit}` : metric.value,
+		value: formatMetricDisplayValue(
+			metric.unit ? `${metric.value} ${metric.unit}` : metric.value,
+		),
 		reference: formatStoredReferenceRange(metric),
 		status: mapMetricStatusToUi(metric.status),
 		confidence: metric.confidence,

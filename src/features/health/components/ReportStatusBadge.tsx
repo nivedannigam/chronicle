@@ -1,8 +1,9 @@
 import { C } from '@/constants/colors'
 import { getHealthReportStatusLabel } from '@/features/health/services/health-processing.service'
+import type { ProductReportStatus } from '@/features/health/services/health-product.mapper'
 import type { HealthReportStatus } from '@/features/health/types'
 
-function statusColor(status: HealthReportStatus): string {
+function pipelineStatusColor(status: HealthReportStatus): string {
 	switch (status) {
 		case 'completed':
 			return C.greenAlt
@@ -18,12 +19,34 @@ function statusColor(status: HealthReportStatus): string {
 	}
 }
 
-interface ReportStatusBadgeProps {
-	status: HealthReportStatus
+function productStatusColor(status: ProductReportStatus | 'failed'): string {
+	switch (status) {
+		case 'ready':
+			return C.greenAlt
+		case 'organizing':
+			return C.accentBlue
+		case 'needs_help':
+		case 'failed':
+			return C.red
+		default:
+			return C.textMuted
+	}
 }
 
-export function ReportStatusBadge({ status }: ReportStatusBadgeProps) {
-	const color = statusColor(status)
+interface ReportStatusBadgeProps {
+	status: HealthReportStatus
+	label?: string
+	productTone?: ProductReportStatus | 'failed'
+}
+
+export function ReportStatusBadge({
+	status,
+	label,
+	productTone,
+}: ReportStatusBadgeProps) {
+	const color = productTone
+		? productStatusColor(productTone)
+		: pipelineStatusColor(status)
 
 	return (
 		<span
@@ -38,7 +61,7 @@ export function ReportStatusBadge({ status }: ReportStatusBadgeProps) {
 				letterSpacing: '0.02em',
 			}}
 		>
-			{getHealthReportStatusLabel(status)}
+			{label ?? getHealthReportStatusLabel(status)}
 		</span>
 	)
 }
