@@ -26,6 +26,7 @@ import {
 } from '@/features/health-import/utils/setup-report-list.utils'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { scrollToSectionElement } from '@/lib/scroll-to-section'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -71,6 +72,11 @@ export function HealthSettingsPage() {
 	const [journeyResult, setJourneyResult] =
 		useState<ImportJourneyResult | null>(null)
 	const [journeyError, setJourneyError] = useState<string | null>(null)
+	const showSetupGuide = setup.currentStep !== 'ready'
+	const showReportList =
+		!showSetupGuide ||
+		setup.needsReview > 0 ||
+		setup.reportsNeedingReprocess > 0
 
 	useEffect(() => {
 		const sectionId = location.hash.replace('#', '').trim()
@@ -79,12 +85,20 @@ export function HealthSettingsPage() {
 			return
 		}
 
-		requestAnimationFrame(() => {
-			document
-				.getElementById(sectionId)
-				?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-		})
-	}, [location.hash])
+		let attempts = 0
+		const maxAttempts = 8
+
+		const tryScroll = () => {
+			attempts += 1
+			const scrolled = scrollToSectionElement(sectionId)
+
+			if (!scrolled && attempts < maxAttempts) {
+				window.setTimeout(tryScroll, 120)
+			}
+		}
+
+		requestAnimationFrame(tryScroll)
+	}, [location.hash, setup.needsReview, showReportList])
 
 	if (!userId) {
 		return (
@@ -118,7 +132,6 @@ export function HealthSettingsPage() {
 		),
 	]
 	const status = importStatus.data
-	const showSetupGuide = setup.currentStep !== 'ready'
 
 	const handleScanNow = async () => {
 		if (folderIds.length === 0) {
@@ -482,7 +495,7 @@ export function HealthSettingsPage() {
 				</div>
 			) : null}
 
-			{!showSetupGuide ? (
+			{showReportList ? (
 				<div id="import" style={{ marginBottom: 24 }}>
 					<div style={{ marginBottom: 12 }}>
 						<FigmaHealthSectionLabel>Reports</FigmaHealthSectionLabel>

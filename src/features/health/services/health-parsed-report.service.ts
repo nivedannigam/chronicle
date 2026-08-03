@@ -1,4 +1,7 @@
-import { identifyReportType } from '@/features/health/extraction/health-metadata.parser'
+import {
+	identifyReportType,
+	resolveReportDateFromFileName,
+} from '@/features/health/extraction/health-metadata.parser'
 import type { HealthReport as DomainHealthReport } from '@/features/document-intelligence/domain/health-report.domain'
 import type {
 	HealthMetric,
@@ -9,7 +12,18 @@ import type { UploadedHealthReport } from '@/features/health/types'
 const REPORT_TYPE_LABELS: Record<string, string> = {
 	general: 'Health Checkup',
 	'blood-count': 'Blood Count',
+	electrolytes: 'Serum Electrolytes',
+	ecg: 'ECG',
+	'health-summary': 'Health Summary',
 	heart: 'Lipids',
+}
+
+function cleanFileNameTitle(fileName: string): string {
+	return fileName
+		.replace(/\.pdf$/i, '')
+		.replace(/[_-]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
 }
 
 export function serializeParsedHealthReport(
@@ -209,30 +223,37 @@ export function formatReportTypeLabel(reportType: string): string {
 export function inferReportTypeFromFileName(fileName: string): string | null {
 	const type = identifyReportType('', fileName)
 
-	return type === 'general' &&
+	if (
+		type === 'general' &&
 		!/\b(checkup|summary|iron|body)\b/i.test(fileName)
-		? null
-		: type
+	) {
+		return null
+	}
+
+	return type
 }
 
 export function getReportDisplayTitle(report: UploadedHealthReport): string {
 	const parsed = getParsedHealthReport(report)
+	const reportType = parsed?.metadata.reportType ?? report.report_type ?? null
 
-	if (parsed?.metadata.reportType) {
-		return `${formatReportTypeLabel(parsed.metadata.reportType)} Report`
-	}
-
-	if (report.report_type && report.report_type !== 'general') {
-		return `${formatReportTypeLabel(report.report_type)} Report`
+	if (reportType && reportType !== 'general') {
+		return `${formatReportTypeLabel(reportType)} Report`
 	}
 
 	const inferred = inferReportTypeFromFileName(report.file_name)
 
-	if (inferred) {
+	if (inferred && inferred !== 'general') {
 		return `${formatReportTypeLabel(inferred)} Report`
 	}
 
-	return report.file_name
+	const cleaned = cleanFileNameTitle(report.file_name)
+
+	if (cleaned.length > 0 && !/^report$/i.test(cleaned)) {
+		return cleaned
+	}
+
+	return 'Medical Report'
 }
 
 export function getReportDisplayDate(
@@ -241,7 +262,9 @@ export function getReportDisplayDate(
 ): string {
 	return (
 		parsed?.metadata.reportDate ??
+		parsed?.metadata.collectionDate ??
 		report.report_date ??
+		resolveReportDateFromFileName(report.file_name) ??
 		report.uploaded_at.slice(0, 10)
 	)
 }

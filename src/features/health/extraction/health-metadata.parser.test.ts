@@ -3,6 +3,7 @@ import { buildMockOcrDocumentResult } from '@/features/document-intelligence/ocr
 import {
 	identifyReportType,
 	parseReportMetadata,
+	resolveReportDateFromFileName,
 } from '@/features/health/extraction/health-metadata.parser'
 import type { Document } from '@/features/document-intelligence/domain'
 
@@ -48,8 +49,30 @@ describe('identifyReportType', () => {
 		)
 	})
 
-	it('does not classify Health Summary as diabetes', () => {
-		expect(identifyReportType('', '2023 - 2026 Health Summary')).toBe('general')
+	it('classifies Health Summary as health-summary from filename', () => {
+		expect(identifyReportType('', '2023 - 2026 Health Summary')).toBe(
+			'health-summary',
+		)
+	})
+
+	it('classifies Serum Electrolytes as electrolytes from filename', () => {
+		expect(identifyReportType('', '2023 Feb - Serum Electrolytes.pdf')).toBe(
+			'electrolytes',
+		)
+	})
+})
+
+describe('resolveReportDateFromFileName', () => {
+	it('parses year-month prefixes like 2023 Feb', () => {
+		expect(
+			resolveReportDateFromFileName('2023 Feb - Serum Electrolytes.pdf'),
+		).toBe('2023-02-01')
+	})
+
+	it('parses dd/mm/yy fragments from filenames', () => {
+		expect(
+			resolveReportDateFromFileName('Blood Count Report 30/01/22 09:00 AM.pdf'),
+		).toBe('2022-01-30')
 	})
 })
 

@@ -18,9 +18,21 @@ const FILENAME_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 		pattern: /complete blood|blood count|\bcbc\b|blood test|full blood/i,
 		type: 'blood-count',
 	},
+	{
+		pattern: /electrolyte|serum electrolyte|sodium|potassium|chloride/i,
+		type: 'electrolytes',
+	},
+	{
+		pattern: /\becg\b|electrocardiogram|\bekg\b|imedrix|tmt|treadmill/i,
+		type: 'ecg',
+	},
+	{
+		pattern: /health summary|wellness|company wellness/i,
+		type: 'health-summary',
+	},
 	{ pattern: /\biron\b|ferritin|tibc/i, type: 'vitamin' },
 	{
-		pattern: /full body|partial checkup|health summary|\bcheckup\b/i,
+		pattern: /full body|partial checkup|\bcheckup\b/i,
 		type: 'general',
 	},
 	{ pattern: /liver function|\blft\b|\bliver\b/i, type: 'liver' },
@@ -114,7 +126,43 @@ function resolveLaboratory(text: string, fileName: string): string {
 	return 'Unknown Laboratory'
 }
 
-function resolveReportDate(text: string): string | null {
+export function resolveReportDateFromFileName(fileName: string): string | null {
+	const yearMonth = fileName.match(/\b(20\d{2})\s+([A-Za-z]{3})\b/)
+
+	if (yearMonth) {
+		const [, year, month] = yearMonth
+		const monthNumber = MONTHS[month]
+
+		if (monthNumber) {
+			return `${year}-${monthNumber}-01`
+		}
+	}
+
+	const dmy = fileName.match(/\b(\d{2})[/-](\d{2})[/-](\d{2,4})\b/)
+
+	if (dmy) {
+		const [, day, month, rawYear] = dmy
+		const year = rawYear.length === 2 ? `20${rawYear}` : rawYear
+
+		return `${year}-${month}-${day}`
+	}
+
+	const iso = fileName.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/)
+
+	if (iso) {
+		return `${iso[1]}-${iso[2]}-${iso[3]}`
+	}
+
+	const leadingYear = fileName.match(/^(20\d{2})\b/)
+
+	if (leadingYear) {
+		return `${leadingYear[1]}-01-01`
+	}
+
+	return null
+}
+
+function resolveReportDate(text: string, fileName: string): string | null {
 	const headerBlock = text.slice(0, 1500)
 	const thyrocareDates = headerBlock.match(
 		/Processed At[\s\S]{0,500}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})[\s\S]{0,120}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})[\s\S]{0,120}?(\d{2}\s+[A-Za-z]{3}\s+\d{4})/i,
@@ -126,7 +174,9 @@ function resolveReportDate(text: string): string | null {
 
 	return (
 		parseDate(text.match(REPORT_DATE_PATTERN)?.[1] ?? null) ??
-		parseDate(text.match(THYROCARE_RRT_DATE_PATTERN)?.[1] ?? null)
+		parseDate(text.match(THYROCARE_RRT_DATE_PATTERN)?.[1] ?? null) ??
+		parseDate(text.match(COLLECTION_DATE_PATTERN)?.[1] ?? null) ??
+		resolveReportDateFromFileName(fileName)
 	)
 }
 
@@ -211,7 +261,7 @@ export function parseReportMetadata(
 	return {
 		reportType: identifyReportType(text, fileName),
 		laboratory: resolveLaboratory(text, fileName),
-		reportDate: resolveReportDate(text),
+		reportDate: resolveReportDate(text, fileName),
 		collectionDate: parseDate(text.match(COLLECTION_DATE_PATTERN)?.[1] ?? null),
 		referenceNumber: text.match(REFERENCE_NUMBER_PATTERN)?.[1]?.trim() ?? null,
 		patientName: text.match(PATIENT_PATTERN)?.[1]?.trim() ?? null,

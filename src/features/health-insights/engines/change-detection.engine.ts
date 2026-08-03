@@ -1,7 +1,7 @@
 import type { HealthMetricHistory } from '@/features/health-knowledge/types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import {
-	getParsedHealthReport,
+	getReportDisplayDate,
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
 import type { DetectedChange } from '@/features/health-insights/types/health-insights.types'
@@ -161,7 +161,5 @@ export function reportDateForId(
 		return undefined
 	}
 
-	const parsed = getParsedHealthReport(report)
-
-	return parsed?.metadata.reportDate ?? report.report_date ?? report.uploaded_at
+	return getReportDisplayDate(report)
 }

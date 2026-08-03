@@ -69,7 +69,11 @@ function classifyFromText(text: string): ReportTimelineKind {
 		normalized.includes('lab report') ||
 		normalized.includes('hemoglobin') ||
 		normalized.includes('lft') ||
-		normalized.includes('kft')
+		normalized.includes('kft') ||
+		normalized.includes('electrolyte') ||
+		normalized.includes('chloride') ||
+		normalized.includes('sodium') ||
+		normalized.includes('potassium')
 	) {
 		return 'blood_test'
 	}

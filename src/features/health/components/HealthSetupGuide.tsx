@@ -19,6 +19,7 @@ import type { ImportJourneyResult } from '@/features/health-import/types/health-
 import { reprocessStuckHealthReports } from '@/features/health/services/health-processing.service'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
+import { scrollToSectionElement } from '@/lib/scroll-to-section'
 
 const STEPS = [
 	{
@@ -72,6 +73,13 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 	const [journeyResult, setJourneyResult] =
 		useState<ImportJourneyResult | null>(null)
 
+	const navigateToReview = () => {
+		navigate(healthSettingsSection('review'))
+		window.setTimeout(() => {
+			scrollToSectionElement('review')
+		}, 150)
+	}
+
 	const handleStepNavigation = (stepId: (typeof STEPS)[number]['id']) => {
 		switch (stepId) {
 			case 'connect_drive':
@@ -88,7 +96,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				void handlePrimaryAction()
 				return
 			case 'review_imports':
-				navigate(healthSettingsSection('review'))
+				navigateToReview()
 				return
 			default:
 				return
@@ -108,7 +116,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				navigate(ROUTES.healthFolderSetup)
 				return
 			case 'review_imports':
-				navigate(healthSettingsSection('review'))
+				navigateToReview()
 				return
 			case 'scan_import': {
 				const folderIds = setup.memberAssignments.map(

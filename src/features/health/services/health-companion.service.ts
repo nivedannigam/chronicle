@@ -17,6 +17,7 @@ import type { UploadedHealthReport } from '@/features/health/types'
 import {
 	countProcessingReports,
 	isReportDisplayReady,
+	isReportFullyClassified,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
 import { deriveReportBadgeStatus } from '@/features/health/services/health-coverage.service'
@@ -123,8 +124,8 @@ function deriveStatus(input: {
 			detail: input.hasProcessingReports
 				? 'Metrics are still being processed.'
 				: unknownCount > 0
-					? `${unknownCount} result${unknownCount === 1 ? '' : 's'} still being classified.`
-					: 'Import complete — review your metrics below.',
+					? `${unknownCount} result${unknownCount === 1 ? '' : 's'} still being classified — reprocess in Setup for full extraction.`
+					: 'Some reports still need reprocessing in Setup before your dashboard is complete.',
 			score: null,
 		}
 	}
@@ -336,12 +337,15 @@ function buildInsightGroups(input: {
 	insights: ChronicleInsight[]
 }): HealthInsightGroup[] {
 	const result: HealthInsightGroup[] = []
+	const coveredCategoryIds = new Set<string>()
 
 	for (const group of input.groups) {
 		const primaryMetric = group.metrics[0]
 		const relatedInsight = input.insights.find(
 			(item) => item.categoryId === group.id,
 		)
+
+		coveredCategoryIds.add(group.id)
 
 		const trend =
 			group.status === 'improving'
@@ -378,7 +382,46 @@ function buildInsightGroups(input: {
 		})
 	}
 
-	return result.slice(0, 9)
+	for (const insight of input.insights) {
+		if (result.length >= 12) {
+			break
+		}
+
+		if (insight.categoryId && coveredCategoryIds.has(insight.categoryId)) {
+			continue
+		}
+
+		if (result.some((item) => item.id === `insight-${insight.id}`)) {
+			continue
+		}
+
+		const category = insight.categoryId
+			? getCategoryMeta(mapCategoryId(insight.categoryId))
+			: null
+
+		result.push({
+			id: `insight-${insight.id}`,
+			label: insight.title,
+			color: category?.color ?? C.teal,
+			summary: insight.summary,
+			trend:
+				insight.severity === 'attention'
+					? 'Needs attention'
+					: insight.severity === 'positive'
+						? 'Improving'
+						: 'Stable',
+			evidence: insight.why,
+			nextStep:
+				insight.severity === 'attention'
+					? 'Review the source report or ask Chronicle for context.'
+					: 'Keep tracking this over your next checkup.',
+			categoryId: insight.categoryId,
+			metricId: insight.metricId,
+			reportId: insight.evidence[0]?.reportId,
+		})
+	}
+
+	return result.slice(0, 12)
 }
 
 function buildAttention(input: {
@@ -512,9 +555,20 @@ function buildNextSteps(input: {
 
 export function buildReportSummaries(
 	reports: UploadedHealthReport[],
+	options: { includePartial?: boolean } = {},
 ): HealthReportSummary[] {
 	return [...reports]
-		.filter(isReportDisplayReady)
+		.filter((report) => {
+			if (!isReportDisplayReady(report)) {
+				return false
+			}
+
+			if (options.includePartial) {
+				return true
+			}
+
+			return isReportFullyClassified(report)
+		})
 		.sort(
 			(a, b) =>
 				Date.parse(getReportDisplayDate(b)) -
@@ -579,7 +633,7 @@ function buildJourneyEvents(input: {
 	const events: HealthJourneyEvent[] = []
 
 	for (const report of input.reports.filter(
-		(item) => item.status === 'completed',
+		(item) => item.status === 'completed' && isReportDisplayReady(item),
 	)) {
 		const classified = classifyReportType(report)
 		const isReady = isReportDisplayReady(report)

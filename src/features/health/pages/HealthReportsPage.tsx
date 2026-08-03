@@ -8,7 +8,9 @@ import { DashboardEmptyState } from '@/features/health/components/dashboard/Dash
 import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 import { buildReportSummaries } from '@/features/health/services/health-companion.service'
+import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
 import { FigmaHealthReportsView } from '@/ui/figma/health/figma-health-views'
+import { healthSettingsSection } from '@/constants/routes'
 
 export function HealthReportsPage() {
 	const navigate = useNavigate()
@@ -17,6 +19,15 @@ export function HealthReportsPage() {
 	const setup = useHealthMemberSetup()
 
 	const summaries = useMemo(() => buildReportSummaries(reports), [reports])
+	const partialReportCount = useMemo(
+		() =>
+			reports.filter(
+				(report) =>
+					isReportDisplayReady(report) &&
+					summaries.every((summary) => summary.id !== report.id),
+			).length,
+		[reports, summaries],
+	)
 
 	if (isLoading) {
 		return <ListSkeleton rows={4} />
@@ -31,7 +42,11 @@ export function HealthReportsPage() {
 		)
 	}
 
-	if (!hasImportedReports) {
+	if (
+		!hasImportedReports &&
+		summaries.length === 0 &&
+		partialReportCount === 0
+	) {
 		return (
 			<DashboardEmptyState
 				title="No medical records yet"
@@ -48,6 +63,8 @@ export function HealthReportsPage() {
 			reports={summaries}
 			needsReview={setup.needsReview}
 			rawReports={reports}
+			partialReportCount={partialReportCount}
+			onOpenSetup={() => navigate(healthSettingsSection('import'))}
 		/>
 	)
 }

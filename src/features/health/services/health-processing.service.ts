@@ -707,7 +707,15 @@ async function processHealthReportWithAiText(
 		})
 
 		if (persistedMetricCount === 0) {
-			throw new Error(NO_LAB_METRICS_EXTRACTED_MESSAGE)
+			const allowsMetriclessCompletion =
+				healthReportQualifiesForMetriclessCompletion({
+					metadata: healthReport.metadata,
+					fileName: typedReport.file_name,
+				})
+
+			if (!allowsMetriclessCompletion) {
+				throw new Error(NO_LAB_METRICS_EXTRACTED_MESSAGE)
+			}
 		}
 
 		completePipelineStage({
@@ -717,6 +725,7 @@ async function processHealthReportWithAiText(
 			details: {
 				metricCount: persistedMetricCount,
 				extractionMode: 'llm_text',
+				metricless: persistedMetricCount === 0,
 			},
 		})
 
@@ -766,6 +775,10 @@ async function processHealthReportWithAiText(
 		await updateQueueStatus(reportId, 'completed', {
 			completed_at: processedAt,
 			error_message: null,
+		})
+
+		await syncRegistryWithReportOutcome(reportId, {
+			status: 'completed',
 		})
 
 		const completedReport: UploadedHealthReport = {

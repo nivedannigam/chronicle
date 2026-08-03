@@ -23,7 +23,11 @@ export function ImportReviewPanel({ userId }: ImportReviewPanelProps) {
 	const [importMessage, setImportMessage] = useState<string | null>(null)
 
 	const pendingDocuments = useMemo(
-		() => review.documents.filter((doc) => doc.approvalStatus === 'pending'),
+		() =>
+			review.documents.filter(
+				(doc) =>
+					doc.approvalStatus === 'pending' && doc.importStatus !== 'failed',
+			),
 		[review.documents],
 	)
 	const failedDocuments = useMemo(
@@ -143,19 +147,91 @@ export function ImportReviewPanel({ userId }: ImportReviewPanelProps) {
 					your health folder.
 				</div>
 			) : (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-					{review.documents.map((doc) => (
-						<ReviewDocumentCard
-							key={doc.registryId}
-							doc={doc}
-							members={uniqueMembers}
-							onApprove={() => void review.approve(doc.registryId)}
-							onReject={() => void review.reject(doc.registryId)}
-							onReassign={(memberId) =>
-								void review.reassign(doc.registryId, memberId)
-							}
-						/>
-					))}
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+					{pendingDocuments.length > 0 ? (
+						<div>
+							<p
+								style={{
+									fontSize: 11,
+									fontWeight: 700,
+									color: C.textMuted,
+									textTransform: 'uppercase',
+									letterSpacing: '0.06em',
+									margin: '0 0 10px',
+								}}
+							>
+								Pending approval
+							</p>
+							<div
+								style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+							>
+								{pendingDocuments.map((doc) => (
+									<ReviewDocumentCard
+										key={doc.registryId}
+										doc={doc}
+										members={uniqueMembers}
+										onApprove={() => void review.approve(doc.registryId)}
+										onReject={() => void review.reject(doc.registryId)}
+										onReassign={(memberId) =>
+											void review.reassign(doc.registryId, memberId)
+										}
+									/>
+								))}
+							</div>
+						</div>
+					) : null}
+
+					{failedDocuments.length > 0 ? (
+						<div>
+							<p
+								style={{
+									fontSize: 11,
+									fontWeight: 700,
+									color: C.red,
+									textTransform: 'uppercase',
+									letterSpacing: '0.06em',
+									margin: '0 0 10px',
+								}}
+							>
+								Failed import — retry from Setup
+							</p>
+							<div
+								style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+							>
+								{failedDocuments.map((doc) => (
+									<ReviewDocumentCard
+										key={doc.registryId}
+										doc={doc}
+										members={uniqueMembers}
+										onApprove={() => void review.approve(doc.registryId)}
+										onReject={() => void review.reject(doc.registryId)}
+										onReassign={(memberId) =>
+											void review.reassign(doc.registryId, memberId)
+										}
+									/>
+								))}
+							</div>
+						</div>
+					) : null}
+
+					{review.documents
+						.filter(
+							(doc) =>
+								!pendingDocuments.includes(doc) &&
+								!failedDocuments.includes(doc),
+						)
+						.map((doc) => (
+							<ReviewDocumentCard
+								key={doc.registryId}
+								doc={doc}
+								members={uniqueMembers}
+								onApprove={() => void review.approve(doc.registryId)}
+								onReject={() => void review.reject(doc.registryId)}
+								onReassign={(memberId) =>
+									void review.reassign(doc.registryId, memberId)
+								}
+							/>
+						))}
 				</div>
 			)}
 

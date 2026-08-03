@@ -7,6 +7,27 @@ import type {
 
 const ABNORMAL = new Set(['low', 'high', 'critical', 'borderline'])
 
+function topAbnormalMetricNames(
+	graph: HealthKnowledgeGraph,
+	limit = 2,
+): string[] {
+	const names: string[] = []
+
+	for (const history of graph.profile.metricHistories) {
+		const latest = history.observations[history.observations.length - 1]
+
+		if (latest && ABNORMAL.has(latest.status)) {
+			names.push(history.displayName)
+		}
+
+		if (names.length >= limit) {
+			break
+		}
+	}
+
+	return names
+}
+
 export function buildHealthSummary(input: {
 	graph: HealthKnowledgeGraph
 	profile: LongitudinalHealthProfile
@@ -56,6 +77,8 @@ export function buildHealthSummary(input: {
 		metricsNeedingAttention,
 		newFindingsCount,
 		reportCount: input.profile.reportCount,
+		topAbnormalMetrics: topAbnormalMetricNames(input.graph),
+		coveragePartial: input.statusLabel === 'Partial Results',
 	})
 
 	const bullets = buildBullets({
@@ -66,6 +89,8 @@ export function buildHealthSummary(input: {
 		newFindingsCount,
 		insights: input.insights,
 		reportCount: input.profile.reportCount,
+		topAbnormalMetrics: topAbnormalMetricNames(input.graph, 3),
+		coveragePartial: input.statusLabel === 'Partial Results',
 	})
 
 	return {
@@ -84,9 +109,23 @@ function buildHeadline(input: {
 	metricsNeedingAttention: number
 	newFindingsCount: number
 	reportCount: number
+	topAbnormalMetrics: string[]
+	coveragePartial: boolean
 }): string {
 	if (input.reportCount === 0) {
 		return 'Import health reports to build your health record.'
+	}
+
+	if (input.coveragePartial) {
+		return 'Your health picture is incomplete — some reports still need reprocessing in Setup.'
+	}
+
+	if (
+		input.metricsNeedingAttention > 0 &&
+		input.topAbnormalMetrics.length > 0
+	) {
+		const focus = input.topAbnormalMetrics.slice(0, 2).join(' and ')
+		return `${focus} ${input.metricsNeedingAttention === 1 ? 'needs' : 'need'} attention in your latest labs.`
 	}
 
 	switch (input.overallStatus) {
@@ -111,11 +150,25 @@ function buildBullets(input: {
 	newFindingsCount: number
 	insights: ChronicleInsight[]
 	reportCount: number
+	topAbnormalMetrics: string[]
+	coveragePartial: boolean
 }): string[] {
 	const bullets: string[] = []
 
 	if (input.reportCount === 0) {
 		return ['No reports imported yet.']
+	}
+
+	if (input.coveragePartial) {
+		bullets.push(
+			'Some imported reports are only partially extracted — open Setup → Reports to reprocess.',
+		)
+	}
+
+	if (input.topAbnormalMetrics.length > 0) {
+		bullets.push(
+			`Watch ${input.topAbnormalMetrics.join(', ')} based on your most recent results.`,
+		)
 	}
 
 	if (input.overallStatus === 'stable') {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	getReportPipelinePhase,
 	isReportDisplayReady,
+	isReportFullyClassified,
 	metricsDisplayMessage,
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
 	reportNeedsReprocess,
@@ -137,5 +138,32 @@ describe('report-readiness.service', () => {
 		})
 
 		expect(reportNeedsReprocess(report)).toBe(false)
+	})
+
+	it('requires all metrics classified for full classification', () => {
+		const partial = createReport('completed', {
+			parsed_data: {
+				metrics: [
+					{
+						canonicalId: 'hemoglobin',
+						displayName: 'Hemoglobin',
+						value: 14,
+						unit: 'g/dL',
+						status: 'normal',
+					},
+					{
+						canonicalId: 'unknown-1',
+						displayName: 'Unknown',
+						value: '—',
+						unit: '',
+						status: 'unknown',
+					},
+				],
+				metadata: { reportType: 'blood_test' },
+			},
+		})
+
+		expect(isReportDisplayReady(partial)).toBe(true)
+		expect(isReportFullyClassified(partial)).toBe(false)
 	})
 })

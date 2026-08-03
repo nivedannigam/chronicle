@@ -345,6 +345,60 @@ export function FigmaHealthOverviewView({
 				) : null}
 			</div>
 
+			{companion.healthSummary?.headline ? (
+				<SectionBlock label="Summary">
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 20,
+							padding: '18px 18px 16px',
+						}}
+					>
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 15,
+								fontWeight: 600,
+								lineHeight: 1.55,
+								margin: '0 0 12px',
+							}}
+						>
+							{companion.healthSummary.headline}
+						</p>
+						{companion.healthSummary.bullets.length > 0 ? (
+							<ul
+								style={{
+									margin: 0,
+									paddingLeft: 18,
+									color: FC.mid,
+									fontSize: 13.5,
+									lineHeight: 1.6,
+								}}
+							>
+								{companion.healthSummary.bullets.slice(0, 4).map((bullet) => (
+									<li key={bullet} style={{ marginBottom: 6 }}>
+										{bullet}
+									</li>
+								))}
+							</ul>
+						) : null}
+						{companion.narrative.length > 0 ? (
+							<p
+								style={{
+									color: FC.mid,
+									fontSize: 13,
+									lineHeight: 1.55,
+									margin:
+										companion.healthSummary.bullets.length > 0 ? '12px 0 0' : 0,
+								}}
+							>
+								{companion.narrative[0]}
+							</p>
+						) : null}
+					</div>
+				</SectionBlock>
+			) : null}
+
 			{companion.attention.length > 0 ? (
 				<SectionBlock label="Needs attention">
 					{companion.attention.map((item) => {
@@ -490,7 +544,7 @@ export function FigmaHealthOverviewView({
 							}}
 						>
 							{isPartialData
-								? 'Import complete — compare changes after more results are classified.'
+								? 'Finish reprocessing reports in Setup before comparing changes.'
 								: 'No significant changes detected since your previous report.'}
 						</p>
 					</div>
@@ -683,10 +737,14 @@ export function FigmaHealthReportsView({
 	reports,
 	needsReview,
 	rawReports = [],
+	partialReportCount = 0,
+	onOpenSetup,
 }: {
 	reports: HealthReportSummary[]
 	needsReview: number
 	rawReports?: UploadedHealthReport[]
+	partialReportCount?: number
+	onOpenSetup?: () => void
 }) {
 	const navigate = useNavigate()
 	const [query, setQuery] = useState('')
@@ -715,6 +773,56 @@ export function FigmaHealthReportsView({
 				placeholder="Search reports, labs, doctors, tests…"
 				ariaLabel="Search health reports"
 			/>
+
+			{partialReportCount > 0 ? (
+				<div
+					style={{
+						background: 'rgba(245,158,11,0.07)',
+						border: '1px solid rgba(245,158,11,0.2)',
+						borderRadius: 18,
+						padding: '14px 16px',
+						marginBottom: 16,
+					}}
+				>
+					<p
+						style={{
+							color: FC.fg,
+							fontSize: 13.5,
+							fontWeight: 600,
+							margin: '0 0 4px',
+						}}
+					>
+						{partialReportCount} report{partialReportCount === 1 ? '' : 's'}{' '}
+						still processing
+					</p>
+					<p
+						style={{ color: FC.mid, fontSize: 13, margin: 0, lineHeight: 1.5 }}
+					>
+						Only fully extracted reports appear here. Reprocess partial imports
+						in Setup.
+					</p>
+					{onOpenSetup ? (
+						<button
+							type="button"
+							onClick={onOpenSetup}
+							style={{
+								marginTop: 10,
+								background: FC.amber,
+								border: 'none',
+								borderRadius: 100,
+								padding: '7px 12px',
+								fontSize: 12,
+								fontWeight: 700,
+								color: FC.bg,
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+							}}
+						>
+							Open Setup
+						</button>
+					) : null}
+				</div>
+			) : null}
 
 			{needsReview > 0 ? (
 				<div

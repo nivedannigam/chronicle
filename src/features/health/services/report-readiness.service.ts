@@ -99,6 +99,32 @@ export function getReportPipelinePhase(
 	return 'pending'
 }
 
+/** Report has finished processing and every extracted metric is classified. */
+export function isReportFullyClassified(report: UploadedHealthReport): boolean {
+	if (!isReportDisplayReady(report)) {
+		return false
+	}
+
+	if (reportQualifiesForMetriclessCompletion(report)) {
+		return true
+	}
+
+	const parsed = getParsedHealthReport(report)
+	const metrics = parsed?.metrics ?? []
+
+	if (metrics.length === 0) {
+		return false
+	}
+
+	return metrics.every((metric) => metric.status !== 'unknown')
+}
+
+export function countFullyClassifiedReports(
+	reports: UploadedHealthReport[],
+): number {
+	return reports.filter(isReportFullyClassified).length
+}
+
 /** User-visible readiness — report finished processing and has displayable results. */
 export function isReportDisplayReady(report: UploadedHealthReport): boolean {
 	if (report.status !== 'completed') {
