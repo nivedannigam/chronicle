@@ -111,6 +111,65 @@ describe('document-type detector', () => {
 
 		expect(detectDocumentType(input)).toBe('unknown')
 	})
+
+	it('does not treat label text as a lab report', () => {
+		expect(
+			detectDocumentType({
+				documentId: 'doc-label',
+				fileName: 'form.pdf',
+				mimeType: 'application/pdf',
+				ocrDocument: {
+					rawText: 'Employee label and department information only.',
+					pages: [
+						{
+							pageNumber: 1,
+							text: 'Employee label and department information only.',
+							confidence: 0.9,
+						},
+					],
+					tables: [],
+					confidence: 0.9,
+					metadata: {
+						provider: 'mock',
+						mimeType: 'application/pdf',
+						fileName: 'form.pdf',
+						language: 'en',
+						pageCount: 1,
+						tableCount: 0,
+					},
+					processingTimeMs: 100,
+				},
+			}),
+		).toBe('unknown')
+	})
+
+	it('detects ecg from full OCR text when keywords are after the preview window', () => {
+		const padding = 'clinical notes '.repeat(500)
+		const ecgText = `${padding}Final impression: normal sinus rhythm on electrocardiogram.`
+
+		expect(
+			detectDocumentType({
+				documentId: 'doc-ecg-late',
+				fileName: 'Report.pdf',
+				mimeType: 'application/pdf',
+				ocrDocument: {
+					rawText: ecgText,
+					pages: [{ pageNumber: 1, text: ecgText, confidence: 0.9 }],
+					tables: [],
+					confidence: 0.9,
+					metadata: {
+						provider: 'mock',
+						mimeType: 'application/pdf',
+						fileName: 'Report.pdf',
+						language: 'en',
+						pageCount: 1,
+						tableCount: 0,
+					},
+					processingTimeMs: 100,
+				},
+			}),
+		).toBe('health_report')
+	})
 })
 
 describe('parser registry', () => {

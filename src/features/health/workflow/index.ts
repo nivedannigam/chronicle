@@ -9,6 +9,7 @@ export {
 } from '@/features/health/workflow/health-workflow.service'
 export {
 	retryFailedWorkflowItem,
+	retryHealthDocument,
 	retryAllFailedWorkflowItems,
 	processApprovedBatch,
 } from '@/features/health/workflow/health-workflow-retry.service'

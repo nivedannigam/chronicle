@@ -21,7 +21,7 @@ import {
 	reprocessHealthReport,
 	reprocessHealthReportWithAi,
 } from '@/features/health/services/health-processing.service'
-import { retryFailedWorkflowItem } from '@/features/health/workflow/health-workflow-retry.service'
+import { retryHealthDocument } from '@/features/health/workflow/health-workflow-retry.service'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
@@ -183,13 +183,10 @@ export function HealthImportReportList({
 		setBulkMessage(null)
 
 		try {
-			if (row.registryId) {
-				await retryFailedWorkflowItem(userId, row.registryId)
-			} else if (row.reportId) {
-				await reprocessHealthReport(row.reportId)
-			} else {
-				return
-			}
+			await retryHealthDocument(userId, {
+				registryId: row.registryId,
+				reportId: row.reportId,
+			})
 
 			await refreshQueries()
 		} catch (error) {

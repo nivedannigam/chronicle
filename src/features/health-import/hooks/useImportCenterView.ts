@@ -12,10 +12,8 @@ import {
 import { buildSetupReportRows } from '@/features/health-import/utils/setup-report-list.utils'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
-import {
-	reprocessHealthReport,
-	reprocessHealthReportWithAi,
-} from '@/features/health/services/health-processing.service'
+import { reprocessHealthReportWithAi } from '@/features/health/services/health-processing.service'
+import { retryHealthDocument } from '@/features/health/workflow/health-workflow-retry.service'
 import { AI_REPROCESS_CONFIRMATION } from '@/features/health/services/health-ai-extraction.service'
 import { useImportReview } from '@/features/medical-discovery/hooks/useImportReview'
 import { useUser } from '@/features/user/hooks/useUser'
@@ -138,10 +136,15 @@ export function useImportCenterView(userId: string | undefined) {
 		setBusyItemId(input.itemId)
 
 		try {
-			if (input.registryId) {
-				await review.retryImport(input.registryId)
-			} else if (input.reportId) {
-				await reprocessHealthReport(input.reportId)
+			if (input.registryId || input.reportId) {
+				if (!userId) {
+					throw new Error('You must be signed in.')
+				}
+
+				await retryHealthDocument(userId, {
+					registryId: input.registryId,
+					reportId: input.reportId,
+				})
 			} else {
 				await importState.retry()
 			}

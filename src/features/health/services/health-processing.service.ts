@@ -10,6 +10,7 @@ import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/service
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 import { buildWorkflowErrorDetail } from '@/core/workflow/workflow-errors.types'
 import { safeTransitionWorkflowItem } from '@/features/health/workflow/safe-workflow-transition'
+import { resetWorkflowForReprocess } from '@/features/health/workflow/reset-workflow-for-reprocess'
 import {
 	completePipelineStage,
 	failPipelineStage,
@@ -23,6 +24,7 @@ import {
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
 	reportHasExtractedText,
 	reportNeedsReprocess,
+	UNSUPPORTED_HEALTH_DOCUMENT_MESSAGE,
 } from '@/features/health/services/report-readiness.service'
 import { buildHealthReportFromAiExtraction } from '@/features/health/services/health-ai-extraction.service'
 import {
@@ -174,6 +176,14 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
+		if (options.force) {
+			await resetWorkflowForReprocess({
+				reportId,
+				userId: typedReport.user_id,
+				targetState: 'OCR',
+			})
+		}
+
 		startPipelineStage({
 			reportId,
 			stage: 'OCR',
@@ -254,7 +264,7 @@ export async function processHealthReport(
 		const { healthReport } = outcome
 
 		if (!healthReport) {
-			throw new Error('Expected a health report from the document pipeline.')
+			throw new Error(UNSUPPORTED_HEALTH_DOCUMENT_MESSAGE)
 		}
 
 		const serializedParsedData = serializeParsedHealthReport(healthReport)
@@ -661,6 +671,14 @@ async function processHealthReportWithAiText(
 			started_at: processedAt,
 			error_message: null,
 		})
+
+		if (options.force) {
+			await resetWorkflowForReprocess({
+				reportId,
+				userId: typedReport.user_id,
+				targetState: 'PARSING',
+			})
+		}
 
 		startPipelineStage({
 			reportId,

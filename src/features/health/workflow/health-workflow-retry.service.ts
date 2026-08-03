@@ -15,11 +15,36 @@ import {
 	transitionWorkflowItem,
 } from '@/features/health/workflow/health-workflow.service'
 import {
+	resetWorkflowForReprocess,
+	shouldUseReportReprocess,
+} from '@/features/health/workflow/reset-workflow-for-reprocess'
+import {
 	enqueueHealthReportProcessing,
 	processHealthReport,
 	reprocessHealthReport,
 } from '@/features/health/services/health-processing.service'
 import type { WorkflowState } from '@/core/workflow'
+
+export async function retryHealthDocument(
+	userId: string,
+	input: { registryId?: string | null; reportId?: string | null },
+): Promise<{ targetState: WorkflowState; reportId?: string }> {
+	if (input.registryId) {
+		return retryFailedWorkflowItem(userId, input.registryId)
+	}
+
+	if (input.reportId) {
+		await resetWorkflowForReprocess({
+			reportId: input.reportId,
+			userId,
+			targetState: 'OCR',
+		})
+		await reprocessHealthReport(input.reportId)
+		return { targetState: 'OCR', reportId: input.reportId }
+	}
+
+	throw new Error('No retryable document found')
+}
 
 export async function retryFailedWorkflowItem(
 	userId: string,
@@ -27,11 +52,41 @@ export async function retryFailedWorkflowItem(
 ): Promise<{ targetState: WorkflowState; reportId?: string }> {
 	const item = await getWorkflowItemByRegistryId(registryId)
 
+	const { data: registry, error } = await supabase
+		.from('connector_document_registry')
+		.select('import_status, health_report_id, approval_status')
+		.eq('id', registryId)
+		.single()
+
+	if (error || !registry) {
+		throw new Error(error?.message ?? 'Registry record not found')
+	}
+
+	const reportId =
+		(registry.health_report_id as string | null) ?? item?.reportId ?? null
+
+	if (
+		shouldUseReportReprocess({
+			reportId,
+			workflowState: item?.currentState,
+			importStatus: registry.import_status as string,
+			failedStage: item?.failedStage,
+		})
+	) {
+		await resetWorkflowForReprocess({
+			reportId: reportId!,
+			userId,
+			targetState: 'OCR',
+		})
+		await reprocessHealthReport(reportId!)
+		return { targetState: 'OCR', reportId: reportId! }
+	}
+
 	if (item?.currentState === 'FAILED') {
 		return retryFailedWorkflowItemFromState(userId, registryId, item)
 	}
 
-	return retryRegistryImport(userId, registryId, item?.reportId ?? null)
+	return retryRegistryImport(userId, registryId, reportId)
 }
 
 async function retryFailedWorkflowItemFromState(
@@ -71,11 +126,24 @@ async function retryFailedWorkflowItemFromState(
 			await enqueueHealthReportProcessing(userId, item.reportId)
 		}
 
+		await resetWorkflowForReprocess({
+			reportId: item.reportId,
+			userId,
+			targetState:
+				targetState === 'PARSING' || targetState === 'INDEXING'
+					? 'PARSING'
+					: 'OCR',
+		})
 		await reprocessHealthReport(item.reportId)
 		return { targetState, reportId: item.reportId }
 	}
 
 	if (item.reportId) {
+		await resetWorkflowForReprocess({
+			reportId: item.reportId,
+			userId,
+			targetState: 'OCR',
+		})
 		await processHealthReport(item.reportId, { force: true })
 		return { targetState, reportId: item.reportId }
 	}
@@ -113,14 +181,14 @@ async function retryRegistryImport(
 		return { targetState: 'IMPORTING', reportId: result.reportId }
 	}
 
-	if (
-		reportId &&
-		(importStatus === 'imported' ||
-			importStatus === 'processing' ||
-			importStatus === 'completed')
-	) {
+	if (reportId) {
+		await resetWorkflowForReprocess({
+			reportId,
+			userId,
+			targetState: 'OCR',
+		})
 		await reprocessHealthReport(reportId)
-		return { targetState: 'PARSING', reportId }
+		return { targetState: 'OCR', reportId }
 	}
 
 	if (registry.approval_status === 'approved') {

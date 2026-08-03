@@ -13,6 +13,10 @@ const METRICLESS_COMPLETE_KINDS = new Set([
 export const NO_LAB_METRICS_EXTRACTED_MESSAGE =
 	'OCR completed but no laboratory metrics were extracted from this report.'
 
+/** Shown when OCR succeeded but the document is not recognized as a health report. */
+export const UNSUPPORTED_HEALTH_DOCUMENT_MESSAGE =
+	'OCR completed but this document does not appear to be a health or laboratory report.'
+
 /** Reports in processing longer than this are treated as stuck and need attention. */
 export const REPORT_PROCESSING_STALE_MS = 20 * 60 * 1000
 

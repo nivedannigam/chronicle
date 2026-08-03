@@ -5,10 +5,19 @@ const HEALTH_LAB_KEYWORDS =
 
 /** ECG, TMT, radiology, wellness — OCR-only reports without lab metrics. */
 const METRICLESS_HEALTH_KEYWORDS =
-	/\b(ecg|ekg|electrocardiogram|tmt|treadmill|stress test|company wellness|wellness plan|wellness|mri|x-?ray|ultrasound|radiology)\b/i
+	/\b(ecg|ekg|electrocardiogram|tmt|treadmill|stress test|company wellness|wellness plan|wellness|mri|x-?ray|ultrasound|radiology|health summary|comprehensive health|health dashboard|company plan)\b/i
 
 const PASSPORT_KEYWORDS =
 	/\b(passport|republic of|nationality|date of birth|mrz|travel document)\b/i
+
+const LAB_WORD = /\blab(?:oratory)?\b/i
+
+function buildDetectionText(input: ParserInput): string {
+	const fileName = input.fileName ?? ''
+	const rawText = input.ocrDocument.rawText ?? ''
+
+	return [fileName, rawText.slice(0, 4000), rawText].join('\n')
+}
 
 export function textIndicatesHealthReportDocument(text: string): boolean {
 	const normalized = text.toLowerCase()
@@ -16,7 +25,7 @@ export function textIndicatesHealthReportDocument(text: string): boolean {
 	return (
 		HEALTH_LAB_KEYWORDS.test(text) ||
 		METRICLESS_HEALTH_KEYWORDS.test(text) ||
-		normalized.includes('lab') ||
+		LAB_WORD.test(text) ||
 		normalized.includes('checkup') ||
 		normalized.includes('check-up') ||
 		normalized.includes('health report') ||
@@ -27,9 +36,7 @@ export function textIndicatesHealthReportDocument(text: string): boolean {
 }
 
 export function detectDocumentType(input: ParserInput): DocumentTypeId {
-	const text = [input.fileName, input.ocrDocument.rawText.slice(0, 4000)].join(
-		'\n',
-	)
+	const text = buildDetectionText(input)
 
 	if (PASSPORT_KEYWORDS.test(text)) {
 		return 'passport'
