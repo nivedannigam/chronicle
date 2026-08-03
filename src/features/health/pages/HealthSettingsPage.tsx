@@ -486,7 +486,8 @@ export function HealthSettingsPage() {
 				</div>
 			) : null}
 
-			{setup.needsReview > 0 ? (
+			{setup.needsReview > 0 ||
+			(importStatus.data?.actionableReviewCount ?? 0) > 0 ? (
 				<div id="review" style={{ marginBottom: 24 }}>
 					<div style={{ marginBottom: 12 }}>
 						<FigmaHealthSectionLabel>Review reports</FigmaHealthSectionLabel>

@@ -94,6 +94,13 @@ export async function listReviewDocuments(
 	)
 }
 
+export async function countActionableReviewDocuments(
+	userId: string,
+): Promise<number> {
+	const documents = await listReviewDocuments(userId, 'actionable')
+	return documents.length
+}
+
 export async function updateDocumentApproval(
 	registryId: string,
 	approvalStatus: ApprovalStatus,

@@ -1,3 +1,4 @@
+import { resolveReportDateFromFileName } from '@/features/health/extraction/health-metadata.parser'
 import { supabase } from '@/lib/supabase'
 import { discoverDriveFiles } from '@/features/connectors/google-drive/services/google-drive-api.service'
 import { findRegistryByExternalFileId } from '@/features/connectors/services/connector-store.service'
@@ -248,6 +249,8 @@ export async function runMedicalDiscovery(input: {
 				discovery_category: score.category,
 				discovery_confidence: score.confidence,
 				discovery_reason: score.reason,
+				detected_report_date:
+					resolveReportDateFromFileName(item.fileName) ?? null,
 				approval_status: approvalStatus,
 				last_sync_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),

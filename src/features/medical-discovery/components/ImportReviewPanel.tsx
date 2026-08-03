@@ -208,6 +208,7 @@ export function ImportReviewPanel({ userId }: ImportReviewPanelProps) {
 										onReassign={(memberId) =>
 											void review.reassign(doc.registryId, memberId)
 										}
+										onRetry={() => void review.retryImport(doc.registryId)}
 									/>
 								))}
 							</div>
@@ -364,12 +365,14 @@ function ReviewDocumentCard({
 	onApprove,
 	onReject,
 	onReassign,
+	onRetry,
 }: {
 	doc: ReviewDocument
 	members: ReturnType<typeof dedupeFamilyMembers>
 	onApprove: () => void
 	onReject: () => void
 	onReassign: (memberId: string) => void
+	onRetry?: () => void
 }) {
 	const isPending = doc.approvalStatus === 'pending'
 	const isFailed = doc.importStatus === 'failed'
@@ -444,6 +447,16 @@ function ReviewDocumentCard({
 							onClick={() => onReassign(member.id)}
 						/>
 					))}
+				</div>
+			) : null}
+			{isFailed && onRetry ? (
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+					<ActionChip
+						label="Retry import"
+						icon={<RefreshCw size={14} />}
+						color={C.accent}
+						onClick={onRetry}
+					/>
 				</div>
 			) : null}
 		</div>

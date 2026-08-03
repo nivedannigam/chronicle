@@ -149,7 +149,11 @@ export async function processHealthReport(
 		}
 	} else if (!options.force && typedReport.status === 'processing') {
 		return typedReport
-	} else if (!options.force && typedReport.status === 'failed') {
+	} else if (
+		!options.force &&
+		typedReport.status === 'failed' &&
+		!reportNeedsReprocess(typedReport)
+	) {
 		return typedReport
 	} else if (
 		!options.force &&
@@ -213,7 +217,7 @@ export async function processHealthReport(
 
 					await safeTransitionWorkflowItem({
 						reportId,
-						toState: 'OCR',
+						toState: 'PARSING',
 						context: {
 							userId: typedReport.user_id,
 							reportId,
@@ -816,6 +820,11 @@ async function processHealthReportWithAiText(
 				failedStage: 'PARSING',
 				errorDetail,
 			},
+		})
+
+		await syncRegistryWithReportOutcome(reportId, {
+			status: 'failed',
+			errorMessage: errorDetail.userMessage,
 		})
 
 		throw new Error(errorDetail.userMessage)

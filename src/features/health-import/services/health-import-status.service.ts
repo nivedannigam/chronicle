@@ -1,4 +1,5 @@
 import { listHealthSourceAssignments } from '@/features/family/services/health-sources.service'
+import { countActionableReviewDocuments } from '@/features/medical-discovery/services/import-review.service'
 import { getHealthWorkflowProjection } from '@/features/health/workflow'
 import { queryKeys } from '@/lib/query-keys'
 import { supabase } from '@/lib/supabase'
@@ -29,6 +30,7 @@ export interface HealthImportStatus {
 	documentsScanned: number
 	medicalReportsCount: number
 	needsReviewCount: number
+	actionableReviewCount: number
 	importCandidatesCount: number
 	skippedIgnoredCount: number
 	lastScanAt: string | null
@@ -55,6 +57,7 @@ export async function fetchHealthImportStatus(
 		workflowProjection,
 		lastRunResult,
 		completedReportsResult,
+		actionableReviewCount,
 	] = await Promise.all([
 		listHealthSourceAssignments(userId),
 		getHealthWorkflowProjection(userId),
@@ -70,6 +73,7 @@ export async function fetchHealthImportStatus(
 			.select('id', { count: 'exact', head: true })
 			.eq('user_id', userId)
 			.eq('status', 'completed'),
+		countActionableReviewDocuments(userId),
 	])
 
 	const items = workflowProjection.items
@@ -83,7 +87,10 @@ export async function fetchHealthImportStatus(
 			item.currentState !== 'SKIPPED' && item.currentState !== 'REJECTED',
 	).length
 	const medicalReportsCount = countWorkflowByCategory(items, 'likely_medical')
-	const needsReviewCount = workflowProjection.pendingReviewCount
+	const needsReviewCount = Math.max(
+		workflowProjection.pendingReviewCount,
+		actionableReviewCount,
+	)
 	const skippedIgnoredCount = items.filter(
 		(item) => item.currentState === 'SKIPPED',
 	).length
@@ -103,6 +110,7 @@ export async function fetchHealthImportStatus(
 		documentsScanned,
 		medicalReportsCount,
 		needsReviewCount,
+		actionableReviewCount,
 		importCandidatesCount,
 		skippedIgnoredCount,
 		lastScanAt,

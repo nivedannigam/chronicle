@@ -27,10 +27,18 @@ export async function retryFailedWorkflowItem(
 ): Promise<{ targetState: WorkflowState; reportId?: string }> {
 	const item = await getWorkflowItemByRegistryId(registryId)
 
-	if (!item || item.currentState !== 'FAILED') {
-		throw new Error('No failed workflow item found for retry')
+	if (item?.currentState === 'FAILED') {
+		return retryFailedWorkflowItemFromState(userId, registryId, item)
 	}
 
+	return retryRegistryImport(userId, registryId, item?.reportId ?? null)
+}
+
+async function retryFailedWorkflowItemFromState(
+	userId: string,
+	registryId: string,
+	item: NonNullable<Awaited<ReturnType<typeof getWorkflowItemByRegistryId>>>,
+): Promise<{ targetState: WorkflowState; reportId?: string }> {
 	const targetState = getRetryTargetState(
 		item.failedStage ?? item.previousState,
 	)
@@ -74,6 +82,60 @@ export async function retryFailedWorkflowItem(
 
 	const result = await importRegistryRecord(userId, registryId)
 	return { targetState, reportId: result.reportId }
+}
+
+async function retryRegistryImport(
+	userId: string,
+	registryId: string,
+	linkedReportId: string | null,
+): Promise<{ targetState: WorkflowState; reportId?: string }> {
+	const { data: registry, error } = await supabase
+		.from('connector_document_registry')
+		.select('import_status, health_report_id, approval_status')
+		.eq('id', registryId)
+		.single()
+
+	if (error || !registry) {
+		throw new Error(error?.message ?? 'Registry record not found')
+	}
+
+	const importStatus = registry.import_status as string
+	const reportId =
+		(registry.health_report_id as string | null) ?? linkedReportId
+
+	if (importStatus === 'failed' || importStatus === 'discovered') {
+		await updateRegistryRecord(registryId, {
+			importStatus: 'queued',
+			errorMessage: null,
+		})
+
+		const result = await importRegistryRecord(userId, registryId)
+		return { targetState: 'IMPORTING', reportId: result.reportId }
+	}
+
+	if (
+		reportId &&
+		(importStatus === 'imported' ||
+			importStatus === 'processing' ||
+			importStatus === 'completed')
+	) {
+		await reprocessHealthReport(reportId)
+		return { targetState: 'PARSING', reportId }
+	}
+
+	if (registry.approval_status === 'approved') {
+		await updateRegistryRecord(registryId, {
+			importStatus: 'queued',
+			errorMessage: null,
+		})
+		await processImportQueueWithProgress(userId, {
+			parallel: 1,
+			limit: 1,
+		})
+		return { targetState: 'IMPORTING', reportId: reportId ?? undefined }
+	}
+
+	throw new Error('No retryable import state found for this document')
 }
 
 export async function retryAllFailedWorkflowItems(

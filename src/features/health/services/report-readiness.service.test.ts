@@ -166,4 +166,13 @@ describe('report-readiness.service', () => {
 		expect(isReportDisplayReady(partial)).toBe(true)
 		expect(isReportFullyClassified(partial)).toBe(false)
 	})
+
+	it('marks completed reports without metrics as incomplete processing', () => {
+		const report = createReport('completed', {
+			parsed_data: { metrics: [], metadata: { reportType: 'blood_test' } },
+		})
+
+		expect(getReportPipelinePhase(report)).toBe('processing')
+		expect(reportNeedsReprocess(report)).toBe(true)
+	})
 })

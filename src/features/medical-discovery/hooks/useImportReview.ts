@@ -9,6 +9,7 @@ import {
 	approveAndImportDocument,
 	processApprovedImports,
 } from '@/features/medical-discovery/services/import-pipeline.service'
+import { retryFailedWorkflowItem } from '@/features/health/workflow/health-workflow-retry.service'
 import type { ReviewDocument } from '@/features/medical-discovery/types/medical-discovery.types'
 import {
 	invalidateAfterHealthImport,
@@ -152,6 +153,19 @@ export function useImportReview(userId: string | undefined) {
 		},
 	})
 
+	const retryImportMutation = useMutation({
+		mutationFn: async (registryId: string) => {
+			if (!userId) {
+				throw new Error('You must be signed in.')
+			}
+
+			return retryFailedWorkflowItem(userId, registryId)
+		},
+		onSettled: () => {
+			invalidateAfterHealthImport(userId)
+		},
+	})
+
 	return {
 		documents: query.data ?? [],
 		isLoading: query.isLoading,
@@ -164,5 +178,7 @@ export function useImportReview(userId: string | undefined) {
 		reassign: (registryId: string, familyMemberId: string) =>
 			reassignMutation.mutateAsync({ registryId, familyMemberId }),
 		approveAllLikely: () => approveAllMutation.mutateAsync(),
+		retryImport: (registryId: string) =>
+			retryImportMutation.mutateAsync(registryId),
 	}
 }

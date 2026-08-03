@@ -52,6 +52,7 @@ import {
 	NO_LAB_METRICS_EXTRACTED_MESSAGE,
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
+import { resolveReportDateFromFileName } from '@/features/health/extraction/health-metadata.parser'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { supabase } from '@/lib/supabase'
 import type { ConnectorSyncMode } from '@/core/connectors'
@@ -270,9 +271,10 @@ async function importRegistryRecord(
 		user_id: userId,
 		file_name: registry.file_name,
 		storage_path: download.storagePath,
-		report_date: registry.external_modified_at
-			? String(registry.external_modified_at).slice(0, 10)
-			: new Date().toISOString().slice(0, 10),
+		report_date:
+			(registry.detected_report_date as string | null) ??
+			resolveReportDateFromFileName(registry.file_name) ??
+			null,
 		report_type: 'general',
 		status: 'uploaded',
 		source: 'google_drive',

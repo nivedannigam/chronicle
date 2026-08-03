@@ -32,6 +32,8 @@ const EMPTY_STATUS: HealthImportStatus = {
 
 	needsReviewCount: 0,
 
+	actionableReviewCount: 0,
+
 	importCandidatesCount: 0,
 
 	skippedIgnoredCount: 0,

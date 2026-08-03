@@ -633,7 +633,7 @@ function buildJourneyEvents(input: {
 	const events: HealthJourneyEvent[] = []
 
 	for (const report of input.reports.filter(
-		(item) => item.status === 'completed' && isReportDisplayReady(item),
+		(item) => item.status === 'completed',
 	)) {
 		const classified = classifyReportType(report)
 		const isReady = isReportDisplayReady(report)
@@ -818,7 +818,9 @@ export function buildHealthCompanionView(input: {
 		uploadedReports: input.uploadedReports,
 	})
 	const metricGroups = buildMetricGroups(input.graph)
-	const recentReports = buildReportSummaries(input.uploadedReports)
+	const recentReports = buildReportSummaries(input.uploadedReports, {
+		includePartial: true,
+	})
 	const journeyEvents = buildJourneyEvents({
 		reports: input.uploadedReports,
 		graph: input.graph,

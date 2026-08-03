@@ -25,7 +25,6 @@ export function textIndicatesMetriclessReportType(text: string): boolean {
 		normalized.includes('stress test') ||
 		normalized.includes('company wellness') ||
 		normalized.includes('wellness plan') ||
-		normalized.includes('wellness') ||
 		normalized.includes('mri') ||
 		normalized.includes(' ct ') ||
 		normalized.includes('x-ray') ||
@@ -82,11 +81,12 @@ export function getReportPipelinePhase(
 	}
 
 	if (report.status === 'completed') {
-		if (
-			reportHasParsedObservations(report) ||
-			reportQualifiesForMetriclessCompletion(report)
-		) {
+		if (isReportDisplayReady(report)) {
 			return 'ready'
+		}
+
+		if (report.processing_error) {
+			return 'failed'
 		}
 
 		return 'processing'
