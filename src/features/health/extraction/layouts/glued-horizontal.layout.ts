@@ -100,6 +100,32 @@ function parseGluedLine(
 		}
 	}
 
+	// Document AI spacing: Carcino Embryonic Antigen : 2.10ng/mL (space after colon, unit glued)
+	const spacedColonGluedUnit = line.match(
+		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:\s*([\d.]+)(ng\/mL|ng\/ml|mg\/dL|mg\/dl|ug\/dL|ug\/dl|μg\/dL|U\/L|IU\/L|mmol\/l|mmol\/L)$/i,
+	)
+
+	if (spacedColonGluedUnit) {
+		const [, rawName, value, unit] = spacedColonGluedUnit
+
+		if (looksLikeMetricName(rawName)) {
+			let referenceRange = ''
+			const nextLine = normalizeLine(lines[index + 1] ?? '')
+			const refMatch = nextLine.match(/[<>=]\s*[\d.]+/)
+
+			if (refMatch) {
+				referenceRange = refMatch[0].replace(/\s+/g, '')
+			}
+
+			return {
+				rawName,
+				value,
+				unit,
+				referenceRange,
+			}
+		}
+	}
+
 	// Document AI spacing: Carcino Embryonic Antigen : 2.10 ng/mL
 	const spacedColonValueUnit = line.match(
 		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:\s*([\d.]+)\s+(ng\/mL|ng\/ml|mg\/dL|mg\/dl|ug\/dL|ug\/dl|μg\/dL|U\/L|IU\/L|mmol\/l|mmol\/L)$/i,

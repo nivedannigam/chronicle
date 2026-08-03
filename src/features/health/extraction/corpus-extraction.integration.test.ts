@@ -155,5 +155,12 @@ describe.skipIf(!fixturesPresent)('corpus-extraction integration', () => {
 		if (mar2024) {
 			expect(mar2024.metricCount).toBeGreaterThan(10)
 		}
+
+		const jan2022 = table.find(
+			(r) => r.filename === '2022 Jan - Complete Blood Test.pdf',
+		)
+		if (jan2022) {
+			expect(jan2022.metricCount).toBeGreaterThanOrEqual(8)
+		}
 	}, 120_000)
 })
