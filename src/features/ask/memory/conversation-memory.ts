@@ -1,4 +1,6 @@
 import type { AskConversationTurn } from '@/features/ask/types'
+import { buildConversationMemoryContext } from '@/shared/ai/context/companion-context.builder'
+import type { ConversationMemoryContext } from '@/shared/ai/types/companion-response.types'
 
 export interface ConversationTurnMemory {
 	question: string
@@ -97,6 +99,10 @@ export class ConversationMemory {
 		}
 
 		sessionMemory.clear()
+	}
+
+	getMemoryContext(sessionKey: string): ConversationMemoryContext {
+		return buildConversationMemoryContext(this.getTurns(sessionKey))
 	}
 }
 

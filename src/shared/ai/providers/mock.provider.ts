@@ -34,9 +34,17 @@ function buildMockResponse(input: {
 
 	if (hasNoReport) {
 		return {
+			directAnswer:
+				'No display-ready health report is available to summarize yet.',
 			summary: 'No display-ready health report is available to summarize yet.',
 			overallStatus: 'insufficient_data',
+			evidenceFromReports: [],
 			keyFindings: [],
+			whatChanged: [],
+			whatItMayMean: [],
+			doctorDiscussion: [],
+			confidenceLevel: 'low',
+			sourceReports: [],
 			recommendations: ['Import a laboratory report to enable AI summaries.'],
 			followUpQuestions: ['How do I import health reports?'],
 			confidence: 0.4,
@@ -46,13 +54,26 @@ function buildMockResponse(input: {
 	}
 
 	return {
+		directAnswer: hasHealthContext
+			? 'Based on your latest report, Chronicle reviewed the findings that matter most.'
+			: 'Chronicle reviewed the available structured health context.',
 		summary: hasHealthContext
-			? 'Based on the structured HealthKnowledge supplied, your latest report has been reviewed for clinically prioritized findings.'
+			? 'Based on your latest report, Chronicle reviewed the findings that matter most.'
 			: 'Chronicle reviewed the available structured health context.',
 		overallStatus: hasHealthContext ? 'stable' : 'insufficient_data',
+		evidenceFromReports: hasHealthContext
+			? ['Structured metrics from your latest imported report were considered.']
+			: ['No domain-specific findings were synthesized in mock mode.'],
 		keyFindings: hasHealthContext
 			? ['Structured metrics from your latest imported report were considered.']
 			: ['No domain-specific findings were synthesized in mock mode.'],
+		whatChanged: [],
+		whatItMayMean: hasHealthContext
+			? ['These results should be interpreted alongside your clinical history.']
+			: [],
+		doctorDiscussion: ['Verify important results with your clinician.'],
+		confidenceLevel: hasHealthContext ? 'medium' : 'low',
+		sourceReports: [],
 		recommendations: [
 			'Verify important results with your clinician.',
 			'Import additional reports to improve coverage.',

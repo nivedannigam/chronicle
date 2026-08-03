@@ -298,6 +298,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 						(item) => item.isAccountOwner,
 					)?.id,
 					memberName: memberForTurn.memberName,
+					conversationTurns: conversationMemory.getTurns(sessionKey),
 					onStream: input.onStream,
 					betaExperienceId: betaExperience?.id,
 				})

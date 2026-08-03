@@ -3,6 +3,11 @@ import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.t
 /** Human-first response layout for every Ask turn. */
 export interface StructuredAskResponse {
 	directAnswer: string
+	evidenceFromReports?: string[]
+	whatChanged?: string[]
+	whatItMayMean?: string[]
+	doctorDiscussion?: string[]
+	sourceReports?: Array<{ id: string; label: string }>
 	keyFindings: string[]
 	explanation: string | null
 	recommendations: string[]

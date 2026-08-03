@@ -45,6 +45,14 @@ export interface RunHealthQuestionInput {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	conversationTurns?: Array<{
+		question: string
+		answer: string
+		intent?: string
+		metricName?: string
+		categoryId?: string
+	}>
+	memoryContextPrompt?: string | null
 }
 
 const CHRONICLE_TO_LEGACY_INTENT: Partial<Record<ChronicleIntent, IntentId>> = {
@@ -134,6 +142,7 @@ export class AIPlatformPipeline {
 			domain: 'health',
 			userId: input.userId,
 			memberName: input.memberName,
+			memoryContextPrompt: input.memoryContextPrompt,
 			knowledgePayload: {
 				familyMemberId: input.familyMemberId,
 				accountOwnerMemberId: input.accountOwnerMemberId,
@@ -206,6 +215,7 @@ export class AIPlatformPipeline {
 			intent: classifiedIntent,
 			evidence,
 			memberName: request.memberName,
+			memoryContextPrompt: request.memoryContextPrompt,
 		})
 
 		const validationContext = buildValidationContextFromEvidence(evidence)

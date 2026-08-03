@@ -13,6 +13,7 @@ export interface EvidencePromptInput {
 	intent: ClassifiedIntent
 	evidence: SelectedEvidence
 	memberName?: string | null
+	memoryContextPrompt?: string | null
 }
 
 /**
@@ -42,10 +43,14 @@ export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 		`Question: ${input.question}`,
 		input.memberName ? `Member: ${input.memberName}` : '',
 		`Intent: ${input.intent.intent}`,
+		input.memoryContextPrompt ? '' : '',
+		input.memoryContextPrompt ?? '',
 		'',
 		'SelectedEvidence (use ONLY this data — do not invent values):',
 		evidenceJson,
-	].join('\n')
+	]
+		.filter((line, index, array) => !(line === '' && array[index - 1] === ''))
+		.join('\n')
 
 	assertNoForbiddenLLMFields(user)
 

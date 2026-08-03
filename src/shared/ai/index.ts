@@ -146,6 +146,27 @@ export {
 	defaultAIPlatformPipeline,
 } from '@/shared/ai/pipeline/ai-platform.pipeline'
 
+export {
+	ChronicleCompanionAI,
+	createChronicleCompanionAI,
+	defaultChronicleCompanionAI,
+} from '@/shared/ai/companion/chronicle-companion-ai'
+
+export {
+	buildConversationMemoryContext,
+	formatMemoryContextForPrompt,
+} from '@/shared/ai/context/companion-context.builder'
+
+export {
+	normalizeCompanionResponse,
+	confidenceNumberToLevel,
+} from '@/shared/ai/response/companion-response.normalizer'
+
+export type {
+	CompanionResponseSections,
+	ConversationMemoryContext,
+} from '@/shared/ai/types/companion-response.types'
+
 export type {
 	AIProvider,
 	AIProviderId,

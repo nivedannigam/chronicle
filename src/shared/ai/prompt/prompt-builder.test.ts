@@ -50,7 +50,7 @@ describe('prompt-builder', () => {
 		const prompt = buildPlatformPrompt(sampleContext)
 
 		expect(prompt.system).toContain('Chronicle')
-		expect(prompt.developer).toContain('HealthKnowledge')
+		expect(prompt.developer).toContain('SelectedEvidence')
 		expect(prompt.user).toContain('Summarize my latest health report')
 		expect(prompt.evidence).toContain('HbA1c')
 		expect(prompt.context).toContain('health')

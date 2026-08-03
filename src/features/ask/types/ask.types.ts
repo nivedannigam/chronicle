@@ -145,6 +145,7 @@ export interface AskConversationTurn {
 	timestamp: string
 	displayTimestamp: string
 	betaExperienceId?: import('@/features/ask/beta/beta-experiences').BetaExperienceId
+	platformResponse?: import('@/shared/ai/types/structured-response.types').StructuredAIResponse
 }
 
 export interface AskRecentQuestion {

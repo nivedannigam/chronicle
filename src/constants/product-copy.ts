@@ -68,6 +68,9 @@ export const HEALTH_COPY = {
 	reportsTab: 'Reports',
 	askTab: 'Ask',
 	settingsTab: 'Settings',
+	emptyStoryTitle: 'Your health story starts here.',
+	emptyStoryBody:
+		'Your health story will begin after your first report. Connect Google Drive to get started.',
 	emptyTitle: 'Your health story starts here.',
 	emptyBody:
 		'Connect Google Drive and choose a health folder — Chronicle will organize your records for you.',

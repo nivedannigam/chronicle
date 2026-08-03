@@ -13,10 +13,8 @@ import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
 import { FigmaHealthHomeView } from '@/ui/figma/health/FigmaHealthHomeView'
-import {
-	buildHealthVisits,
-	pickLatestHealthVisit,
-} from '@/features/health/services/health-visit.mapper'
+import { buildHealthStoryViewModel } from '@/features/health/services/health-story.mapper'
+import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function HealthHomePage() {
@@ -32,11 +30,7 @@ export function HealthHomePage() {
 		refetch,
 	} = useHealthCompanion()
 
-	const latestVisit = useMemo(() => {
-		const visits = buildHealthVisits(reports)
-		return pickLatestHealthVisit(visits)
-	}, [reports])
-
+	const visits = useMemo(() => buildHealthVisits(reports), [reports])
 	const importAttention = useImportAttentionSummary(user?.id)
 
 	const memberName = resolveMemberDisplayName({
@@ -50,6 +44,18 @@ export function HealthHomePage() {
 		memberDisplayName: selectedMember?.displayName,
 		isAccountOwner: selectedMember?.isAccountOwner,
 	})
+
+	const story = useMemo(
+		() =>
+			buildHealthStoryViewModel({
+				companion,
+				memberName,
+				hasReports: hasImportedReports,
+				reportCount: companion.profile?.reportCount ?? reports.length,
+				visits,
+			}),
+		[companion, memberName, hasImportedReports, reports.length, visits],
+	)
 
 	if (isLoading) {
 		return <DashboardSkeleton />
@@ -81,12 +87,7 @@ export function HealthHomePage() {
 			{importAttention.message ? (
 				<HealthImportAttentionBanner message={importAttention.message} />
 			) : null}
-			<FigmaHealthHomeView
-				companion={companion}
-				memberName={memberName}
-				hasReports={hasImportedReports}
-				latestVisit={latestVisit}
-			/>
+			<FigmaHealthHomeView story={story} />
 		</>
 	)
 }
@@ -119,7 +120,7 @@ function HealthStoryEmptyState({
 					letterSpacing: -0.4,
 				}}
 			>
-				{HEALTH_COPY.emptyTitle}
+				{HEALTH_COPY.emptyStoryTitle}
 			</h2>
 			<p
 				style={{
@@ -130,7 +131,7 @@ function HealthStoryEmptyState({
 					maxWidth: 320,
 				}}
 			>
-				{HEALTH_COPY.emptyBody}
+				{HEALTH_COPY.emptyStoryBody}
 			</p>
 			<div
 				style={{

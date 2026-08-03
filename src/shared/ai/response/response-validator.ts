@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeCompanionResponse } from '@/shared/ai/response/companion-response.normalizer'
 import type {
 	GroundedValidationContext,
 	GroundedValidationResult,
@@ -12,22 +13,37 @@ const evidenceReferenceSchema = z.object({
 	sourceType: z.string().min(1),
 })
 
-export const structuredAIResponseSchema = z.object({
-	summary: z.string().min(1),
-	overallStatus: z.enum([
-		'stable',
-		'needs_attention',
-		'critical',
-		'insufficient_data',
-	]),
-	keyFindings: z.array(z.string()),
-	recommendations: z.array(z.string()),
-	followUpQuestions: z.array(z.string()),
-	confidence: z.number().min(0).max(1),
-	limitations: z.array(z.string()),
-	evidenceReferences: z.array(evidenceReferenceSchema),
-	evidence: z.array(z.any()).optional(),
-})
+export const structuredAIResponseSchema = z
+	.object({
+		summary: z.string().min(1).optional(),
+		directAnswer: z.string().min(1).optional(),
+		overallStatus: z.enum([
+			'stable',
+			'needs_attention',
+			'critical',
+			'insufficient_data',
+		]),
+		keyFindings: z.array(z.string()).optional(),
+		evidenceFromReports: z.array(z.string()).optional(),
+		whatChanged: z.array(z.string()).optional(),
+		whatItMayMean: z.array(z.string()).optional(),
+		doctorDiscussion: z.array(z.string()).optional(),
+		confidenceLevel: z.enum(['high', 'medium', 'low']).optional(),
+		sourceReports: z.array(evidenceReferenceSchema).optional(),
+		recommendations: z.array(z.string()),
+		followUpQuestions: z.array(z.string()),
+		confidence: z.number().min(0).max(1),
+		limitations: z.array(z.string()),
+		evidenceReferences: z.array(evidenceReferenceSchema),
+		evidence: z.array(z.any()).optional(),
+	})
+	.refine(
+		(value) => Boolean(value.summary?.trim() || value.directAnswer?.trim()),
+		{
+			message: 'summary or directAnswer is required',
+			path: ['summary'],
+		},
+	)
 
 export function parseStructuredResponseContent(content: string): unknown {
 	const trimmed = content.trim()
@@ -59,7 +75,13 @@ export function validateStructuredResponse(
 		}
 	}
 
-	const value = parsed.data as StructuredAIResponse
+	const value = normalizeCompanionResponse({
+		...parsed.data,
+		summary: parsed.data.summary ?? parsed.data.directAnswer ?? '',
+		keyFindings:
+			parsed.data.keyFindings ?? parsed.data.evidenceFromReports ?? [],
+		evidenceReferences: parsed.data.evidenceReferences ?? [],
+	} as StructuredAIResponse)
 
 	return {
 		ok: true,

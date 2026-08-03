@@ -350,3 +350,31 @@ All tests use `MockProvider` — no external network calls.
 ## Relationship to `@chronicle/core-ai`
 
 `@chronicle/core-ai` remains the legacy Ask-specific layer. Chronicle AI Platform v1 (`src/shared/ai`) is the forward-looking abstraction. Modules should migrate to `@/shared/ai` over time.
+
+## Chronicle Companion AI (Phase 5)
+
+Health is the first client of the unified companion entry point:
+
+```
+User Question
+  ↓
+ChronicleCompanionAI.ask()
+  ↓
+IntentClassifier (deterministic)
+  ↓
+ToolSelector → ToolExecutor → Knowledge Graph
+  ↓
+Context Builder (SelectedEvidence + ConversationMemory)
+  ↓
+AIGateway → Gemini
+  ↓
+Grounding Validation + normalizeCompanionResponse()
+  ↓
+Structured 7-part response → Ask renderer
+```
+
+Every response follows: Direct Answer → Evidence → What Changed → What It May Mean → Doctor Discussion → Confidence → Source Reports.
+
+Observability records correlation ID, latency, tokens, cost, model, confidence, and sources — never shown to users.
+
+Future domains register classifiers, knowledge providers, and tools in `intent-registry.ts` and call `ChronicleCompanionAI` with `domain: 'documents' | 'finance' | ...`.

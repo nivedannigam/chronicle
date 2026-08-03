@@ -17,6 +17,52 @@ function formatDisplayDate(iso: string): string {
 	})
 }
 
+function buildCompanionAnswer(response: StructuredAIResponse): string {
+	const sections: string[] = [response.directAnswer ?? response.summary]
+
+	if (response.evidenceFromReports?.length) {
+		sections.push(
+			'',
+			'Evidence from your reports:',
+			...response.evidenceFromReports.map((item) => `• ${item}`),
+		)
+	}
+
+	if (response.whatChanged?.length) {
+		sections.push(
+			'',
+			'What changed:',
+			...response.whatChanged.map((item) => `• ${item}`),
+		)
+	}
+
+	if (response.whatItMayMean?.length) {
+		sections.push(
+			'',
+			'What it may mean:',
+			...response.whatItMayMean.map((item) => `• ${item}`),
+		)
+	}
+
+	if (response.doctorDiscussion?.length) {
+		sections.push(
+			'',
+			'Worth discussing with your doctor:',
+			...response.doctorDiscussion.map((item) => `• ${item}`),
+		)
+	}
+
+	if (response.limitations.length > 0) {
+		sections.push(
+			'',
+			'Limitations:',
+			...response.limitations.map((item) => `• ${item}`),
+		)
+	}
+
+	return sections.join('\n')
+}
+
 export function platformResponseToAskTurn(input: {
 	response: StructuredAIResponse
 	healthKnowledge?: HealthKnowledge
@@ -29,34 +75,9 @@ export function platformResponseToAskTurn(input: {
 	const { response, healthKnowledge } = input
 	const latestReport = healthKnowledge?.latestReport
 	const displayTimestamp = formatDisplayDate(new Date().toISOString())
+	const sourceRefs = response.sourceReports ?? response.evidenceReferences
 
-	const answerParts = [response.summary]
-
-	if (response.keyFindings.length > 0) {
-		answerParts.push(
-			'',
-			'Key findings:',
-			...response.keyFindings.map((f) => `• ${f}`),
-		)
-	}
-
-	if (response.recommendations.length > 0) {
-		answerParts.push(
-			'',
-			'Recommendations:',
-			...response.recommendations.map((r) => `• ${r}`),
-		)
-	}
-
-	if (response.limitations.length > 0) {
-		answerParts.push(
-			'',
-			'Limitations:',
-			...response.limitations.map((l) => `• ${l}`),
-		)
-	}
-
-	const citations = response.evidenceReferences
+	const citations = sourceRefs
 		.filter(
 			(ref) =>
 				ref.sourceType.includes('metric') || ref.sourceType.includes('report'),
@@ -80,6 +101,7 @@ export function platformResponseToAskTurn(input: {
 		})
 
 	const confidenceLevel =
+		response.confidenceLevel ??
 		parseConfidenceLevel(response.confidence) ??
 		toConfidenceLevel(response.confidence)
 
@@ -87,17 +109,20 @@ export function platformResponseToAskTurn(input: {
 		(healthKnowledge?.previousReports.length ?? 0) +
 		(healthKnowledge?.latestReport ? 1 : 0)
 
+	const evidenceFromReports =
+		response.evidenceFromReports ?? response.keyFindings
+
 	const clinicalAnswer = {
 		intent: 'summarize_report' as const,
-		executiveSummary: response.summary,
-		keyFindings: response.keyFindings,
-		recommendations: response.recommendations,
+		executiveSummary: response.directAnswer ?? response.summary,
+		keyFindings: evidenceFromReports,
+		recommendations: response.doctorDiscussion ?? response.recommendations,
 		limitations: response.limitations,
 		rankedEvidence: {
 			metrics: [],
 			trends: [],
-			insights: response.keyFindings,
-			alerts: [],
+			insights: evidenceFromReports,
+			alerts: response.whatChanged ?? [],
 			reports: latestReport
 				? [
 						{
@@ -120,30 +145,37 @@ export function platformResponseToAskTurn(input: {
 			.slice(0, 6)
 			.map((metric) => metric.canonicalId),
 		showTrendCards: false,
-		showComparisonLanguage: false,
+		showComparisonLanguage: (response.whatChanged?.length ?? 0) > 0,
 	}
 
 	return {
 		id: crypto.randomUUID(),
 		question: input.question ?? 'Health question',
-		answer: answerParts.join('\n'),
+		answer: buildCompanionAnswer(response),
 		clinicalAnswer,
 		timestamp: new Date().toISOString(),
 		displayTimestamp,
 		confidence: response.confidence,
 		confidenceLevel,
 		cards: [],
-		evidence: response.keyFindings,
+		evidence: evidenceFromReports,
 		citations,
-		relatedReports: latestReport
-			? [
-					{
-						id: latestReport.id,
-						title: latestReport.title,
-						date: latestReport.date,
-					},
-				]
-			: [],
+		relatedReports: sourceRefs
+			.filter((ref) => ref.sourceType.includes('report'))
+			.map((ref) => {
+				const report =
+					healthKnowledge?.latestReport?.id === ref.id
+						? healthKnowledge.latestReport
+						: healthKnowledge?.previousReports.find(
+								(item) => item.id === ref.id,
+							)
+
+				return {
+					id: ref.id,
+					title: report?.title ?? ref.label,
+					date: report?.date ?? '',
+				}
+			}),
 		relatedMetrics: (healthKnowledge?.abnormalMetrics ?? [])
 			.slice(0, 6)
 			.map((metric) => ({
@@ -157,6 +189,7 @@ export function platformResponseToAskTurn(input: {
 		domains: ['health'],
 		dataAvailable: input.dataAvailable ?? Boolean(latestReport),
 		betaExperienceId: input.betaExperienceId,
+		platformResponse: response,
 	}
 }
 

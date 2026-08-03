@@ -21,6 +21,7 @@ export interface AIPlatformRequest {
 	domain: KnowledgeDomainId
 	userId?: string
 	memberName?: string | null
+	memoryContextPrompt?: string | null
 	knowledgePayload: Record<string, unknown>
 	healthKnowledge?: HealthKnowledge
 }

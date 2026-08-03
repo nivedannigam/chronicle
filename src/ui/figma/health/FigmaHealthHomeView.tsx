@@ -1,16 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, MessageCircle } from 'lucide-react'
-import { ROUTES, healthVisitPath } from '@/constants/routes'
-import type { HealthCompanionView } from '@/features/health/types/health-companion.types'
-import type { HealthVisit } from '@/features/health/types/health-visit.types'
-import {
-	buildHealthGreeting,
-	buildHealthSummarySentence,
-	HEALTH_ASK_SUGGESTIONS,
-	formatChangeLabel,
-} from '@/features/health/services/health-product.mapper'
-import { figmaHealthScoreColor } from '@/ui/figma/health/figma-health-formatters'
+import { healthVisitPath } from '@/constants/routes'
+import type { HealthStoryViewModel } from '@/features/health/services/health-story.mapper'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -31,28 +22,38 @@ function SectionBlock({
 	)
 }
 
+function changeIcon(
+	tone: HealthStoryViewModel['sinceLastVisit'][number]['tone'],
+) {
+	switch (tone) {
+		case 'improved':
+			return '✓'
+		case 'attention':
+			return '⚠'
+		default:
+			return '✓'
+	}
+}
+
+function changeColor(
+	tone: HealthStoryViewModel['sinceLastVisit'][number]['tone'],
+) {
+	switch (tone) {
+		case 'improved':
+			return FC.green
+		case 'attention':
+			return FC.amber
+		default:
+			return FC.mid
+	}
+}
+
 export function FigmaHealthHomeView({
-	companion,
-	memberName,
-	hasReports,
-	latestVisit,
+	story,
 }: {
-	companion: HealthCompanionView
-	memberName: string | null
-	hasReports: boolean
-	latestVisit: HealthVisit | null
+	story: HealthStoryViewModel
 }) {
 	const navigate = useNavigate()
-	const greeting = buildHealthGreeting(memberName)
-	const summarySentence = buildHealthSummarySentence(
-		companion.status,
-		hasReports,
-	)
-	const latestVisitCard = latestVisit
-	const changes = companion.changes.slice(0, 3)
-	const watchItems = companion.attention.slice(0, 4)
-	const ringColor = figmaHealthScoreColor(companion.score)
-	const showScore = companion.score !== null
 
 	return (
 		<div style={{ paddingBottom: 24 }}>
@@ -62,14 +63,24 @@ export function FigmaHealthHomeView({
 					fontSize: 28,
 					fontWeight: 700,
 					letterSpacing: -0.8,
-					margin: '0 0 28px',
+					margin: '0 0 8px',
 					lineHeight: 1.15,
 				}}
 			>
-				{greeting}
+				{story.greeting}
+			</p>
+			<p
+				style={{
+					color: FC.mid,
+					fontSize: 15,
+					lineHeight: 1.5,
+					margin: '0 0 28px',
+				}}
+			>
+				{story.howAmIDoing}
 			</p>
 
-			<SectionBlock label="Health summary">
+			<SectionBlock label="My health story">
 				<div
 					style={{
 						...figmaCardStyle,
@@ -77,130 +88,84 @@ export function FigmaHealthHomeView({
 						padding: '22px 20px',
 					}}
 				>
-					<p
-						style={{
-							color: FC.fg,
-							fontSize: 20,
-							fontWeight: 600,
-							lineHeight: 1.35,
-							margin: '0 0 16px',
-							letterSpacing: -0.3,
-						}}
-					>
-						{summarySentence}
-					</p>
-					{showScore ? (
-						<div
+					{story.storyParagraphs.map((paragraph) => (
+						<p
+							key={paragraph}
 							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 10,
-								borderTop: `1px solid ${FC.line}`,
-								paddingTop: 14,
+								color: FC.mid,
+								fontSize: 15,
+								lineHeight: 1.65,
+								margin: '0 0 14px',
 							}}
 						>
-							<span
-								style={{
-									color: ringColor,
-									fontSize: 22,
-									fontWeight: 700,
-									lineHeight: 1,
-								}}
-							>
-								{companion.score}
-							</span>
-							<span style={{ color: FC.dim, fontSize: 12.5 }}>
-								Health score
-							</span>
-						</div>
-					) : null}
+							{paragraph}
+						</p>
+					))}
 				</div>
 			</SectionBlock>
 
-			{latestVisitCard ? (
-				<SectionBlock label="Latest health visit">
-					<button
-						type="button"
-						onClick={() => navigate(healthVisitPath(latestVisitCard.id))}
-						style={{
-							...figmaCardStyle,
-							borderRadius: 20,
-							padding: '18px 18px 16px',
-							width: '100%',
-							textAlign: 'left',
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-							border: `1px solid ${FC.line}`,
-						}}
-					>
-						<p
-							style={{
-								color: FC.fg,
-								fontSize: 16,
-								fontWeight: 700,
-								margin: '0 0 6px',
-							}}
-						>
-							{latestVisitCard.title}
-						</p>
-						<p style={{ color: FC.mid, fontSize: 12.5, margin: '0 0 10px' }}>
-							{latestVisitCard.displayMonthYear} · {latestVisitCard.hospital}
-						</p>
-						<p
-							style={{
-								color: FC.mid,
-								fontSize: 13.5,
-								lineHeight: 1.55,
-								margin: 0,
-							}}
-						>
-							{latestVisitCard.reportCount > 1
-								? `${latestVisitCard.reportCount} reports · ${latestVisitCard.summaryLine}`
-								: latestVisitCard.summaryLine}
-						</p>
-					</button>
-				</SectionBlock>
-			) : null}
-
-			{changes.length > 0 ? (
-				<SectionBlock label="What's changed">
+			{story.sinceLastVisit.length > 0 ? (
+				<SectionBlock label="Since your last visit">
 					<div style={{ display: 'grid', gap: 8 }}>
-						{changes.map((change) => (
+						{story.sinceLastVisit.map((item) => (
 							<div
-								key={change.id}
+								key={item.id}
 								style={{
 									...figmaCardStyle,
 									borderRadius: 16,
 									padding: '14px 16px',
+									display: 'flex',
+									alignItems: 'center',
+									gap: 10,
 								}}
 							>
-								<p
+								<span
+									style={{
+										color: changeColor(item.tone),
+										fontSize: 15,
+										fontWeight: 700,
+										width: 18,
+									}}
+								>
+									{changeIcon(item.tone)}
+								</span>
+								<span
 									style={{
 										color: FC.fg,
 										fontSize: 14,
 										fontWeight: 600,
-										margin: 0,
-										textTransform: 'capitalize',
 									}}
 								>
-									{formatChangeLabel(change)}
-								</p>
+									{item.label}
+								</span>
 							</div>
 						))}
 					</div>
 				</SectionBlock>
 			) : null}
 
-			{watchItems.length > 0 ? (
-				<SectionBlock label="Things to watch">
+			{story.recommendations.length > 0 ? (
+				<SectionBlock label="What to do next">
 					<div style={{ display: 'grid', gap: 10 }}>
-						{watchItems.map((item) => (
-							<div
+						{story.recommendations.map((item) => (
+							<button
 								key={item.id}
+								type="button"
+								onClick={() => {
+									if (item.actionPath) {
+										navigate(item.actionPath)
+									}
+								}}
+								disabled={!item.actionPath}
 								style={{
 									...figmaCardStyle,
 									borderRadius: 18,
 									padding: '16px 18px',
+									width: '100%',
+									textAlign: 'left',
+									cursor: item.actionPath ? 'pointer' : 'default',
+									fontFamily: 'inherit',
+									opacity: item.actionPath ? 1 : 0.92,
 								}}
 							>
 								<p
@@ -208,107 +173,88 @@ export function FigmaHealthHomeView({
 										color: FC.fg,
 										fontSize: 15,
 										fontWeight: 600,
-										margin: '0 0 4px',
+										margin: 0,
 									}}
 								>
 									{item.title}
 								</p>
-								<p
-									style={{
-										color: FC.mid,
-										fontSize: 13,
-										lineHeight: 1.45,
-										margin: 0,
-									}}
-								>
-									{item.detail}
-								</p>
-							</div>
+							</button>
 						))}
 					</div>
 				</SectionBlock>
 			) : null}
 
-			<SectionBlock label="Ask Chronicle">
-				<div
-					style={{
-						...figmaCardStyle,
-						borderRadius: 22,
-						padding: '20px 18px',
-						background: `linear-gradient(145deg, ${FC.blue}14 0%, ${FC.purple}10 100%)`,
-						border: `1px solid ${FC.blue}25`,
-					}}
-				>
-					<div
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 10,
-							marginBottom: 14,
-						}}
-					>
-						<MessageCircle size={18} color={FC.blue} strokeWidth={2} />
-						<p
+			{story.journeyVisits.length > 0 ? (
+				<SectionBlock label="Recent health journey">
+					<div style={{ position: 'relative', paddingLeft: 18 }}>
+						<div
 							style={{
-								color: FC.fg,
-								fontSize: 16,
-								fontWeight: 700,
-								margin: 0,
+								position: 'absolute',
+								left: 4,
+								top: 8,
+								bottom: 8,
+								width: 1,
+								background: FC.line,
 							}}
-						>
-							Ask about your health
-						</p>
-					</div>
-					<div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-						{HEALTH_ASK_SUGGESTIONS.map((question) => (
-							<button
-								key={question}
-								type="button"
-								onClick={() =>
-									navigate(
-										`${ROUTES.healthAsk}?q=${encodeURIComponent(question)}`,
-									)
-								}
+						/>
+						{story.journeyVisits.map((visit, index) => (
+							<div
+								key={visit.id}
 								style={{
-									background: FC.surface,
-									border: `1px solid ${FC.line}`,
-									borderRadius: 14,
-									padding: '12px 14px',
-									textAlign: 'left',
-									cursor: 'pointer',
-									fontFamily: 'inherit',
+									position: 'relative',
+									marginBottom: index < story.journeyVisits.length - 1 ? 18 : 0,
 								}}
 							>
-								<span style={{ color: FC.mid, fontSize: 13.5 }}>
-									{question}
-								</span>
-							</button>
+								<div
+									style={{
+										position: 'absolute',
+										left: -18,
+										top: 6,
+										width: 8,
+										height: 8,
+										borderRadius: 4,
+										background: FC.blue,
+									}}
+								/>
+								<button
+									type="button"
+									onClick={() => navigate(healthVisitPath(visit.id))}
+									style={{
+										background: 'none',
+										border: 'none',
+										padding: 0,
+										cursor: 'pointer',
+										textAlign: 'left',
+										fontFamily: 'inherit',
+										width: '100%',
+									}}
+								>
+									<p
+										style={{
+											color: FC.dim,
+											fontSize: 12,
+											fontWeight: 600,
+											margin: '0 0 4px',
+										}}
+									>
+										{visit.displayMonthYear}
+									</p>
+									<p
+										style={{
+											color: FC.fg,
+											fontSize: 15,
+											fontWeight: 600,
+											margin: 0,
+										}}
+									>
+										{visit.title}
+									</p>
+								</button>
+							</div>
 						))}
 					</div>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.healthAsk)}
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: 6,
-							width: '100%',
-							background: FC.blue,
-							border: 'none',
-							borderRadius: 14,
-							padding: '12px 0',
-							cursor: 'pointer',
-							fontFamily: 'inherit',
-						}}
-					>
-						<span style={{ color: '#fff', fontSize: 13.5, fontWeight: 700 }}>
-							Open Ask
-						</span>
-						<ArrowRight size={14} color="#fff" />
-					</button>
-				</div>
-			</SectionBlock>
+				</SectionBlock>
+			) : null}
 		</div>
 	)
 }

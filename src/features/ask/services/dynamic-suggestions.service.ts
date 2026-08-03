@@ -1,6 +1,8 @@
 import type { UploadedHealthReport } from '@/features/health/types'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import { buildHealthCompanionSuggestions } from '@/features/ask/services/health-companion-suggestions.service'
+import type { HealthKnowledge } from '@/features/health-knowledge/types/health-knowledge-object.types'
 
 export interface DynamicSuggestionChip {
 	id: string
@@ -14,10 +16,26 @@ export function buildDynamicSuggestionChips(input: {
 	documents?: ChronicleDocument[]
 	memberName?: string | null
 	members?: Array<{ displayName: string }>
+	healthKnowledge?: HealthKnowledge | null
+	recentQuestions?: string[]
 }): DynamicSuggestionChip[] {
-	const chips: DynamicSuggestionChip[] = []
 	const reports = input.uploadedReports.filter(
 		(report) => report.status === 'completed',
+	)
+	const healthSuggestions = buildHealthCompanionSuggestions({
+		healthKnowledge: input.healthKnowledge,
+		reportCount: reports.length,
+		recentQuestions: input.recentQuestions,
+	}).map((item) => ({
+		id: item.id,
+		label: item.label,
+		question: item.question,
+		category: 'health' as const,
+	}))
+
+	const chips: DynamicSuggestionChip[] = [...healthSuggestions]
+	const seen = new Set(
+		healthSuggestions.map((item) => item.question.toLowerCase()),
 	)
 	const sorted = [...reports].sort(
 		(a, b) =>
@@ -33,12 +51,16 @@ export function buildDynamicSuggestionChips(input: {
 	)
 
 	if (latest) {
-		chips.push({
-			id: 'summarize-latest',
-			label: 'Summarize latest health report',
-			question: 'Summarize my latest health report.',
-			category: 'health',
-		})
+		const question = 'Summarize my latest health report.'
+		if (!seen.has(question.toLowerCase())) {
+			chips.push({
+				id: 'summarize-latest',
+				label: 'Summarize latest health report',
+				question,
+				category: 'health',
+			})
+			seen.add(question.toLowerCase())
+		}
 	}
 
 	if (reports.length >= 2) {

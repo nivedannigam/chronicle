@@ -1,7 +1,7 @@
 import {
-	createDefaultAIPlatformPipeline,
-	type AIPlatformPipeline,
-} from '@/shared/ai/pipeline/ai-platform.pipeline'
+	createChronicleCompanionAI,
+	type ChronicleCompanionAI,
+} from '@/shared/ai/companion/chronicle-companion-ai'
 import { isAIPlatformConfigured } from '@/shared/ai/config/ai-platform.config'
 import { isProductionAiQuestion } from '@/shared/ai/errors/ai-errors'
 import {
@@ -9,6 +9,7 @@ import {
 	platformResponseToAskTurn,
 } from '@/features/ask/services/platform-response.adapter'
 import type { BetaExperienceId } from '@/features/ask/beta/beta-experiences'
+import type { ConversationTurnSnapshot } from '@/shared/ai/context/companion-context.builder'
 
 export function isSummarizeReportAiEnabled(): boolean {
 	return isAIPlatformConfigured()
@@ -27,22 +28,25 @@ export async function runProductionHealthAi(input: {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
-	pipeline?: AIPlatformPipeline
+	conversationTurns?: ConversationTurnSnapshot[]
+	companion?: ChronicleCompanionAI
 	onStream?: (partial: string) => void
 	betaExperienceId?: BetaExperienceId
 }) {
-	const pipeline = input.pipeline ?? createDefaultAIPlatformPipeline()
+	const companion = input.companion ?? createChronicleCompanionAI()
 
 	if (input.onStream) {
-		input.onStream('Selecting relevant health evidence…')
+		input.onStream('Reviewing your health records…')
 	}
 
-	const result = await pipeline.runHealthQuestion({
+	const result = await companion.ask({
 		userId: input.userId,
 		question: input.question,
+		domain: 'health',
 		familyMemberId: input.familyMemberId,
 		accountOwnerMemberId: input.accountOwnerMemberId,
 		memberName: input.memberName,
+		conversationTurns: input.conversationTurns,
 	})
 
 	const turn = platformResponseToAskTurn({

@@ -79,14 +79,19 @@ export function buildStructuredResponse(
 	turn: AskConversationTurn,
 ): StructuredAskResponse {
 	const clinical = turn.clinicalAnswer
+	const platform = turn.platformResponse
 	const paragraphs = splitAnswerParagraphs(turn.answer)
 	const directAnswer =
+		platform?.directAnswer ??
 		clinical?.executiveSummary ??
 		paragraphs[0] ??
 		stripSafetyFooter(turn.answer)
-	const keyFindings = clinical?.keyFindings ?? []
+	const keyFindings =
+		platform?.evidenceFromReports ?? clinical?.keyFindings ?? []
 	const explanation =
-		!clinical && paragraphs.length > 1 ? paragraphs.slice(1).join('\n\n') : null
+		!clinical && !platform && paragraphs.length > 1
+			? paragraphs.slice(1).join('\n\n')
+			: null
 
 	const relatedQuestions = Array.from(
 		new Set([
@@ -99,6 +104,16 @@ export function buildStructuredResponse(
 
 	return {
 		directAnswer,
+		evidenceFromReports: platform?.evidenceFromReports ?? keyFindings,
+		whatChanged: platform?.whatChanged,
+		whatItMayMean: platform?.whatItMayMean,
+		doctorDiscussion: platform?.doctorDiscussion,
+		sourceReports: (
+			platform?.sourceReports ?? platform?.evidenceReferences
+		)?.map((ref) => ({
+			id: ref.id,
+			label: ref.label,
+		})),
 		keyFindings,
 		explanation,
 		recommendations: buildRecommendations(turn),
@@ -106,10 +121,14 @@ export function buildStructuredResponse(
 		hasEvidence: Boolean(
 			turn.trust?.evidenceItems.length ||
 			turn.citations.length ||
-			turn.evidence.length,
+			turn.evidence.length ||
+			(platform?.sourceReports?.length ?? 0) > 0,
 		),
 		relatedQuestions,
-		confidenceLevel: turn.trust?.confidence.level ?? turn.confidenceLevel,
+		confidenceLevel:
+			platform?.confidenceLevel ??
+			turn.trust?.confidence.level ??
+			turn.confidenceLevel,
 		uncertaintyNote: buildUncertaintyNote(turn),
 		showSafetyFooter: SAFETY_PATTERN.test(turn.answer),
 	}

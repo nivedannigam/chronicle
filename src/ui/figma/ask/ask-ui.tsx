@@ -342,7 +342,30 @@ export function AskStructuredResponseView({
 				{structured.directAnswer}
 			</p>
 
-			{structured.keyFindings.length > 0 ? (
+			{structured.evidenceFromReports &&
+			structured.evidenceFromReports.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>Evidence from your reports</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.evidenceFromReports.map((item) => (
+							<li
+								key={item}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : structured.keyFindings.length > 0 ? (
 				<div style={{ marginBottom: 14 }}>
 					<AskSectionLabel>Key Findings</AskSectionLabel>
 					<ul
@@ -366,7 +389,53 @@ export function AskStructuredResponseView({
 				</div>
 			) : null}
 
-			{structured.explanation ? (
+			{structured.whatChanged && structured.whatChanged.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>What changed</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.whatChanged.map((item) => (
+							<li
+								key={item}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
+
+			{structured.whatItMayMean && structured.whatItMayMean.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>What it may mean</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.whatItMayMean.map((item) => (
+							<li
+								key={item}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : structured.explanation ? (
 				<div style={{ marginBottom: 14 }}>
 					<AskSectionLabel>Explanation</AskSectionLabel>
 					<p
@@ -382,7 +451,29 @@ export function AskStructuredResponseView({
 				</div>
 			) : null}
 
-			{structured.recommendations.length > 0 ? (
+			{structured.doctorDiscussion && structured.doctorDiscussion.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>Discuss with your doctor</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.doctorDiscussion.map((item) => (
+							<li
+								key={item}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : structured.recommendations.length > 0 ? (
 				<div style={{ marginBottom: 14 }}>
 					<AskSectionLabel>Recommendations</AskSectionLabel>
 					<ul
@@ -400,6 +491,30 @@ export function AskStructuredResponseView({
 								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
 							>
 								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
+
+			{structured.sourceReports && structured.sourceReports.length > 0 ? (
+				<div style={{ marginBottom: 14 }}>
+					<AskSectionLabel>Source reports</AskSectionLabel>
+					<ul
+						style={{
+							margin: '8px 0 0',
+							paddingLeft: 18,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 6,
+						}}
+					>
+						{structured.sourceReports.map((item) => (
+							<li
+								key={item.id}
+								style={{ color: FC.mid, fontSize: 13.5, lineHeight: 1.5 }}
+							>
+								{item.label}
 							</li>
 						))}
 					</ul>
