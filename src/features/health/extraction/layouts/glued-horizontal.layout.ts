@@ -100,7 +100,49 @@ function parseGluedLine(
 		}
 	}
 
+	// Document AI spacing: Carcino Embryonic Antigen : 2.10 ng/mL
+	const spacedColonValueUnit = line.match(
+		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:\s*([\d.]+)\s+(ng\/mL|ng\/ml|mg\/dL|mg\/dl|ug\/dL|ug\/dl|μg\/dL|U\/L|IU\/L|mmol\/l|mmol\/L)$/i,
+	)
+
+	if (spacedColonValueUnit) {
+		const [, rawName, value, unit] = spacedColonValueUnit
+
+		if (looksLikeMetricName(rawName)) {
+			let referenceRange = ''
+			const nextLine = normalizeLine(lines[index + 1] ?? '')
+			const refMatch = nextLine.match(/[<>=]\s*[\d.]+/)
+
+			if (refMatch) {
+				referenceRange = refMatch[0].replace(/\s+/g, '')
+			}
+
+			return {
+				rawName,
+				value,
+				unit,
+				referenceRange,
+			}
+		}
+	}
+
 	// Blood Sugar Fasting:87.5mg/dl70-110  |  Total Iron Binding Capacity :363ug/dl255-450
+	const spacedColonWithRef = line.match(
+		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:\s*([\d.]+)\s+([A-Za-z%/μ^³.]+)\s+([\d.]+\s*-\s*[\d.]+|[<>]\s*[\d.]+(?:\s*-\s*[\d.]+)?)$/i,
+	)
+
+	if (spacedColonWithRef) {
+		const [, rawName, value, unit, referenceRange] = spacedColonWithRef
+
+		if (looksLikeMetricName(rawName) && GLUED_UNIT.test(unit)) {
+			return {
+				rawName,
+				value,
+				unit,
+				referenceRange: referenceRange.replace(/\s+/g, ''),
+			}
+		}
+	}
 	const colonMatch = line.match(
 		/^([A-Za-z0-9 ()/.%-]{3,}?)\s*:([\d.]+)([A-Za-z%/μ^³.]+)([\d.]+\s*-\s*[\d.]+|[<>]\s*[\d.]+)$/i,
 	)

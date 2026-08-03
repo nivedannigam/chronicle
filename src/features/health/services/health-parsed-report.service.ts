@@ -11,11 +11,13 @@ import type { UploadedHealthReport } from '@/features/health/types'
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
 	general: 'Health Checkup',
+	iron: 'Iron Studies',
 	'blood-count': 'Blood Count',
 	electrolytes: 'Serum Electrolytes',
 	ecg: 'ECG',
 	'health-summary': 'Health Summary',
 	heart: 'Lipids',
+	vitamin: 'Vitamin Panel',
 }
 
 function cleanFileNameTitle(fileName: string): string {
@@ -233,9 +235,22 @@ export function inferReportTypeFromFileName(fileName: string): string | null {
 	return type
 }
 
+function shouldPreferFileNameTitle(fileName: string): boolean {
+	const cleaned = cleanFileNameTitle(fileName)
+
+	return /\b(iron test|iron studies|ferritin|cea test|carcino|vitamin d|vitamin b)\b/i.test(
+		cleaned,
+	)
+}
+
 export function getReportDisplayTitle(report: UploadedHealthReport): string {
 	const parsed = getParsedHealthReport(report)
 	const reportType = parsed?.metadata.reportType ?? report.report_type ?? null
+	const cleanedFileName = cleanFileNameTitle(report.file_name)
+
+	if (shouldPreferFileNameTitle(report.file_name)) {
+		return cleanedFileName
+	}
 
 	if (reportType && reportType !== 'general') {
 		return `${formatReportTypeLabel(reportType)} Report`

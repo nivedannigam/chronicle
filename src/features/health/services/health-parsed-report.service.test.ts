@@ -43,6 +43,26 @@ describe('getReportDisplayTitle', () => {
 			),
 		).toBe('Blood Count Report')
 	})
+
+	it('uses filename for iron and CEA tests instead of generic type labels', () => {
+		expect(
+			getReportDisplayTitle(
+				mockReport({
+					file_name: 'Iron Test 2026.pdf',
+					report_type: 'iron',
+				}),
+			),
+		).toBe('Iron Test 2026')
+
+		expect(
+			getReportDisplayTitle(
+				mockReport({
+					file_name: 'CEA Test Feb 2026.pdf',
+					report_type: 'general',
+				}),
+			),
+		).toBe('CEA Test Feb 2026')
+	})
 })
 
 describe('getReportDisplayDate', () => {

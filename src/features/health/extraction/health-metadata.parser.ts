@@ -30,7 +30,7 @@ const FILENAME_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 		pattern: /health summary|wellness|company wellness/i,
 		type: 'health-summary',
 	},
-	{ pattern: /\biron\b|ferritin|tibc/i, type: 'vitamin' },
+	{ pattern: /\biron\b|ferritin|tibc|uibc/i, type: 'iron' },
 	{
 		pattern: /full body|partial checkup|\bcheckup\b/i,
 		type: 'general',
@@ -42,6 +42,7 @@ const FILENAME_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 		type: 'heart',
 	},
 	{ pattern: /thyroid profile|thyroid panel|\bthyroid\b/i, type: 'thyroid' },
+	{ pattern: /\bcea\b|carcino/i, type: 'general' },
 	{ pattern: /vitamin panel|vitamin profile|\bvitamin\b/i, type: 'vitamin' },
 	{ pattern: /\bhba1c\b|diabetes panel|\bdiabetes\b/i, type: 'diabetes' },
 ]
@@ -51,7 +52,7 @@ const HEADER_TYPE_RULES: Array<{ pattern: RegExp; type: string }> = [
 		pattern: /complete blood count|\bcbc\b|full blood count/i,
 		type: 'blood-count',
 	},
-	{ pattern: /iron (studies|profile|test)|serum iron/i, type: 'vitamin' },
+	{ pattern: /iron (studies|profile|test)|serum iron/i, type: 'iron' },
 	{
 		pattern:
 			/full body checkup|partial checkup|annual health|health checkup|health summary|general checkup/i,

@@ -34,7 +34,7 @@ describe('identifyReportType', () => {
 	})
 
 	it('does not classify Iron Test as diabetes', () => {
-		expect(identifyReportType('', 'Iron Test 2026')).toBe('vitamin')
+		expect(identifyReportType('', 'Iron Test 2026')).toBe('iron')
 	})
 
 	it('does not classify Full Body Checkup as diabetes', () => {
@@ -87,7 +87,7 @@ describe('parseReportMetadata with mock OCR', () => {
 		const metadata = parseFromMockFileName('Iron Test 2026')
 
 		expect(metadata.reportType).not.toBe('diabetes')
-		expect(metadata.reportType).toBe('vitamin')
+		expect(metadata.reportType).toBe('iron')
 	})
 
 	it('Full Body Checkup → not diabetes', () => {

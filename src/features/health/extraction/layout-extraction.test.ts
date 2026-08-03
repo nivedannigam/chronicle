@@ -140,6 +140,24 @@ describe('layout extractors', () => {
 		expect(cea?.unit).toMatch(/ng\/ml/i)
 	})
 
+	it('extracts CEA when Document AI adds spaces around colon and unit', () => {
+		const spaced = `
+TestResultUnitBiological Ref. Range
+Carcino Embryonic Antigen : 2.10 ng/mL
+Non-Smoking : <3
+`
+		const { rows } = extractMetricsFromLayouts({
+			rawText: spaced,
+			tables: [],
+			fileName: 'CEA Test Feb 2026.pdf',
+		})
+
+		expect(rows.length).toBeGreaterThanOrEqual(1)
+		expect(
+			rows.some((row) => /carcino embryonic antigen/i.test(row.rawName)),
+		).toBe(true)
+	})
+
 	it('extracts Qtest multi-line panels when method lines sit between name and value', () => {
 		const rows = extractGluedHorizontalMetrics(QTEST_MULTI_LINE_SNIPPET)
 		const glucose = rows.find((row) =>

@@ -39,6 +39,19 @@ function parseSpacedLine(line: string): {
 	unit: string
 	referenceRange: string
 } | null {
+	// Carcino Embryonic Antigen : 2.10 ng/mL (Document AI spacing, ref optional)
+	const colonValueUnitOnly = line.match(
+		/^([A-Za-z0-9 ()/.%-]{2,}?)\s*:\s*([\d.]+)\s+([A-Za-z%/μ^³.]+)\s*$/,
+	)
+
+	if (colonValueUnitOnly) {
+		const [, rawName, value, unit] = colonValueUnitOnly
+
+		if (looksLikeMetricName(rawName) && UNIT_PATTERN.test(unit)) {
+			return { rawName, value, unit, referenceRange: '' }
+		}
+	}
+
 	// IRON : 102.74 ug/dl 33-193
 	const colonMatch = line.match(
 		/^([A-Za-z0-9 ()/.%-]{2,}?)\s*:\s*([\d.]+)\s+([A-Za-z%/μ^³.]+)\s+([\d.]+\s*-\s*[\d.]+|[<>]\s*[\d.]+(?:\s*-\s*[\d.]+)?)$/,

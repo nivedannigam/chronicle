@@ -285,6 +285,22 @@ export const MOCK_LAB_TEMPLATES: Record<string, MockLabTemplate> = {
 			},
 		],
 	},
+	cea: {
+		headerLines: [
+			'CEA (CARCINO EMBRYONIC ANTIGEN)',
+			'Laboratory: Svasth Health',
+			'Patient: John Doe',
+			'Report Date: 18-Feb-2026',
+		],
+		metrics: [
+			{
+				testName: 'Carcino Embryonic Antigen',
+				value: '2.10',
+				referenceRange: '<3',
+				unit: 'ng/mL',
+			},
+		],
+	},
 	checkup: {
 		headerLines: [
 			'FULL BODY CHECKUP',
@@ -352,6 +368,10 @@ export function resolveMockTemplate(fileName: string): MockLabTemplate {
 
 	if (lower.includes('lft') || lower.includes('liver')) {
 		return MOCK_LAB_TEMPLATES.liver
+	}
+
+	if (lower.includes('cea') || lower.includes('carcino')) {
+		return MOCK_LAB_TEMPLATES.cea
 	}
 
 	if (lower.includes('vitamin')) {
