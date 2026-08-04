@@ -1,5 +1,9 @@
 import { ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
-import { FC } from '@/ui/figma/v2/atoms'
+import {
+	AskColors,
+	AskLayout,
+	AskTypography,
+} from '@/ui/figma/ask/ask-design-tokens'
 
 export function AskPremiumEmptyState({
 	onSelectQuestion,
@@ -14,17 +18,19 @@ export function AskPremiumEmptyState({
 				justifyContent: 'center',
 				minHeight: 'min(420px, 55vh)',
 				padding: '12px 0 24px',
+				maxWidth: AskLayout.maxContentWidth,
+				margin: '0 auto',
 			}}
 		>
 			<h2
 				style={{
 					fontSize: 26,
 					fontWeight: 600,
-					color: FC.fg,
+					color: AskColors.fg,
 					lineHeight: 1.25,
 					letterSpacing: -0.6,
 					margin: '0 0 28px',
-					maxWidth: 320,
+					maxWidth: 360,
 				}}
 			>
 				Ask anything about your health.
@@ -46,16 +52,15 @@ export function AskPremiumEmptyState({
 						onClick={() => onSelectQuestion(question)}
 						role="listitem"
 						style={{
-							fontSize: 13,
+							...AskTypography.body,
 							fontWeight: 500,
-							color: FC.mid,
-							background: `${FC.bg}`,
-							border: `1px solid ${FC.line}`,
+							color: AskColors.mid,
+							background: AskColors.card,
+							border: `1px solid ${AskColors.line}`,
 							borderRadius: 100,
 							padding: '9px 14px',
 							cursor: 'pointer',
 							fontFamily: 'inherit',
-							lineHeight: 1.35,
 						}}
 					>
 						{question}

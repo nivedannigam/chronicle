@@ -35,6 +35,11 @@ export function ConversationThread({
 			aria-live="polite"
 			aria-relevant="additions text"
 			aria-label="Conversation"
+			style={{
+				display: 'flex',
+				flexDirection: 'column',
+				gap: 20,
+			}}
 		>
 			<div ref={topRef} aria-hidden style={{ height: 1 }} />
 

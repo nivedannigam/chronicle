@@ -6,7 +6,6 @@ interface AskConversationMenuProps {
 	hasConversation: boolean
 	onNewConversation: () => void
 	onClearConversation: () => void
-	onOpenHistory?: () => void
 }
 
 interface MenuItem {
@@ -20,7 +19,6 @@ export function AskConversationMenu({
 	hasConversation,
 	onNewConversation,
 	onClearConversation,
-	onOpenHistory,
 }: AskConversationMenuProps) {
 	const [open, setOpen] = useState(false)
 	const containerRef = useRef<HTMLDivElement>(null)
@@ -69,18 +67,6 @@ export function AskConversationMenu({
 			},
 			disabled: !hasConversation,
 		},
-		...(onOpenHistory
-			? [
-					{
-						id: 'history',
-						label: 'Previous conversations',
-						onClick: () => {
-							onOpenHistory()
-							setOpen(false)
-						},
-					} satisfies MenuItem,
-				]
-			: []),
 		{
 			id: 'rename',
 			label: 'Rename conversation',

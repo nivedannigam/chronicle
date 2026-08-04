@@ -174,7 +174,7 @@ export interface AskDebugInfo {
 	intent: string
 	resolvedQuestion: string
 	retrievedKnowledge: import('@/features/knowledge/retrieval/knowledge-retriever.types').RetrievedKnowledge
-	prompt: import('@/features/ask/prompt/prompt-builder').BuiltPrompt
+	prompt?: import('@/features/ask/prompt/prompt-builder').BuiltPrompt
 	provider: string
 	providerResponse: string
 	turn: AskConversationTurn

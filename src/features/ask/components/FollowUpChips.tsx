@@ -1,4 +1,4 @@
-import { FC } from '@/ui/figma/v2/atoms'
+import { AskColors, AskTypography } from '@/ui/figma/ask/ask-design-tokens'
 
 interface FollowUpChipsProps {
 	questions: string[]
@@ -19,6 +19,15 @@ export function FollowUpChips({
 
 	return (
 		<div style={{ marginTop: 28 }} role="list" aria-label="Related questions">
+			<p
+				style={{
+					...AskTypography.sectionTitle,
+					color: AskColors.dim,
+					margin: '0 0 10px',
+				}}
+			>
+				Related questions
+			</p>
 			<div
 				style={{
 					display: 'flex',
@@ -40,9 +49,9 @@ export function FollowUpChips({
 							flexShrink: 0,
 							fontSize: 12,
 							fontWeight: 500,
-							color: FC.mid,
-							background: `${FC.bg}`,
-							border: `1px solid ${FC.line}`,
+							color: AskColors.mid,
+							background: AskColors.cardElevated,
+							border: `1px solid ${AskColors.line}`,
 							borderRadius: 100,
 							padding: '7px 12px',
 							cursor: disabled ? 'not-allowed' : 'pointer',
@@ -95,9 +104,9 @@ export function DynamicSuggestionChips({
 					style={{
 						fontSize: 13,
 						fontWeight: 500,
-						color: FC.mid,
-						background: `${FC.bg}`,
-						border: `1px solid ${FC.line}`,
+						color: AskColors.mid,
+						background: AskColors.cardElevated,
+						border: `1px solid ${AskColors.line}`,
 						borderRadius: 100,
 						padding: '8px 14px',
 						cursor: disabled ? 'not-allowed' : 'pointer',

@@ -5,27 +5,19 @@ import type {
 	RelatedMetricRef,
 	RelatedReportRef,
 } from '@/features/ask/types'
-import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.types'
-import { parseConfidenceLevel } from '@/features/intelligence/types/confidence.types'
+import type { StructuredAIResponse } from '@/shared/ai/types/structured-response.types'
 import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 import { generateFollowUpQuestions } from '@/features/intelligence/services/follow-up-generator.service'
 import { buildTrustResponse } from '@/features/ask/trust/trust-response.builder'
-import {
-	adaptAnswerForStyle,
-	shouldIncludeAnswerCards,
-} from '@/features/personalization/services/response-adapter.service'
-import type { PersonalContext } from '@/features/personalization/types/personal-context.types'
 import type { HealthCoverageSnapshot } from '@/features/health/types/health-coverage.types'
 import type { RetrievedKnowledge } from '@/features/knowledge/retrieval/knowledge-retriever.types'
 import type { KnowledgeDomain } from '@/features/knowledge/retrieval/knowledge-retriever.types'
+import type { ConfidenceLevel } from '@/features/intelligence/types/confidence.types'
+import { parseConfidenceLevel } from '@/features/intelligence/types/confidence.types'
 import {
-	buildClinicalAnswer,
-	buildClinicalCards,
-	buildClinicalEvidenceLines,
-	clinicalAnswerToProse,
 	rankEvidence,
 	selectImportantMetrics,
-} from '@/features/ask/clinical'
+} from '@/features/ask/clinical/evidence-ranking.engine'
 
 function formatTimestamp(iso: string): string {
 	return new Date(iso).toLocaleString('en-US', {
@@ -69,10 +61,6 @@ function dedupeRetrievedReports(
 	return result
 }
 
-function resolvedMetrics(knowledge: RetrievedKnowledge) {
-	return knowledge.metrics.filter((metric) => metric.status !== 'unknown')
-}
-
 function toRelatedReports(knowledge: RetrievedKnowledge): RelatedReportRef[] {
 	return dedupeRetrievedReports(knowledge.reports).map((report) => ({
 		id: report.id,
@@ -82,7 +70,8 @@ function toRelatedReports(knowledge: RetrievedKnowledge): RelatedReportRef[] {
 }
 
 function toRelatedMetrics(knowledge: RetrievedKnowledge): RelatedMetricRef[] {
-	return resolvedMetrics(knowledge)
+	return knowledge.metrics
+		.filter((metric) => metric.status !== 'unknown')
 		.slice(0, 8)
 		.map((metric) => ({
 			name: metric.displayName,
@@ -111,78 +100,21 @@ function buildEvidenceCitations(
 		})
 	}
 
-	for (const report of dedupeRetrievedReports(knowledge.reports).slice(0, 4)) {
-		if (citations.some((citation) => citation.reportId === report.id)) {
-			continue
-		}
-
-		citations.push({
-			reportId: report.id,
-			reportTitle: report.title,
-			hospital: report.lab,
-			date: report.date,
-			source: knowledge.domain,
-		})
-	}
-
-	return citations.slice(0, 8)
+	return citations
 }
 
-function buildEvidenceLines(knowledge: RetrievedKnowledge): string[] {
-	const clinical = buildClinicalAnswer({
-		knowledge,
-		question: '',
-		dataAvailable: true,
-	})
-
-	return buildClinicalEvidenceLines(clinical)
-}
-
-function buildCards(
-	knowledge: RetrievedKnowledge,
-	clinical: ReturnType<typeof buildClinicalAnswer>,
-): AnswerCardData[] {
-	return buildClinicalCards(clinical, knowledge)
-}
-
-function buildGroundedAnswer(input: {
-	knowledge: RetrievedKnowledge | null
-	question: string
-	memberName?: string | null
-	dataAvailable: boolean
-	coverage?: HealthCoverageSnapshot | null
-}): string {
-	if (!input.dataAvailable || !input.knowledge) {
-		return [
-			input.memberName
-				? `I don't have records for ${input.memberName} that answer that yet.`
-				: "I don't have records in Chronicle that answer that yet.",
-			'Today I can search Health reports, metrics, and timelines. As you enable more Chronicle capabilities, I will understand those too.',
-			'This is informational and not medical advice.',
-		].join(' ')
-	}
-
-	const clinical = buildClinicalAnswer({
-		knowledge: input.knowledge,
-		question: input.question,
-		memberName: input.memberName,
-		dataAvailable: input.dataAvailable,
-		coverage: input.coverage,
-	})
-
-	return clinicalAnswerToProse(clinical)
-}
-
-export function buildGroundedTurn(input: {
+/** Builds turn shell with trust/evidence — no narrative prose. */
+export function buildAskTurnShell(input: {
 	question: string
 	knowledge: RetrievedKnowledge | null
 	member: IntelligenceMemberContext
 	domains: KnowledgeDomain[]
 	dataAvailable: boolean
-	confidence?: number
+	answer: string
+	platformResponse?: StructuredAIResponse
+	cards?: AnswerCardData[]
 	uploadedReports?: unknown[]
-	personalContext?: PersonalContext
-	coverage?: HealthCoverageSnapshot | null
+	confidence?: number
 }): AskConversationTurn {
 	const timestamp = new Date().toISOString()
 	const knowledge =
@@ -203,74 +135,37 @@ export function buildGroundedTurn(input: {
 		} satisfies RetrievedKnowledge)
 
 	const citations = input.dataAvailable ? buildEvidenceCitations(knowledge) : []
-	const evidence = input.dataAvailable ? buildEvidenceLines(knowledge) : []
 	const relatedReports = input.dataAvailable ? toRelatedReports(knowledge) : []
 	const relatedMetrics = input.dataAvailable ? toRelatedMetrics(knowledge) : []
-	const followUpQuestions = generateFollowUpQuestions({
-		intent: knowledge.intent,
-		knowledge,
-		memberName: input.member.memberName,
-		question: input.question,
-		domains: input.domains,
-	})
-
-	const clinicalAnswer = input.dataAvailable
-		? buildClinicalAnswer({
-				knowledge,
-				question: input.question,
-				memberName: input.member.memberName,
-				dataAvailable: input.dataAvailable,
-				coverage: input.coverage,
-			})
-		: undefined
-
-	const rawAnswer = buildGroundedAnswer({
-		knowledge: input.knowledge,
-		question: input.question,
-		memberName: input.member.memberName,
-		dataAvailable: input.dataAvailable,
-		coverage: input.coverage,
-	})
-
-	const adaptedAnswer = input.personalContext
-		? adaptAnswerForStyle({
-				answer: rawAnswer,
-				style: input.personalContext.preferences.communicationStyle,
-				knowledge: input.knowledge,
-				memberName: input.member.memberName,
-			})
-		: rawAnswer
+	const followUpQuestions =
+		input.platformResponse?.followUpQuestions ??
+		generateFollowUpQuestions({
+			intent: knowledge.intent,
+			knowledge,
+			memberName: input.member.memberName,
+			question: input.question,
+			domains: input.domains,
+		})
 
 	const trust = buildTrustResponse({
-		answer: adaptedAnswer,
+		answer: input.answer,
 		question: input.question,
 		knowledge,
 		dataAvailable: input.dataAvailable,
-		evidence,
+		evidence: input.platformResponse?.evidenceFromReports ?? [],
 		citations,
 		relatedReports,
 		relatedMetrics,
 		followUpQuestions,
-		intentConfidence: input.confidence,
 		uploadedReports: input.uploadedReports,
-		clinicalAnswer,
 	})
 
 	return {
 		id: crypto.randomUUID(),
 		question: input.question,
-		answer: trust.directAnswer,
-		clinicalAnswer,
-		cards:
-			input.dataAvailable &&
-			clinicalAnswer &&
-			(!input.personalContext ||
-				shouldIncludeAnswerCards(
-					input.personalContext.preferences.communicationStyle,
-					input.personalContext.preferences.displayFormat,
-				))
-				? buildCards(knowledge, clinicalAnswer)
-				: [],
+		answer: input.answer,
+		platformResponse: input.platformResponse,
+		cards: input.cards ?? [],
 		relatedReports: trust.supportingReports,
 		relatedMetrics,
 		citations: trust.evidenceItems.length
@@ -298,6 +193,32 @@ export function buildGroundedTurn(input: {
 		timestamp,
 		displayTimestamp: formatTimestamp(timestamp),
 	}
+}
+
+/** @deprecated Use buildAskTurnShell — kept for legacy test imports only. */
+export function buildGroundedTurn(input: {
+	question: string
+	knowledge: RetrievedKnowledge | null
+	member: IntelligenceMemberContext
+	domains: KnowledgeDomain[]
+	dataAvailable: boolean
+	confidence?: number
+	uploadedReports?: unknown[]
+	personalContext?: unknown
+	coverage?: HealthCoverageSnapshot | null
+}): AskConversationTurn {
+	return buildAskTurnShell({
+		question: input.question,
+		knowledge: input.knowledge,
+		member: input.member,
+		domains: input.domains,
+		dataAvailable: input.dataAvailable,
+		answer: input.dataAvailable
+			? 'Reviewing your health records…'
+			: "I don't have enough health records yet to answer that.",
+		uploadedReports: input.uploadedReports,
+		confidence: input.confidence,
+	})
 }
 
 export function attachTrustToTurn(
@@ -344,7 +265,7 @@ export function attachTrustToTurn(
 
 	return {
 		...turn,
-		answer: trust.directAnswer,
+		answer: turn.platformResponse?.directAnswer ?? turn.answer,
 		relatedReports: trust.supportingReports,
 		confidence: trust.confidence.score,
 		confidenceLevel: trust.confidence.level,

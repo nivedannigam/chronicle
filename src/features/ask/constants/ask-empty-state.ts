@@ -1,6 +1,7 @@
 export const ASK_EMPTY_SUGGESTIONS = [
 	'How am I doing?',
-	'What changed since my last visit?',
 	'Explain my latest report.',
-	'What should I discuss with my doctor?',
+	'What changed?',
+	'Should I be worried about anything?',
+	'Prepare me for my next doctor visit.',
 ] as const

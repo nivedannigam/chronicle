@@ -5,7 +5,11 @@ import { FollowUpChips } from '@/features/ask/components/FollowUpChips'
 import { TypingIndicator } from '@/features/ask/components/TypingIndicator'
 import { buildStructuredResponse } from '@/features/ask/services/structured-response.service'
 import type { AskConversationTurn } from '@/features/ask/types'
-import { FC } from '@/ui/figma/v2/atoms'
+import {
+	AskColors,
+	AskLayout,
+	AskTypography,
+} from '@/ui/figma/ask/ask-design-tokens'
 
 interface ConversationTurnViewProps {
 	turn: AskConversationTurn
@@ -46,50 +50,73 @@ export function ConversationTurnView({
 	return (
 		<section
 			style={{
-				paddingBottom: hideQuestion ? 0 : 48,
-				borderBottom: hideQuestion ? 'none' : `1px solid ${FC.line}`,
-				marginBottom: hideQuestion ? 0 : 32,
+				maxWidth: AskLayout.maxContentWidth,
+				margin: '0 auto',
+				paddingBottom: hideQuestion ? 0 : 32,
 			}}
 		>
-			{hideQuestion ? null : (
-				<h2
-					style={{
-						fontSize: 17,
-						fontWeight: 600,
-						color: FC.fg,
-						lineHeight: 1.45,
-						margin: '0 0 24px',
-						letterSpacing: -0.3,
-					}}
-				>
-					{turn.question}
-				</h2>
-			)}
+			<div
+				style={{
+					background: AskColors.card,
+					borderRadius: AskLayout.cardRadius,
+					border: `1px solid ${AskColors.line}`,
+					boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
+					padding: '24px 22px 28px',
+				}}
+			>
+				{hideQuestion ? null : (
+					<div
+						style={{
+							display: 'flex',
+							justifyContent: 'flex-end',
+							marginBottom: 24,
+						}}
+					>
+						<p
+							style={{
+								...AskTypography.question,
+								color: AskColors.primary,
+								margin: 0,
+								maxWidth: '85%',
+								textAlign: 'right',
+							}}
+						>
+							{turn.question}
+						</p>
+					</div>
+				)}
 
-			{showTyping ? (
-				<div>
-					<TypingIndicator />
-					<AskStreamingSkeleton />
-				</div>
-			) : hasAnswer ? (
-				<AskPremiumAnswer
-					structured={structured}
-					trust={trust}
-					rawAnswer={turn.answer}
-					isStreaming={isStreaming}
-				/>
-			) : (
-				<p style={{ fontSize: 15, color: FC.mid, lineHeight: 1.65, margin: 0 }}>
-					I couldn't generate an answer for that question.
-				</p>
-			)}
+				{showTyping ? (
+					<div>
+						<TypingIndicator />
+						<AskStreamingSkeleton />
+					</div>
+				) : hasAnswer ? (
+					<AskPremiumAnswer
+						structured={structured}
+						trust={trust}
+						rawAnswer={turn.answer}
+						isStreaming={isStreaming}
+					/>
+				) : (
+					<p
+						style={{
+							...AskTypography.body,
+							color: AskColors.mid,
+							margin: 0,
+						}}
+					>
+						I couldn't generate an answer for that question.
+					</p>
+				)}
 
-			{!showTyping &&
-			showFollowUps &&
-			onFollowUpSelect &&
-			followUps.length > 0 ? (
-				<FollowUpChips questions={followUps} onSelect={onFollowUpSelect} />
-			) : null}
+				{!showTyping &&
+				showFollowUps &&
+				onFollowUpSelect &&
+				followUps.length > 0 ? (
+					<FollowUpChips questions={followUps} onSelect={onFollowUpSelect} />
+				) : null}
+			</div>
 		</section>
 	)
 }

@@ -62,8 +62,6 @@ export function buildExplainabilityAnswer(input: {
 			'',
 			trust.directAnswer.split('\n\nThis is informational')[0]?.trim() ??
 				input.previousTurn!.answer,
-			'',
-			`Confidence: ${trust.confidence.level} — ${trust.confidence.factors.slice(0, 2).join('; ')}`,
 			trust.disagreements.length > 0
 				? `Note: ${trust.disagreements.length} conflicting value(s) were surfaced in your records.`
 				: '',

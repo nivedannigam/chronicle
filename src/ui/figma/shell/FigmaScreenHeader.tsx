@@ -48,6 +48,7 @@ export function FigmaScreenHeader({
 	subtitle,
 	onBack,
 	backLabel = 'Back',
+	leading,
 	actions,
 	children,
 	paddingBottom = 18,
@@ -56,6 +57,7 @@ export function FigmaScreenHeader({
 	subtitle?: string
 	onBack?: () => void
 	backLabel?: string
+	leading?: ReactNode
 	actions?: ReactNode
 	children?: ReactNode
 	paddingBottom?: number
@@ -99,20 +101,33 @@ export function FigmaScreenHeader({
 					marginBottom: subtitle || children ? 0 : 0,
 				}}
 			>
-				<div style={{ flex: 1, minWidth: 0 }}>
-					<h1 style={figmaScreenTitleStyle}>{title}</h1>
-					{subtitle ? (
-						<p
-							style={{
-								color: FC.mid,
-								fontSize: 14,
-								margin: '6px 0 0',
-								lineHeight: 1.45,
-							}}
-						>
-							{subtitle}
-						</p>
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'flex-start',
+						gap: 10,
+						flex: 1,
+						minWidth: 0,
+					}}
+				>
+					{leading ? (
+						<div style={{ flexShrink: 0, paddingTop: 2 }}>{leading}</div>
 					) : null}
+					<div style={{ flex: 1, minWidth: 0 }}>
+						<h1 style={figmaScreenTitleStyle}>{title}</h1>
+						{subtitle ? (
+							<p
+								style={{
+									color: FC.mid,
+									fontSize: 14,
+									margin: '6px 0 0',
+									lineHeight: 1.45,
+								}}
+							>
+								{subtitle}
+							</p>
+						) : null}
+					</div>
 				</div>
 				{actions ? (
 					<div

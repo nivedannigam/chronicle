@@ -7,6 +7,8 @@ import {
 	parseConfidenceLevel,
 	toConfidenceLevel,
 } from '@/features/intelligence/types/confidence.types'
+import { buildAskTurnShell } from '@/features/ask/services/grounded-response.builder'
+import type { IntelligenceMemberContext } from '@/features/intelligence/types/intelligence.types'
 
 function formatDisplayDate(iso: string): string {
 	return new Date(iso).toLocaleString('en-US', {
@@ -17,64 +19,26 @@ function formatDisplayDate(iso: string): string {
 	})
 }
 
-function buildCompanionAnswer(response: StructuredAIResponse): string {
-	const sections: string[] = [response.directAnswer ?? response.summary]
-
-	if (response.evidenceFromReports?.length) {
-		sections.push(
-			'',
-			'Evidence from your reports:',
-			...response.evidenceFromReports.map((item) => `• ${item}`),
-		)
-	}
-
-	if (response.whatChanged?.length) {
-		sections.push(
-			'',
-			'What changed:',
-			...response.whatChanged.map((item) => `• ${item}`),
-		)
-	}
-
-	if (response.whatItMayMean?.length) {
-		sections.push(
-			'',
-			'What it may mean:',
-			...response.whatItMayMean.map((item) => `• ${item}`),
-		)
-	}
-
-	if (response.doctorDiscussion?.length) {
-		sections.push(
-			'',
-			'Worth discussing with your doctor:',
-			...response.doctorDiscussion.map((item) => `• ${item}`),
-		)
-	}
-
-	if (response.limitations.length > 0) {
-		sections.push(
-			'',
-			'Limitations:',
-			...response.limitations.map((item) => `• ${item}`),
-		)
-	}
-
-	return sections.join('\n')
+/** Primary display text from Gemini structured response — no engineering headers. */
+export function companionResponseToAnswer(
+	response: StructuredAIResponse,
+): string {
+	return response.directAnswer ?? response.summary
 }
 
 export function platformResponseToAskTurn(input: {
 	response: StructuredAIResponse
 	healthKnowledge?: HealthKnowledge
-	memberId?: string | null
-	memberName?: string | null
+	member: IntelligenceMemberContext
+	domains: AskConversationTurn['domains']
 	dataAvailable?: boolean
 	question?: string
 	betaExperienceId?: BetaExperienceId
 }): AskConversationTurn {
 	const { response, healthKnowledge } = input
 	const latestReport = healthKnowledge?.latestReport
-	const displayTimestamp = formatDisplayDate(new Date().toISOString())
+	const answer = companionResponseToAnswer(response)
+
 	const sourceRefs = response.sourceReports ?? response.evidenceReferences
 
 	const citations = sourceRefs
@@ -105,61 +69,21 @@ export function platformResponseToAskTurn(input: {
 		parseConfidenceLevel(response.confidence) ??
 		toConfidenceLevel(response.confidence)
 
-	const reportCount =
-		(healthKnowledge?.previousReports.length ?? 0) +
-		(healthKnowledge?.latestReport ? 1 : 0)
-
-	const evidenceFromReports =
-		response.evidenceFromReports ?? response.keyFindings
-
-	const clinicalAnswer = {
-		intent: 'summarize_report' as const,
-		executiveSummary: response.directAnswer ?? response.summary,
-		keyFindings: evidenceFromReports,
-		recommendations: response.doctorDiscussion ?? response.recommendations,
-		limitations: response.limitations,
-		rankedEvidence: {
-			metrics: [],
-			trends: [],
-			insights: evidenceFromReports,
-			alerts: response.whatChanged ?? [],
-			reports: latestReport
-				? [
-						{
-							id: latestReport.id,
-							title: latestReport.title,
-							date: latestReport.date,
-							lab: latestReport.lab ?? '',
-							category: latestReport.reportType ?? 'Health',
-							summary: `${latestReport.metricCount} metrics · ${latestReport.lab}`,
-						},
-					]
-				: [],
-			reportCount,
-			singleReport: reportCount <= 1,
-			latestReportLabel: latestReport?.title ?? null,
-			abnormalCount: healthKnowledge?.abnormalMetrics.length ?? 0,
-			normalCount: healthKnowledge?.normalMetrics.length ?? 0,
-		},
-		importantMetricIds: (healthKnowledge?.abnormalMetrics ?? [])
-			.slice(0, 6)
-			.map((metric) => metric.canonicalId),
-		showTrendCards: false,
-		showComparisonLanguage: (response.whatChanged?.length ?? 0) > 0,
-	}
-
 	return {
-		id: crypto.randomUUID(),
-		question: input.question ?? 'Health question',
-		answer: buildCompanionAnswer(response),
-		clinicalAnswer,
-		timestamp: new Date().toISOString(),
-		displayTimestamp,
-		confidence: response.confidence,
-		confidenceLevel,
-		cards: [],
-		evidence: evidenceFromReports,
-		citations,
+		...buildAskTurnShell({
+			question: input.question ?? 'Health question',
+			knowledge: null,
+			member: input.member,
+			domains: input.domains,
+			dataAvailable: input.dataAvailable ?? Boolean(latestReport),
+			answer,
+			platformResponse: response,
+			confidence: response.confidence,
+			cards: [],
+		}),
+		betaExperienceId: input.betaExperienceId,
+		followUpQuestions: response.followUpQuestions.slice(0, 4),
+		displayTimestamp: formatDisplayDate(new Date().toISOString()),
 		relatedReports: sourceRefs
 			.filter((ref) => ref.sourceType.includes('report'))
 			.map((ref) => {
@@ -183,16 +107,49 @@ export function platformResponseToAskTurn(input: {
 				value: metric.unit ? `${metric.value} ${metric.unit}` : metric.value,
 				status: metric.status,
 			})),
-		followUpQuestions: response.followUpQuestions,
-		memberId: input.memberId ?? null,
-		memberName: input.memberName ?? null,
-		domains: ['health'],
-		dataAvailable: input.dataAvailable ?? Boolean(latestReport),
-		betaExperienceId: input.betaExperienceId,
-		platformResponse: response,
+		citations,
+		confidenceLevel,
 	}
 }
 
 export function formatPlatformErrorForUser(error: unknown): string {
 	return mapErrorToUserMessage(error)
+}
+
+export function buildNarrativeFailureTurn(input: {
+	question: string
+	member: IntelligenceMemberContext
+	domains: AskConversationTurn['domains']
+	error?: unknown
+}): AskConversationTurn {
+	const message =
+		input.error != null
+			? formatPlatformErrorForUser(input.error)
+			: "I couldn't complete that request right now. Please try again in a moment."
+
+	return buildAskTurnShell({
+		question: input.question,
+		knowledge: null,
+		member: input.member,
+		domains: input.domains,
+		dataAvailable: false,
+		answer: message,
+		platformResponse: {
+			summary: message,
+			directAnswer: message,
+			overallStatus: 'insufficient_data',
+			keyFindings: [],
+			evidenceFromReports: [],
+			whatChanged: [],
+			whatItMayMean: [],
+			doctorDiscussion: [],
+			recommendations: [],
+			followUpQuestions: [],
+			confidence: 0.2,
+			confidenceLevel: 'low',
+			limitations: [],
+			evidenceReferences: [],
+			sourceReports: [],
+		},
+	})
 }

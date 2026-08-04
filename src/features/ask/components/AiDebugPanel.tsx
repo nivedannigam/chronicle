@@ -60,24 +60,26 @@ export function AiDebugPanel({
 								{debug.retrievedKnowledge.observations.length}
 							</div>
 						</div>
-						<div style={{ marginBottom: 12 }}>
-							<strong style={{ color: C.text }}>Constructed Prompt</strong>
-							<pre
-								style={{
-									marginTop: 8,
-									padding: 12,
-									background: C.card2,
-									borderRadius: 12,
-									overflowX: 'auto',
-									whiteSpace: 'pre-wrap',
-									fontSize: 11,
-									color: C.textMuted,
-									maxHeight: 180,
-								}}
-							>
-								{debug.prompt.user.slice(0, 2500)}
-							</pre>
-						</div>
+						{debug.prompt ? (
+							<div style={{ marginBottom: 12 }}>
+								<strong style={{ color: C.text }}>Constructed Prompt</strong>
+								<pre
+									style={{
+										marginTop: 8,
+										padding: 12,
+										background: C.card2,
+										borderRadius: 12,
+										overflowX: 'auto',
+										whiteSpace: 'pre-wrap',
+										fontSize: 11,
+										color: C.textMuted,
+										maxHeight: 180,
+									}}
+								>
+									{debug.prompt.user.slice(0, 2500)}
+								</pre>
+							</div>
+						) : null}
 						{debug.providerResponse ? (
 							<div style={{ marginBottom: 12 }}>
 								<strong style={{ color: C.text }}>Provider Response</strong>

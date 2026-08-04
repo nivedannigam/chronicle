@@ -37,10 +37,7 @@ function buildRecommendations(turn: AskConversationTurn): string[] {
 
 	if (!turn.dataAvailable && recommendations.length === 0) {
 		recommendations.push(
-			'Import or upload relevant health reports or documents to improve coverage.',
-		)
-		recommendations.push(
-			'Try rephrasing with a family member name or document type.',
+			'Import a lab report or health document to get started.',
 		)
 	}
 

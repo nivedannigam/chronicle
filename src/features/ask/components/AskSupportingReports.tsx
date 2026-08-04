@@ -5,7 +5,7 @@ import {
 	type SupportingReportGroup,
 } from '@/features/ask/utils/supporting-reports.utils'
 import type { TrustResponse } from '@/features/ask/trust/trust.types'
-import { FC } from '@/ui/figma/v2/atoms'
+import { AskColors, AskTypography } from '@/ui/figma/ask/ask-design-tokens'
 
 interface AskSupportingReportsProps {
 	trust: TrustResponse | undefined
@@ -26,12 +26,12 @@ function formatReportDate(value: string): string {
 
 function ReportRow({ report }: { report: SupportingReportGroup }) {
 	return (
-		<div style={{ padding: '10px 0', borderTop: `1px solid ${FC.line}` }}>
+		<div style={{ padding: '8px 0', borderTop: `1px solid ${AskColors.line}` }}>
 			<div
 				style={{
 					fontSize: 14,
-					fontWeight: 600,
-					color: FC.fg,
+					fontWeight: 500,
+					color: AskColors.fg,
 					lineHeight: 1.4,
 				}}
 			>
@@ -40,7 +40,7 @@ function ReportRow({ report }: { report: SupportingReportGroup }) {
 			<div
 				style={{
 					fontSize: 12,
-					color: FC.dim,
+					color: AskColors.slate,
 					marginTop: 2,
 				}}
 			>
@@ -49,11 +49,11 @@ function ReportRow({ report }: { report: SupportingReportGroup }) {
 			{report.metrics.length > 0 ? (
 				<ul
 					style={{
-						margin: '8px 0 0',
+						margin: '6px 0 0',
 						paddingLeft: 16,
 						display: 'flex',
 						flexDirection: 'column',
-						gap: 3,
+						gap: 2,
 					}}
 				>
 					{report.metrics.map((metric) => (
@@ -61,7 +61,7 @@ function ReportRow({ report }: { report: SupportingReportGroup }) {
 							key={metric}
 							style={{
 								fontSize: 13,
-								color: FC.mid,
+								color: AskColors.neutral,
 								lineHeight: 1.45,
 							}}
 						>
@@ -83,7 +83,7 @@ export function AskSupportingReports({ trust }: AskSupportingReportsProps) {
 	}
 
 	return (
-		<div style={{ marginTop: 24 }}>
+		<div style={{ marginTop: 20 }}>
 			<button
 				type="button"
 				onClick={() => setExpanded((value) => !value)}
@@ -96,17 +96,16 @@ export function AskSupportingReports({ trust }: AskSupportingReportsProps) {
 					border: 'none',
 					cursor: 'pointer',
 					fontFamily: 'inherit',
-					fontSize: 13,
-					fontWeight: 500,
-					color: FC.mid,
+					...AskTypography.sectionTitle,
+					color: AskColors.slate,
 				}}
 			>
 				{expanded ? (
-					<ChevronDown size={14} color={FC.dim} />
+					<ChevronDown size={14} color={AskColors.neutral} />
 				) : (
-					<ChevronRight size={14} color={FC.dim} />
+					<ChevronRight size={14} color={AskColors.neutral} />
 				)}
-				View supporting reports ({reports.length})
+				Supporting reports ({reports.length})
 			</button>
 
 			{expanded ? (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Square } from 'lucide-react'
+import { Menu, Square } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth'
@@ -18,6 +18,7 @@ import { usePersonalPreferences } from '@/features/personalization/hooks/usePers
 import { AskPremiumEmptyState } from '@/ui/figma/ask/AskPremiumEmptyState'
 import { FigmaAskComposer, FC } from '@/ui/figma/v2/atoms'
 import {
+	FigmaHeaderIconButton,
 	FigmaHeaderSearchButton,
 	FigmaScreenHeader,
 } from '@/ui/figma/shell/FigmaScreenHeader'
@@ -140,13 +141,20 @@ export function FigmaAskScreen({
 			<FigmaScreenHeader
 				title="Ask Chronicle"
 				subtitle={hasConversation ? undefined : 'Your health companion'}
+				leading={
+					<FigmaHeaderIconButton
+						onClick={() => setHistoryOpen(true)}
+						ariaLabel="Open conversation history"
+					>
+						<Menu size={20} color={FC.dim} strokeWidth={1.8} />
+					</FigmaHeaderIconButton>
+				}
 				actions={
 					<div style={{ display: 'flex', gap: 8 }}>
 						<AskConversationMenu
 							hasConversation={hasConversation}
 							onNewConversation={() => clearConversation()}
 							onClearConversation={() => clearConversation()}
-							onOpenHistory={() => setHistoryOpen(true)}
 						/>
 						{!consumerMode ? (
 							<FigmaHeaderSearchButton

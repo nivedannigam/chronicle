@@ -36,7 +36,7 @@ export async function runProductionHealthAi(input: {
 	const companion = input.companion ?? createChronicleCompanionAI()
 
 	if (input.onStream) {
-		input.onStream('Reviewing your health records…')
+		input.onStream('Chronicle is reviewing your health records…')
 	}
 
 	const result = await companion.ask({
@@ -52,8 +52,12 @@ export async function runProductionHealthAi(input: {
 	const turn = platformResponseToAskTurn({
 		response: result.response,
 		healthKnowledge: result.healthKnowledge,
-		memberName: input.memberName,
-		memberId: input.familyMemberId ?? null,
+		member: {
+			memberId: input.familyMemberId ?? null,
+			memberName: input.memberName ?? null,
+			familyMemberNames: [],
+		},
+		domains: ['health'],
 		dataAvailable: Boolean(result.healthKnowledge?.latestReport),
 		question: input.question,
 		betaExperienceId: input.betaExperienceId,
