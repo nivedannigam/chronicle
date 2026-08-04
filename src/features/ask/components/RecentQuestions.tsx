@@ -102,7 +102,8 @@ export function RecentQuestions({
 								>
 									<ConversationTurnView
 										turn={item.turn}
-										showUserBubble={false}
+										hideQuestion
+										showFollowUps={false}
 									/>
 								</div>
 							) : null}

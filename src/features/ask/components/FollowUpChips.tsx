@@ -1,11 +1,4 @@
-import { C } from '@/constants/colors'
-
-const CATEGORY_COLORS = {
-	health: C.teal,
-	documents: C.accent,
-	timeline: C.accentBlue,
-	general: C.textSec,
-} as const
+import { FC } from '@/ui/figma/v2/atoms'
 
 interface FollowUpChipsProps {
 	questions: string[]
@@ -18,45 +11,50 @@ export function FollowUpChips({
 	onSelect,
 	disabled = false,
 }: FollowUpChipsProps) {
-	if (questions.length === 0) {
+	const visible = questions.slice(0, 4)
+
+	if (visible.length === 0) {
 		return null
 	}
 
 	return (
-		<div
-			style={{
-				display: 'flex',
-				flexWrap: 'wrap',
-				gap: 8,
-				marginTop: 12,
-			}}
-			role="list"
-			aria-label="Follow-up questions"
-		>
-			{questions.map((question) => (
-				<button
-					key={question}
-					type="button"
-					disabled={disabled}
-					onClick={() => onSelect(question)}
-					role="listitem"
-					style={{
-						fontSize: 12,
-						fontWeight: 600,
-						color: C.textSec,
-						background: `${C.accent}10`,
-						border: `1px solid ${C.border}`,
-						borderRadius: 100,
-						padding: '8px 12px',
-						cursor: disabled ? 'not-allowed' : 'pointer',
-						fontFamily: 'inherit',
-						lineHeight: 1.35,
-						textAlign: 'left',
-					}}
-				>
-					{question}
-				</button>
-			))}
+		<div style={{ marginTop: 28 }} role="list" aria-label="Related questions">
+			<div
+				style={{
+					display: 'flex',
+					gap: 8,
+					overflowX: 'auto',
+					scrollbarWidth: 'none',
+					WebkitOverflowScrolling: 'touch',
+					paddingBottom: 2,
+				}}
+			>
+				{visible.map((question) => (
+					<button
+						key={question}
+						type="button"
+						disabled={disabled}
+						onClick={() => onSelect(question)}
+						role="listitem"
+						style={{
+							flexShrink: 0,
+							fontSize: 12,
+							fontWeight: 500,
+							color: FC.mid,
+							background: `${FC.bg}`,
+							border: `1px solid ${FC.line}`,
+							borderRadius: 100,
+							padding: '7px 12px',
+							cursor: disabled ? 'not-allowed' : 'pointer',
+							fontFamily: 'inherit',
+							lineHeight: 1.3,
+							whiteSpace: 'nowrap',
+						}}
+					>
+						{question}
+					</button>
+				))}
+			</div>
 		</div>
 	)
 }
@@ -66,7 +64,7 @@ interface DynamicSuggestionChipsProps {
 		id: string
 		label: string
 		question: string
-		category: keyof typeof CATEGORY_COLORS
+		category: string
 	}>
 	onSelect: (question: string) => void
 	disabled?: boolean
@@ -83,7 +81,6 @@ export function DynamicSuggestionChips({
 				display: 'flex',
 				flexWrap: 'wrap',
 				gap: 8,
-				marginBottom: 18,
 			}}
 			role="list"
 			aria-label="Suggested questions"
@@ -97,10 +94,10 @@ export function DynamicSuggestionChips({
 					role="listitem"
 					style={{
 						fontSize: 13,
-						fontWeight: 600,
-						color: CATEGORY_COLORS[chip.category],
-						background: `${CATEGORY_COLORS[chip.category]}12`,
-						border: `1px solid ${CATEGORY_COLORS[chip.category]}33`,
+						fontWeight: 500,
+						color: FC.mid,
+						background: `${FC.bg}`,
+						border: `1px solid ${FC.line}`,
 						borderRadius: 100,
 						padding: '8px 14px',
 						cursor: disabled ? 'not-allowed' : 'pointer',
