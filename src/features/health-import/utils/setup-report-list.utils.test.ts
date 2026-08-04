@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { UploadedHealthReport } from '@/features/health/types'
+import { PARSING_FAILED_USER_MESSAGE } from '@/features/health/services/health-ai-extraction.service'
 import {
 	applySetupListVisibility,
 	buildSetupReportRows,
@@ -274,6 +275,7 @@ describe('buildSetupReportRows error display', () => {
 				report({
 					id: 'r-stale',
 					status: 'failed',
+					extracted_text: 'ECG summary text',
 					processing_error: 'No parser registered for document: ecg.pdf',
 				}),
 			],
@@ -282,10 +284,34 @@ describe('buildSetupReportRows error display', () => {
 		})
 
 		const row = rows[0]
-		expect(row?.reason).toBe('No parser registered for document: ecg.pdf')
-		expect(row?.errorLog).toContain('No parser registered')
-		expect(row?.errorLog).not.toContain('Google Drive download failed')
-		expect(row?.errorLog).toContain('Stage: Parsing')
+		expect(row?.reason).toBe(PARSING_FAILED_USER_MESSAGE)
+		expect(row?.errorLog).toBe(PARSING_FAILED_USER_MESSAGE)
+		expect(row?.canReprocessWithAi).toBe(true)
+	})
+
+	it('enables AI reprocess for OCR-failed reports without stored text', () => {
+		const rows = buildSetupReportRows({
+			registry: [
+				registry({
+					id: 'reg-ocr-fail',
+					importStatus: 'failed',
+					healthReportId: 'r-ocr-fail',
+				}),
+			],
+			reports: [
+				report({
+					id: 'r-ocr-fail',
+					status: 'failed',
+					storage_path: 'user/company-plan.pdf',
+					extracted_text: null,
+					processing_error: 'WORKER_RESOURCE_LIMIT',
+				}),
+			],
+			memberId: 'member-1',
+			accountOwnerMemberId: 'member-1',
+		})
+
+		expect(rows[0]?.canReprocessWithAi).toBe(true)
 	})
 
 	it('disables AI reprocess on ready reports', () => {

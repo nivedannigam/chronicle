@@ -25,7 +25,10 @@ import {
 } from '@/features/health/services/health-processing.service'
 import {
 	AI_REPROCESS_CONFIRMATION,
+	getHealthReportFailureMessage,
 	reportEligibleForAiReprocess,
+	reportFailedAtOcrStage,
+	toAiReprocessUserFacingError,
 } from '@/features/health/services/health-ai-extraction.service'
 import { metricsDisplayMessage } from '@/features/health/services/report-readiness.service'
 import { queryClient } from '@/lib/query-client'
@@ -85,6 +88,10 @@ export function HealthReportDetailPage() {
 			: ''
 	const showFailedBanner = uploaded.status === 'failed'
 	const canReprocessWithAi = reportEligibleForAiReprocess(uploaded)
+	const ocrFailed = showFailedBanner && reportFailedAtOcrStage(uploaded)
+	const failureMessage = showFailedBanner
+		? getHealthReportFailureMessage(uploaded)
+		: null
 	const statusLabel = getProductReportStatusLabel(uploaded)
 	const statusTone = getProductReportStatusColor(uploaded)
 	const subtitle = [
@@ -136,9 +143,7 @@ export function HealthReportDetailPage() {
 				queryKey: uploadedHealthReportsQueryKey(uploaded.user_id),
 			})
 		} catch (error) {
-			setActionError(
-				error instanceof Error ? error.message : 'Could not reprocess with AI.',
-			)
+			setActionError(toAiReprocessUserFacingError(error))
 		} finally {
 			setIsAiReprocessing(false)
 		}
@@ -203,16 +208,24 @@ export function HealthReportDetailPage() {
 				}
 			/>
 
-			{showFailedBanner && uploaded.processing_error ? (
+			{showFailedBanner && failureMessage ? (
 				<HealthAlertBanner
-					message={`Import failed — ${uploaded.processing_error}`}
+					message={failureMessage}
 					actionLabel={
-						isReprocessing
-							? USER_VOCAB.actions.reprocessing
-							: USER_VOCAB.actions.retryImport
+						ocrFailed && canReprocessWithAi
+							? isAiReprocessing
+								? 'Reprocessing with AI…'
+								: 'Reprocess with AI'
+							: isReprocessing
+								? USER_VOCAB.actions.reprocessing
+								: USER_VOCAB.actions.retryImport
 					}
-					onAction={() => void handleReprocess()}
-					disabled={isReprocessing}
+					onAction={() =>
+						void (ocrFailed && canReprocessWithAi
+							? handleReprocessWithAi()
+							: handleReprocess())
+					}
+					disabled={isReprocessing || isAiReprocessing}
 				/>
 			) : null}
 

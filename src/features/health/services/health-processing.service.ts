@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase'
 import { documentProcessingConfig } from '@/config/document-processing'
 import {
 	createDocumentFromUpload,
+	defaultOCRProvider,
 	runDocumentIntelligencePipeline,
+	runOcrWithRetry,
 } from '@/features/document-intelligence'
 import { createKnowledgeItemFromHealthReport } from '@/features/knowledge/services/knowledge-health.service'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
@@ -26,7 +28,14 @@ import {
 	reportNeedsReprocess,
 	UNSUPPORTED_HEALTH_DOCUMENT_MESSAGE,
 } from '@/features/health/services/report-readiness.service'
-import { buildHealthReportFromAiExtraction } from '@/features/health/services/health-ai-extraction.service'
+import {
+	AI_REPROCESS_FAILED_USER_MESSAGE,
+	buildHealthReportFromAiExtraction,
+	OCR_FAILED_USER_MESSAGE,
+	reportEligibleForAiReprocess,
+	toAiReprocessUserFacingError,
+} from '@/features/health/services/health-ai-extraction.service'
+import { logHealthAiReprocessEvent } from '@/features/health/services/health-ai-reprocess.observability'
 import {
 	clearRegistryErrorForReport,
 	syncRegistryWithReportOutcome,
@@ -522,12 +531,12 @@ export async function processHealthReport(
 
 		await updateReportStatus(reportId, {
 			status: 'failed',
-			processing_error: errorDetail.userMessage,
+			processing_error: OCR_FAILED_USER_MESSAGE,
 		})
 
 		await updateQueueStatus(reportId, 'failed', {
 			completed_at: new Date().toISOString(),
-			error_message: errorDetail.userMessage,
+			error_message: OCR_FAILED_USER_MESSAGE,
 		})
 
 		await safeTransitionWorkflowItem({
@@ -536,7 +545,7 @@ export async function processHealthReport(
 			context: {
 				userId: typedReport.user_id,
 				reportId,
-				failureReason: errorDetail.userMessage,
+				failureReason: OCR_FAILED_USER_MESSAGE,
 				failedStage: 'OCR',
 				errorDetail,
 			},
@@ -544,10 +553,21 @@ export async function processHealthReport(
 
 		await syncRegistryWithReportOutcome(reportId, {
 			status: 'failed',
-			errorMessage: errorDetail.userMessage,
+			errorMessage: OCR_FAILED_USER_MESSAGE,
 		})
 
-		throw new Error(errorDetail.userMessage)
+		logHealthAiReprocessEvent({
+			event: 'ocr_failed',
+			reportId,
+			correlationId: crypto.randomUUID(),
+			error: errorDetail.message,
+			details: {
+				edgeFunction: errorDetail.edgeFunction ?? null,
+				httpStatus: errorDetail.httpStatus ?? null,
+			},
+		})
+
+		throw new Error(OCR_FAILED_USER_MESSAGE)
 	}
 }
 
@@ -560,10 +580,116 @@ export async function reprocessHealthReport(
 export async function reprocessHealthReportWithAi(
 	reportId: string,
 ): Promise<UploadedHealthReport> {
-	return processHealthReport(reportId, {
-		force: true,
-		extractionMode: 'llm_text',
+	const correlationId = crypto.randomUUID()
+	const startedAt = Date.now()
+
+	logHealthAiReprocessEvent({
+		event: 'ai_reprocess_requested',
+		reportId,
+		correlationId,
 	})
+
+	try {
+		const { data: report, error: fetchError } = await supabase
+			.from('health_reports')
+			.select('*')
+			.eq('id', reportId)
+			.single()
+
+		if (fetchError || !report) {
+			throw new Error(fetchError?.message ?? 'Report not found.')
+		}
+
+		const typedReport = report as UploadedHealthReport
+
+		if (!reportEligibleForAiReprocess(typedReport)) {
+			throw new Error(AI_REPROCESS_FAILED_USER_MESSAGE)
+		}
+
+		await hydrateReportOcrTextForAiReprocess(typedReport, correlationId)
+
+		const result = await processHealthReportWithAiText(reportId, {
+			force: true,
+		})
+
+		logHealthAiReprocessEvent({
+			event: 'ai_reprocess_completed',
+			reportId,
+			correlationId,
+			durationMs: Date.now() - startedAt,
+		})
+
+		return result
+	} catch (error) {
+		logHealthAiReprocessEvent({
+			event: 'ai_reprocess_failed',
+			reportId,
+			correlationId,
+			durationMs: Date.now() - startedAt,
+			error: error instanceof Error ? error.message : String(error),
+		})
+
+		throw new Error(toAiReprocessUserFacingError(error))
+	}
+}
+
+async function hydrateReportOcrTextForAiReprocess(
+	report: UploadedHealthReport,
+	correlationId: string,
+): Promise<void> {
+	if (reportHasExtractedText(report)) {
+		return
+	}
+
+	const ocrStartedAt = Date.now()
+	const document = createDocumentFromUpload({
+		id: report.id,
+		userId: report.user_id,
+		fileName: report.file_name,
+		storagePath: report.storage_path,
+		uploadedAt: report.uploaded_at,
+	})
+
+	try {
+		const { result: ocrDocument } = await runOcrWithRetry(
+			defaultOCRProvider,
+			document,
+		)
+
+		await updateReportStatus(report.id, {
+			extracted_text: ocrDocument.rawText,
+			ocr_page_count: ocrDocument.pages.length,
+			ocr_confidence: ocrDocument.confidence,
+			ocr_provider: ocrDocument.metadata.provider,
+			ocr_processing_time_ms: ocrDocument.processingTimeMs,
+			ocr_metadata: ocrDocument.metadata as Record<string, unknown>,
+			processing_error: null,
+		})
+
+		logHealthAiReprocessEvent({
+			event: 'ai_reprocess_requested',
+			reportId: report.id,
+			correlationId,
+			durationMs: Date.now() - ocrStartedAt,
+			details: {
+				ocrHydrationCompleted: true,
+				characters: ocrDocument.rawText.length,
+			},
+		})
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+
+		logHealthAiReprocessEvent({
+			event: 'ocr_failed',
+			reportId: report.id,
+			correlationId,
+			durationMs: Date.now() - ocrStartedAt,
+			error: message,
+			details: { duringAiReprocess: true },
+		})
+
+		throw new Error(OCR_FAILED_USER_MESSAGE)
+	}
 }
 
 export async function listReportsEligibleForAiReprocess(
@@ -583,7 +709,7 @@ export async function listReportsEligibleForAiReprocess(
 		.map((row) => row as UploadedHealthReport)
 		.filter(
 			(report) =>
-				reportNeedsReprocess(report) && reportHasExtractedText(report),
+				reportNeedsReprocess(report) && reportEligibleForAiReprocess(report),
 		)
 }
 
@@ -598,10 +724,7 @@ export async function reprocessFailedReportsWithAi(userId: string): Promise<{
 
 	for (const report of eligible) {
 		try {
-			const result = await processHealthReport(report.id, {
-				force: true,
-				extractionMode: 'llm_text',
-			})
+			const result = await reprocessHealthReportWithAi(report.id)
 
 			if (isReportDisplayReady(result)) {
 				processed += 1
@@ -643,9 +766,7 @@ async function processHealthReportWithAiText(
 	const typedReport = report as UploadedHealthReport
 
 	if (!reportHasExtractedText(typedReport)) {
-		throw new Error(
-			'This report has no stored OCR text. Run a standard reprocess first.',
-		)
+		throw new Error(OCR_FAILED_USER_MESSAGE)
 	}
 
 	if (
@@ -821,11 +942,11 @@ async function processHealthReportWithAiText(
 
 		await updateReportStatus(reportId, {
 			status: 'failed',
-			processing_error: errorDetail.userMessage,
+			processing_error: AI_REPROCESS_FAILED_USER_MESSAGE,
 		})
 		await updateQueueStatus(reportId, 'failed', {
 			completed_at: processedAt,
-			error_message: errorDetail.userMessage,
+			error_message: AI_REPROCESS_FAILED_USER_MESSAGE,
 		})
 
 		await safeTransitionWorkflowItem({
@@ -834,7 +955,7 @@ async function processHealthReportWithAiText(
 			context: {
 				userId: typedReport.user_id,
 				reportId,
-				failureReason: errorDetail.userMessage,
+				failureReason: AI_REPROCESS_FAILED_USER_MESSAGE,
 				failedStage: 'PARSING',
 				errorDetail,
 			},
@@ -842,10 +963,10 @@ async function processHealthReportWithAiText(
 
 		await syncRegistryWithReportOutcome(reportId, {
 			status: 'failed',
-			errorMessage: errorDetail.userMessage,
+			errorMessage: AI_REPROCESS_FAILED_USER_MESSAGE,
 		})
 
-		throw new Error(errorDetail.userMessage)
+		throw new Error(AI_REPROCESS_FAILED_USER_MESSAGE)
 	}
 }
 

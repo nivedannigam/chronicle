@@ -5,7 +5,10 @@ import {
 	getReportDisplayDate,
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
-import { reportEligibleForAiReprocess } from '@/features/health/services/health-ai-extraction.service'
+import {
+	getHealthReportFailureMessage,
+	reportEligibleForAiReprocess,
+} from '@/features/health/services/health-ai-extraction.service'
 import {
 	isReportDisplayReady,
 	isReportProcessing,
@@ -249,6 +252,10 @@ function deriveSetupReportReason(input: {
 	}
 
 	if (status === 'failed') {
+		if (report) {
+			return getHealthReportFailureMessage(report)
+		}
+
 		return (
 			currentFailureMessage({ registry, report }) ??
 			'Import or processing failed'
@@ -292,23 +299,16 @@ function buildErrorLog(input: {
 		return null
 	}
 
+	if (input.report) {
+		return getHealthReportFailureMessage(input.report)
+	}
+
 	const message = currentFailureMessage({
 		registry: input.registry,
 		report: input.report,
 	})
 
-	if (!message) {
-		return null
-	}
-
-	const parts = [`Error: ${message}`]
-	const stage = input.failedStage ?? inferFailedStageFromMessage(message)
-
-	if (stage) {
-		parts.push(`Stage: ${stage}`)
-	}
-
-	return parts.join('\n')
+	return message ?? null
 }
 
 function buildRowModel(input: {

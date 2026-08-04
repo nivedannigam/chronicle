@@ -10,7 +10,83 @@ import {
 } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
-import { healthReportQualifiesForMetriclessCompletion } from '@/features/health/services/report-readiness.service'
+import {
+	healthReportQualifiesForMetriclessCompletion,
+	reportHasExtractedText,
+	reportNeedsReprocess,
+} from '@/features/health/services/report-readiness.service'
+
+/** Shown when standard reading failed before any text was stored. */
+export const OCR_FAILED_USER_MESSAGE =
+	"We couldn't read this document using our standard reader."
+
+/** Shown when standard reading succeeded but organizing results failed. */
+export const PARSING_FAILED_USER_MESSAGE =
+	"We couldn't organize results from this document using our standard reader."
+
+/** Shown when AI reprocess also fails. */
+export const AI_REPROCESS_FAILED_USER_MESSAGE =
+	"We still couldn't understand this document."
+
+export function reportFailedAtOcrStage(report: UploadedHealthReport): boolean {
+	if (reportHasExtractedText(report)) {
+		return false
+	}
+
+	return report.status === 'failed' || report.status === 'uploaded'
+}
+
+export function reportEligibleForAiReprocess(
+	report: UploadedHealthReport,
+): boolean {
+	if (reportHasExtractedText(report)) {
+		return true
+	}
+
+	if (!report.storage_path?.trim()) {
+		return false
+	}
+
+	return (
+		report.status === 'failed' ||
+		reportNeedsReprocess(report) ||
+		reportFailedAtOcrStage(report)
+	)
+}
+
+export function getHealthReportFailureMessage(
+	report: UploadedHealthReport,
+): string {
+	if (reportFailedAtOcrStage(report)) {
+		return OCR_FAILED_USER_MESSAGE
+	}
+
+	if (report.status === 'failed' && reportHasExtractedText(report)) {
+		return PARSING_FAILED_USER_MESSAGE
+	}
+
+	if (report.status === 'failed') {
+		return OCR_FAILED_USER_MESSAGE
+	}
+
+	return report.processing_error ?? 'This document needs your attention.'
+}
+
+export function toAiReprocessUserFacingError(error: unknown): string {
+	if (error instanceof Error) {
+		const message = error.message.trim()
+
+		if (
+			message === OCR_FAILED_USER_MESSAGE ||
+			message === AI_REPROCESS_FAILED_USER_MESSAGE ||
+			message === PARSING_FAILED_USER_MESSAGE
+		) {
+			return message
+		}
+	}
+
+	return AI_REPROCESS_FAILED_USER_MESSAGE
+}
 
 const AI_METRIC_CONFIDENCE = 0.55
 const MAX_AI_METRICS = 100
@@ -23,12 +99,6 @@ const VALID_STATUSES = new Set<MetricStatus>([
 	'critical',
 	'unknown',
 ])
-
-export function reportEligibleForAiReprocess(
-	report: UploadedHealthReport,
-): boolean {
-	return Boolean(report.extracted_text?.trim())
-}
 
 export function validateAiExtractedMetrics(
 	metrics: ExtractMetricsAiEdgeMetric[],
@@ -225,7 +295,7 @@ export async function buildHealthReportFromAiExtraction(input: {
 }
 
 export const AI_REPROCESS_CONFIRMATION =
-	'Reprocess with AI sends stored OCR text to Gemini (~$0.002–0.004 per report). AI results may be incomplete — verify metrics before relying on them.\n\nContinue?'
+	'Reprocess with AI uses an alternative reader to extract results from this document. Verify results before relying on them.\n\nContinue?'
 
 export const AI_BULK_REPROCESS_CONFIRMATION = (count: number) =>
-	`Retry ${count} failed report${count === 1 ? '' : 's'} with AI?\n\nOnly reports with stored OCR text are included. Estimated cost: ~$${(count * 0.003).toFixed(2)}.\n\nContinue?`
+	`Reprocess ${count} document${count === 1 ? '' : 's'} with AI? Results may need verification.\n\nContinue?`
