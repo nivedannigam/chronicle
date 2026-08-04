@@ -179,3 +179,27 @@ describe('findHealthVisit', () => {
 		expect(findHealthVisit(visits, 'solo-report')?.id).toBe('solo-report')
 	})
 })
+
+describe('visit display dates', () => {
+	it('uses February from filename when metadata date is an upload month', () => {
+		const visits = buildHealthVisits([
+			makeReport({
+				id: 'feb-report',
+				fileName: 'Feb 2026.pdf',
+				date: '2026-08-03',
+				laboratory: 'Svasth Healthi',
+				parsed_data: {
+					metrics: [],
+					metadata: {
+						reportDate: '2026-08-03',
+						laboratory: 'Svasth Healthi',
+						reportType: 'general',
+					},
+				},
+			}),
+		])
+
+		expect(visits[0]?.displayMonthYear).toBe('February 2026')
+		expect(visits[0]?.title).toBe('Feb 2026')
+	})
+})

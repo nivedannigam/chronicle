@@ -179,7 +179,9 @@ export function classifyGeminiFailure(input: {
 		}
 	}
 
-	if (/validation failed|invalid json|not supported/i.test(text)) {
+	if (
+		/validation failed|invalid json|not supported|: invalid input/i.test(text)
+	) {
 		return {
 			kind: 'validation',
 			userMessage:

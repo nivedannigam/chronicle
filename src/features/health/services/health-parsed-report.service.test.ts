@@ -77,7 +77,7 @@ describe('getReportDisplayDate', () => {
 		).toBe('2023-02-01')
 	})
 
-	it('prefers parsed metadata date over filename', () => {
+	it('prefers parsed metadata date over filename when months agree', () => {
 		expect(
 			getReportDisplayDate(
 				mockReport({
@@ -89,5 +89,24 @@ describe('getReportDisplayDate', () => {
 				}),
 			),
 		).toBe('2023-02-14')
+	})
+
+	it('prefers filename month when metadata month conflicts', () => {
+		expect(
+			getReportDisplayDate(
+				mockReport({
+					file_name: 'Feb 2026.pdf',
+					uploaded_at: '2026-08-03T10:00:00.000Z',
+					parsed_data: {
+						metadata: {
+							reportDate: '2026-08-03',
+							reportType: 'general',
+							laboratory: 'Svasth Healthi',
+						},
+						metrics: [],
+					},
+				}),
+			),
+		).toBe('2026-02-01')
 	})
 })

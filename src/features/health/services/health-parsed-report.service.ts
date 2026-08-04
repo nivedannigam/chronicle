@@ -283,13 +283,23 @@ export function getReportDisplayDate(
 	report: UploadedHealthReport,
 	parsed: DomainHealthReport | null = getParsedHealthReport(report),
 ): string {
-	return (
+	const fileNameDate = resolveReportDateFromFileName(report.file_name)
+	const metadataDate =
 		parsed?.metadata.reportDate ??
 		parsed?.metadata.collectionDate ??
 		report.report_date ??
-		resolveReportDateFromFileName(report.file_name) ??
-		report.uploaded_at.slice(0, 10)
-	)
+		null
+
+	if (fileNameDate && metadataDate) {
+		const fileMonth = fileNameDate.slice(0, 7)
+		const metaMonth = metadataDate.slice(0, 7)
+
+		if (fileMonth !== metaMonth) {
+			return fileNameDate
+		}
+	}
+
+	return metadataDate ?? fileNameDate ?? report.uploaded_at.slice(0, 10)
 }
 
 export function hasLegacyApproximateOcr(report: UploadedHealthReport): boolean {

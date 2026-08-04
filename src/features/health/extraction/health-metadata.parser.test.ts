@@ -77,6 +77,13 @@ describe('resolveReportDateFromFileName', () => {
 			resolveReportDateFromFileName('Blood Count Report 30/01/22 09:00 AM.pdf'),
 		).toBe('2022-01-30')
 	})
+
+	it('parses month-year prefixes like Feb 2026', () => {
+		expect(resolveReportDateFromFileName('Feb 2026.pdf')).toBe('2026-02-01')
+		expect(
+			resolveReportDateFromFileName('March 2026 Thyrocare Test 2.pdf'),
+		).toBe('2026-03-01')
+	})
 })
 
 describe('parseReportMetadata with mock OCR', () => {

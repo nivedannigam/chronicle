@@ -97,4 +97,62 @@ describe('response-validator', () => {
 
 		expect(grounded.ok).toBe(false)
 	})
+
+	it('accepts Gemini companion payloads with missing optional fields', () => {
+		const geminiPayload = {
+			overallStatus: 'completed',
+			directAnswer:
+				'Your most recent report shows several values within normal range.',
+			evidenceFromReports: ['Red Blood Cells: normal status'],
+			whatChanged: ['Chloride was noted as currently high.'],
+			doctorDiscussion: ['Discuss your chloride level with your doctor.'],
+			sourceReports: [
+				{
+					id: 'report-4f322d5f-401a-4f68-a08f-59bd2e1c80a0',
+					label: 'Feb 2026',
+					date: '2026-08-03',
+					lab: 'Svasth Healthi',
+				},
+			],
+			limitations: ['Some results may be incomplete.'],
+		}
+
+		const result = validateStructuredResponseContent(
+			JSON.stringify(geminiPayload),
+		)
+
+		expect(result.ok).toBe(true)
+		if (result.ok) {
+			expect(result.value.directAnswer).toContain('most recent report')
+			expect(result.value.overallStatus).toBe('stable')
+			expect(result.value.sourceReports?.[0]?.sourceType).toBe('health_report')
+			expect(result.value.evidenceReferences).toHaveLength(1)
+		}
+	})
+
+	it('accepts report ids in grounded validation', () => {
+		const context = buildGroundedValidationContext({
+			metricNames: ['Red Blood Cells'],
+			reportIds: ['report-4f322d5f-401a-4f68-a08f-59bd2e1c80a0'],
+			evidenceIds: ['metric-1'],
+		})
+
+		const grounded = validateGroundedResponse(
+			{
+				...validPayload,
+				keyFindings: ['Report reviewed successfully'],
+				evidenceReferences: [
+					{
+						id: 'report-4f322d5f-401a-4f68-a08f-59bd2e1c80a0',
+						label: 'Feb 2026',
+						sourceType: 'health_report',
+					},
+				],
+			},
+			context,
+		)
+
+		expect(grounded.errors).toEqual([])
+		expect(grounded.ok).toBe(true)
+	})
 })

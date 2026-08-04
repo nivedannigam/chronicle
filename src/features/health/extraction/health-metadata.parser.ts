@@ -372,10 +372,25 @@ function resolveReferenceNumber(text: string): string | null {
 }
 
 export function resolveReportDateFromFileName(fileName: string): string | null {
-	const yearMonth = fileName.match(/\b(20\d{2})\s+([A-Za-z]{3})\b/)
+	const yearMonth = fileName.match(/\b(20\d{2})\s+([A-Za-z]{3})\b/i)
 
 	if (yearMonth) {
-		const [, year, month] = yearMonth
+		const [, year, monthRaw] = yearMonth
+		const month =
+			monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1, 3).toLowerCase()
+		const monthNumber = MONTHS[month]
+
+		if (monthNumber) {
+			return `${year}-${monthNumber}-01`
+		}
+	}
+
+	const monthYear = fileName.match(/\b([A-Za-z]{3,9})\s+(20\d{2})\b/i)
+
+	if (monthYear) {
+		const [, monthRaw, year] = monthYear
+		const month =
+			monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1, 3).toLowerCase()
 		const monthNumber = MONTHS[month]
 
 		if (monthNumber) {
