@@ -1,4 +1,4 @@
-import { ROUTES, healthVisitPath } from '@/constants/routes'
+import { ROUTES, healthVisitPath, healthAskPath } from '@/constants/routes'
 import type {
 	HealthChangeItem,
 	HealthCompanionView,
@@ -291,7 +291,9 @@ export function buildStoryRecommendations(
 				title: action,
 				actionPath: group.reportId
 					? healthVisitPath(group.reportId)
-					: `${ROUTES.healthAsk}?q=${encodeURIComponent(`What should I know about ${group.label}?`)}`,
+					: healthAskPath({
+							q: `What should I know about ${group.label}?`,
+						}),
 			})
 			continue
 		}
@@ -313,7 +315,9 @@ export function buildStoryRecommendations(
 				id: `highlight-${highlight.id}`,
 				title: `Discuss ${highlight.label.toLowerCase()} with your doctor`,
 				actionPath: highlight.metricId
-					? `${ROUTES.healthAsk}?q=${encodeURIComponent(`What should I know about ${highlight.label}?`)}`
+					? healthAskPath({
+							q: `What should I know about ${highlight.label}?`,
+						})
 					: undefined,
 			})
 		}

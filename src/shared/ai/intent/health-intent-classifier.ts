@@ -3,6 +3,10 @@ import type {
 	ClassifiedIntent,
 	IntentClassifier,
 } from '@/shared/ai/intent/intent.types'
+import {
+	detectCategoryFromQuestion,
+	isOrganStatusQuestion,
+} from '@/shared/ai/intent/category-intent.patterns'
 
 const METRIC_ALIASES: Array<{
 	pattern: RegExp
@@ -150,6 +154,48 @@ export class HealthIntentClassifier implements IntentClassifier {
 		const normalized = question.trim()
 		const metrics = detectMetrics(normalized)
 		const timeRangeYears = detectTimeRange(normalized)
+		const categoryId = detectCategoryFromQuestion(normalized)
+
+		if (
+			/how am i doing\b|how are my results\b|overall picture\b/i.test(
+				normalized,
+			)
+		) {
+			return baseResult('GENERAL_HEALTH_SUMMARY', {
+				confidence: 0.91,
+				reasons: ['how am I doing phrasing'],
+			})
+		}
+
+		if (
+			/should i be worried\b|anything concerning\b|anything to worry\b/i.test(
+				normalized,
+			)
+		) {
+			return baseResult('ABNORMAL_RESULTS', {
+				confidence: 0.9,
+				reasons: ['worry or concern phrasing'],
+			})
+		}
+
+		if (
+			/prepare me for\b|doctor visit\b|discuss with my doctor\b|talk to my doctor\b/i.test(
+				normalized,
+			)
+		) {
+			return baseResult('RECOMMENDATIONS', {
+				confidence: 0.89,
+				reasons: ['doctor preparation phrasing'],
+			})
+		}
+
+		if (isOrganStatusQuestion(normalized) && categoryId) {
+			return baseResult('GENERAL_HEALTH_SUMMARY', {
+				categoryId,
+				confidence: 0.9,
+				reasons: [`organ status for ${categoryId}`],
+			})
+		}
 
 		if (
 			/explain|what does|what is|what's|meaning of|tell me about/i.test(
@@ -251,6 +297,7 @@ export class HealthIntentClassifier implements IntentClassifier {
 		if (metrics.metricIds.length > 0) {
 			return baseResult('SPECIFIC_METRIC', {
 				...metrics,
+				categoryId,
 				confidence: 0.84,
 				reasons: ['metric-specific phrasing'],
 			})
@@ -258,6 +305,7 @@ export class HealthIntentClassifier implements IntentClassifier {
 
 		if (/how is my|what about my|show me my/i.test(normalized)) {
 			return baseResult('GENERAL_HEALTH_SUMMARY', {
+				categoryId,
 				confidence: 0.7,
 				reasons: ['general health question fallback'],
 			})

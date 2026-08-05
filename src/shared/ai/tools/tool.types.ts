@@ -27,6 +27,9 @@ export interface ToolContext {
 	metricIds?: string[]
 	metricNames?: string[]
 	timeRangeYears?: number
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	knowledge: HealthKnowledge
 	signal?: AbortSignal
 }

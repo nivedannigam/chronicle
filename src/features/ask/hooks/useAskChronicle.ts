@@ -22,6 +22,7 @@ import {
 import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import { aiService } from '@/features/ai/services/ai.service'
 import type { AskConversationTurn, AskRoutingLabel } from '@/features/ask/types'
+import type { AskScopeContext } from '@/features/ask/services/knowledge-query.interface'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
@@ -75,6 +76,7 @@ export function useAskChronicle(
 	personalPreferences?: ChroniclePersonalPreferences,
 	documents: ChronicleDocument[] = [],
 	storedMetrics: StoredHealthMetric[] = [],
+	askScope?: AskScopeContext,
 ) {
 	const memberId = memberContext?.selectedMemberId ?? null
 	const sessionKey = useMemo(
@@ -248,6 +250,7 @@ export function useAskChronicle(
 					connectorDocuments,
 					documents,
 					personalPreferences,
+					scope: askScope,
 					onStream: (partialAnswer) => {
 						if (activeRequestRef.current === requestId) {
 							setStreamingAnswer(partialAnswer)
@@ -329,6 +332,7 @@ export function useAskChronicle(
 			turns,
 			personalPreferences,
 			persistTurns,
+			askScope,
 		],
 	)
 

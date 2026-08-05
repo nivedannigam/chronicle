@@ -28,6 +28,9 @@ export async function runProductionHealthAi(input: {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	conversationTurns?: ConversationTurnSnapshot[]
 	companion?: ChronicleCompanionAI
 	onStream?: (partial: string) => void
@@ -46,6 +49,9 @@ export async function runProductionHealthAi(input: {
 		familyMemberId: input.familyMemberId,
 		accountOwnerMemberId: input.accountOwnerMemberId,
 		memberName: input.memberName,
+		categoryId: input.categoryId,
+		reportId: input.reportId,
+		reportIds: input.reportIds,
 		conversationTurns: input.conversationTurns,
 	})
 

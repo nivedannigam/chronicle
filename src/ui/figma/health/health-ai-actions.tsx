@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { GitCompare, MessageCircle, Sparkles } from 'lucide-react'
-import { ROUTES } from '@/constants/routes'
+import {
+	healthAskPath,
+	isHealthCompareEnabled,
+	ROUTES,
+} from '@/constants/routes'
 import { FC } from '@/ui/figma/v2/atoms'
 
 export function HealthAiActionRow({
@@ -15,7 +19,12 @@ export function HealthAiActionRow({
 	const navigate = useNavigate()
 
 	const ask = (prompt: string) =>
-		navigate(`${ROUTES.ask}?q=${encodeURIComponent(prompt)}`)
+		navigate(
+			healthAskPath({
+				q: prompt,
+				reportId,
+			}),
+		)
 
 	const actions = [
 		{
@@ -29,17 +38,21 @@ export function HealthAiActionRow({
 						: `Summarize: ${query}`,
 				),
 		},
-		{
-			id: 'compare',
-			label: 'Compare',
-			icon: GitCompare,
-			onClick: () =>
-				navigate(
-					reportId
-						? `${ROUTES.healthCompare}?reportId=${reportId}`
-						: ROUTES.healthCompare,
-				),
-		},
+		...(isHealthCompareEnabled
+			? [
+					{
+						id: 'compare',
+						label: 'Compare',
+						icon: GitCompare,
+						onClick: () =>
+							navigate(
+								reportId
+									? `${ROUTES.healthCompare}?reportId=${reportId}`
+									: ROUTES.healthCompare,
+							),
+					},
+				]
+			: []),
 		{
 			id: 'ask',
 			label: 'Ask',

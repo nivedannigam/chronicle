@@ -45,6 +45,9 @@ export interface RunHealthQuestionInput {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	conversationTurns?: Array<{
 		question: string
 		answer: string
@@ -146,6 +149,9 @@ export class AIPlatformPipeline {
 			knowledgePayload: {
 				familyMemberId: input.familyMemberId,
 				accountOwnerMemberId: input.accountOwnerMemberId,
+				categoryId: input.categoryId,
+				reportId: input.reportId,
+				reportIds: input.reportIds,
 			},
 			healthKnowledge,
 		})
@@ -191,6 +197,19 @@ export class AIPlatformPipeline {
 						? request.knowledgePayload.accountOwnerMemberId
 						: null,
 				memberName: request.memberName,
+				categoryId:
+					typeof request.knowledgePayload.categoryId === 'string'
+						? request.knowledgePayload.categoryId
+						: undefined,
+				reportId:
+					typeof request.knowledgePayload.reportId === 'string'
+						? request.knowledgePayload.reportId
+						: undefined,
+				reportIds: Array.isArray(request.knowledgePayload.reportIds)
+					? request.knowledgePayload.reportIds.filter(
+							(id): id is string => typeof id === 'string',
+						)
+					: undefined,
 			})
 
 		if (!isLlmSupportedIntent(classifiedIntent.intent)) {

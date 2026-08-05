@@ -1,4 +1,9 @@
 import { compareReportsTool } from '@/shared/ai/tools/health/compare-reports.tool'
+import {
+	getCategoryMetricsTool,
+	getHealthOverviewTool,
+	getScopedReportTool,
+} from '@/shared/ai/tools/health/get-category-metrics.tool'
 import { getAbnormalMetricsTool } from '@/shared/ai/tools/health/get-abnormal-metrics.tool'
 import { getHealthScoreTool } from '@/shared/ai/tools/health/get-health-score.tool'
 import { getLatestReportTool } from '@/shared/ai/tools/health/get-latest-report.tool'
@@ -22,6 +27,9 @@ const HEALTH_TOOLS = [
 	getTimelineTool,
 	getHealthScoreTool,
 	listReportsTool,
+	getCategoryMetricsTool,
+	getHealthOverviewTool,
+	getScopedReportTool,
 ]
 
 export function registerHealthTools(
@@ -44,6 +52,9 @@ export {
 	getTimelineTool,
 	getHealthScoreTool,
 	listReportsTool,
+	getCategoryMetricsTool,
+	getHealthOverviewTool,
+	getScopedReportTool,
 }
 
 // Register on module load for production use

@@ -64,4 +64,33 @@ describe('HealthIntentClassifier', () => {
 
 		expect(result.intent).toBe('UNKNOWN')
 	})
+
+	it('classifies heart organ status with category', () => {
+		const result = healthIntentClassifier.classify('How is my heart?')
+
+		expect(result.intent).toBe('GENERAL_HEALTH_SUMMARY')
+		expect(result.categoryId).toBe('heart')
+	})
+
+	it('classifies how am I doing', () => {
+		const result = healthIntentClassifier.classify('How am I doing?')
+
+		expect(result.intent).toBe('GENERAL_HEALTH_SUMMARY')
+	})
+
+	it('classifies worry phrasing as abnormal results', () => {
+		const result = healthIntentClassifier.classify(
+			'Should I be worried about anything?',
+		)
+
+		expect(result.intent).toBe('ABNORMAL_RESULTS')
+	})
+
+	it('classifies doctor preparation', () => {
+		const result = healthIntentClassifier.classify(
+			'Prepare me for my next doctor visit.',
+		)
+
+		expect(result.intent).toBe('RECOMMENDATIONS')
+	})
 })

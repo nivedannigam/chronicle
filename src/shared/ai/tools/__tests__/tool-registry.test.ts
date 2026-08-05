@@ -7,7 +7,7 @@ describe('ToolRegistry', () => {
 		const registry = new ToolRegistry()
 		registerHealthTools(registry)
 
-		expect(registry.list('health')).toHaveLength(9)
+		expect(registry.list('health')).toHaveLength(12)
 		expect(registry.has('health.get_abnormal_metrics')).toBe(true)
 	})
 

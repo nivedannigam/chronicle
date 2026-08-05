@@ -1,4 +1,5 @@
 import type { HealthKnowledge } from '@/features/health-knowledge/types/health-knowledge-object.types'
+import { isHealthCompareEnabled } from '@/constants/routes'
 
 export interface CompanionSuggestion {
 	id: string
@@ -55,11 +56,13 @@ export function buildHealthCompanionSuggestions(input: {
 	}
 
 	if (reportCount >= 2) {
-		add({
-			id: 'compare-last-year',
-			label: 'Compare with last year',
-			question: 'Compare my latest visit with my previous annual checkup.',
-		})
+		if (isHealthCompareEnabled) {
+			add({
+				id: 'compare-last-year',
+				label: 'Compare with last year',
+				question: 'Compare my latest visit with my previous annual checkup.',
+			})
+		}
 
 		add({
 			id: 'what-changed',

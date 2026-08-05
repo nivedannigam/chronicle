@@ -78,6 +78,9 @@ export function createToolContext(input: {
 	metricIds?: string[]
 	metricNames?: string[]
 	timeRangeYears?: number
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	signal?: AbortSignal
 }): ToolContext {
 	const isAccountOwner =
@@ -100,6 +103,9 @@ export function createToolContext(input: {
 		metricIds: input.metricIds,
 		metricNames: input.metricNames,
 		timeRangeYears: input.timeRangeYears,
+		categoryId: input.categoryId,
+		reportId: input.reportId,
+		reportIds: input.reportIds,
 		knowledge: input.knowledge,
 		signal: input.signal,
 	}

@@ -1,5 +1,5 @@
 import { C } from '@/constants/colors'
-import { ROUTES, healthSettingsSection } from '@/constants/routes'
+import { healthAskPath, healthSettingsSection } from '@/constants/routes'
 import {
 	buildHealthSummary,
 	buildLongitudinalHealthProfile,
@@ -546,7 +546,7 @@ function buildNextSteps(input: {
 			actionLabel: item.reportId ? 'View report' : 'Ask Chronicle',
 			actionPath: item.reportId
 				? `/health/reports/${item.reportId}`
-				: `${ROUTES.ask}?q=${encodeURIComponent(item.title)}`,
+				: healthAskPath({ q: item.title }),
 		})
 	}
 

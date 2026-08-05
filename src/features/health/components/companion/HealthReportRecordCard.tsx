@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, ChevronRight } from 'lucide-react'
 import { C } from '@/constants/colors'
-import { healthReportPath, ROUTES } from '@/constants/routes'
+import { healthAskPath, healthReportPath } from '@/constants/routes'
 import { HealthSectionLabel } from '@/features/health/components/companion/health-section-label'
 import type { HealthReportSummary } from '@/features/health/types/health-companion.types'
 import { FigmaCard } from '@/ui/figma/components/primitives'
@@ -101,7 +101,10 @@ export function HealthReportRecordCard({
 						type="button"
 						onClick={() =>
 							navigate(
-								`${ROUTES.ask}?q=${encodeURIComponent(`Summarize my ${report.title.toLowerCase()}`)}`,
+								healthAskPath({
+									q: `Summarize my ${report.title.toLowerCase()}`,
+									reportId: report.id,
+								}),
 							)
 						}
 						style={healthPrimaryButtonStyle}

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { healthVisitPath } from '@/constants/routes'
+import { ArrowRight, MessageCircle } from 'lucide-react'
+import { healthAskPath, healthVisitPath } from '@/constants/routes'
+import { ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
 import type { HealthStoryViewModel } from '@/features/health/services/health-story.mapper'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
@@ -79,6 +81,90 @@ export function FigmaHealthHomeView({
 			>
 				{story.howAmIDoing}
 			</p>
+
+			<SectionBlock label="Ask Chronicle">
+				<div
+					style={{
+						...figmaCardStyle,
+						borderRadius: 22,
+						padding: '20px 18px',
+						background: `linear-gradient(145deg, ${FC.blue}14 0%, ${FC.teal}10 100%)`,
+						border: `1px solid ${FC.blue}25`,
+					}}
+				>
+					<div
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 10,
+							marginBottom: 14,
+						}}
+					>
+						<MessageCircle size={18} color={FC.blue} strokeWidth={2} />
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 16,
+								fontWeight: 700,
+								margin: 0,
+							}}
+						>
+							Ask about your health
+						</p>
+					</div>
+					<div
+						style={{
+							display: 'flex',
+							flexWrap: 'wrap',
+							gap: 8,
+							marginBottom: 16,
+						}}
+					>
+						{ASK_EMPTY_SUGGESTIONS.slice(0, 4).map((question) => (
+							<button
+								key={question}
+								type="button"
+								onClick={() => navigate(healthAskPath({ q: question }))}
+								style={{
+									background: FC.surface,
+									border: `1px solid ${FC.line}`,
+									borderRadius: 100,
+									padding: '9px 14px',
+									cursor: 'pointer',
+									fontFamily: 'inherit',
+									color: FC.mid,
+									fontSize: 13,
+									fontWeight: 500,
+								}}
+							>
+								{question}
+							</button>
+						))}
+					</div>
+					<button
+						type="button"
+						onClick={() => navigate(healthAskPath())}
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: 6,
+							width: '100%',
+							background: FC.blue,
+							border: 'none',
+							borderRadius: 14,
+							padding: '12px 0',
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+						}}
+					>
+						<span style={{ color: '#fff', fontSize: 13.5, fontWeight: 700 }}>
+							Open Ask
+						</span>
+						<ArrowRight size={14} color="#fff" />
+					</button>
+				</div>
+			</SectionBlock>
 
 			<SectionBlock label="My health story">
 				<div

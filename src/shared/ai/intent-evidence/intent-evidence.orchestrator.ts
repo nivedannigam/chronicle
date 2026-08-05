@@ -34,9 +34,16 @@ export async function classifyAndSelectHealthEvidence(input: {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	signal?: AbortSignal
 }): Promise<IntentEvidenceResult> {
 	const classifiedIntent = healthIntentClassifier.classify(input.question)
+
+	const resolvedCategoryId =
+		input.categoryId ?? classifiedIntent.categoryId ?? undefined
+	const hasScope = Boolean(input.reportId) || (input.reportIds?.length ?? 0) > 0
 
 	defaultKnowledgeGraphService.clear()
 	defaultKnowledgeGraphService.loadHealthKnowledge(input.knowledge)
@@ -57,6 +64,9 @@ export async function classifyAndSelectHealthEvidence(input: {
 		metricIds: classifiedIntent.metricIds,
 		metricNames: classifiedIntent.metricNames,
 		timeRangeYears: classifiedIntent.timeRangeYears,
+		categoryId: hasScope ? undefined : resolvedCategoryId,
+		reportId: input.reportId,
+		reportIds: input.reportIds,
 	})
 
 	const toolContext = createToolContext({
@@ -70,6 +80,9 @@ export async function classifyAndSelectHealthEvidence(input: {
 		metricIds: classifiedIntent.metricIds,
 		metricNames: classifiedIntent.metricNames,
 		timeRangeYears: classifiedIntent.timeRangeYears,
+		categoryId: resolvedCategoryId,
+		reportId: input.reportId,
+		reportIds: input.reportIds,
 		signal: input.signal,
 	})
 

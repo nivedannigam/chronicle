@@ -62,6 +62,7 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: ChroniclePersonalPreferences
+		scope?: import('@/features/ask/services/knowledge-query.interface').AskScopeContext
 	}): Promise<AskQuestionResult> {
 		const startedAt = performance.now()
 		const preferences =
@@ -214,6 +215,9 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 								(item) => item.isAccountOwner,
 							)?.id,
 							memberName: memberForTurn.memberName,
+							categoryId: input.scope?.categoryId,
+							reportId: input.scope?.reportId,
+							reportIds: input.scope?.reportIds,
 							conversationTurns: conversationMemory.getTurns(sessionKey),
 							onStream: input.onStream,
 							betaExperienceId: betaExperience?.id,

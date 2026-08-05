@@ -1,4 +1,7 @@
 import { ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
+import { buildHealthCompanionSuggestions } from '@/features/ask/services/health-companion-suggestions.service'
+import type { UploadedHealthReport } from '@/features/health/types'
+import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
 import {
 	AskColors,
 	AskLayout,
@@ -7,9 +10,23 @@ import {
 
 export function AskPremiumEmptyState({
 	onSelectQuestion,
+	consumerMode = false,
+	reportCount = 0,
 }: {
 	onSelectQuestion: (question: string) => void
+	consumerMode?: boolean
+	reportCount?: number
 }) {
+	const suggestions = consumerMode
+		? buildHealthCompanionSuggestions({ reportCount }).map(
+				(item) => item.question,
+			)
+		: [...ASK_EMPTY_SUGGESTIONS]
+
+	const headline = consumerMode
+		? 'Ask anything about your health records.'
+		: 'Ask anything about your health.'
+
 	return (
 		<div
 			style={{
@@ -29,12 +46,26 @@ export function AskPremiumEmptyState({
 					color: AskColors.fg,
 					lineHeight: 1.25,
 					letterSpacing: -0.6,
-					margin: '0 0 28px',
+					margin: '0 0 12px',
 					maxWidth: 360,
 				}}
 			>
-				Ask anything about your health.
+				{headline}
 			</h2>
+
+			{consumerMode ? (
+				<p
+					style={{
+						...AskTypography.body,
+						color: AskColors.mid,
+						margin: '0 0 24px',
+						maxWidth: 340,
+					}}
+				>
+					Chronicle reads your lab reports and visits to give personalized
+					answers — not generic health advice.
+				</p>
+			) : null}
 
 			<div
 				style={{
@@ -45,7 +76,7 @@ export function AskPremiumEmptyState({
 				role="list"
 				aria-label="Suggested questions"
 			>
-				{ASK_EMPTY_SUGGESTIONS.map((question) => (
+				{suggestions.map((question) => (
 					<button
 						key={question}
 						type="button"
@@ -69,4 +100,10 @@ export function AskPremiumEmptyState({
 			</div>
 		</div>
 	)
+}
+
+export function resolveAskEmptyReportCount(
+	reports: UploadedHealthReport[],
+): number {
+	return reports.filter(isReportDisplayReady).length
 }

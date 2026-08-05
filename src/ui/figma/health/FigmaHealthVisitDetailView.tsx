@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, FileText, MessageCircle } from 'lucide-react'
 import type { HealthVisit } from '@/features/health/types/health-visit.types'
-import { ROUTES, healthReportPath } from '@/constants/routes'
+import { healthAskPath, healthReportPath } from '@/constants/routes'
 import {
 	buildVisitAskSuggestions,
 	buildVisitChronicleSummary,
@@ -269,7 +269,10 @@ export function FigmaHealthVisitDetailView({
 								type="button"
 								onClick={() =>
 									navigate(
-										`${ROUTES.healthAsk}?q=${encodeURIComponent(question)}`,
+										healthAskPath({
+											q: question,
+											visitId: visit.id,
+										}),
 									)
 								}
 								style={{
@@ -292,7 +295,10 @@ export function FigmaHealthVisitDetailView({
 						type="button"
 						onClick={() =>
 							navigate(
-								`${ROUTES.healthAsk}?q=${encodeURIComponent(`Explain my ${visit.title.toLowerCase()}.`)}`,
+								healthAskPath({
+									q: `Explain my ${visit.title.toLowerCase()}.`,
+									visitId: visit.id,
+								}),
 							)
 						}
 						style={{

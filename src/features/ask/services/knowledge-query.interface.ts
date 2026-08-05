@@ -19,6 +19,12 @@ export interface KnowledgeQueryService {
 	summarizeReport(userId: string, reportId?: string): ReportSummaryResult | null
 }
 
+export interface AskScopeContext {
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
+}
+
 export interface AskReasoningEngine {
 	answerQuestion(input: {
 		userId: string
@@ -32,5 +38,6 @@ export interface AskReasoningEngine {
 		connectorDocuments?: import('@/core/connectors').ConnectorDocumentRecord[]
 		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
 		personalPreferences?: import('@/features/personalization/types/personal-context.types').ChroniclePersonalPreferences
+		scope?: AskScopeContext
 	}): Promise<import('@/features/ask/types').AskQuestionResult>
 }

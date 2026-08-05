@@ -17,6 +17,9 @@ export interface ChronicleCompanionAskInput {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	categoryId?: string
+	reportId?: string
+	reportIds?: string[]
 	conversationTurns?: ConversationTurnSnapshot[]
 	pipeline?: AIPlatformPipeline
 }
@@ -56,6 +59,9 @@ export class ChronicleCompanionAI {
 			familyMemberId: input.familyMemberId,
 			accountOwnerMemberId: input.accountOwnerMemberId,
 			memberName: input.memberName,
+			categoryId: input.categoryId,
+			reportId: input.reportId,
+			reportIds: input.reportIds,
 			conversationTurns: input.conversationTurns,
 			memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
 		})

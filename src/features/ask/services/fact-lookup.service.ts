@@ -37,19 +37,17 @@ function findTargetMetric(
 	knowledge: RetrievedKnowledge,
 	metricName?: string | null,
 ) {
-	if (metricName) {
-		const byName = knowledge.metrics.find(
+	if (!metricName) {
+		return null
+	}
+
+	return (
+		knowledge.metrics.find(
 			(metric) =>
 				metric.displayName.toLowerCase() === metricName.toLowerCase() ||
 				metric.canonicalId === metricName.toLowerCase().replace(/\s+/g, '-'),
-		)
-
-		if (byName) {
-			return byName
-		}
-	}
-
-	return knowledge.metrics[0] ?? null
+		) ?? null
+	)
 }
 
 /** Deterministic factual answer — not narrative synthesis. */
@@ -62,10 +60,7 @@ export function buildFactLookupTurn(input: {
 	domains: AskConversationTurn['domains']
 	metricName?: string | null
 }): AskConversationTurn | null {
-	const metric = findTargetMetric(
-		input.knowledge,
-		input.metricName ?? input.context.rankedImportant[0]?.displayName,
-	)
+	const metric = findTargetMetric(input.knowledge, input.metricName)
 
 	if (!metric) {
 		return null

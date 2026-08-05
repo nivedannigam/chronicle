@@ -8,14 +8,19 @@ import { AskErrorBanner } from '@/features/ask/components/AskErrorBanner'
 import { ConversationHistoryDrawer } from '@/features/ask/components/ConversationHistoryDrawer'
 import { ConversationThread } from '@/features/ask/components/ConversationThread'
 import { useAskChronicle } from '@/features/ask/hooks/useAskChronicle'
+import type { AskScopeContext } from '@/features/ask/services/knowledge-query.interface'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
+import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
-import { AskPremiumEmptyState } from '@/ui/figma/ask/AskPremiumEmptyState'
+import {
+	AskPremiumEmptyState,
+	resolveAskEmptyReportCount,
+} from '@/ui/figma/ask/AskPremiumEmptyState'
 import { FigmaAskComposer, FC } from '@/ui/figma/v2/atoms'
 import {
 	FigmaHeaderIconButton,
@@ -67,6 +72,36 @@ export function FigmaAskScreen({
 		[members, selectedMember, selectedMemberId, userName],
 	)
 
+	const reports = uploadedQuery.data ?? []
+
+	const askScope = useMemo((): AskScopeContext | undefined => {
+		const reportId = searchParams.get('reportId')?.trim()
+		const visitId = searchParams.get('visitId')?.trim()
+		const categoryId = searchParams.get('categoryId')?.trim()
+
+		if (visitId) {
+			const visit = buildHealthVisits(reports).find(
+				(entry) => entry.id === visitId,
+			)
+
+			if (visit?.reportIds.length) {
+				return {
+					reportIds: visit.reportIds,
+					categoryId: categoryId || undefined,
+				}
+			}
+		}
+
+		if (reportId || categoryId) {
+			return {
+				reportId: reportId || undefined,
+				categoryId: categoryId || undefined,
+			}
+		}
+
+		return undefined
+	}, [reports, searchParams])
+
 	const {
 		ask,
 		cancel,
@@ -80,12 +115,13 @@ export function FigmaAskScreen({
 		activeSessionId,
 	} = useAskChronicle(
 		userId,
-		uploadedQuery.data ?? [],
+		reports,
 		memberContext,
 		driveConnector.registry ?? [],
 		preferences,
 		documentsQuery.data ?? [],
 		metricsQuery.data ?? [],
+		askScope,
 	)
 
 	const resize = useCallback(() => {
@@ -122,11 +158,15 @@ export function FigmaAskScreen({
 		}
 
 		initialQueryHandled.current = true
-		setSearchParams({}, { replace: true })
+
+		const nextParams = new URLSearchParams(searchParams)
+		nextParams.delete('q')
+		setSearchParams(nextParams, { replace: true })
 		void ask(initialQuery)
 	}, [ask, isLoading, searchParams, setSearchParams])
 
 	const hasConversation = turns.length > 0 || Boolean(pendingTurn)
+	const reportCount = resolveAskEmptyReportCount(reports)
 
 	return (
 		<div
@@ -140,7 +180,13 @@ export function FigmaAskScreen({
 		>
 			<FigmaScreenHeader
 				title="Ask Chronicle"
-				subtitle={hasConversation ? undefined : 'Your health companion'}
+				subtitle={
+					hasConversation
+						? undefined
+						: consumerMode
+							? 'Your health companion'
+							: 'Your health companion'
+				}
 				leading={
 					<FigmaHeaderIconButton
 						onClick={() => setHistoryOpen(true)}
@@ -192,7 +238,11 @@ export function FigmaAskScreen({
 				}}
 			>
 				{!hasConversation ? (
-					<AskPremiumEmptyState onSelectQuestion={send} />
+					<AskPremiumEmptyState
+						onSelectQuestion={send}
+						consumerMode={consumerMode}
+						reportCount={reportCount}
+					/>
 				) : (
 					<ConversationThread
 						turns={turns}

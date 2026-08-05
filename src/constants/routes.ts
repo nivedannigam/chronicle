@@ -105,3 +105,33 @@ export type HealthSettingsSection = 'review' | 'import' | 'import-issues'
 export function healthSettingsSection(section: HealthSettingsSection) {
 	return `${ROUTES.healthSettings}#${section}`
 }
+
+export function healthAskPath(input?: {
+	q?: string
+	reportId?: string
+	visitId?: string
+	categoryId?: string
+}) {
+	const params = new URLSearchParams()
+
+	if (input?.q) {
+		params.set('q', input.q)
+	}
+
+	if (input?.reportId) {
+		params.set('reportId', input.reportId)
+	}
+
+	if (input?.visitId) {
+		params.set('visitId', input.visitId)
+	}
+
+	if (input?.categoryId) {
+		params.set('categoryId', input.categoryId)
+	}
+
+	const query = params.toString()
+	return query ? `${ROUTES.healthAsk}?${query}` : ROUTES.healthAsk
+}
+
+export const isHealthCompareEnabled = import.meta.env.DEV
