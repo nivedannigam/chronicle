@@ -316,7 +316,7 @@ describe('Chronicle Relationship Platform', () => {
 
 		const context = platform.buildContext({
 			question: 'Tell me everything about Nivedan',
-			intent: 'general_health',
+			intent: 'GENERAL_HEALTH_SUMMARY',
 			seedEntityIds: [entityId('family-member', MEMBER_ID)],
 		})
 
