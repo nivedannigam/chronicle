@@ -11,7 +11,7 @@ import { recordAIObservability } from '@/shared/ai/observability/ai-observabilit
 import { buildEvidencePrompt } from '@/shared/ai/prompt/evidence-prompt.builder'
 import {
 	assertStructuredResponse,
-	buildGroundedValidationContext,
+	buildGroundedValidationContextFromEvidenceItems,
 	validateStructuredResponseContent,
 } from '@/shared/ai/response/response-validator'
 import type { SelectedEvidence } from '@/shared/ai/evidence/evidence.types'
@@ -83,30 +83,7 @@ function resolveLegacyIntent(
 }
 
 function buildValidationContextFromEvidence(evidence: SelectedEvidence) {
-	const metricNames: string[] = []
-	const reportIds: string[] = []
-	const evidenceIds: string[] = []
-
-	for (const item of evidence.items) {
-		evidenceIds.push(item.id)
-
-		if (
-			item.type === 'health_metric' &&
-			typeof item.data.displayName === 'string'
-		) {
-			metricNames.push(item.data.displayName)
-		}
-
-		if (item.type === 'health_report' && typeof item.data.id === 'string') {
-			reportIds.push(item.data.id)
-		}
-	}
-
-	return buildGroundedValidationContext({
-		metricNames,
-		reportIds,
-		evidenceIds,
-	})
+	return buildGroundedValidationContextFromEvidenceItems(evidence.items)
 }
 
 export class AIPlatformPipeline {

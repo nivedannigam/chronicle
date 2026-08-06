@@ -282,6 +282,68 @@ function normalizeMetricName(value: string): string {
 		.trim()
 }
 
+const UUID_PATTERN =
+	/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
+/** Collects equivalent ids (graph/report/metric prefixes, bare uuid). */
+export function collectReferenceIdAliases(id: string): string[] {
+	const trimmed = id.trim()
+	if (!trimmed) {
+		return []
+	}
+
+	const aliases = new Set<string>([trimmed])
+	const withoutGraphPrefix = trimmed.replace(/^graph-/, '')
+	aliases.add(withoutGraphPrefix)
+
+	const uuidMatch = trimmed.match(UUID_PATTERN)
+	if (uuidMatch) {
+		const uuid = uuidMatch[0]
+		aliases.add(uuid)
+		aliases.add(`report-${uuid}`)
+		aliases.add(`health-report:${uuid}`)
+		aliases.add(`graph-health-report:${uuid}`)
+		aliases.add(`metric-${uuid}`)
+		aliases.add(`health-metric:${uuid}`)
+		aliases.add(`graph-health-metric:${uuid}`)
+	}
+
+	return [...aliases]
+}
+
+function registerReferenceIdAliases(target: Set<string>, id: string): void {
+	for (const alias of collectReferenceIdAliases(id)) {
+		target.add(alias)
+	}
+}
+
+function readStringField(
+	data: Record<string, unknown>,
+	key: string,
+): string | null {
+	const value = data[key]
+	return typeof value === 'string' && value.trim().length > 0
+		? value.trim()
+		: null
+}
+
+function isKnownReferenceId(
+	refId: string,
+	context: GroundedValidationContext,
+): boolean {
+	return collectReferenceIdAliases(refId).some(
+		(alias) =>
+			context.allowedEvidenceIds.has(alias) ||
+			context.allowedReportIds.has(alias),
+	)
+}
+
+function isNarrativeReportFinding(finding: string): boolean {
+	return /report was completed|report was reviewed|report completed|ecg|tmt|treadmill|imaging|ultrasound|x-ray|scan report|without structured|no detailed numerical|not detailed in the available|completed on/i.test(
+		finding,
+	)
+}
+
 export function validateGroundedResponse(
 	response: StructuredAIResponse,
 	context: GroundedValidationContext,
@@ -289,11 +351,7 @@ export function validateGroundedResponse(
 	const errors: string[] = []
 
 	for (const ref of response.evidenceReferences) {
-		const known =
-			context.allowedEvidenceIds.has(ref.id) ||
-			context.allowedReportIds.has(ref.id)
-
-		if (!known) {
+		if (!isKnownReferenceId(ref.id, context)) {
 			errors.push(`Unknown evidence reference id: ${ref.id}`)
 		}
 	}
@@ -311,6 +369,7 @@ export function validateGroundedResponse(
 
 		if (
 			!isGenericFinding &&
+			!isNarrativeReportFinding(finding) &&
 			context.allowedMetricNames.size > 0 &&
 			/[a-z]{3,}/i.test(finding) &&
 			!mentionsKnownMetric &&
@@ -357,9 +416,62 @@ export function buildGroundedValidationContext(input: {
 	reportIds: string[]
 	evidenceIds: string[]
 }): GroundedValidationContext {
-	return {
-		allowedMetricNames: new Set(input.metricNames),
-		allowedReportIds: new Set(input.reportIds),
-		allowedEvidenceIds: new Set(input.evidenceIds),
+	const allowedMetricNames = new Set(input.metricNames)
+	const allowedReportIds = new Set<string>()
+	const allowedEvidenceIds = new Set<string>()
+
+	for (const reportId of input.reportIds) {
+		registerReferenceIdAliases(allowedReportIds, reportId)
+		registerReferenceIdAliases(allowedEvidenceIds, reportId)
 	}
+
+	for (const evidenceId of input.evidenceIds) {
+		registerReferenceIdAliases(allowedEvidenceIds, evidenceId)
+	}
+
+	return {
+		allowedMetricNames,
+		allowedReportIds,
+		allowedEvidenceIds,
+	}
+}
+
+export function buildGroundedValidationContextFromEvidenceItems(
+	items: Array<{ id: string; type: string; data: Record<string, unknown> }>,
+): GroundedValidationContext {
+	const metricNames: string[] = []
+	const reportIds: string[] = []
+	const evidenceIds: string[] = []
+
+	for (const item of items) {
+		evidenceIds.push(item.id)
+
+		if (
+			item.type === 'health_metric' &&
+			typeof item.data.displayName === 'string'
+		) {
+			metricNames.push(item.data.displayName)
+		}
+
+		if (item.type === 'health_report') {
+			const reportId =
+				readStringField(item.data, 'id') ??
+				readStringField(item.data, 'reportId') ??
+				readStringField(item.data, 'graphEntityId')?.replace(
+					/^health-report:/,
+					'',
+				) ??
+				null
+
+			if (reportId) {
+				reportIds.push(reportId)
+			}
+		}
+	}
+
+	return buildGroundedValidationContext({
+		metricNames,
+		reportIds,
+		evidenceIds,
+	})
 }

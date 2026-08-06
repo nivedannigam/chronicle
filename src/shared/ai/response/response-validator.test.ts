@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	assertStructuredResponse,
 	buildGroundedValidationContext,
+	buildGroundedValidationContextFromEvidenceItems,
 	validateGroundedResponse,
 	validateStructuredResponse,
 	validateStructuredResponseContent,
@@ -154,5 +155,97 @@ describe('response-validator', () => {
 
 		expect(grounded.errors).toEqual([])
 		expect(grounded.ok).toBe(true)
+	})
+
+	it('accepts heart-status Gemini payload with graph report ids and narrative findings', () => {
+		const geminiPayload = {
+			overallStatus: 'good',
+			directAnswer:
+				'Nivedan, looking at your heart-related tests, your cholesterol levels from October 2024 were within the normal range.',
+			evidenceFromReports: [
+				'Total Cholesterol was recorded at 167 mg/dl (normal range 0-200) in October 2024.',
+				'Non-HDL Cholesterol was recorded at 116 mg/dl (normal range 0-130) in October 2024.',
+				'An ECG Report was completed on March 1, 2026.',
+				'A TMT (Treadmill Test) Report was completed on February 25, 2026.',
+			],
+			whatChanged: [],
+			doctorDiscussion: [
+				'Discuss the results of your recent TMT and ECG with your physician.',
+			],
+			sourceReports: [
+				{
+					id: 'graph-health-report:fd83c5c9-6fc3-4485-9891-ef456a93f2b1',
+					title: 'ECG Report',
+					date: '2026-03-01',
+				},
+				{
+					id: 'graph-health-report:35e27e1a-118e-45af-b146-7a4defff030b',
+					title: 'TMT (Treadmill Test) Report',
+					date: '2026-02-25',
+				},
+				{
+					id: 'graph-health-report:260fe224-6b45-4d12-8bb6-ccfb4acc7cda',
+					title: 'Oct 2024 Partial Checkup',
+					date: '2024-10-22',
+				},
+			],
+			limitations: [
+				'Some heart-related test reports do not include detailed numerical metrics in the current records.',
+			],
+		}
+
+		const structured = validateStructuredResponseContent(
+			JSON.stringify(geminiPayload),
+		)
+		expect(structured.ok).toBe(true)
+		if (!structured.ok) {
+			return
+		}
+
+		const context = buildGroundedValidationContextFromEvidenceItems([
+			{
+				id: 'graph-health-report:fd83c5c9-6fc3-4485-9891-ef456a93f2b1',
+				type: 'health_report',
+				data: {
+					graphEntityId: 'health-report:fd83c5c9-6fc3-4485-9891-ef456a93f2b1',
+					reportId: 'fd83c5c9-6fc3-4485-9891-ef456a93f2b1',
+				},
+			},
+			{
+				id: 'graph-health-report:35e27e1a-118e-45af-b146-7a4defff030b',
+				type: 'health_report',
+				data: {
+					graphEntityId: 'health-report:35e27e1a-118e-45af-b146-7a4defff030b',
+					reportId: '35e27e1a-118e-45af-b146-7a4defff030b',
+				},
+			},
+			{
+				id: 'graph-health-report:260fe224-6b45-4d12-8bb6-ccfb4acc7cda',
+				type: 'health_report',
+				data: {
+					graphEntityId: 'health-report:260fe224-6b45-4d12-8bb6-ccfb4acc7cda',
+					reportId: '260fe224-6b45-4d12-8bb6-ccfb4acc7cda',
+				},
+			},
+			{
+				id: 'metric-cholesterol-1',
+				type: 'health_metric',
+				data: { displayName: 'Total Cholesterol' },
+			},
+			{
+				id: 'metric-cholesterol-2',
+				type: 'health_metric',
+				data: { displayName: 'Non-HDL Cholesterol' },
+			},
+		])
+
+		const grounded = validateGroundedResponse(structured.value, context)
+		expect(grounded.ok).toBe(true)
+
+		const asserted = assertStructuredResponse(
+			JSON.stringify(geminiPayload),
+			context,
+		)
+		expect(asserted.directAnswer).toContain('cholesterol')
 	})
 })

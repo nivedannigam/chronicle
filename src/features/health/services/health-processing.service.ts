@@ -348,6 +348,22 @@ export async function processHealthReport(
 			})
 
 		if (persistedMetricCount === 0 && !allowsMetriclessCompletion) {
+			const reportWithParsedText: UploadedHealthReport = {
+				...typedReport,
+				...parsedReportUpdate,
+			}
+
+			if (
+				outcome.extractedText.trim().length >= 200 &&
+				reportEligibleForAiReprocess(reportWithParsedText)
+			) {
+				try {
+					return await reprocessHealthReportWithAi(reportId)
+				} catch {
+					// Fall through to deterministic failure messaging below.
+				}
+			}
+
 			failPipelineStage({
 				reportId,
 				stage: 'PARSING',

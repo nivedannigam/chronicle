@@ -30,7 +30,10 @@ import {
 	reportFailedAtOcrStage,
 	toAiReprocessUserFacingError,
 } from '@/features/health/services/health-ai-extraction.service'
-import { metricsDisplayMessage } from '@/features/health/services/report-readiness.service'
+import {
+	metricsDisplayMessage,
+	reportHasExtractedText,
+} from '@/features/health/services/report-readiness.service'
 import { queryClient } from '@/lib/query-client'
 import { uploadedHealthReportsQueryKey } from '@/features/health/hooks/useUploadedHealthReports'
 import { supabase } from '@/lib/supabase'
@@ -89,6 +92,8 @@ export function HealthReportDetailPage() {
 	const showFailedBanner = uploaded.status === 'failed'
 	const canReprocessWithAi = reportEligibleForAiReprocess(uploaded)
 	const ocrFailed = showFailedBanner && reportFailedAtOcrStage(uploaded)
+	const parsingFailed =
+		showFailedBanner && !ocrFailed && reportHasExtractedText(uploaded)
 	const failureMessage = showFailedBanner
 		? getHealthReportFailureMessage(uploaded)
 		: null
@@ -212,7 +217,7 @@ export function HealthReportDetailPage() {
 				<HealthAlertBanner
 					message={failureMessage}
 					actionLabel={
-						ocrFailed && canReprocessWithAi
+						(ocrFailed || parsingFailed) && canReprocessWithAi
 							? isAiReprocessing
 								? 'Reprocessing with AI…'
 								: 'Reprocess with AI'
@@ -221,7 +226,7 @@ export function HealthReportDetailPage() {
 								: USER_VOCAB.actions.retryImport
 					}
 					onAction={() =>
-						void (ocrFailed && canReprocessWithAi
+						void ((ocrFailed || parsingFailed) && canReprocessWithAi
 							? handleReprocessWithAi()
 							: handleReprocess())
 					}

@@ -35,6 +35,7 @@ export {
 	parseStructuredResponseContent,
 	validateGroundedResponse,
 	buildGroundedValidationContext,
+	buildGroundedValidationContextFromEvidenceItems,
 } from '@/shared/ai/response/response-validator'
 
 export {
