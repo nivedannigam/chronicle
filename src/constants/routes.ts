@@ -104,7 +104,15 @@ export function documentsCategoryPath(categoryId: string) {
 export type HealthSettingsSection = 'review' | 'import' | 'import-issues'
 
 export function healthSettingsSection(section: HealthSettingsSection) {
-	return `${ROUTES.healthSettings}#${section}`
+	if (
+		section === 'review' ||
+		section === 'import-issues' ||
+		section === 'import'
+	) {
+		return ROUTES.healthImportCenter
+	}
+
+	return ROUTES.healthSettings
 }
 
 export function healthAskPath(input?: {

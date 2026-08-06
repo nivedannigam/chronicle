@@ -1,4 +1,5 @@
 import { classifyReportType } from '@/features/health-intelligence/services/report-type.classifier'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 
@@ -297,11 +298,11 @@ export function metricsDisplayMessage(input: {
 			return 'No laboratory metrics detected.'
 		}
 
-		return 'Metrics are still being processed.'
+		return USER_VOCAB.messages.stillOrganizing
 	}
 
 	if (phase === 'failed') {
-		return input.report.processing_error ?? 'Processing failed for this report.'
+		return "Chronicle couldn't understand this report yet."
 	}
 
 	if (input.storedMetricCount > 0) {

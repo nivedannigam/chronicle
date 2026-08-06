@@ -1,4 +1,4 @@
-import { METRIC_DEFINITIONS } from '@/features/health/extraction/metric-definitions'
+import { getHealthMetricDefinitions } from '@/features/health-knowledge/graph/metric-categories'
 import type { MetricDefinition } from '@/features/health/domain/metric.types'
 
 function normalizeKey(value: string): string {
@@ -44,9 +44,17 @@ function definitionMatchScore(definition: MetricDefinition): number {
 	)
 }
 
-const SORTED_METRIC_DEFINITIONS = [...METRIC_DEFINITIONS].sort(
-	(a, b) => definitionMatchScore(b) - definitionMatchScore(a),
-)
+const SORTED_METRIC_DEFINITIONS: MetricDefinition[] = [
+	...getHealthMetricDefinitions(),
+]
+	.map((definition) => ({
+		canonicalId: definition.canonicalId,
+		displayName: definition.displayName,
+		aliases: definition.aliases,
+		category: definition.categoryId,
+		defaultUnit: definition.defaultUnit,
+	}))
+	.sort((a, b) => definitionMatchScore(b) - definitionMatchScore(a))
 
 export function findMetricDefinition(rawName: string): MetricDefinition | null {
 	const key = normalizeKey(rawName)
@@ -93,5 +101,5 @@ export function normalizeMetricName(rawName: string): {
 }
 
 export function getMetricDefinitions(): MetricDefinition[] {
-	return METRIC_DEFINITIONS
+	return SORTED_METRIC_DEFINITIONS
 }

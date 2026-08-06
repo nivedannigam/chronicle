@@ -5,6 +5,7 @@ import {
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
+import { computeHealthScoreFromHistories } from '@/features/health-knowledge/services/health-scoring.service'
 import { buildLongitudinalHealthProfile } from '@/features/health-intelligence/services/health-profile.service'
 import { buildHealthSummary } from '@/features/health-intelligence/services/health-summary.service'
 import type {
@@ -303,11 +304,20 @@ export class HealthKnowledgeRetriever implements KnowledgeRetriever {
 			personId: query.userId,
 			graph,
 		})
+		const score = computeHealthScoreFromHistories(graph.profile.metricHistories)
+		const statusLabel =
+			score == null
+				? 'Partial Results'
+				: score >= 85
+					? 'Looking Good'
+					: score >= 70
+						? 'Monitoring Required'
+						: 'Needs Attention'
 		const healthSummary = buildHealthSummary({
 			graph,
 			profile: longitudinalProfile,
 			insights: [],
-			statusLabel: 'Looking Good',
+			statusLabel,
 		})
 
 		const summaryLines = [

@@ -106,6 +106,16 @@ export function FigmaHealthProgressView({
 						<div>
 							<p
 								style={{
+									color: ringColor,
+									fontSize: 13,
+									fontWeight: 700,
+									margin: '0 0 6px',
+								}}
+							>
+								{progress.overall.statusLabel ?? 'Still Learning'}
+							</p>
+							<p
+								style={{
 									color: FC.dim,
 									fontSize: 11,
 									fontWeight: 600,

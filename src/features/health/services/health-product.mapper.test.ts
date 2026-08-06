@@ -107,7 +107,7 @@ describe('getProductReportStatusLabel', () => {
 			getProductReportStatusLabel(
 				makeReport({ id: 'r1', status: 'failed', metrics: [] }),
 			),
-		).toBe('Import failed')
+		).toBe('Needs Your Help')
 	})
 
 	it('shows ready for display-ready completed reports', () => {

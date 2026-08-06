@@ -1,11 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import type { HealthCompanionView } from '@/features/health/types/health-companion.types'
+import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import {
 	buildHealthStoryParagraphs,
 	buildHealthStoryViewModel,
 	buildSinceLastVisitItems,
 	buildStoryRecommendations,
 } from '@/features/health/services/health-story.mapper'
+
+const testSnapshot: HealthCanonicalSnapshot = {
+	score: 82,
+	overallStatus: 'Good',
+	overallSummary: "You're doing well — most markers are in a healthy range.",
+	trendLabel: 'Stable',
+	latestReportTitle: 'Annual Checkup',
+	latestReportDate: 'Mar 1, 2026',
+	latestVisitTitle: 'Annual Health Checkup',
+	latestVisitDate: 'Mar 1, 2026',
+	topRecommendationTitle: null,
+	topRecommendationPath: null,
+}
 
 function makeCompanion(
 	overrides: Partial<HealthCompanionView> = {},
@@ -151,6 +165,7 @@ describe('health-story.mapper', () => {
 					date: '2026-03-01',
 				} as never,
 			],
+			snapshot: testSnapshot,
 		})
 
 		expect(story.greeting).toContain('Nivedan')

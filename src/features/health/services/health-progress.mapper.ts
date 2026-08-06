@@ -5,6 +5,18 @@ import type {
 	HealthMetricHistory,
 } from '@/features/health-knowledge/types'
 import { getCategoryMeta } from '@/features/health-knowledge/graph/metric-categories'
+import {
+	consumerDomainStatus,
+	consumerDomainTrendLabel,
+	newestObservationDate,
+	relativeConsumerUpdatedLabel,
+} from '@/features/health/services/health-consumer-status.service'
+import {
+	filterHistoriesByCategory,
+	MIN_CLASSIFIED_FOR_SCORE,
+	pickMostRecentHistory,
+} from '@/features/health-knowledge/services/health-scoring.service'
+import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import type {
 	ProgressAchievement,
 	ProgressDomainCard,
@@ -16,7 +28,6 @@ import type {
 } from '@/features/progress/types/progress.types'
 import type { TrendSeries } from '@/features/health/types'
 
-const MIN_CLASSIFIED_FOR_SCORE = 5
 const LIPID_METRIC_IDS = new Set([
 	'ldl',
 	'hdl',
@@ -59,94 +70,15 @@ const PROGRESS_DOMAINS: Array<{
 	},
 ]
 
-function relativeUpdatedLabel(value: string | undefined): string | null {
-	if (!value?.trim()) {
-		return null
-	}
-
-	const timestamp = Date.parse(value)
-
-	if (Number.isNaN(timestamp)) {
-		return value
-	}
-
-	const diffMs = Date.now() - timestamp
-	const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-	if (days <= 0) {
-		return 'Updated today'
-	}
-
-	if (days === 1) {
-		return 'Updated yesterday'
-	}
-
-	if (days < 30) {
-		return `Updated ${days} days ago`
-	}
-
-	const months = Math.floor(days / 30)
-
-	if (months === 1) {
-		return 'Updated 1 month ago'
-	}
-
-	if (months < 12) {
-		return `Updated ${months} months ago`
-	}
-
-	const years = Math.floor(months / 12)
-
-	return years === 1 ? 'Updated 1 year ago' : `Updated ${years} years ago`
-}
-
-function trendLabel(direction: string): string {
-	switch (direction) {
-		case 'improving':
-			return 'Improving'
-		case 'declining':
-		case 'rapid_change':
-			return 'Needs attention'
-		case 'stable':
-			return 'Stable'
-		default:
-			return 'Monitoring'
-	}
-}
-
-function statusLabelForCategory(histories: HealthMetricHistory[]): string {
-	if (histories.length === 0) {
-		return 'Awaiting data'
-	}
-
-	const latestStatuses = histories
-		.map((history) => history.observations[history.observations.length - 1])
-		.filter(Boolean)
-
-	if (latestStatuses.some((obs) => obs?.status === 'critical')) {
-		return 'Needs attention'
-	}
-
-	if (
-		latestStatuses.some((obs) =>
-			['high', 'low', 'borderline'].includes(obs?.status ?? ''),
-		)
-	) {
-		return 'Monitor'
-	}
-
-	if (histories.some((history) => history.trend.direction === 'improving')) {
-		return 'Improving'
-	}
-
-	if (
-		latestStatuses.length > 0 &&
-		latestStatuses.every((obs) => obs?.status === 'normal')
-	) {
-		return 'Excellent'
-	}
-
-	return 'Stable'
+function filterHistories(
+	graph: HealthKnowledgeGraph,
+	config: (typeof PROGRESS_DOMAINS)[number],
+): HealthMetricHistory[] {
+	return filterHistoriesByCategory(
+		graph.profile.metricHistories,
+		config.categoryId as MetricCategoryId,
+		config.metricFilter,
+	)
 }
 
 function sparklineFromHistory(
@@ -161,31 +93,6 @@ function sparklineFromHistory(
 		.filter((value): value is number => typeof value === 'number')
 
 	return values.length >= 2 ? values : []
-}
-
-function pickPrimaryHistory(
-	histories: HealthMetricHistory[],
-): HealthMetricHistory | undefined {
-	return [...histories].sort(
-		(a, b) => b.observations.length - a.observations.length,
-	)[0]
-}
-
-function filterHistories(
-	graph: HealthKnowledgeGraph,
-	config: (typeof PROGRESS_DOMAINS)[number],
-): HealthMetricHistory[] {
-	let histories = graph.profile.metricHistories.filter(
-		(history) => history.categoryId === config.categoryId,
-	)
-
-	if (config.metricFilter) {
-		histories = histories.filter((history) =>
-			config.metricFilter!.has(history.canonicalMetricId),
-		)
-	}
-
-	return histories
 }
 
 function buildScoreSparkline(graph: HealthKnowledgeGraph): number[] {
@@ -251,54 +158,28 @@ function buildScoreDelta(
 	return `${sign}${delta}${yearSpan}`
 }
 
-function buildOverallSummary(input: {
-	score: number | null
-	status: HealthCompanionView['status']
-	sparkline: number[]
-	narrative: string[]
-}): string {
-	if (input.narrative[0]) {
-		return input.narrative[0]
-	}
-
-	if (input.score === null) {
-		return 'Your progress will appear here as more reports are added.'
-	}
-
-	if (
-		input.status === 'Improving' ||
-		(input.sparkline.length >= 2 &&
-			input.sparkline.at(-1)! > input.sparkline[0]!)
-	) {
-		return 'Your overall health has improved steadily as new reports have been added.'
-	}
-
-	if (input.status === 'Looking Good') {
-		return 'Your overall health looks stable and reassuring based on your latest results.'
-	}
-
-	return 'Your health picture is taking shape — keep adding reports to see richer trends.'
-}
-
 function buildDomainCards(graph: HealthKnowledgeGraph): ProgressDomainCard[] {
 	return PROGRESS_DOMAINS.map((config) => {
 		const histories = filterHistories(graph, config)
 		const meta = getCategoryMeta(config.categoryId as MetricCategoryId)
-		const primary = pickPrimaryHistory(histories)
+		const primary = pickMostRecentHistory(histories)
 		const sparkline = sparklineFromHistory(primary)
-		const trendDirection = primary?.trend.direction ?? 'unknown'
-		const lastObserved = primary?.baseline.lastObservedAt ?? undefined
+		const domainStatus = consumerDomainStatus(histories)
+		const lastObserved =
+			domainStatus === 'No Recent Data'
+				? undefined
+				: newestObservationDate(histories)
 
 		return {
 			id: config.id,
 			name: config.name,
 			emoji: config.emoji,
 			color: meta.color,
-			statusLabel: statusLabelForCategory(histories),
-			trendLabel: trendLabel(trendDirection),
-			lastUpdated: relativeUpdatedLabel(lastObserved),
+			statusLabel: domainStatus,
+			trendLabel: consumerDomainTrendLabel(histories),
+			lastUpdated: relativeConsumerUpdatedLabel(lastObserved),
 			sparkline,
-			hasData: histories.length > 0,
+			hasData: domainStatus !== 'No Recent Data',
 			categoryId: config.categoryId,
 		}
 	})
@@ -459,20 +340,18 @@ export function buildHealthProgressViewModel(input: {
 	companion: HealthCompanionView
 	graph: HealthKnowledgeGraph
 	trendSeries?: TrendSeries[]
+	snapshot: HealthCanonicalSnapshot
 }): ProgressViewModel {
 	const sparkline = buildScoreSparkline(input.graph)
 	const hasEnoughHistory = sparkline.length >= 2
 
 	const overall: ProgressOverall = {
-		score: input.companion.score,
-		deltaLabel: buildScoreDelta(sparkline, input.companion.score),
+		score: input.snapshot.score,
+		deltaLabel: buildScoreDelta(sparkline, input.snapshot.score),
 		sparkline,
-		summary: buildOverallSummary({
-			score: input.companion.score,
-			status: input.companion.status,
-			sparkline,
-			narrative: input.companion.narrative,
-		}),
+		summary: input.snapshot.overallSummary,
+		statusLabel: input.snapshot.overallStatus,
+		trendLabel: input.snapshot.trendLabel,
 	}
 
 	return {

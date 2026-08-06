@@ -1,20 +1,22 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
+import { useHealthContext } from '@/features/health/context/HealthContext'
 import { FigmaHealthHistoryView } from '@/ui/figma/health/FigmaHealthHistoryView'
 
 export function HealthHistoryPage() {
 	const navigate = useNavigate()
-	const { reports, hasImportedReports, isLoading, isError, refetch } =
-		useHealthCompanion()
-
-	const visits = useMemo(() => buildHealthVisits(reports), [reports])
+	const {
+		visits,
+		visitChanges,
+		hasImportedReports,
+		isLoading,
+		isError,
+		refetch,
+	} = useHealthContext()
 
 	if (isLoading) {
 		return <ListSkeleton rows={5} height={64} />
@@ -43,5 +45,5 @@ export function HealthHistoryPage() {
 		)
 	}
 
-	return <FigmaHealthHistoryView visits={visits} />
+	return <FigmaHealthHistoryView visits={visits} visitChanges={visitChanges} />
 }

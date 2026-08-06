@@ -5,6 +5,8 @@ export interface ProgressOverall {
 	deltaLabel: string | null
 	sparkline: number[]
 	summary: string
+	statusLabel?: string
+	trendLabel?: string
 }
 
 export interface ProgressDomainCard {

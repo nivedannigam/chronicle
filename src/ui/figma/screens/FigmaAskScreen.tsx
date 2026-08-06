@@ -15,12 +15,11 @@ import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
+import { useHealthContextOptional } from '@/features/health/context/HealthContext'
 import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
-import {
-	AskPremiumEmptyState,
-	resolveAskEmptyReportCount,
-} from '@/ui/figma/ask/AskPremiumEmptyState'
+import { AskPremiumEmptyState } from '@/ui/figma/ask/AskPremiumEmptyState'
+import { resolveAskEmptyReportCount } from '@/ui/figma/ask/resolve-ask-empty-report-count'
 import { FigmaAskComposer, FC } from '@/ui/figma/v2/atoms'
 import {
 	FigmaHeaderIconButton,
@@ -47,6 +46,7 @@ export function FigmaAskScreen({
 
 	const { members, selectedMember, selectedMemberId } = useFamilyContext()
 	const { preferences } = usePersonalPreferences()
+	const healthContext = useHealthContextOptional()
 	const uploadedQuery = useMemberHealthReports()
 	const metricsQuery = useHealthMetrics()
 	const documentsQuery = useMemberDocuments()
@@ -72,7 +72,18 @@ export function FigmaAskScreen({
 		[members, selectedMember, selectedMemberId, userName],
 	)
 
-	const reports = uploadedQuery.data ?? []
+	const reports =
+		consumerMode && healthContext
+			? healthContext.reports
+			: (uploadedQuery.data ?? [])
+	const storedMetrics =
+		consumerMode && healthContext
+			? healthContext.storedMetrics
+			: (metricsQuery.data ?? [])
+	const visits =
+		consumerMode && healthContext
+			? healthContext.visits
+			: buildHealthVisits(reports)
 
 	const askScope = useMemo((): AskScopeContext | undefined => {
 		const reportId = searchParams.get('reportId')?.trim()
@@ -80,9 +91,7 @@ export function FigmaAskScreen({
 		const categoryId = searchParams.get('categoryId')?.trim()
 
 		if (visitId) {
-			const visit = buildHealthVisits(reports).find(
-				(entry) => entry.id === visitId,
-			)
+			const visit = visits.find((entry) => entry.id === visitId)
 
 			if (visit?.reportIds.length) {
 				return {
@@ -100,7 +109,7 @@ export function FigmaAskScreen({
 		}
 
 		return undefined
-	}, [reports, searchParams])
+	}, [visits, searchParams])
 
 	const {
 		ask,
@@ -120,7 +129,7 @@ export function FigmaAskScreen({
 		driveConnector.registry ?? [],
 		preferences,
 		documentsQuery.data ?? [],
-		metricsQuery.data ?? [],
+		storedMetrics,
 		askScope,
 	)
 
@@ -242,6 +251,9 @@ export function FigmaAskScreen({
 						onSelectQuestion={send}
 						consumerMode={consumerMode}
 						reportCount={reportCount}
+						healthSummary={
+							consumerMode && healthContext ? healthContext.snapshot : undefined
+						}
 					/>
 				) : (
 					<ConversationThread

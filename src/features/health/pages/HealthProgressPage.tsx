@@ -4,13 +4,13 @@ import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { useHealthProgress } from '@/features/health/hooks/useHealthProgress'
+import { useHealthContext } from '@/features/health/context/HealthContext'
 import { FigmaHealthProgressView } from '@/ui/figma/health/FigmaHealthProgressView'
 
 export function HealthProgressPage() {
 	const navigate = useNavigate()
 	const { progress, hasImportedReports, isLoading, isError, refetch } =
-		useHealthProgress()
+		useHealthContext()
 
 	if (isLoading) {
 		return <ListSkeleton rows={6} height={72} />

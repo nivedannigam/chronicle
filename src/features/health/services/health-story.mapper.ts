@@ -5,10 +5,9 @@ import type {
 	HealthNextStep,
 } from '@/features/health/types/health-companion.types'
 import type { HealthVisit } from '@/features/health/types/health-visit.types'
-import {
-	buildHealthGreeting,
-	buildHealthSummarySentence,
-} from '@/features/health/services/health-product.mapper'
+import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
+import { buildHealthGreeting } from '@/features/health/services/health-product.mapper'
+import { consumerOverallSummary } from '@/features/health/services/health-consumer-status.service'
 
 export interface SinceLastVisitItem {
 	id: string
@@ -31,6 +30,7 @@ export interface JourneyVisitItem {
 export interface HealthStoryViewModel {
 	greeting: string
 	howAmIDoing: string
+	snapshot: HealthCanonicalSnapshot
 	storyParagraphs: string[]
 	sinceLastVisit: SinceLastVisitItem[]
 	recommendations: StoryRecommendation[]
@@ -217,7 +217,7 @@ export function buildSinceLastVisitItems(
 
 function consumerRecommendationTitle(step: HealthNextStep): string {
 	if (step.title.toLowerCase().includes('review imported')) {
-		return 'Confirm new reports in Import Center'
+		return 'Review reports that need your help'
 	}
 
 	if (step.title.toLowerCase().includes('liver')) {
@@ -352,12 +352,10 @@ export function buildHealthStoryViewModel(input: {
 	hasReports: boolean
 	reportCount: number
 	visits: HealthVisit[]
+	snapshot: HealthCanonicalSnapshot
 }): HealthStoryViewModel {
 	const greeting = buildHealthGreeting(input.memberName)
-	const howAmIDoing = buildHealthSummarySentence(
-		input.companion.status,
-		input.hasReports,
-	)
+	const howAmIDoing = consumerOverallSummary(input.snapshot.overallStatus)
 	const storyParagraphs = buildHealthStoryParagraphs(
 		input.companion,
 		input.reportCount,
@@ -374,6 +372,7 @@ export function buildHealthStoryViewModel(input: {
 	return {
 		greeting,
 		howAmIDoing,
+		snapshot: input.snapshot,
 		storyParagraphs,
 		sinceLastVisit,
 		recommendations,

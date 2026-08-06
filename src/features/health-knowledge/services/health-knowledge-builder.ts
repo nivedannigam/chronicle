@@ -1,8 +1,4 @@
 import { C } from '@/constants/colors'
-import {
-	getParsedHealthReport,
-	getReportDisplayTitle,
-} from '@/features/health/services/health-parsed-report.service'
 import { buildDerivedInsights } from '@/features/health-knowledge/engines/insights.engine'
 import {
 	calculateBaseline,
@@ -17,6 +13,7 @@ import {
 	mapCategoryId,
 } from '@/features/health-knowledge/graph/metric-categories'
 import { getMetricRelationships } from '@/features/health-knowledge/graph/metric-relationships'
+import { mergeHealthObservations } from '@/features/health-knowledge/services/merge-health-observations'
 import { resolveMetricCategoryId } from '@/features/health-knowledge/utils/metric-category-resolver'
 import type { KnowledgeGraphBuilder } from '@chronicle/core-knowledge'
 import type {
@@ -32,7 +29,7 @@ import type {
 import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
-const CACHE_VERSION = '1'
+const CACHE_VERSION = '2'
 
 function formatDisplayDate(value: string | null | undefined): string {
 	if (!value) {
@@ -44,13 +41,6 @@ function formatDisplayDate(value: string | null | undefined): string {
 		day: 'numeric',
 		year: 'numeric',
 	})
-}
-
-function slugifyMetricId(rawName: string): string {
-	return rawName
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '')
 }
 
 function buildSourceKey(
@@ -71,96 +61,6 @@ function buildSourceKey(
 		.join('|')
 
 	return `${uploadKey}::${metricsKey}`
-}
-
-function observationsFromStoredMetrics(
-	metrics: StoredHealthMetric[],
-	uploadedReports: UploadedHealthReport[],
-): HealthObservation[] {
-	const reportById = new Map(
-		uploadedReports.map((report) => [report.id, report]),
-	)
-
-	return metrics.map((metric) => {
-		const report = reportById.get(metric.report_id)
-
-		return {
-			id: metric.id,
-			canonicalMetricId: metric.canonical_metric_id,
-			displayName: metric.display_name,
-			rawName: metric.raw_name,
-			value: metric.value,
-			numericValue: metric.numeric_value,
-			unit: metric.unit,
-			status: metric.status,
-			confidence: metric.confidence,
-			observedAt: metric.observed_at,
-			reportId: metric.report_id,
-			reportTitle: report ? getReportDisplayTitle(report) : 'Health Report',
-			laboratory: report
-				? (getParsedHealthReport(report)?.metadata.laboratory ?? '')
-				: '',
-			referenceRange: metric.reference_range_raw ?? '',
-		}
-	})
-}
-
-function observationsFromUploadedReports(
-	reports: UploadedHealthReport[],
-): HealthObservation[] {
-	const observations: HealthObservation[] = []
-
-	for (const report of reports.filter((item) => item.status === 'completed')) {
-		const parsed = getParsedHealthReport(report)
-
-		if (!parsed) {
-			continue
-		}
-
-		for (const [index, metric] of (parsed.metrics ?? []).entries()) {
-			const canonicalMetricId =
-				metric.canonicalId ?? `raw:${slugifyMetricId(metric.rawName)}`
-
-			observations.push({
-				id: `${report.id}-${canonicalMetricId}-${index}`,
-				canonicalMetricId,
-				displayName: metric.displayName,
-				rawName: metric.rawName,
-				value: metric.value,
-				numericValue: metric.numericValue,
-				unit: metric.unit,
-				status: metric.status,
-				confidence: metric.confidence,
-				observedAt:
-					parsed.metadata.reportDate ??
-					report.report_date ??
-					report.processed_at ??
-					report.uploaded_at,
-				reportId: report.id,
-				reportTitle: getReportDisplayTitle(report),
-				laboratory: parsed.metadata.laboratory,
-				referenceRange: metric.referenceRange?.rawText ?? '',
-			})
-		}
-	}
-
-	return observations
-}
-
-function dedupeObservations(
-	observations: HealthObservation[],
-): HealthObservation[] {
-	const seen = new Map<string, HealthObservation>()
-
-	for (const observation of observations) {
-		const key = `${observation.reportId}:${observation.canonicalMetricId}`
-		seen.set(key, observation)
-	}
-
-	return [...seen.values()].sort(
-		(a, b) =>
-			new Date(a.observedAt).getTime() - new Date(b.observedAt).getTime(),
-	)
 }
 
 function resolveCategoryId(
@@ -330,15 +230,10 @@ function buildAlerts(histories: HealthMetricHistory[]): HealthAlert[] {
 export function buildHealthKnowledgeGraph(
 	input: BuildHealthKnowledgeInput,
 ): HealthKnowledgeGraph {
-	const storedMetricObservations = observationsFromStoredMetrics(
-		input.storedMetrics ?? [],
-		input.uploadedReports,
-	)
-	const observations = dedupeObservations(
-		storedMetricObservations.length > 0
-			? storedMetricObservations
-			: observationsFromUploadedReports(input.uploadedReports),
-	)
+	const observations = mergeHealthObservations({
+		storedMetrics: input.storedMetrics ?? [],
+		uploadedReports: input.uploadedReports,
+	})
 
 	const metricHistories = buildMetricHistories(observations)
 	const categories = buildCategorySnapshots(metricHistories)

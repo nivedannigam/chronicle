@@ -83,9 +83,9 @@ export const HEALTH_COPY = {
 	emptyProgressTitle: 'Your progress story starts here',
 	emptyProgressBody:
 		'As reports are added, Chronicle will show how your health is improving over time.',
-	emptyReportsTitle: 'No reports yet',
+	emptyReportsTitle: 'Your reports library',
 	emptyReportsBody:
-		'When health reports are added, they will appear here as a simple list.',
+		'Every health document you import will appear here — searchable, organized, and ready to review.',
 	emptyVisitsTitle: 'No health visits yet',
 	emptyVisitsBody:
 		'When health records are added, Chronicle will organize them into visits — the way you remember care, not as loose PDFs.',

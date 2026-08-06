@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, FileText, MessageCircle } from 'lucide-react'
 import type { HealthVisit } from '@/features/health/types/health-visit.types'
+import type { VisitChangeItem } from '@/features/health/services/health-visit-changes.service'
 import { healthAskPath, healthReportPath } from '@/constants/routes'
 import {
 	buildVisitAskSuggestions,
@@ -48,17 +49,36 @@ function statusColor(status: HealthVisit['status']): string {
 	}
 }
 
+function changeColor(tone: VisitChangeItem['tone']): string {
+	switch (tone) {
+		case 'improved':
+			return FC.green
+		case 'attention':
+			return FC.amber
+		default:
+			return FC.mid
+	}
+}
+
 export function FigmaHealthVisitDetailView({
 	visit,
 	results,
+	changes = [],
+	doctorNotes = null,
+	visitType,
 }: {
 	visit: HealthVisit
 	results: VisitResultMetric[]
+	changes?: VisitChangeItem[]
+	doctorNotes?: string | null
+	visitType?: string | null
 }) {
 	const navigate = useNavigate()
 	const color = statusColor(visit.status)
 	const chronicleSummary = buildVisitChronicleSummary(visit)
 	const askSuggestions = buildVisitAskSuggestions(visit)
+	const resolvedVisitType =
+		visitType ?? visit.documents[0]?.documentType ?? 'Health visit'
 
 	return (
 		<div style={{ paddingBottom: 32 }}>
@@ -74,8 +94,11 @@ export function FigmaHealthVisitDetailView({
 				>
 					{visit.title}
 				</p>
-				<p style={{ color: FC.mid, fontSize: 13.5, margin: '0 0 10px' }}>
+				<p style={{ color: FC.mid, fontSize: 13.5, margin: '0 0 4px' }}>
 					{visit.displayDate} · {visit.hospital}
+				</p>
+				<p style={{ color: FC.dim, fontSize: 12.5, margin: '0 0 10px' }}>
+					{resolvedVisitType}
 				</p>
 				<span
 					style={{
@@ -94,25 +117,138 @@ export function FigmaHealthVisitDetailView({
 				</span>
 			</div>
 
-			<SectionBlock label="Visit summary">
+			<SectionBlock label="Chronicle summary">
 				<div
 					style={{
 						...figmaCardStyle,
 						borderRadius: 20,
 						padding: '18px 18px 16px',
+						background: `linear-gradient(145deg, ${FC.purple}10 0%, ${FC.blue}08 100%)`,
 					}}
 				>
 					<p
 						style={{
 							color: FC.mid,
 							fontSize: 14,
-							lineHeight: 1.6,
+							lineHeight: 1.65,
 							margin: 0,
 						}}
 					>
-						{visit.summaryParagraph}
+						{chronicleSummary}
 					</p>
 				</div>
+			</SectionBlock>
+
+			{doctorNotes ? (
+				<SectionBlock label="Doctor notes">
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 16,
+							padding: '16px 18px',
+						}}
+					>
+						<p style={{ color: FC.mid, fontSize: 14, margin: 0 }}>
+							{doctorNotes}
+						</p>
+					</div>
+				</SectionBlock>
+			) : null}
+
+			{changes.length > 0 ? (
+				<SectionBlock label="Important changes">
+					<div style={{ display: 'grid', gap: 8 }}>
+						{changes.map((change) => (
+							<div
+								key={change.id}
+								style={{
+									...figmaCardStyle,
+									borderRadius: 16,
+									padding: '14px 16px',
+									display: 'flex',
+									alignItems: 'center',
+									gap: 10,
+								}}
+							>
+								<span
+									style={{
+										color: changeColor(change.tone),
+										fontSize: 14,
+										fontWeight: 700,
+										width: 16,
+									}}
+								>
+									{change.tone === 'improved'
+										? '✓'
+										: change.tone === 'attention'
+											? '⚠'
+											: '•'}
+								</span>
+								<span
+									style={{
+										color: FC.fg,
+										fontSize: 14,
+										fontWeight: 600,
+									}}
+								>
+									{change.label}
+								</span>
+							</div>
+						))}
+					</div>
+				</SectionBlock>
+			) : null}
+
+			<SectionBlock label="Important findings">
+				{results.length === 0 ? (
+					<div
+						style={{
+							...figmaCardStyle,
+							borderRadius: 16,
+							padding: '16px 18px',
+						}}
+					>
+						<p style={{ color: FC.mid, fontSize: 13.5, margin: 0 }}>
+							No results outside the usual range were found for this visit.
+						</p>
+					</div>
+				) : (
+					<div style={{ display: 'grid', gap: 8 }}>
+						{results.map((metric) => (
+							<div
+								key={metric.id}
+								style={{
+									...figmaCardStyle,
+									borderRadius: 16,
+									padding: '14px 16px',
+								}}
+							>
+								<p
+									style={{
+										color: FC.fg,
+										fontSize: 14,
+										fontWeight: 600,
+										margin: '0 0 4px',
+									}}
+								>
+									{metric.name}
+								</p>
+								<p
+									style={{
+										color: FC.mid,
+										fontSize: 13,
+										margin: '0 0 2px',
+									}}
+								>
+									{metric.value} · {metric.statusLabel}
+								</p>
+								<p style={{ color: FC.dim, fontSize: 12, margin: 0 }}>
+									From {metric.reportTitle}
+								</p>
+							</div>
+						))}
+					</div>
+				)}
 			</SectionBlock>
 
 			<SectionBlock label="Documents">
@@ -155,80 +291,6 @@ export function FigmaHealthVisitDetailView({
 							</div>
 						</button>
 					))}
-				</div>
-			</SectionBlock>
-
-			<SectionBlock label="Results">
-				{results.length === 0 ? (
-					<div
-						style={{
-							...figmaCardStyle,
-							borderRadius: 16,
-							padding: '16px 18px',
-						}}
-					>
-						<p style={{ color: FC.mid, fontSize: 13.5, margin: 0 }}>
-							No important results are available for this visit yet.
-						</p>
-					</div>
-				) : (
-					<div style={{ display: 'grid', gap: 8 }}>
-						{results.map((metric) => (
-							<div
-								key={metric.id}
-								style={{
-									...figmaCardStyle,
-									borderRadius: 16,
-									padding: '14px 16px',
-								}}
-							>
-								<p
-									style={{
-										color: FC.fg,
-										fontSize: 14,
-										fontWeight: 600,
-										margin: '0 0 4px',
-									}}
-								>
-									{metric.name}
-								</p>
-								<p
-									style={{
-										color: FC.mid,
-										fontSize: 13,
-										margin: '0 0 2px',
-									}}
-								>
-									{metric.value} · {metric.statusLabel}
-								</p>
-								<p style={{ color: FC.dim, fontSize: 12, margin: 0 }}>
-									From {metric.reportTitle}
-								</p>
-							</div>
-						))}
-					</div>
-				)}
-			</SectionBlock>
-
-			<SectionBlock label="Chronicle summary">
-				<div
-					style={{
-						...figmaCardStyle,
-						borderRadius: 20,
-						padding: '18px 18px 16px',
-						background: `linear-gradient(145deg, ${FC.purple}10 0%, ${FC.blue}08 100%)`,
-					}}
-				>
-					<p
-						style={{
-							color: FC.mid,
-							fontSize: 14,
-							lineHeight: 1.6,
-							margin: 0,
-						}}
-					>
-						{chronicleSummary}
-					</p>
 				</div>
 			</SectionBlock>
 

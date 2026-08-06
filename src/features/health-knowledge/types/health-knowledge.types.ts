@@ -44,6 +44,8 @@ export interface HealthObservation {
 	reportTitle: string
 	laboratory: string
 	referenceRange: string
+	/** Provenance for merge — stored DB row vs parsed report JSON. */
+	source?: 'stored' | 'parsed'
 }
 
 export interface MetricBaseline {

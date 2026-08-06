@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, FolderInput, RefreshCw, Sparkles } from 'lucide-react'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { healthVisitPath } from '@/constants/routes'
 import type {
 	ImportCenterViewModel,
@@ -289,7 +290,11 @@ function HelpCard({
 						/>
 						{item.canReprocessWithAi && item.reportId ? (
 							<ActionButton
-								label={isBusy ? 'AI…' : 'Reprocess with AI'}
+								label={
+									isBusy
+										? USER_VOCAB.actions.advancedReadingBusy
+										: USER_VOCAB.actions.advancedReading
+								}
 								icon={<Sparkles size={14} />}
 								disabled={isBusy}
 								onClick={onReprocessWithAi}

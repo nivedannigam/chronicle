@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import { buildHealthProgressViewModel } from '@/features/health/services/health-progress.mapper'
 import type { HealthCompanionView } from '@/features/health/types/health-companion.types'
 import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
@@ -125,13 +126,29 @@ function graph(): HealthKnowledgeGraph {
 
 describe('buildHealthProgressViewModel', () => {
 	it('builds overall progress with score trend and improvements', () => {
+		const snapshot: HealthCanonicalSnapshot = {
+			score: 84,
+			overallStatus: 'Good',
+			overallSummary:
+				"You're doing well — most markers are in a healthy range.",
+			trendLabel: 'Improving',
+			latestReportTitle: 'Annual Checkup',
+			latestReportDate: 'Mar 9, 2026',
+			latestVisitTitle: 'Annual Checkup',
+			latestVisitDate: 'Mar 9, 2026',
+			topRecommendationTitle: null,
+			topRecommendationPath: null,
+		}
+
 		const view = buildHealthProgressViewModel({
 			companion: companion(),
 			graph: graph(),
+			snapshot,
 		})
 
 		expect(view.overall.score).toBe(84)
-		expect(view.overall.summary).toContain('improved')
+		expect(view.overall.summary).toContain('doing well')
+		expect(view.overall.statusLabel).toBe('Good')
 		expect(
 			view.improvements.some((item) => item.label.includes('Triglycerides')),
 		).toBe(true)

@@ -40,9 +40,9 @@ import {
 	getReportDisplayDate,
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
+import { computeHealthScoreFromHistories } from '@/features/health-knowledge/services/health-scoring.service'
 
 const ABNORMAL = new Set(['low', 'high', 'critical', 'borderline'])
-const MIN_CLASSIFIED_FOR_SCORE = 5
 
 function formatDisplayDate(value: string): string {
 	return new Date(value).toLocaleDateString('en-US', {
@@ -59,7 +59,6 @@ function deriveStatus(input: {
 	hasProcessingReports?: boolean
 }): { status: HealthStatusLabel; detail: string; score: number | null } {
 	const histories = input.graph.profile.metricHistories
-	let normalCount = 0
 	let totalWithStatus = 0
 	let unknownCount = 0
 	let abnormalCount = 0
@@ -71,10 +70,6 @@ function deriveStatus(input: {
 
 		if (latest?.status) {
 			totalWithStatus += 1
-
-			if (latest.status === 'normal') {
-				normalCount += 1
-			}
 
 			if (latest.status === 'unknown') {
 				unknownCount += 1
@@ -98,18 +93,15 @@ function deriveStatus(input: {
 	}
 
 	const classifiedCount = totalWithStatus - unknownCount
-	const score =
-		classifiedCount >= MIN_CLASSIFIED_FOR_SCORE
-			? Math.round((normalCount / classifiedCount) * 100)
-			: null
+	const score = computeHealthScoreFromHistories(histories)
 	const unknownRatio = totalWithStatus > 0 ? unknownCount / totalWithStatus : 0
 
 	if (totalWithStatus === 0) {
 		return {
 			status: 'Awaiting Data',
 			detail: input.hasProcessingReports
-				? 'Metrics are still being processed.'
-				: 'No laboratory metrics detected.',
+				? 'Chronicle is still organizing your latest reports.'
+				: 'No laboratory results detected yet.',
 			score: null,
 		}
 	}
@@ -122,10 +114,10 @@ function deriveStatus(input: {
 		return {
 			status: 'Partial Results',
 			detail: input.hasProcessingReports
-				? 'Metrics are still being processed.'
+				? 'Chronicle is still organizing your latest reports.'
 				: unknownCount > 0
-					? `${unknownCount} result${unknownCount === 1 ? '' : 's'} still being classified — reprocess in Setup for full extraction.`
-					: 'Some reports still need reprocessing in Setup before your dashboard is complete.',
+					? `${unknownCount} result${unknownCount === 1 ? '' : 's'} still being classified.`
+					: 'Some reports still need your help before your picture is complete.',
 			score: null,
 		}
 	}

@@ -12,6 +12,7 @@ import { ROUTES } from '@/constants/routes'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { AppShell } from '@/components/layout/mobile'
 import { FamilyMemberSwitcher } from '@/features/family/components/FamilyMemberSwitcher'
+import { HealthProvider } from '@/features/health/context/HealthContext'
 import {
 	FigmaHeaderSearchButton,
 	FigmaScreenHeader,
@@ -167,7 +168,9 @@ export function HealthLayout() {
 				</FigmaScreenHeader>
 			}
 		>
-			<Outlet />
+			<HealthProvider>
+				<Outlet />
+			</HealthProvider>
 		</AppShell>
 	)
 }

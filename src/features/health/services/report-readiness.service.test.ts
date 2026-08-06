@@ -129,7 +129,7 @@ describe('report-readiness.service', () => {
 				report: createReport('processing'),
 				storedMetricCount: 0,
 			}),
-		).toBe('Metrics are still being processed.')
+		).toBe('Chronicle is still organizing results from this report.')
 	})
 
 	it('shows empty-lab message for completed reports without metrics', () => {

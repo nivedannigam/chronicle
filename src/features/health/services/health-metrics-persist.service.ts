@@ -181,7 +181,24 @@ export async function backfillHealthMetricsFromReports(
 		}
 
 		if ((count ?? 0) > 0) {
-			continue
+			const parsedCanonicalIds = new Set(
+				parsed.metrics.map((metric) => metric.canonicalId).filter(Boolean),
+			)
+			const { data: existingRows } = await supabase
+				.from('health_metrics')
+				.select('canonical_metric_id')
+				.eq('report_id', report.id)
+
+			const storedIds = new Set(
+				(existingRows ?? []).map((row) => row.canonical_metric_id as string),
+			)
+			const hasNewMetrics = [...parsedCanonicalIds].some(
+				(id) => !storedIds.has(id),
+			)
+
+			if (!hasNewMetrics && parsed.metrics.length === storedIds.size) {
+				continue
+			}
 		}
 
 		inserted += await persistHealthMetrics({

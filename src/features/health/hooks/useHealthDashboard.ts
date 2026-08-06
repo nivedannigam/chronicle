@@ -11,52 +11,24 @@ import {
 } from '@/features/health/services/health-parsed-report.service'
 import { useAuth } from '@/features/auth'
 import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
+import { computeHealthScoreFromHistories } from '@/features/health-knowledge/services/health-scoring.service'
 import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
 import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
 
-function computeHealthScore(graph: HealthKnowledgeGraph): number | null {
-	const histories = graph.profile.metricHistories
-
-	if (histories.length === 0) {
-		return null
-	}
-
-	let normalCount = 0
-	let totalWithStatus = 0
-
-	for (const history of histories) {
-		const latestObs = history.observations[history.observations.length - 1]
-
-		if (latestObs?.status) {
-			totalWithStatus += 1
-
-			if (latestObs.status === 'normal') {
-				normalCount += 1
-			}
-		}
-	}
-
-	if (totalWithStatus === 0) {
-		return null
-	}
-
-	return Math.round((normalCount / totalWithStatus) * 100)
-}
-
 function deriveOverallStatus(score: number | null): string {
 	if (score === null) {
-		return 'Awaiting data'
+		return 'Still Learning'
 	}
 
-	if (score >= 85) {
-		return 'Looking good'
+	if (score >= 90) {
+		return 'Excellent'
 	}
 
 	if (score >= 70) {
-		return 'Mostly on track'
+		return 'Good'
 	}
 
-	return 'Needs attention'
+	return 'Monitor'
 }
 
 function buildDashboardFromData(
@@ -67,7 +39,7 @@ function buildDashboardFromData(
 	const latestParsed = latestExtracted
 		? getParsedHealthReport(latestExtracted)
 		: null
-	const score = computeHealthScore(graph)
+	const score = computeHealthScoreFromHistories(graph.profile.metricHistories)
 	const latestDate = latestParsed?.metadata.reportDate
 		? new Date(latestParsed.metadata.reportDate).toLocaleDateString('en-US', {
 				month: 'short',

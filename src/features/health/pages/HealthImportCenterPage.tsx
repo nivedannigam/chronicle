@@ -1,11 +1,15 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { useImportCenterView } from '@/features/health-import/hooks/useImportCenterView'
+import { AI_REPROCESS_CONFIRMATION } from '@/features/health/services/health-ai-extraction.service'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { FigmaImportCenterView } from '@/ui/figma/health/FigmaImportCenterView'
+import { HealthConfirmSheet } from '@/ui/figma/health/HealthConfirmSheet'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { ROUTES } from '@/constants/routes'
-import { useNavigate } from 'react-router-dom'
 
 export function HealthImportCenterPage() {
 	const navigate = useNavigate()
@@ -13,6 +17,10 @@ export function HealthImportCenterPage() {
 	const userId = user?.id
 	const { selectedMember } = useFamilyContext()
 	const center = useImportCenterView(userId)
+	const [advancedReadingTarget, setAdvancedReadingTarget] = useState<{
+		reportId: string
+		itemId: string
+	} | null>(null)
 
 	if (!userId) {
 		return (
@@ -51,17 +59,36 @@ export function HealthImportCenterPage() {
 	}
 
 	return (
-		<FigmaImportCenterView
-			view={center.view}
-			busyItemId={center.busyItemId}
-			onKeep={(registryId) => void center.handleKeep(registryId)}
-			onIgnore={(registryId) => void center.handleIgnore(registryId)}
-			onChooseMember={(registryId, memberId) =>
-				void center.handleChooseMember(registryId, memberId)
-			}
-			onTryAgain={(input) => void center.handleTryAgain(input)}
-			onReprocessWithAi={(input) => void center.handleReprocessWithAi(input)}
-			onMove={center.handleMove}
-		/>
+		<>
+			<FigmaImportCenterView
+				view={center.view}
+				busyItemId={center.busyItemId}
+				onKeep={(registryId) => void center.handleKeep(registryId)}
+				onIgnore={(registryId) => void center.handleIgnore(registryId)}
+				onChooseMember={(registryId, memberId) =>
+					void center.handleChooseMember(registryId, memberId)
+				}
+				onTryAgain={(input) => void center.handleTryAgain(input)}
+				onReprocessWithAi={(input) => setAdvancedReadingTarget(input)}
+				onMove={center.handleMove}
+			/>
+			<HealthConfirmSheet
+				isOpen={advancedReadingTarget != null}
+				title={USER_VOCAB.actions.advancedReading}
+				message={AI_REPROCESS_CONFIRMATION}
+				confirmLabel={USER_VOCAB.actions.advancedReading}
+				onConfirm={() => {
+					if (!advancedReadingTarget) {
+						return
+					}
+
+					void center
+						.handleReprocessWithAi(advancedReadingTarget)
+						.finally(() => setAdvancedReadingTarget(null))
+				}}
+				onCancel={() => setAdvancedReadingTarget(null)}
+				isBusy={center.busyItemId === advancedReadingTarget?.itemId}
+			/>
+		</>
 	)
 }

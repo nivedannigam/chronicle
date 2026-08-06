@@ -510,6 +510,31 @@ export function buildVisitChronicleSummary(visit: HealthVisit): string {
 	})
 }
 
+export function buildVisitDoctorNotes(
+	visit: HealthVisit,
+	reports: Array<{
+		id: string
+		parsed?: { metadata: { doctorName?: string | null } } | null
+	}>,
+): string | null {
+	const names = new Set<string>()
+
+	for (const reportId of visit.reportIds) {
+		const report = reports.find((entry) => entry.id === reportId)
+		const doctorName = report?.parsed?.metadata.doctorName?.trim()
+
+		if (doctorName) {
+			names.add(doctorName)
+		}
+	}
+
+	if (names.size === 0) {
+		return null
+	}
+
+	return [...names].join(', ')
+}
+
 export function buildVisitAskSuggestions(visit: HealthVisit): string[] {
 	return [
 		'What changed since my last visit?',

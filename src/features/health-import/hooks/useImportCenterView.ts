@@ -14,7 +14,6 @@ import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthR
 import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { reprocessHealthReportWithAi } from '@/features/health/services/health-processing.service'
 import { retryHealthDocument } from '@/features/health/workflow/health-workflow-retry.service'
-import { AI_REPROCESS_CONFIRMATION } from '@/features/health/services/health-ai-extraction.service'
 import { useImportReview } from '@/features/medical-discovery/hooks/useImportReview'
 import { useUser } from '@/features/user/hooks/useUser'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
@@ -159,10 +158,6 @@ export function useImportCenterView(userId: string | undefined) {
 		reportId: string
 		itemId: string
 	}) => {
-		if (!window.confirm(AI_REPROCESS_CONFIRMATION)) {
-			return
-		}
-
 		setBusyItemId(input.itemId)
 
 		try {

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { Cloud, Download, Eye, Folder, Inbox, Unplug } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, Cloud, Download, Eye, Folder, Unplug } from 'lucide-react'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
 import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -37,6 +39,8 @@ export function FigmaHealthSettingsView({
 	importCenterAttentionCount?: number
 	onOpenImportCenter: () => void
 }) {
+	const [advancedOpen, setAdvancedOpen] = useState(false)
+
 	return (
 		<div style={{ paddingBottom: 32 }}>
 			<Section label="Google Drive">
@@ -95,21 +99,6 @@ export function FigmaHealthSettingsView({
 				)}
 			</Section>
 
-			<Section label="Import Center">
-				<Row
-					icon={Inbox}
-					color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
-					title="Import Center"
-					subtitle={
-						importCenterAttentionCount > 0
-							? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
-							: 'Recent activity and anything Chronicle needs from you'
-					}
-					actionLabel="Open"
-					onAction={onOpenImportCenter}
-				/>
-			</Section>
-
 			<Section label="Privacy">
 				<Row
 					icon={Eye}
@@ -132,18 +121,62 @@ export function FigmaHealthSettingsView({
 				/>
 			</Section>
 
-			<Section label="Disconnect">
-				<Row
-					icon={Unplug}
-					color={FC.orange}
-					title="Disconnect Google Drive"
-					subtitle="Stop syncing new reports from Drive"
-					actionLabel={isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
-					onAction={onDisconnect}
-					disabled={!driveConnected || isDisconnecting}
-					tone="danger"
-				/>
-			</Section>
+			<section style={{ marginBottom: 24 }}>
+				<button
+					type="button"
+					onClick={() => setAdvancedOpen((open) => !open)}
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						width: '100%',
+						background: 'none',
+						border: 'none',
+						padding: '0 0 12px',
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+					}}
+				>
+					<FigmaHealthSectionLabel>
+						{USER_VOCAB.sections.advanced}
+					</FigmaHealthSectionLabel>
+					<ChevronDown
+						size={18}
+						color={FC.mid}
+						style={{
+							transform: advancedOpen ? 'rotate(180deg)' : 'none',
+							transition: 'transform 0.2s ease',
+						}}
+					/>
+				</button>
+
+				{advancedOpen ? (
+					<div style={{ display: 'grid', gap: 12 }}>
+						<Row
+							icon={Folder}
+							color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
+							title={USER_VOCAB.sections.reportImports}
+							subtitle={
+								importCenterAttentionCount > 0
+									? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
+									: 'Recent imports and anything that needs your attention'
+							}
+							actionLabel="Open"
+							onAction={onOpenImportCenter}
+						/>
+						<Row
+							icon={Unplug}
+							color={FC.orange}
+							title="Disconnect Google Drive"
+							subtitle="Stop syncing new reports from Drive"
+							actionLabel={isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+							onAction={onDisconnect}
+							disabled={!driveConnected || isDisconnecting}
+							tone="danger"
+						/>
+					</div>
+				) : null}
+			</section>
 		</div>
 	)
 }

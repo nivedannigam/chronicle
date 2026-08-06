@@ -21,6 +21,10 @@ export { HealthImportConsolePage } from '@/features/health/pages/HealthImportCon
 export { HealthFolderSetupPage } from '@/features/health/pages/HealthFolderSetupPage'
 export { HealthReportDetailPage } from '@/features/health/pages/HealthReportDetailPage'
 export { HealthComparePage } from '@/features/health/pages/HealthComparePage'
+export {
+	HealthProvider,
+	useHealthContext,
+} from '@/features/health/context/HealthContext'
 export { useHealthDashboard } from '@/features/health/hooks/useHealthDashboard'
 export { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
 export { useHealthWorkflowProjection } from '@/features/health/hooks/useHealthWorkflowProjection'

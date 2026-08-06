@@ -10,6 +10,7 @@ import {
 	ExtractMetricsAiInvokeError,
 } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
 import type { UploadedHealthReport } from '@/features/health/types'
+import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import {
 	healthReportQualifiesForMetriclessCompletion,
@@ -70,7 +71,7 @@ export function getHealthReportFailureMessage(
 		return OCR_FAILED_USER_MESSAGE
 	}
 
-	return report.processing_error ?? 'This document needs your attention.'
+	return USER_VOCAB.messages.couldNotUnderstand
 }
 
 export function toAiReprocessUserFacingError(error: unknown): string {
@@ -335,7 +336,7 @@ export async function buildHealthReportFromAiExtraction(input: {
 }
 
 export const AI_REPROCESS_CONFIRMATION =
-	'Reprocess with AI uses an alternative reader to extract results from this document. Verify results before relying on them.\n\nContinue?'
+	USER_VOCAB.messages.advancedReadingConfirm
 
 export const AI_BULK_REPROCESS_CONFIRMATION = (count: number) =>
 	`Reprocess ${count} document${count === 1 ? '' : 's'} with AI? Results may need verification.\n\nContinue?`

@@ -1,61 +1,23 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useFamilyContext } from '@/features/family/context/FamilyContext'
-import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
-import { useAuth } from '@/features/auth'
 import { HealthImportAttentionBanner } from '@/features/health/components/HealthImportAttentionBanner'
-import { useImportAttentionSummary } from '@/features/health-import/hooks/useImportAttentionSummary'
 import {
 	DashboardEmptyState,
 	DashboardSkeleton,
 } from '@/features/health/components/dashboard/DashboardEmptyState'
-import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
+import { useHealthContext } from '@/features/health/context/HealthContext'
+import { useImportAttentionSummary } from '@/features/health-import/hooks/useImportAttentionSummary'
+import { useAuth } from '@/features/auth'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
 import { FigmaHealthHomeView } from '@/ui/figma/health/FigmaHealthHomeView'
-import { buildHealthStoryViewModel } from '@/features/health/services/health-story.mapper'
-import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function HealthHomePage() {
 	const navigate = useNavigate()
 	const { user } = useAuth()
-	const { selectedMember } = useFamilyContext()
-	const {
-		companion,
-		reports,
-		hasImportedReports,
-		isLoading,
-		isError,
-		refetch,
-	} = useHealthCompanion()
-
-	const visits = useMemo(() => buildHealthVisits(reports), [reports])
+	const { story, hasImportedReports, isLoading, isError, refetch } =
+		useHealthContext()
 	const importAttention = useImportAttentionSummary(user?.id)
-
-	const memberName = resolveMemberDisplayName({
-		profileName:
-			(typeof user?.user_metadata?.full_name === 'string'
-				? user.user_metadata.full_name
-				: null) ??
-			(typeof user?.user_metadata?.name === 'string'
-				? user.user_metadata.name
-				: null),
-		memberDisplayName: selectedMember?.displayName,
-		isAccountOwner: selectedMember?.isAccountOwner,
-	})
-
-	const story = useMemo(
-		() =>
-			buildHealthStoryViewModel({
-				companion,
-				memberName,
-				hasReports: hasImportedReports,
-				reportCount: companion.profile?.reportCount ?? reports.length,
-				visits,
-			}),
-		[companion, memberName, hasImportedReports, reports.length, visits],
-	)
 
 	if (isLoading) {
 		return <DashboardSkeleton />

@@ -109,7 +109,7 @@ describe('health-coverage.service', () => {
 		expect(snapshot.discoveredCount).toBe(3)
 		expect(snapshot.corpusCompleteness).toBe('partial')
 		expect(
-			snapshot.limitations.some((line) => /failed to import/i.test(line)),
+			snapshot.limitations.some((line) => /need your help/i.test(line)),
 		).toBe(true)
 		expect(snapshot.summaryLine).toContain('1 failed')
 	})

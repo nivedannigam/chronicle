@@ -4,16 +4,13 @@ import {
 	buildHealthCoverageSnapshot,
 } from '@/features/health/services/health-coverage.service'
 import { countProcessingReports } from '@/features/health/services/report-readiness.service'
-import {
-	getParsedHealthReport,
-	getReportDisplayTitle,
-} from '@/features/health/services/health-parsed-report.service'
+import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { buildHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-builder'
+import { computeHealthScoreFromHistories } from '@/features/health-knowledge/services/health-scoring.service'
 import {
 	buildKnowledgeConfidence,
 	deriveMetricConfidence,
 	extractReportConfidences,
-	metricFromStored,
 } from '@/features/health-knowledge/engines/confidence.model'
 import {
 	partitionRankedMetrics,
@@ -45,9 +42,8 @@ import type {
 	HealthKnowledgeReportRef,
 	HealthKnowledgeSource,
 } from '@/features/health-knowledge/types/health-knowledge-object.types'
-import type { MetricCategoryId } from '@/features/health-knowledge/types/health-knowledge.types'
+import type { HealthKnowledgeGraph } from '@/features/health-knowledge/types'
 import { resolveMetricCategoryId } from '@/features/health-knowledge/utils/metric-category-resolver'
-import type { StoredHealthMetric } from '@/features/health/types/health-metric-record.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 function mapReportRef(report: UploadedHealthReport): HealthKnowledgeReportRef {
@@ -73,109 +69,39 @@ function mapReportRef(report: UploadedHealthReport): HealthKnowledgeReportRef {
 	}
 }
 
-function buildRankableMetrics(input: {
-	reports: UploadedHealthReport[]
-	storedMetrics: StoredHealthMetric[]
-}): RankableMetricInput[] {
-	const reportById = new Map(input.reports.map((report) => [report.id, report]))
-	const rankable: RankableMetricInput[] = []
-	const seen = new Set<string>()
-
-	for (const stored of input.storedMetrics) {
-		const key = `${stored.report_id}:${stored.canonical_metric_id}`
-		seen.add(key)
-		const report = reportById.get(stored.report_id)
-		const meta = metricFromStored(stored)
-
-		rankable.push({
-			id: stored.id,
-			canonicalId: stored.canonical_metric_id,
-			displayName: stored.display_name,
-			value: stored.value,
-			unit: stored.unit,
-			status: stored.status,
-			categoryId: resolveMetricCategoryId({
-				canonicalId: stored.canonical_metric_id,
-				displayName: stored.display_name,
-				fallbackCategoryId: stored.category as MetricCategoryId,
-			}),
-			observedAt: stored.observed_at,
-			reportId: stored.report_id,
-			reportTitle: report ? getReportDisplayTitle(report) : 'Health Report',
-			referenceRange: stored.reference_range_raw ?? '',
-			source: meta.source,
-			confidence: meta.confidence,
-			validationStatus: meta.validationStatus,
-		})
-	}
-
-	for (const report of input.reports.filter(
-		(item) => item.status === 'completed',
-	)) {
-		const parsed = getParsedHealthReport(report)
-
-		if (!parsed) {
-			continue
-		}
-
-		for (const [index, metric] of (parsed.metrics ?? []).entries()) {
-			const canonicalId =
-				metric.canonicalId ??
-				`raw:${metric.rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-			const key = `${report.id}:${canonicalId}`
-
-			if (seen.has(key)) {
-				continue
-			}
-
-			seen.add(key)
+function rankableMetricsFromGraph(
+	graph: HealthKnowledgeGraph,
+): RankableMetricInput[] {
+	return graph.profile.metricHistories.flatMap((history) =>
+		history.observations.map((observation) => {
 			const meta = deriveMetricConfidence({
-				status: metric.status,
-				confidence: metric.confidence ?? 0.7,
-				source: 'parser',
+				status: observation.status,
+				confidence: observation.confidence ?? 0.7,
+				source: observation.source === 'stored' ? 'manual' : 'parser',
 			})
 
-			rankable.push({
-				id: `${report.id}-${canonicalId}-${index}`,
-				canonicalId,
-				displayName: metric.displayName,
-				value: metric.value,
-				unit: metric.unit,
-				status: metric.status,
+			return {
+				id: observation.id,
+				canonicalId: observation.canonicalMetricId,
+				displayName: observation.displayName,
+				value: observation.value,
+				unit: observation.unit,
+				status: observation.status,
 				categoryId: resolveMetricCategoryId({
-					canonicalId,
-					displayName: metric.displayName,
+					canonicalId: observation.canonicalMetricId,
+					displayName: observation.displayName,
+					definitionCategoryId: history.categoryId,
 				}),
-				observedAt:
-					parsed.metadata.reportDate ??
-					report.report_date ??
-					report.processed_at ??
-					report.uploaded_at,
-				reportId: report.id,
-				reportTitle: getReportDisplayTitle(report),
-				referenceRange: metric.referenceRange?.rawText ?? '',
+				observedAt: observation.observedAt,
+				reportId: observation.reportId,
+				reportTitle: observation.reportTitle,
+				referenceRange: observation.referenceRange,
 				source: meta.source,
-				confidence: metric.confidence ?? 0.7,
+				confidence: observation.confidence ?? 0.7,
 				validationStatus: meta.validationStatus,
-			})
-		}
-	}
-
-	return rankable
-}
-
-function computeHealthScore(metrics: HealthKnowledgeMetric[]): number | null {
-	const classified = metrics.filter((metric) => metric.status !== 'unknown')
-
-	if (classified.length < 5) {
-		return null
-	}
-
-	const normalCount = classified.filter(
-		(metric) => metric.status === 'normal',
-	).length
-
-	return Math.round((normalCount / classified.length) * 100)
+			}
+		}),
+	)
 }
 
 function resolveFamilyMember(
@@ -288,14 +214,13 @@ export class HealthKnowledgeProvider {
 			? reportRefs.filter((report) => report.id !== latestReport.id)
 			: reportRefs.slice(1)
 
-		const rankable = buildRankableMetrics({
-			reports: memberReports,
-			storedMetrics: memberMetrics,
-		})
+		const rankable = rankableMetricsFromGraph(graph)
 		const metrics = rankHealthMetrics(rankable)
 		const partitions = partitionRankedMetrics(metrics)
 		const trendAnalysis = buildTrendAnalysis(graph)
-		const healthScore = computeHealthScore(metrics)
+		const healthScore = computeHealthScoreFromHistories(
+			graph.profile.metricHistories,
+		)
 
 		const limitations = buildKnowledgeLimitations({
 			reports: reportRefs,

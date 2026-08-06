@@ -1,7 +1,6 @@
 import { ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
 import { buildHealthCompanionSuggestions } from '@/features/ask/services/health-companion-suggestions.service'
-import type { UploadedHealthReport } from '@/features/health/types'
-import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
+import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import {
 	AskColors,
 	AskLayout,
@@ -12,10 +11,15 @@ export function AskPremiumEmptyState({
 	onSelectQuestion,
 	consumerMode = false,
 	reportCount = 0,
+	healthSummary,
 }: {
 	onSelectQuestion: (question: string) => void
 	consumerMode?: boolean
 	reportCount?: number
+	healthSummary?: Pick<
+		HealthCanonicalSnapshot,
+		'overallStatus' | 'overallSummary' | 'score'
+	>
 }) {
 	const suggestions = consumerMode
 		? buildHealthCompanionSuggestions({ reportCount }).map(
@@ -54,17 +58,54 @@ export function AskPremiumEmptyState({
 			</h2>
 
 			{consumerMode ? (
-				<p
-					style={{
-						...AskTypography.body,
-						color: AskColors.mid,
-						margin: '0 0 24px',
-						maxWidth: 340,
-					}}
-				>
-					Chronicle reads your lab reports and visits to give personalized
-					answers — not generic health advice.
-				</p>
+				<>
+					{healthSummary && reportCount > 0 ? (
+						<div
+							style={{
+								background: AskColors.card,
+								border: `1px solid ${AskColors.line}`,
+								borderRadius: 16,
+								padding: '14px 16px',
+								marginBottom: 20,
+								maxWidth: 360,
+							}}
+						>
+							<p
+								style={{
+									...AskTypography.sectionTitle,
+									color: AskColors.dim,
+									margin: '0 0 4px',
+									textTransform: 'uppercase',
+								}}
+							>
+								{healthSummary.overallStatus}
+								{healthSummary.score != null
+									? ` · ${healthSummary.score}/100`
+									: ''}
+							</p>
+							<p
+								style={{
+									...AskTypography.body,
+									color: AskColors.mid,
+									margin: 0,
+								}}
+							>
+								{healthSummary.overallSummary}
+							</p>
+						</div>
+					) : null}
+					<p
+						style={{
+							...AskTypography.body,
+							color: AskColors.mid,
+							margin: '0 0 24px',
+							maxWidth: 340,
+						}}
+					>
+						Chronicle reads your lab reports and visits to give personalized
+						answers — not generic health advice.
+					</p>
+				</>
 			) : null}
 
 			<div
@@ -100,10 +141,4 @@ export function AskPremiumEmptyState({
 			</div>
 		</div>
 	)
-}
-
-export function resolveAskEmptyReportCount(
-	reports: UploadedHealthReport[],
-): number {
-	return reports.filter(isReportDisplayReady).length
 }

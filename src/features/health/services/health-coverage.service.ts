@@ -203,7 +203,7 @@ function buildCoverageLimitations(input: {
 
 	if (input.failedCount > 0) {
 		limitations.push(
-			`${input.failedCount} file${input.failedCount === 1 ? '' : 's'} failed to import — review Import Center to retry or skip.`,
+			`${input.failedCount} file${input.failedCount === 1 ? '' : 's'} need your help — open Report imports to try again.`,
 		)
 	}
 

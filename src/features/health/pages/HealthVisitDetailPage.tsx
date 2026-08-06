@@ -4,11 +4,9 @@ import { ArrowLeft } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
-import { useHealthCompanion } from '@/features/health/hooks/useHealthCompanion'
-import {
-	buildHealthVisits,
-	findHealthVisit,
-} from '@/features/health/services/health-visit.mapper'
+import { useHealthContext } from '@/features/health/context/HealthContext'
+import { findHealthVisit } from '@/features/health/services/health-visit.mapper'
+import { buildVisitDoctorNotes } from '@/features/health/services/health-visit.mapper'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
 import { buildProductReportCard } from '@/features/health/services/health-product.mapper'
 import {
@@ -21,7 +19,7 @@ const IMPORTANT_STATUSES = new Set(['low', 'high', 'critical', 'borderline'])
 
 function buildVisitResults(
 	reportIds: string[],
-	reports: ReturnType<typeof useHealthCompanion>['reports'],
+	reports: ReturnType<typeof useHealthContext>['reports'],
 ): VisitResultMetric[] {
 	const reportMap = new Map(reports.map((report) => [report.id, report]))
 	const results: VisitResultMetric[] = []
@@ -46,9 +44,9 @@ function buildVisitResults(
 				value: `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}`,
 				statusLabel:
 					metric.status === 'low'
-						? 'Low'
+						? 'Below range'
 						: metric.status === 'high'
-							? 'High'
+							? 'Above range'
 							: metric.status === 'critical'
 								? 'Critical'
 								: 'Borderline',
@@ -63,9 +61,9 @@ function buildVisitResults(
 export function HealthVisitDetailPage() {
 	const { visitId } = useParams<{ visitId: string }>()
 	const navigate = useNavigate()
-	const { reports, isLoading, isError, refetch } = useHealthCompanion()
+	const { visits, reports, visitChanges, isLoading, isError, refetch } =
+		useHealthContext()
 
-	const visits = useMemo(() => buildHealthVisits(reports), [reports])
 	const visit = useMemo(
 		() => findHealthVisit(visits, visitId),
 		[visits, visitId],
@@ -74,6 +72,20 @@ export function HealthVisitDetailPage() {
 		() => (visit ? buildVisitResults(visit.reportIds, reports) : []),
 		[visit, reports],
 	)
+	const changes = visit ? (visitChanges[visit.id] ?? []) : []
+	const doctorNotes = useMemo(() => {
+		if (!visit) {
+			return null
+		}
+
+		return buildVisitDoctorNotes(
+			visit,
+			reports.map((report) => ({
+				id: report.id,
+				parsed: getParsedHealthReport(report),
+			})),
+		)
+	}, [visit, reports])
 
 	if (isLoading) {
 		return <ListSkeleton rows={5} />
@@ -89,14 +101,14 @@ export function HealthVisitDetailPage() {
 	}
 
 	if (!visit) {
-		return <Navigate to={ROUTES.healthReports} replace />
+		return <Navigate to={ROUTES.healthHistory} replace />
 	}
 
 	return (
 		<div style={{ paddingBottom: 24 }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.healthReports)}
+				onClick={() => navigate(ROUTES.healthHistory)}
 				style={{
 					display: 'inline-flex',
 					alignItems: 'center',
@@ -113,9 +125,14 @@ export function HealthVisitDetailPage() {
 				}}
 			>
 				<ArrowLeft size={15} />
-				All visits
+				Health history
 			</button>
-			<FigmaHealthVisitDetailView visit={visit} results={results} />
+			<FigmaHealthVisitDetailView
+				visit={visit}
+				results={results}
+				changes={changes}
+				doctorNotes={doctorNotes}
+			/>
 		</div>
 	)
 }

@@ -135,6 +135,7 @@ describe('buildHealthVisits', () => {
 				fileName: 'Feb 2026 Company plan.pdf',
 				date: '2026-02-01',
 				status: 'failed',
+				laboratory: 'Apollo',
 			}),
 			makeReport({
 				id: 'r2',

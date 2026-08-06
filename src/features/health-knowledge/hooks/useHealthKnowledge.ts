@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
+import { buildHealthVisitSnapshots } from '@/features/health-knowledge/services/health-snapshot.service'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 
@@ -23,6 +24,10 @@ export function useHealthKnowledge(
 		return {
 			graph,
 			profile: graph.profile,
+			visitSnapshots: buildHealthVisitSnapshots({
+				graph,
+				reports: uploadedReports,
+			}),
 			snapshots: healthKnowledgeService.getSnapshots(
 				userId,
 				uploadedReports,
