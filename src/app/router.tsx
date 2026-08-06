@@ -15,6 +15,7 @@ import {
 	HealthHomePage,
 	HealthImportCenterPage,
 	HealthLayout,
+	HealthProgressPage,
 	HealthReportDetailPage,
 	HealthReportsPage,
 	HealthSettingsPage,
@@ -196,6 +197,7 @@ export function AppRouter() {
 
 					<Route path={ROUTES.health} element={<HealthLayout />}>
 						<Route index element={<HealthHomePage />} />
+						<Route path="progress" element={<HealthProgressPage />} />
 						<Route path="history" element={<HealthHistoryPage />} />
 						<Route path="reports" element={<HealthReportsPage />} />
 						<Route path="visits/:visitId" element={<HealthVisitDetailPage />} />

@@ -5,6 +5,7 @@ import {
 	MessageCircle,
 	ScrollText,
 	Settings,
+	TrendingUp,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
@@ -32,6 +33,13 @@ const HEALTH_TABS: {
 		Icon: Home,
 		color: FC.green,
 		end: true,
+	},
+	{
+		id: 'progress',
+		label: HEALTH_COPY.progressTab,
+		path: ROUTES.healthProgress,
+		Icon: TrendingUp,
+		color: FC.teal,
 	},
 	{
 		id: 'history',

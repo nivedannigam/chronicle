@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react'
 import { AskColors, AskTypography } from '@/ui/figma/ask/ask-design-tokens'
 
 interface FollowUpChipsProps {
@@ -18,24 +19,39 @@ export function FollowUpChips({
 	}
 
 	return (
-		<div style={{ marginTop: 28 }} role="list" aria-label="Related questions">
-			<p
-				style={{
-					...AskTypography.sectionTitle,
-					color: AskColors.dim,
-					margin: '0 0 10px',
-				}}
-			>
-				Related questions
-			</p>
+		<div
+			style={{
+				marginTop: 28,
+				paddingTop: 24,
+				borderTop: `1px solid ${AskColors.line}`,
+			}}
+			role="list"
+			aria-label="Suggested follow-ups"
+		>
 			<div
 				style={{
 					display: 'flex',
+					alignItems: 'center',
+					gap: 6,
+					marginBottom: 12,
+				}}
+			>
+				<MessageCircle size={14} color={AskColors.primary} />
+				<p
+					style={{
+						...AskTypography.sectionTitle,
+						color: AskColors.primary,
+						margin: 0,
+					}}
+				>
+					Suggested follow-ups
+				</p>
+			</div>
+			<div
+				style={{
+					display: 'flex',
+					flexWrap: 'wrap',
 					gap: 8,
-					overflowX: 'auto',
-					scrollbarWidth: 'none',
-					WebkitOverflowScrolling: 'touch',
-					paddingBottom: 2,
 				}}
 			>
 				{visible.map((question) => (
@@ -46,18 +62,17 @@ export function FollowUpChips({
 						onClick={() => onSelect(question)}
 						role="listitem"
 						style={{
-							flexShrink: 0,
-							fontSize: 12,
+							fontSize: 13,
 							fontWeight: 500,
 							color: AskColors.mid,
 							background: AskColors.cardElevated,
 							border: `1px solid ${AskColors.line}`,
 							borderRadius: 100,
-							padding: '7px 12px',
+							padding: '8px 14px',
 							cursor: disabled ? 'not-allowed' : 'pointer',
 							fontFamily: 'inherit',
-							lineHeight: 1.3,
-							whiteSpace: 'nowrap',
+							lineHeight: 1.35,
+							transition: 'border-color 0.15s ease, background 0.15s ease',
 						}}
 					>
 						{question}

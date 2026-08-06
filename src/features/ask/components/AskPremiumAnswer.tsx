@@ -1,9 +1,14 @@
 import { useState, type ReactNode } from 'react'
 import {
+	AlertTriangle,
 	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
-	Stethoscope,
+	ClipboardList,
+	Heart,
+	Info,
+	Lightbulb,
+	TrendingUp,
 } from 'lucide-react'
 import type { StructuredAskResponse } from '@/features/ask/types/structured-response.types'
 import type { TrustResponse } from '@/features/ask/trust/trust.types'
@@ -50,7 +55,7 @@ function SectionBlock({
 	return (
 		<div
 			style={{
-				marginTop: 20,
+				marginTop: 24,
 				borderRadius: AskLayout.sectionRadius,
 				background: background ?? AskColors.cardElevated,
 				border: `1px solid ${AskColors.line}`,
@@ -84,6 +89,17 @@ function SectionBlock({
 						}}
 					>
 						{title}
+						{items.length > 1 ? (
+							<span
+								style={{
+									fontWeight: 500,
+									color: AskColors.dim,
+									marginLeft: 6,
+								}}
+							>
+								({items.length})
+							</span>
+						) : null}
 					</span>
 					{expanded ? (
 						<ChevronDown size={16} color={AskColors.dim} />
@@ -116,7 +132,7 @@ function SectionBlock({
 				<ul
 					style={{
 						margin: 0,
-						padding: canCollapse ? '0 16px 14px 36px' : '0 16px 14px 36px',
+						padding: '0 16px 14px 36px',
 						display: 'flex',
 						flexDirection: 'column',
 						gap: 8,
@@ -145,7 +161,7 @@ function needsAttentionItems(structured: StructuredAskResponse): string[] {
 
 	for (const finding of structured.keyFindings) {
 		if (
-			/\b(high|low|critical|borderline|elevated|abnormal|above|below)\b/i.test(
+			/\b(high|low|critical|borderline|elevated|abnormal|above|below|watch|monitor)\b/i.test(
 				finding,
 			)
 		) {
@@ -153,11 +169,44 @@ function needsAttentionItems(structured: StructuredAskResponse): string[] {
 		}
 	}
 
-	if (structured.confidenceLevel === 'low' && items.length === 0) {
-		items.push(...structured.keyFindings.slice(0, 3))
+	for (const finding of structured.evidenceFromReports ?? []) {
+		if (
+			/\b(high|low|critical|borderline|elevated|abnormal|above|below|watch|monitor)\b/i.test(
+				finding,
+			) &&
+			!items.includes(finding)
+		) {
+			items.push(finding)
+		}
 	}
 
 	return [...new Set(items)].slice(0, 4)
+}
+
+function buildThingsToWatch(structured: StructuredAskResponse): string[] {
+	const items = [
+		...needsAttentionItems(structured),
+		...(structured.whatItMayMean ?? []),
+	]
+
+	for (const limitation of structured.limitations) {
+		if (!/informational and not medical advice/i.test(limitation)) {
+			items.push(limitation)
+		}
+	}
+
+	if (structured.confidenceLevel === 'low' && items.length === 0) {
+		items.push(
+			structured.uncertaintyNote ??
+				'A few details may be incomplete — worth confirming with your doctor.',
+		)
+	}
+
+	return [...new Set(items)].slice(0, 5)
+}
+
+function buildRecommendationItems(structured: StructuredAskResponse): string[] {
+	return [...new Set([...structured.recommendations])].slice(0, 5)
 }
 
 export function AskPremiumAnswer({
@@ -176,8 +225,9 @@ export function AskPremiumAnswer({
 		: structured.keyFindings
 
 	const whatChanged = structured.whatChanged ?? []
+	const thingsToWatch = buildThingsToWatch(structured)
+	const recommendations = buildRecommendationItems(structured)
 	const doctorDiscussion = structured.doctorDiscussion ?? []
-	const attentionItems = needsAttentionItems(structured)
 
 	return (
 		<article
@@ -186,24 +236,35 @@ export function AskPremiumAnswer({
 				transition: 'opacity 0.2s ease',
 			}}
 		>
-			{/* Overall Summary */}
+			{/* 1. Overall Assessment */}
 			<div
 				style={{
 					borderRadius: AskLayout.sectionRadius,
 					background: AskColors.primaryMuted,
+					border: `1px solid rgba(59, 130, 246, 0.2)`,
 					borderLeft: `3px solid ${AskColors.primary}`,
-					padding: '16px 18px',
+					padding: '18px 20px',
 				}}
 			>
-				<p
+				<div
 					style={{
-						...AskTypography.sectionTitle,
-						color: AskColors.primary,
-						margin: '0 0 10px',
+						display: 'flex',
+						alignItems: 'center',
+						gap: 8,
+						marginBottom: 12,
 					}}
 				>
-					Overall Summary
-				</p>
+					<Heart size={16} color={AskColors.primary} />
+					<p
+						style={{
+							...AskTypography.sectionTitle,
+							color: AskColors.primary,
+							margin: 0,
+						}}
+					>
+						Overall Assessment
+					</p>
+				</div>
 				<div
 					style={{
 						...AskTypography.answer,
@@ -228,42 +289,97 @@ export function AskPremiumAnswer({
 				</div>
 			</div>
 
-			{/* Key Findings */}
+			{/* 2. Key Findings — collapsed so evidence does not dominate */}
 			<SectionBlock
 				title="Key Findings"
 				icon={<CheckCircle2 size={16} color={AskColors.positive} />}
 				accentColor={AskColors.positive}
+				background={AskColors.positiveMuted}
+				borderLeft={`3px solid ${AskColors.positive}`}
 				items={keyFindings}
+				collapsedDefault={keyFindings.length > 0}
 			/>
 
-			{/* Needs Attention */}
-			{attentionItems.length > 0 ? (
+			{/* 3. What Changed */}
+			{whatChanged.length > 0 ? (
 				<SectionBlock
-					title="Needs Attention"
-					accentColor={AskColors.attention}
-					background={AskColors.attentionMuted}
-					borderLeft={`3px solid ${AskColors.attention}`}
-					items={attentionItems}
+					title="What Changed"
+					icon={<TrendingUp size={16} color={AskColors.info} />}
+					accentColor={AskColors.info}
+					background={AskColors.infoMuted}
+					borderLeft={`3px solid ${AskColors.info}`}
+					items={whatChanged}
 				/>
 			) : null}
 
-			{/* What Changed */}
-			{whatChanged.length > 0 ? (
-				<SectionBlock title="What Changed" items={whatChanged} />
+			{/* 4. Things to Watch */}
+			{thingsToWatch.length > 0 ? (
+				<SectionBlock
+					title="Things to Watch"
+					icon={<AlertTriangle size={16} color={AskColors.attention} />}
+					accentColor={AskColors.attention}
+					background={AskColors.attentionMuted}
+					borderLeft={`3px solid ${AskColors.attention}`}
+					items={thingsToWatch}
+				/>
 			) : null}
 
-			{/* Doctor Discussion — collapsed by default */}
-			<SectionBlock
-				title="What to discuss with your doctor"
-				icon={<Stethoscope size={16} color="#A78BFA" />}
-				accentColor="#A78BFA"
-				background="rgba(139, 92, 246, 0.08)"
-				borderLeft="3px solid #8B5CF6"
-				items={doctorDiscussion}
-				collapsedDefault
-			/>
+			{/* 5. Recommendations */}
+			{recommendations.length > 0 ? (
+				<SectionBlock
+					title="Recommendations"
+					icon={<Lightbulb size={16} color={AskColors.primary} />}
+					accentColor={AskColors.primary}
+					background={AskColors.primaryMuted}
+					borderLeft={`3px solid ${AskColors.primary}`}
+					items={recommendations}
+				/>
+			) : null}
 
+			{/* Doctor discussion — collapsed, secondary to recommendations */}
+			{doctorDiscussion.length > 0 ? (
+				<SectionBlock
+					title="For your next doctor visit"
+					icon={<ClipboardList size={16} color="#A78BFA" />}
+					accentColor="#A78BFA"
+					background="rgba(139, 92, 246, 0.08)"
+					borderLeft="3px solid #8B5CF6"
+					items={doctorDiscussion}
+					collapsedDefault
+				/>
+			) : null}
+
+			{/* 6. Supporting Reports — collapsed */}
 			<AskSupportingReports trust={trust} />
+
+			{structured.showSafetyFooter ? (
+				<div
+					style={{
+						marginTop: 20,
+						display: 'flex',
+						alignItems: 'flex-start',
+						gap: 8,
+						padding: '12px 14px',
+						borderRadius: AskLayout.sectionRadius,
+						background: AskColors.cardElevated,
+						border: `1px solid ${AskColors.line}`,
+					}}
+				>
+					<Info size={14} color={AskColors.neutral} style={{ marginTop: 2 }} />
+					<p
+						style={{
+							...AskTypography.body,
+							fontSize: 13,
+							color: AskColors.slate,
+							margin: 0,
+							lineHeight: 1.55,
+						}}
+					>
+						This is informational and not medical advice. Always consult a
+						healthcare professional for personal medical decisions.
+					</p>
+				</div>
+			) : null}
 		</article>
 	)
 }

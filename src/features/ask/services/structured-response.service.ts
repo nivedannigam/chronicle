@@ -1,6 +1,10 @@
 import type { AskConversationTurn } from '@/features/ask/types'
 import type { StructuredAskResponse } from '@/features/ask/types/structured-response.types'
 import { TRUST_SAFETY_FOOTER } from '@/features/ask/trust/trust.types'
+import {
+	buildAnswerContext,
+	filterFollowUpQuestions,
+} from '@/features/ask/utils/follow-up-questions.utils'
 
 const SAFETY_PATTERN = /this is informational and not medical advice/i
 
@@ -90,16 +94,16 @@ export function buildStructuredResponse(
 			? paragraphs.slice(1).join('\n\n')
 			: null
 
-	const relatedQuestions = Array.from(
-		new Set([
-			...turn.followUpQuestions,
-			...(turn.trust?.followUpQuestions ?? []),
-		]),
-	).slice(0, 5)
-
 	const limitations = buildLimitations(turn)
+	const platformRecommendations = platform?.recommendations ?? []
+	const recommendations = [
+		...platformRecommendations,
+		...buildRecommendations(turn).filter(
+			(item) => !platformRecommendations.includes(item),
+		),
+	].slice(0, 4)
 
-	return {
+	const structuredDraft: StructuredAskResponse = {
 		directAnswer,
 		evidenceFromReports: platform?.evidenceFromReports ?? keyFindings,
 		whatChanged: platform?.whatChanged,
@@ -113,7 +117,7 @@ export function buildStructuredResponse(
 		})),
 		keyFindings,
 		explanation,
-		recommendations: buildRecommendations(turn),
+		recommendations,
 		limitations,
 		hasEvidence: Boolean(
 			turn.trust?.evidenceItems.length ||
@@ -121,12 +125,26 @@ export function buildStructuredResponse(
 			turn.evidence.length ||
 			(platform?.sourceReports?.length ?? 0) > 0,
 		),
-		relatedQuestions,
+		relatedQuestions: [],
 		confidenceLevel:
 			platform?.confidenceLevel ??
 			turn.trust?.confidence.level ??
 			turn.confidenceLevel,
 		uncertaintyNote: buildUncertaintyNote(turn),
 		showSafetyFooter: SAFETY_PATTERN.test(turn.answer),
+	}
+
+	const rawFollowUps = [
+		...(platform?.followUpQuestions ?? []),
+		...turn.followUpQuestions,
+		...(turn.trust?.followUpQuestions ?? []),
+	]
+
+	return {
+		...structuredDraft,
+		relatedQuestions: filterFollowUpQuestions(
+			rawFollowUps,
+			buildAnswerContext(structuredDraft),
+		).slice(0, 4),
 	}
 }

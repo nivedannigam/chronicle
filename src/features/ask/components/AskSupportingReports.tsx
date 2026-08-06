@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText } from 'lucide-react'
 import {
 	groupSupportingReports,
 	type SupportingReportGroup,
 } from '@/features/ask/utils/supporting-reports.utils'
 import type { TrustResponse } from '@/features/ask/trust/trust.types'
-import { AskColors, AskTypography } from '@/ui/figma/ask/ask-design-tokens'
+import {
+	AskColors,
+	AskLayout,
+	AskTypography,
+} from '@/ui/figma/ask/ask-design-tokens'
 
 interface AskSupportingReportsProps {
 	trust: TrustResponse | undefined
@@ -29,9 +33,9 @@ function ReportRow({ report }: { report: SupportingReportGroup }) {
 		<div style={{ padding: '8px 0', borderTop: `1px solid ${AskColors.line}` }}>
 			<div
 				style={{
-					fontSize: 14,
+					fontSize: 13,
 					fontWeight: 500,
-					color: AskColors.fg,
+					color: AskColors.mid,
 					lineHeight: 1.4,
 				}}
 			>
@@ -60,7 +64,7 @@ function ReportRow({ report }: { report: SupportingReportGroup }) {
 						<li
 							key={metric}
 							style={{
-								fontSize: 13,
+								fontSize: 12,
 								color: AskColors.neutral,
 								lineHeight: 1.45,
 							}}
@@ -83,33 +87,59 @@ export function AskSupportingReports({ trust }: AskSupportingReportsProps) {
 	}
 
 	return (
-		<div style={{ marginTop: 20 }}>
+		<div
+			style={{
+				marginTop: 24,
+				borderRadius: AskLayout.sectionRadius,
+				background: AskColors.cardElevated,
+				border: `1px solid ${AskColors.line}`,
+				overflow: 'hidden',
+			}}
+		>
 			<button
 				type="button"
 				onClick={() => setExpanded((value) => !value)}
 				style={{
-					display: 'inline-flex',
+					width: '100%',
+					display: 'flex',
 					alignItems: 'center',
-					gap: 6,
-					padding: 0,
+					gap: 8,
+					padding: '12px 16px',
 					background: 'transparent',
 					border: 'none',
 					cursor: 'pointer',
 					fontFamily: 'inherit',
-					...AskTypography.sectionTitle,
-					color: AskColors.slate,
+					textAlign: 'left',
 				}}
 			>
+				<FileText size={14} color={AskColors.slate} />
+				<span
+					style={{
+						...AskTypography.sectionTitle,
+						color: AskColors.slate,
+						flex: 1,
+					}}
+				>
+					Supporting reports
+					<span
+						style={{
+							fontWeight: 500,
+							color: AskColors.dim,
+							marginLeft: 6,
+						}}
+					>
+						({reports.length})
+					</span>
+				</span>
 				{expanded ? (
 					<ChevronDown size={14} color={AskColors.neutral} />
 				) : (
 					<ChevronRight size={14} color={AskColors.neutral} />
 				)}
-				Supporting reports ({reports.length})
 			</button>
 
 			{expanded ? (
-				<div style={{ marginTop: 4 }}>
+				<div style={{ padding: '0 16px 12px' }}>
 					{reports.map((report) => (
 						<ReportRow key={report.id} report={report} />
 					))}

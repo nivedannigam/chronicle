@@ -17,18 +17,20 @@ function buildMockResponse(input: {
 		input.request.messages.find((message) => message.role === 'user')
 			?.content ?? ''
 
-	const isEvidencePrompt = /SelectedEvidence/i.test(userMessage)
-	const hasReportEvidence = /"type": "health_report"/i.test(userMessage)
+	const isEvidencePrompt = /SelectedEvidence|EvidenceBundle/i.test(userMessage)
+	const hasReportEvidence =
+		/"type": "health_report"/i.test(userMessage) ||
+		/"reports":\s*\[\s*\{/i.test(userMessage)
 	const hasNoReport =
 		/"latestReport": null|"latestReport":null/i.test(userMessage) ||
 		(isEvidencePrompt &&
 			!hasReportEvidence &&
-			/No health reports|no_reports|no display-ready health report/i.test(
+			/No health reports|no_reports|no display-ready health report|"reports":\s*\[\]/i.test(
 				userMessage,
 			))
 
 	const hasHealthContext =
-		/healthknowledge|metric|report|lab|cholesterol|hba1c|SelectedEvidence/i.test(
+		/healthknowledge|metric|report|lab|cholesterol|hba1c|SelectedEvidence|EvidenceBundle/i.test(
 			userMessage,
 		) && !hasNoReport
 

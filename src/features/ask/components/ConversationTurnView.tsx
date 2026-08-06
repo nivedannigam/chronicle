@@ -32,20 +32,7 @@ export function ConversationTurnView({
 	const showTyping = isTyping && !turn.answer.trim()
 	const hasAnswer = turn.answer.trim().length > 0
 	const structured = useMemo(() => buildStructuredResponse(turn), [turn])
-
-	const followUps = Array.from(
-		new Set([
-			...structured.relatedQuestions,
-			...(trust?.followUpQuestions ?? []),
-		]),
-	)
-		.filter(
-			(question) =>
-				!/why did you say|what evidence supports|which reports contributed|what information is missing/i.test(
-					question,
-				),
-		)
-		.slice(0, 4)
+	const followUps = structured.relatedQuestions
 
 	return (
 		<section

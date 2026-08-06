@@ -20,6 +20,7 @@ export const ROUTES = {
 	tasks: '/tasks',
 	more: '/more',
 	health: '/health',
+	healthProgress: '/health/progress',
 	healthReports: '/health/reports',
 	healthVisit: '/health/visits/:visitId',
 	healthHistory: '/health/history',

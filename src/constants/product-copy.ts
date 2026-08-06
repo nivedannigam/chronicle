@@ -64,6 +64,7 @@ export const HOME_COPY = {
 
 export const HEALTH_COPY = {
 	homeTab: 'Home',
+	progressTab: 'Progress',
 	historyTab: 'History',
 	reportsTab: 'Reports',
 	askTab: 'Ask',
@@ -79,6 +80,9 @@ export const HEALTH_COPY = {
 	emptyHistoryTitle: 'Your health history will appear here',
 	emptyHistoryBody:
 		'Checkups and meaningful changes from your reports will show up here over time.',
+	emptyProgressTitle: 'Your progress story starts here',
+	emptyProgressBody:
+		'As reports are added, Chronicle will show how your health is improving over time.',
 	emptyReportsTitle: 'No reports yet',
 	emptyReportsBody:
 		'When health reports are added, they will appear here as a simple list.',

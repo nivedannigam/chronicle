@@ -4,6 +4,8 @@ export const AskColors = {
 	primaryMuted: 'rgba(59, 130, 246, 0.12)',
 	positive: '#10B981',
 	positiveMuted: 'rgba(16, 185, 129, 0.12)',
+	info: '#60A5FA',
+	infoMuted: 'rgba(96, 165, 250, 0.1)',
 	attention: '#F59E0B',
 	attentionMuted: 'rgba(245, 158, 11, 0.12)',
 	critical: '#EF4444',

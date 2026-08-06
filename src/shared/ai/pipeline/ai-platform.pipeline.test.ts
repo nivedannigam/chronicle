@@ -143,10 +143,12 @@ describe('AIPlatformPipeline intent + evidence integration', () => {
 		})
 
 		expect(result.classifiedIntent.intent).toBe('LATEST_REPORT')
-		expect(result.selectedTool).toBe('health.get_latest_report')
-		expect(result.selectedEvidence.metadata.excludedItems).toContain(
-			'previousReports',
-		)
+		expect(result.selectedTool).toBe('health.evidence_resolver.v1')
+		expect(
+			result.selectedEvidence.items.some(
+				(item) => item.type === 'health_report',
+			),
+		).toBe(true)
 		expect(result.response.summary.length).toBeGreaterThan(0)
 		expect(result.observability.classifiedIntent).toBe('LATEST_REPORT')
 		expect(result.observability.evidenceCount).toBeGreaterThan(0)
@@ -171,15 +173,10 @@ describe('AIPlatformPipeline intent + evidence integration', () => {
 			healthKnowledge: knowledge,
 		})
 
-		expect(result.selectedTool).toBe('health.search_metrics')
+		expect(result.selectedTool).toBe('health.evidence_resolver.v1')
 		expect(result.selectedEvidence.metadata.excludedItems).toContain(
-			'manualModuleAssembly',
+			'categorySliceOnly',
 		)
-		expect(
-			result.selectedEvidence.items.some((item) =>
-				item.id.startsWith('graph-'),
-			),
-		).toBe(true)
 
 		const cholesterolItems = result.selectedEvidence.items.filter(
 			(item) =>

@@ -5,6 +5,7 @@ export {
 } from '@/features/health/pages/HealthHomePage'
 export { HealthOverviewPage } from '@/features/health/pages/HealthOverviewPage'
 export { HealthHistoryPage } from '@/features/health/pages/HealthHistoryPage'
+export { HealthProgressPage } from '@/features/health/pages/HealthProgressPage'
 export { HealthAskPage } from '@/features/health/pages/HealthAskPage'
 export { HealthReportsPage } from '@/features/health/pages/HealthReportsPage'
 export { HealthVisitDetailPage } from '@/features/health/pages/HealthVisitDetailPage'

@@ -160,34 +160,39 @@ export class AIPlatformPipeline {
 			)
 		}
 
-		const { classifiedIntent, evidence, selectedTool, toolResult } =
-			await classifyAndSelectHealthEvidence({
-				question: request.question,
-				knowledge: healthKnowledge,
-				userId: request.userId ?? 'unknown',
-				familyMemberId:
-					typeof request.knowledgePayload.familyMemberId === 'string'
-						? request.knowledgePayload.familyMemberId
-						: null,
-				accountOwnerMemberId:
-					typeof request.knowledgePayload.accountOwnerMemberId === 'string'
-						? request.knowledgePayload.accountOwnerMemberId
-						: null,
-				memberName: request.memberName,
-				categoryId:
-					typeof request.knowledgePayload.categoryId === 'string'
-						? request.knowledgePayload.categoryId
-						: undefined,
-				reportId:
-					typeof request.knowledgePayload.reportId === 'string'
-						? request.knowledgePayload.reportId
-						: undefined,
-				reportIds: Array.isArray(request.knowledgePayload.reportIds)
-					? request.knowledgePayload.reportIds.filter(
-							(id): id is string => typeof id === 'string',
-						)
+		const {
+			classifiedIntent,
+			evidence,
+			evidenceBundle,
+			selectedTool,
+			toolResult,
+		} = await classifyAndSelectHealthEvidence({
+			question: request.question,
+			knowledge: healthKnowledge,
+			userId: request.userId ?? 'unknown',
+			familyMemberId:
+				typeof request.knowledgePayload.familyMemberId === 'string'
+					? request.knowledgePayload.familyMemberId
+					: null,
+			accountOwnerMemberId:
+				typeof request.knowledgePayload.accountOwnerMemberId === 'string'
+					? request.knowledgePayload.accountOwnerMemberId
+					: null,
+			memberName: request.memberName,
+			categoryId:
+				typeof request.knowledgePayload.categoryId === 'string'
+					? request.knowledgePayload.categoryId
 					: undefined,
-			})
+			reportId:
+				typeof request.knowledgePayload.reportId === 'string'
+					? request.knowledgePayload.reportId
+					: undefined,
+			reportIds: Array.isArray(request.knowledgePayload.reportIds)
+				? request.knowledgePayload.reportIds.filter(
+						(id): id is string => typeof id === 'string',
+					)
+				: undefined,
+		})
 
 		if (!isLlmSupportedIntent(classifiedIntent.intent)) {
 			throw new Error(
@@ -210,6 +215,7 @@ export class AIPlatformPipeline {
 			question: request.question,
 			intent: classifiedIntent,
 			evidence,
+			evidenceBundle,
 			memberName: request.memberName,
 			memoryContextPrompt: request.memoryContextPrompt,
 		})

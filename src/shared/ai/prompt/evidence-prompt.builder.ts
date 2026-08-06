@@ -5,6 +5,7 @@ import {
 } from '@/shared/ai/prompt/prompt-templates'
 import { assertNoForbiddenLLMFields } from '@/shared/ai/knowledge/health-knowledge-serializer'
 import type { SelectedEvidence } from '@/shared/ai/evidence/evidence.types'
+import type { EvidenceBundle } from '@/shared/ai/evidence-planning/types'
 import type { ClassifiedIntent } from '@/shared/ai/intent/intent.types'
 import type { BuiltPrompt } from '@/shared/ai/types/prompt.types'
 
@@ -12,29 +13,41 @@ export interface EvidencePromptInput {
 	question: string
 	intent: ClassifiedIntent
 	evidence: SelectedEvidence
+	evidenceBundle: EvidenceBundle
 	memberName?: string | null
 	memoryContextPrompt?: string | null
 }
 
 /**
- * Prompt builder — receives ONLY question, intent, and selected evidence.
- * Never accesses HealthKnowledge or database tables.
+ * Prompt builder — structured EvidenceBundle context only.
+ * Gemini writes every narrative answer; Chronicle does not synthesize summaries here.
  */
 export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 	const evidencePayload = {
+		questionType: input.evidenceBundle.metadata.questionType,
 		intent: input.intent.intent,
 		intentConfidence: input.intent.confidence,
 		intentReasons: input.intent.reasons,
-		evidence: input.evidence.items.map((item) => ({
+		evidenceBundle: {
+			reports: input.evidenceBundle.reports,
+			metrics: input.evidenceBundle.metrics,
+			trends: input.evidenceBundle.trends,
+			timeline: input.evidenceBundle.timeline,
+			summary: {
+				healthScore: input.evidenceBundle.summary.healthScore,
+				limitations: input.evidenceBundle.summary.limitations,
+			},
+		},
+		groundedReferences: input.evidence.items.map((item) => ({
 			id: item.id,
 			type: item.type,
 			label: item.label,
-			data: item.data,
 		})),
 		selection: {
 			evidenceCount: input.evidence.metadata.evidenceCount,
 			excludedItems: input.evidence.metadata.excludedItems,
 			estimatedTokens: input.evidence.metadata.estimatedTokens,
+			resolver: input.evidenceBundle.metadata.resolver,
 		},
 	}
 
@@ -43,10 +56,9 @@ export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 		`Question: ${input.question}`,
 		input.memberName ? `Member: ${input.memberName}` : '',
 		`Intent: ${input.intent.intent}`,
-		input.memoryContextPrompt ? '' : '',
 		input.memoryContextPrompt ?? '',
 		'',
-		'SelectedEvidence (use ONLY this data — do not invent values):',
+		'EvidenceBundle (use ONLY this structured data — do not invent values):',
 		evidenceJson,
 	]
 		.filter((line, index, array) => !(line === '' && array[index - 1] === ''))
@@ -56,7 +68,7 @@ export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 
 	const developerPrompt = [
 		CHRONICLE_HEALTH_DEVELOPER_PROMPT,
-		`Respond to intent ${input.intent.intent} using only SelectedEvidence.`,
+		`Respond to intent ${input.intent.intent} using only EvidenceBundle and groundedReferences.`,
 	].join('\n')
 
 	const messages = [
@@ -72,7 +84,7 @@ export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 		evidence: input.evidence.items
 			.map((item) => `${item.id}: ${item.label}`)
 			.join('\n'),
-		context: `Intent=${input.intent.intent}; evidence=${input.evidence.metadata.evidenceCount}`,
+		context: `QuestionType=${input.evidenceBundle.metadata.questionType}; evidence=${input.evidence.metadata.evidenceCount}`,
 		outputSchema: HEALTH_SUMMARIZE_OUTPUT_SCHEMA,
 		messages,
 	}
