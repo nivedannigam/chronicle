@@ -93,6 +93,89 @@ function rethrowMetricsSchemaError(error: unknown): never {
 	throw error instanceof Error ? error : new Error(String(error))
 }
 
+function isMetricsConflictError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') {
+		return false
+	}
+
+	const payload = error as { code?: string; status?: number; message?: string }
+
+	return (
+		payload.code === '23505' ||
+		payload.status === 409 ||
+		Boolean(payload.message?.includes('duplicate key'))
+	)
+}
+
+export function dedupeMetricRows<T extends { canonical_metric_id: string }>(
+	rows: T[],
+): T[] {
+	const merged = new Map<string, T>()
+
+	for (const row of rows) {
+		merged.set(row.canonical_metric_id, row)
+	}
+
+	return [...merged.values()]
+}
+
+async function upsertMetricRowsForReport(
+	reportId: string,
+	rows: Array<Record<string, unknown>>,
+): Promise<void> {
+	const dedupedRows = dedupeMetricRows(
+		rows as Array<{ canonical_metric_id: string } & Record<string, unknown>>,
+	)
+
+	const upsert = async () => {
+		const { error: deleteError } = await supabase
+			.from('health_metrics')
+			.delete()
+			.eq('report_id', reportId)
+
+		if (deleteError) {
+			rethrowMetricsSchemaError(deleteError)
+		}
+
+		const { error } = await supabase
+			.from('health_metrics')
+			.upsert(dedupedRows, { onConflict: 'report_id,canonical_metric_id' })
+
+		if (error) {
+			rethrowMetricsSchemaError(error)
+		}
+	}
+
+	try {
+		await upsert()
+	} catch (error) {
+		if (!isMetricsConflictError(error)) {
+			throw error
+		}
+
+		if (import.meta.env.DEV) {
+			console.warn(
+				JSON.stringify({
+					service: 'health-metrics-persist',
+					event: 'metrics_upsert_conflict_retry',
+					reportId,
+				}),
+			)
+		}
+
+		const { error: deleteError } = await supabase
+			.from('health_metrics')
+			.delete()
+			.eq('report_id', reportId)
+
+		if (deleteError) {
+			rethrowMetricsSchemaError(deleteError)
+		}
+
+		await upsert()
+	}
+}
+
 export async function persistHealthMetrics(
 	input: PersistHealthMetricsInput,
 ): Promise<number> {
@@ -138,24 +221,9 @@ export async function persistHealthMetrics(
 		}),
 	)
 
-	const { error: deleteError } = await supabase
-		.from('health_metrics')
-		.delete()
-		.eq('report_id', reportId)
+	await upsertMetricRowsForReport(reportId, rows)
 
-	if (deleteError) {
-		rethrowMetricsSchemaError(deleteError)
-	}
-
-	const { error: insertError } = await supabase
-		.from('health_metrics')
-		.insert(rows)
-
-	if (insertError) {
-		rethrowMetricsSchemaError(insertError)
-	}
-
-	return rows.length
+	return dedupeMetricRows(rows).length
 }
 
 export async function backfillHealthMetricsFromReports(

@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { backfillHealthMetricsFromReports } from '@/features/health/services/health-metrics-persist.service'
 import { backfillAiExtractionForIncompleteReports } from '@/features/health/services/health-ai-backfill.service'
+import { isHealthImportInFlight } from '@/features/health/services/health-import-inflight.service'
 import { fetchHealthMetricsForUser } from '@/features/health/services/health-metrics.service'
 import { fetchUploadedHealthReports } from '@/features/health/services/health-upload.service'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
@@ -21,7 +22,7 @@ export function useHealthMetrics() {
 
 			const allReports = await fetchUploadedHealthReports()
 
-			if (allReports.length > 0) {
+			if (allReports.length > 0 && !isHealthImportInFlight(allReports)) {
 				await backfillAiExtractionForIncompleteReports(userId, allReports)
 				await backfillHealthMetricsFromReports(userId, allReports)
 			}

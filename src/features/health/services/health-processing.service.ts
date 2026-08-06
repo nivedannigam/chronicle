@@ -41,7 +41,16 @@ import {
 	getParsedHealthReport,
 	getReportDisplayDate,
 } from '@/features/health/services/health-parsed-report.service'
-import { logHealthAiReprocessEvent } from '@/features/health/services/health-ai-reprocess.observability'
+import {
+	logHealthAiReprocessEvent,
+	formatObservabilityError,
+} from '@/features/health/services/health-ai-reprocess.observability'
+import {
+	withHealthReportProcessingLock,
+	isHealthReportProcessingLocked,
+	getInFlightHealthReportProcessing,
+} from '@/features/health/services/health-report-processing-lock.service'
+import { safeTransitionToParsing } from '@/features/health/services/health-workflow-progress.service'
 import {
 	clearRegistryErrorForReport,
 	syncRegistryWithReportOutcome,
@@ -144,9 +153,24 @@ export async function processHealthReport(
 	options: { force?: boolean; extractionMode?: HealthExtractionMode } = {},
 ): Promise<UploadedHealthReport> {
 	if (options.extractionMode === 'llm_text') {
-		return processHealthReportWithAiText(reportId, options)
+		return withHealthReportProcessingLock(
+			reportId,
+			() => processHealthReportWithAiText(reportId, options),
+			options,
+		)
 	}
 
+	return withHealthReportProcessingLock(
+		reportId,
+		() => executeProcessHealthReport(reportId, options),
+		options,
+	)
+}
+
+async function executeProcessHealthReport(
+	reportId: string,
+	options: { force?: boolean; extractionMode?: HealthExtractionMode } = {},
+): Promise<UploadedHealthReport> {
 	const { data: report, error: fetchError } = await supabase
 		.from('health_reports')
 		.select('*')
@@ -240,16 +264,12 @@ export async function processHealthReport(
 						nextStage: 'READY',
 					})
 
-					await safeTransitionWorkflowItem({
+					await safeTransitionToParsing({
 						reportId,
-						toState: 'PARSING',
-						context: {
-							userId: typedReport.user_id,
-							reportId,
-							progress: {
-								label: 'OCR complete',
-								percent: 100,
-							},
+						userId: typedReport.user_id,
+						progress: {
+							label: 'OCR complete',
+							percent: 100,
 						},
 					})
 				}
@@ -258,14 +278,10 @@ export async function processHealthReport(
 					await updateReportStatus(reportId, { status: 'parsed' })
 					await updateQueueStatus(reportId, 'parsed')
 
-					await safeTransitionWorkflowItem({
+					await safeTransitionToParsing({
 						reportId,
-						toState: 'PARSING',
-						context: {
-							userId: typedReport.user_id,
-							reportId,
-							progress: { label: 'Parsing' },
-						},
+						userId: typedReport.user_id,
+						progress: { label: 'Parsing' },
 					})
 				}
 			},
@@ -682,6 +698,16 @@ export async function reprocessHealthReport(
 export async function reprocessHealthReportWithAi(
 	reportId: string,
 ): Promise<UploadedHealthReport> {
+	return withHealthReportProcessingLock(
+		reportId,
+		() => executeReprocessHealthReportWithAi(reportId),
+		{ force: true },
+	)
+}
+
+async function executeReprocessHealthReportWithAi(
+	reportId: string,
+): Promise<UploadedHealthReport> {
 	const correlationId = crypto.randomUUID()
 	const startedAt = Date.now()
 
@@ -785,7 +811,7 @@ async function hydrateReportOcrTextForAiReprocess(
 			},
 		})
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error)
+		const message = formatObservabilityError(error)
 
 		logHealthAiReprocessEvent({
 			event: 'ocr_failed',
@@ -1193,6 +1219,22 @@ export function processPendingHealthReports(
 		await chain
 
 		try {
+			if (isHealthReportProcessingLocked(report.id)) {
+				const inFlight = getInFlightHealthReportProcessing(report.id)
+
+				if (inFlight) {
+					await inFlight.catch(() => {
+						// Wait for the active import run to settle.
+					})
+				}
+
+				return
+			}
+
+			if (report.status === 'processing') {
+				return
+			}
+
 			const needsForce = reportNeedsReprocess(report)
 
 			if (report.status === 'uploaded') {

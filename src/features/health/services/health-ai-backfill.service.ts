@@ -1,5 +1,6 @@
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { persistHealthKnowledgeGraph } from '@/features/health-knowledge/services/health-knowledge-persist.service'
+import { isHealthImportInFlight } from '@/features/health/services/health-import-inflight.service'
 import { reportNeedsAiExtractionBackfill } from '@/features/health/services/health-partial-extraction.service'
 import { reprocessHealthReportWithAi } from '@/features/health/services/health-processing.service'
 import { isReportDisplayReady } from '@/features/health/services/report-readiness.service'
@@ -30,9 +31,19 @@ export async function backfillAiExtractionForIncompleteReports(
 
 	try {
 		const allReports = reports ?? (await fetchUploadedHealthReports())
-		const eligible = listReportsNeedingAiExtractionBackfill(
-			allReports.filter((report) => report.user_id === userId),
-		).filter((report) => !backfillAttemptedReportIds.has(report.id))
+		const userReports = allReports.filter((report) => report.user_id === userId)
+
+		if (isHealthImportInFlight(userReports)) {
+			return {
+				processed: 0,
+				failed: 0,
+				skipped: userReports.length,
+			}
+		}
+
+		const eligible = listReportsNeedingAiExtractionBackfill(userReports).filter(
+			(report) => !backfillAttemptedReportIds.has(report.id),
+		)
 
 		let processed = 0
 		let failed = 0
