@@ -1,4 +1,5 @@
-import type { ExtractMetricsAiEdgeMetric } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
+import type { ExtractMetricsAiEdgeMetric } from '@/shared/ai/transport/extract-metrics.types'
+import { normalizeExtractMetricsModelMetrics } from '@/shared/ai/prompt/extract-metrics-normalizer'
 
 export const EXTRACT_METRICS_MAX_OCR_CHARS = 14_000
 
@@ -99,9 +100,7 @@ export function parseExtractMetricsModelJson(raw: string): {
 	const record = parsed as Record<string, unknown>
 
 	return {
-		metrics: Array.isArray(record.metrics)
-			? (record.metrics as ExtractMetricsAiEdgeMetric[])
-			: [],
+		metrics: normalizeExtractMetricsModelMetrics(record.metrics),
 		metadata:
 			record.metadata && typeof record.metadata === 'object'
 				? (record.metadata as {

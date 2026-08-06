@@ -84,6 +84,12 @@ export function toAiReprocessUserFacingError(error: unknown): string {
 		if (/billing|credits|depleted/i.test(message)) {
 			return message
 		}
+
+		if (
+			/no usable laboratory metrics|invalid JSON|unexpected JSON/i.test(message)
+		) {
+			return message
+		}
 	}
 
 	if (error instanceof Error) {
@@ -93,6 +99,12 @@ export function toAiReprocessUserFacingError(error: unknown): string {
 			message === OCR_FAILED_USER_MESSAGE ||
 			message === AI_REPROCESS_FAILED_USER_MESSAGE ||
 			message === PARSING_FAILED_USER_MESSAGE
+		) {
+			return message
+		}
+
+		if (
+			/no usable laboratory metrics|invalid JSON|unexpected JSON/i.test(message)
 		) {
 			return message
 		}
@@ -117,13 +129,28 @@ export function validateAiExtractedMetrics(
 	metrics: ExtractMetricsAiEdgeMetric[],
 ): ExtractMetricsAiEdgeMetric[] {
 	const valid = metrics
-		.filter(
-			(metric) =>
-				typeof metric.rawName === 'string' &&
-				metric.rawName.trim().length > 0 &&
-				typeof metric.value === 'string' &&
-				metric.value.trim().length > 0,
-		)
+		.map((metric) => {
+			const rawName =
+				typeof metric.rawName === 'string' ? metric.rawName.trim() : ''
+			const rawValue = (metric as { value?: string | number }).value
+			const value =
+				typeof rawValue === 'string'
+					? rawValue.trim()
+					: typeof rawValue === 'number' && Number.isFinite(rawValue)
+						? String(rawValue)
+						: ''
+
+			if (!rawName || !value) {
+				return null
+			}
+
+			return {
+				...metric,
+				rawName,
+				value,
+			}
+		})
+		.filter((metric): metric is ExtractMetricsAiEdgeMetric => metric != null)
 		.slice(0, MAX_AI_METRICS)
 
 	if (valid.length === 0) {

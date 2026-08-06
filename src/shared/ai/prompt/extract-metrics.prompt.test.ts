@@ -22,16 +22,10 @@ describe('extract-metrics.prompt', () => {
 {
   "metrics": [
     {
-      "rawName": "HEMOGLOBIN",
-      "displayName": "Hemoglobin",
-      "value": "13.5",
+      "name": "HEMOGLOBIN",
+      "result": 13.5,
       "unit": "g/dL",
-      "referenceRange": {
-        "rawText": "12-16",
-        "lowerLimit": 12,
-        "upperLimit": 16,
-        "unit": "g/dL"
-      },
+      "referenceRange": "12-16",
       "status": "normal"
     }
   ],
@@ -41,6 +35,7 @@ describe('extract-metrics.prompt', () => {
 \`\`\``)
 
 		expect(parsed.metrics).toHaveLength(1)
+		expect(parsed.metrics[0]?.value).toBe('13.5')
 		expect(parsed.metadata.laboratory).toBe('Thyrocare')
 	})
 

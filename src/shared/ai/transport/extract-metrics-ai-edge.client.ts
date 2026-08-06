@@ -10,6 +10,10 @@ import {
 	parseExtractMetricsModelJson,
 } from '@/shared/ai/prompt/extract-metrics.prompt'
 import { invokeAskAiEdgeFunction } from '@/shared/ai/transport/ask-ai-edge.client'
+import type {
+	ExtractMetricsAiEdgeMetric,
+	ExtractMetricsAiEdgeResult,
+} from '@/shared/ai/transport/extract-metrics.types'
 
 export class ExtractMetricsAiInvokeError extends Error {
 	readonly statusCode?: number
@@ -32,36 +36,17 @@ export class ExtractMetricsAiInvokeError extends Error {
 	}
 }
 
-export interface ExtractMetricsAiEdgeMetric {
-	rawName: string
-	displayName: string
-	value: string
-	unit: string | null
-	referenceRange: {
-		rawText: string
-		lowerLimit: number | null
-		upperLimit: number | null
-		unit: string | null
-	}
-	status: string
-}
+export type {
+	ExtractMetricsAiEdgeMetric,
+	ExtractMetricsAiEdgeResult,
+} from '@/shared/ai/transport/extract-metrics.types'
 
-export interface ExtractMetricsAiEdgeResult {
-	metrics: ExtractMetricsAiEdgeMetric[]
-	metadata: {
-		laboratory?: string | null
-		reportDate?: string | null
-		patientName?: string | null
-		reportType?: string | null
+function isDedicatedExtractMetricsEdgeEnabled(): boolean {
+	if (typeof import.meta === 'undefined' || !import.meta.env) {
+		return false
 	}
-	warnings: string[]
-	model: string
-	correlationId?: string
-	usage: {
-		promptTokens: number
-		completionTokens: number
-		totalTokens: number
-	}
+
+	return import.meta.env.VITE_EXTRACT_METRICS_USE_DEDICATED_EDGE === 'true'
 }
 
 function readErrorPayload(data: unknown): {
@@ -213,10 +198,19 @@ async function invokeExtractMetricsViaAskAi(input: {
 		}),
 		responseFormat: 'json',
 		temperature: 0.1,
-		maxTokens: 4096,
+		maxTokens: 8192,
 	})
 
 	const parsed = parseExtractMetricsModelJson(askResult.content)
+
+	if (parsed.metrics.length === 0) {
+		throw new ExtractMetricsAiInvokeError(
+			'AI extraction returned no usable laboratory metrics from the stored OCR text.',
+			{
+				correlationId: askResult.correlationId,
+			},
+		)
+	}
 
 	return toExtractMetricsResult({
 		parsed,
@@ -245,6 +239,14 @@ export async function invokeExtractMetricsAiEdgeFunction(input: {
 		throw error
 	}
 
+	if (!isDedicatedExtractMetricsEdgeEnabled()) {
+		return invokeExtractMetricsViaAskAi({
+			extractedText: input.extractedText,
+			fileName: input.fileName,
+			model,
+		})
+	}
+
 	try {
 		return await invokeDedicatedExtractMetricsFunction({
 			extractedText: input.extractedText,
@@ -260,49 +262,21 @@ export async function invokeExtractMetricsAiEdgeFunction(input: {
 			throw primaryError
 		}
 
-		if (import.meta.env.DEV) {
-			console.warn(
-				'extract-metrics-ai failed; falling back to ask-ai',
-				primaryError,
-			)
-		}
+		console.warn(
+			JSON.stringify({
+				service: 'health-ai-reprocess',
+				event: 'extract_metrics_edge_fallback',
+				message:
+					primaryError instanceof Error
+						? primaryError.message
+						: 'extract-metrics-ai failed',
+			}),
+		)
 
-		try {
-			return await invokeExtractMetricsViaAskAi({
-				extractedText: input.extractedText,
-				fileName: input.fileName,
-				model,
-			})
-		} catch (fallbackError) {
-			const primaryMessage =
-				primaryError instanceof Error
-					? primaryError.message
-					: 'AI metric extraction failed'
-			const fallbackMessage =
-				fallbackError instanceof Error
-					? fallbackError.message
-					: 'Ask AI fallback failed'
-
-			throw new ExtractMetricsAiInvokeError(fallbackMessage || primaryMessage, {
-				statusCode:
-					fallbackError instanceof ExtractMetricsAiInvokeError
-						? fallbackError.statusCode
-						: primaryError instanceof ExtractMetricsAiInvokeError
-							? primaryError.statusCode
-							: undefined,
-				correlationId:
-					fallbackError instanceof ExtractMetricsAiInvokeError
-						? fallbackError.correlationId
-						: primaryError instanceof ExtractMetricsAiInvokeError
-							? primaryError.correlationId
-							: undefined,
-				providerResponse:
-					fallbackError instanceof ExtractMetricsAiInvokeError
-						? fallbackError.providerResponse
-						: primaryError instanceof ExtractMetricsAiInvokeError
-							? primaryError.providerResponse
-							: undefined,
-			})
-		}
+		return invokeExtractMetricsViaAskAi({
+			extractedText: input.extractedText,
+			fileName: input.fileName,
+			model,
+		})
 	}
 }

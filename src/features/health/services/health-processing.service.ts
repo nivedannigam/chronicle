@@ -637,12 +637,18 @@ export async function reprocessHealthReportWithAi(
 
 		return result
 	} catch (error) {
+		const underlyingError =
+			error instanceof Error ? error.message : String(error)
+
 		logHealthAiReprocessEvent({
 			event: 'ai_reprocess_failed',
 			reportId,
 			correlationId,
 			durationMs: Date.now() - startedAt,
-			error: error instanceof Error ? error.message : String(error),
+			error: underlyingError,
+			details: {
+				userMessage: toAiReprocessUserFacingError(error),
+			},
 		})
 
 		throw new Error(toAiReprocessUserFacingError(error))
