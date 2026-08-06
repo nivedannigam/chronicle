@@ -5,6 +5,7 @@ export type ChronicleRelationshipType =
 	| 'contains'
 	| 'required_for'
 	| 'covered_by'
+	| 'covers'
 	| 'held_in'
 	| 'related_to'
 	| 'measured_in'
@@ -15,6 +16,17 @@ export type ChronicleRelationshipType =
 	| 'member_of'
 	| 'has_task'
 	| 'has_event'
+	| 'depends_on'
+	| 'created_from'
+	| 'supports'
+	| 'includes'
+	| 'attached_to'
+	| 'renews'
+	| 'replaces'
+	| 'supersedes'
+	| 'used_by'
+	| 'managed_by'
+	| 'issued_by'
 
 export interface ChronicleRelationship {
 	id: string

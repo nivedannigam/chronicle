@@ -1,5 +1,10 @@
 export { DocumentsLayout } from '@/features/documents/components/DocumentsLayout'
 export { DocumentsPage } from '@/features/documents/pages/DocumentsPage'
+export { DocumentsLibraryPage } from '@/features/documents/pages/DocumentsLibraryPage'
+export {
+	DocumentsProvider,
+	useDocumentsContext,
+} from '@/features/documents/context/DocumentsContext'
 export { DocumentsCategoryPage } from '@/features/documents/pages/DocumentsCategoryPage'
 export { DocumentsExpiringPage } from '@/features/documents/pages/DocumentsExpiringPage'
 export { DocumentDetailPage } from '@/features/documents/pages/DocumentDetailPage'

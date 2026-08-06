@@ -5,10 +5,11 @@ import type {
 	IntelligenceMemberContext,
 	SemanticSearchHit,
 } from '@/features/intelligence/types/intelligence.types'
-import { buildIntelligenceSources } from '@/features/intelligence/types/intelligence.types'
+import { buildPlatformIntelligenceSources } from '@/core/platform/services/intelligence-sources.builder'
 import type { KnowledgeProviderQuery } from '@/features/intelligence/contracts/knowledge-provider.contract'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
+import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 export interface GlobalSearchInput {
@@ -18,6 +19,7 @@ export interface GlobalSearchInput {
 	uploadedReports: UploadedHealthReport[]
 	documents: ChronicleDocument[]
 	connectorDocuments?: ConnectorDocumentRecord[]
+	insuranceKnowledge?: InsuranceKnowledge | null
 }
 
 function buildSearchQuery(input: GlobalSearchInput): KnowledgeProviderQuery {
@@ -30,10 +32,13 @@ function buildSearchQuery(input: GlobalSearchInput): KnowledgeProviderQuery {
 		intent: 'timeline_search',
 		member: input.member,
 		searchHits: [],
-		sources: buildIntelligenceSources({
+		sources: buildPlatformIntelligenceSources({
 			uploadedReports: input.uploadedReports,
 			documents: input.documents,
 			connectorDocuments: input.connectorDocuments,
+			insuranceKnowledge: input.insuranceKnowledge,
+			userId: input.userId,
+			familyMemberId: input.member.memberId,
 		}),
 	}
 }
@@ -69,6 +74,10 @@ export function domainColor(domain: SemanticSearchHit['domain']): string {
 			return '#10B981'
 		case 'documents':
 			return '#8B5CF6'
+		case 'insurance':
+			return '#0EA5E9'
+		case 'finance':
+			return '#30D158'
 		case 'photos':
 			return '#3B82F6'
 		default:
@@ -82,6 +91,8 @@ export function domainLabel(domain: SemanticSearchHit['domain']): string {
 			return 'Health'
 		case 'documents':
 			return 'Documents'
+		case 'insurance':
+			return 'Insurance'
 		case 'finance':
 			return 'Finance'
 		case 'travel':

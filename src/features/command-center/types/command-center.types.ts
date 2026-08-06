@@ -1,7 +1,7 @@
 import type { RoutePath } from '@/constants/routes'
 
 export type CommandCenterModuleId =
-	'health' | 'documents' | 'timeline' | 'family' | 'ask'
+	'health' | 'insurance' | 'documents' | 'timeline' | 'family' | 'ask'
 
 export interface AttentionItem {
 	id: string

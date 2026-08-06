@@ -1,18 +1,23 @@
+import { registerRelationshipProviders } from '@/core/relationship/bootstrap/register-relationship-providers'
 import { healthGraphAdapter } from '@/shared/knowledge-graph/adapters/health-graph.adapter'
+import { insuranceGraphAdapter } from '@/shared/knowledge-graph/adapters/insurance-graph.adapter'
+import { documentsGraphAdapter } from '@/shared/knowledge-graph/adapters/documents-graph.adapter'
 import {
 	defaultKnowledgeGraphService,
 	KnowledgeGraphService,
 } from '@/shared/knowledge-graph/services/knowledge-graph.service'
 
-defaultKnowledgeGraphService.registerAdapter(healthGraphAdapter)
+registerRelationshipProviders()
 
 export {
 	KnowledgeGraphService,
 	defaultKnowledgeGraphService,
 	healthGraphAdapter,
+	insuranceGraphAdapter,
+	documentsGraphAdapter,
 }
 
-export type { GraphDomainAdapter } from '@/shared/knowledge-graph/adapters/health-graph.adapter'
+export type { GraphDomainAdapter } from '@/shared/knowledge-graph/contracts/graph-domain-adapter.contract'
 
 export type {
 	ChronicleEntity,
@@ -50,3 +55,5 @@ export {
 } from '@/shared/knowledge-graph/services/graph-context-to-evidence'
 
 export { ingestHealthKnowledge } from '@/shared/knowledge-graph/adapters/health-graph.adapter'
+export { ingestInsuranceKnowledge } from '@/shared/knowledge-graph/adapters/insurance-graph.adapter'
+export { ingestDocuments } from '@/shared/knowledge-graph/adapters/documents-graph.adapter'

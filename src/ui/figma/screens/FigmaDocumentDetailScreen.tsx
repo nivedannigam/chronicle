@@ -15,7 +15,9 @@ import {
 	DocumentActionChip,
 	DocumentActivityRow,
 	DocumentAiBadge,
+	DocumentModuleChip,
 	DocumentSectionLabel,
+	DocumentStatusBadge,
 	DocumentSummaryCard,
 } from '@/ui/figma/documents/document-ui'
 import { ProfilePageShell } from '@/ui/figma/profile/profile-ui'
@@ -74,6 +76,11 @@ export function FigmaDocumentDetailScreen({
 					isExpired: false,
 					fileType: 'DOC',
 					hasAiSummary: true,
+					tags: [],
+					relatedModules: [],
+					consumerStatus: 'Ready' as const,
+					aiDiscoveryLabel: null,
+					year: null,
 				}
 			}
 
@@ -178,7 +185,43 @@ export function FigmaDocumentDetailScreen({
 				<p style={{ color: FC.mid, fontSize: 14, lineHeight: 1.65, margin: 0 }}>
 					{intelligence.summary}
 				</p>
+				{intelligence.aiDiscoveryLabel ? (
+					<p
+						style={{
+							color: FC.blue,
+							fontSize: 13,
+							fontWeight: 600,
+							margin: '12px 0 0',
+						}}
+					>
+						{intelligence.aiDiscoveryLabel}
+					</p>
+				) : null}
 			</div>
+
+			{intelligence.relatedModules.length > 0 ? (
+				<div style={{ marginBottom: 16 }}>
+					<DocumentSectionLabel>Used by</DocumentSectionLabel>
+					<div
+						style={{
+							display: 'flex',
+							flexWrap: 'wrap',
+							gap: 8,
+							marginTop: 10,
+						}}
+					>
+						{intelligence.relatedModules.map((module) => (
+							<DocumentModuleChip
+								key={module.moduleId}
+								label={module.label}
+								onClick={
+									module.route ? () => navigate(module.route!) : undefined
+								}
+							/>
+						))}
+					</div>
+				</div>
+			) : null}
 
 			<div style={{ marginBottom: 16 }}>
 				<DocumentSectionLabel>Actions</DocumentSectionLabel>
@@ -198,10 +241,9 @@ export function FigmaDocumentDetailScreen({
 						label="Ask Chronicle"
 						onClick={() => ask(`Tell me about ${document.title}`)}
 					/>
-					<DocumentActionChip
-						label="Compare"
-						onClick={() => navigate(ROUTES.healthCompare)}
-					/>
+					{document.tags.length > 0 ? (
+						<DocumentStatusBadge status={summary.consumerStatus} />
+					) : null}
 					{signedUrlQuery.data ? (
 						<DocumentActionChip
 							label="Open"

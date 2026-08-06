@@ -94,6 +94,34 @@ export const HEALTH_COPY = {
 	emptyAddReports: 'Connect Google Drive',
 } as const
 
+export const INSURANCE_COPY = {
+	homeTab: 'Home',
+	protectionTab: 'Protection',
+	policiesTab: 'Policies',
+	emptyTitle: 'Am I protected?',
+	emptyBody:
+		'Connect your Insurance folder in Google Drive — Chronicle will understand your policies automatically.',
+	connectFolder: 'Connect Insurance folder',
+	dropPolicyHint: 'Or drop a policy PDF into Google Drive',
+	emptyProtectionTitle: 'Your protection areas will appear here',
+	emptyProtectionBody:
+		'Connect your Insurance folder and Chronicle will organize cover by life area — health, life, home, and more.',
+	emptyPoliciesTitle: 'Your policies will appear here',
+	emptyPoliciesBody:
+		'Connect your Insurance folder — Chronicle will organize every policy, renewal, and claim automatically.',
+	emptyClaimsTitle: 'No claims yet',
+	emptyClaimsBody:
+		'When you file a claim, Chronicle will organize bills, approvals, and settlements here automatically.',
+	viewPolicies: 'View policies',
+	claimsTab: 'Claims',
+	timelineTab: 'Timeline',
+	askTab: 'Ask',
+	settingsTab: 'Settings',
+	emptyTimelineTitle: 'Your story begins here',
+	emptyTimelineBody:
+		'As policies renew, vehicles are added, and claims are settled — your insurance journey will come to life.',
+} as const
+
 export const ASK_COPY = {
 	title: 'Ask Chronicle',
 	subtitle:
@@ -145,8 +173,14 @@ export const ASK_QUESTION_GROUPS: AskQuestionGroup[] = [
 	{
 		id: 'insurance',
 		label: 'Insurance',
-		available: false,
-		questions: ['Show my insurance policies.', 'When does our policy renew?'],
+		available: true,
+		questions: [
+			'Am I adequately insured?',
+			'Which policy expires next?',
+			'Do I have duplicate coverage?',
+			'What claims have I made?',
+			'How much premium do I pay every year?',
+		],
 	},
 	{
 		id: 'travel',

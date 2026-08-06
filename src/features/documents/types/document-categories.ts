@@ -202,6 +202,63 @@ export const DOCUMENT_CATEGORY_REGISTRY: DocumentCategoryDefinition[] = [
 			{ id: 'custom', label: 'Custom', keywords: [] },
 		],
 	},
+	{
+		id: 'vehicles',
+		label: 'Vehicles',
+		icon: 'car',
+		keywords: [
+			'vehicle',
+			'motor',
+			'rc book',
+			'registration certificate',
+			'mahindra',
+			'honda',
+			'car',
+		],
+		subCategories: [
+			{
+				id: 'registration',
+				label: 'Registration',
+				keywords: ['rc', 'registration certificate'],
+			},
+			{
+				id: 'vehicle-insurance',
+				label: 'Vehicle Insurance',
+				keywords: ['motor insurance', 'vehicle policy'],
+			},
+			{
+				id: 'service-record',
+				label: 'Service Record',
+				keywords: ['service', 'maintenance'],
+			},
+		],
+	},
+	{
+		id: 'travel',
+		label: 'Travel',
+		icon: 'plane',
+		keywords: ['visa', 'ticket', 'boarding', 'itinerary', 'travel'],
+		subCategories: [
+			{ id: 'visa', label: 'Visa', keywords: ['visa'] },
+			{ id: 'ticket', label: 'Ticket', keywords: ['ticket', 'boarding pass'] },
+			{
+				id: 'itinerary',
+				label: 'Itinerary',
+				keywords: ['itinerary', 'booking'],
+			},
+		],
+	},
+	{
+		id: 'personal',
+		label: 'Personal',
+		icon: 'folder',
+		keywords: ['personal', 'receipt', 'invoice', 'warranty'],
+		subCategories: [
+			{ id: 'receipt', label: 'Receipt', keywords: ['receipt', 'invoice'] },
+			{ id: 'warranty', label: 'Warranty', keywords: ['warranty'] },
+			{ id: 'custom', label: 'Other', keywords: [] },
+		],
+	},
 ]
 
 export function getDocumentCategory(

@@ -25,6 +25,7 @@ import {
 import { HealthMetricTimelinePage } from '@/features/health-knowledge'
 import { OcrPreviewPage } from '@/features/medical-discovery'
 import { HomePage } from '@/features/home'
+import { NotificationsPage } from '@/features/os/pages/NotificationsPage'
 import { MailPage } from '@/features/mail'
 import {
 	FamilyMemberDetailPage,
@@ -47,11 +48,25 @@ import {
 	DocumentDetailPage,
 	DocumentsExpiringPage,
 	DocumentsLayout,
+	DocumentsLibraryPage,
 	DocumentsPage,
 } from '@/features/documents'
 import { DocumentsCategoryPage } from '@/features/documents/pages/DocumentsCategoryPage'
 import { TimelinePage } from '@/features/timeline'
 import { SearchPage } from '@/features/search'
+import {
+	InsuranceHomePage,
+	InsuranceLayout,
+	InsurancePoliciesPage,
+	InsurancePolicyDetailPage,
+	InsuranceClaimsPage,
+	InsuranceClaimDetailPage,
+	InsuranceTimelinePage,
+	InsuranceAskPage,
+	InsuranceSettingsPage,
+	InsuranceProtectionPage,
+	InsuranceProtectionDetailPage,
+} from '@/features/insurance'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
@@ -117,11 +132,13 @@ export function AppRouter() {
 					/>
 					<Route path={ROUTES.ask} element={<AskPage />} />
 					<Route path={ROUTES.search} element={<SearchPage />} />
+					<Route path={ROUTES.notifications} element={<NotificationsPage />} />
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
 					<Route path={ROUTES.more} element={<MorePage />} />
 					<Route path={ROUTES.documents} element={<DocumentsLayout />}>
 						<Route index element={<DocumentsPage />} />
+						<Route path="library" element={<DocumentsLibraryPage />} />
 						<Route path="expiring" element={<DocumentsExpiringPage />} />
 						<Route
 							path="category/:categoryId"
@@ -224,6 +241,28 @@ export function AppRouter() {
 							path="insights"
 							element={<Navigate to={ROUTES.health} replace />}
 						/>
+					</Route>
+
+					<Route path={ROUTES.insurance} element={<InsuranceLayout />}>
+						<Route index element={<InsuranceHomePage />} />
+						<Route path="coverage" element={<InsuranceProtectionPage />} />
+						<Route
+							path="coverage/:categoryId"
+							element={<InsuranceProtectionDetailPage />}
+						/>
+						<Route path="policies" element={<InsurancePoliciesPage />} />
+						<Route
+							path="policies/:policyId"
+							element={<InsurancePolicyDetailPage />}
+						/>
+						<Route path="claims" element={<InsuranceClaimsPage />} />
+						<Route
+							path="claims/:claimId"
+							element={<InsuranceClaimDetailPage />}
+						/>
+						<Route path="timeline" element={<InsuranceTimelinePage />} />
+						<Route path="ask" element={<InsuranceAskPage />} />
+						<Route path="settings" element={<InsuranceSettingsPage />} />
 					</Route>
 
 					<Route

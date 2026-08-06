@@ -4,6 +4,7 @@ import {
 	Diamond,
 	FileText,
 	GraduationCap,
+	Heart,
 	Landmark,
 	Plane,
 	Shield,
@@ -20,14 +21,6 @@ const COMING_SOON_MODULES = [
 		border: 'rgba(16,185,129,0.22)',
 		color: FC.green,
 		preview: 'finance' as const,
-	},
-	{
-		label: 'Insurance',
-		icon: <Shield size={28} color={FC.blue} strokeWidth={1.5} />,
-		grad: 'linear-gradient(145deg,rgba(59,130,246,0.16),rgba(59,130,246,0.06))',
-		border: 'rgba(59,130,246,0.22)',
-		color: FC.blue,
-		preview: 'insurance' as const,
 	},
 	{
 		label: 'Travel',
@@ -150,76 +143,97 @@ export function FigmaMoreScreen() {
 	return (
 		<div style={{ padding: '0 22px 24px' }}>
 			<FigmaScreenHeader
-				title="More"
-				subtitle="Modules coming to Chronicle"
+				title="Modules"
+				subtitle="Every part of your life, one Chronicle"
 				paddingBottom={22}
 			/>
 
 			<div style={{ marginBottom: 22 }}>
 				<div style={{ marginBottom: 12 }}>
-					<FigmaLbl>Available Now</FigmaLbl>
+					<FigmaLbl>Available</FigmaLbl>
 				</div>
-				<button
-					type="button"
-					onClick={() => navigate(ROUTES.documents)}
-					style={{
-						width: '100%',
-						background:
-							'linear-gradient(145deg,rgba(139,92,246,0.16),rgba(139,92,246,0.07))',
-						border: '1px solid rgba(139,92,246,0.28)',
-						borderRadius: 26,
-						padding: '22px 22px',
-						display: 'flex',
-						alignItems: 'center',
-						gap: 18,
-						cursor: 'pointer',
-						boxShadow:
-							'0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
-						fontFamily: 'inherit',
-					}}
-				>
-					<div
-						style={{
-							width: 58,
-							height: 58,
-							borderRadius: 18,
-							background: 'rgba(139,92,246,0.2)',
-							border: '1px solid rgba(139,92,246,0.3)',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-						}}
-					>
-						<FileText size={28} color={FC.purple} strokeWidth={1.5} />
-					</div>
-					<div style={{ flex: 1, textAlign: 'left' }}>
-						<p
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+					{[
+						{
+							label: 'Health',
+							sub: 'Reports, progress, insights',
+							path: ROUTES.health,
+							icon: <Heart size={24} color={FC.teal} strokeWidth={1.5} />,
+							color: FC.teal,
+							grad: 'linear-gradient(145deg,rgba(45,207,193,0.16),rgba(45,207,193,0.06))',
+							border: 'rgba(45,207,193,0.22)',
+						},
+						{
+							label: 'Insurance',
+							sub: 'Policies, protection, claims',
+							path: ROUTES.insurance,
+							icon: <Shield size={24} color={FC.blue} strokeWidth={1.5} />,
+							color: FC.blue,
+							grad: 'linear-gradient(145deg,rgba(59,130,246,0.16),rgba(59,130,246,0.06))',
+							border: 'rgba(59,130,246,0.22)',
+						},
+						{
+							label: 'Documents',
+							sub: 'Library, identity, papers',
+							path: ROUTES.documents,
+							icon: <FileText size={24} color={FC.purple} strokeWidth={1.5} />,
+							color: FC.purple,
+							grad: 'linear-gradient(145deg,rgba(139,92,246,0.16),rgba(139,92,246,0.07))',
+							border: 'rgba(139,92,246,0.28)',
+						},
+					].map((module) => (
+						<button
+							key={module.label}
+							type="button"
+							onClick={() => navigate(module.path)}
 							style={{
-								color: FC.fg,
-								fontSize: 20,
-								fontWeight: 700,
-								letterSpacing: -0.6,
-								marginBottom: 5,
-								marginTop: 0,
+								width: '100%',
+								background: module.grad,
+								border: `1px solid ${module.border}`,
+								borderRadius: 22,
+								padding: '18px 20px',
+								display: 'flex',
+								alignItems: 'center',
+								gap: 16,
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								textAlign: 'left',
 							}}
 						>
-							Documents
-						</p>
-						<p
-							style={{
-								color: FC.purple,
-								fontSize: 12,
-								fontWeight: 600,
-								letterSpacing: '0.07em',
-								textTransform: 'uppercase',
-								margin: 0,
-							}}
-						>
-							Open
-						</p>
-					</div>
-					<ChevronRight size={20} color={FC.mid} />
-				</button>
+							<div
+								style={{
+									width: 48,
+									height: 48,
+									borderRadius: 16,
+									background: `${module.color}18`,
+									border: `1px solid ${module.color}28`,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									flexShrink: 0,
+								}}
+							>
+								{module.icon}
+							</div>
+							<div style={{ flex: 1 }}>
+								<p
+									style={{
+										color: FC.fg,
+										fontSize: 16,
+										fontWeight: 700,
+										margin: '0 0 4px',
+									}}
+								>
+									{module.label}
+								</p>
+								<p style={{ color: FC.dim, fontSize: 12, margin: 0 }}>
+									{module.sub}
+								</p>
+							</div>
+							<ChevronRight size={18} color={FC.mid} />
+						</button>
+					))}
+				</div>
 			</div>
 
 			<div style={{ marginBottom: 22 }}>

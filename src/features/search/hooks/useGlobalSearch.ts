@@ -4,6 +4,7 @@ import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hook
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
 import { searchChronicle } from '@/features/search/services/global-search.service'
 
 export function useGlobalSearch(query: string) {
@@ -12,6 +13,7 @@ export function useGlobalSearch(query: string) {
 	const { selectedMemberId, selectedMember, members } = useFamilyContext()
 	const reportsQuery = useMemberHealthReports()
 	const documentsQuery = useMemberDocuments()
+	const insuranceQuery = useInsuranceKnowledge()
 	const driveConnector = useGoogleDriveConnector(user?.id ?? '')
 
 	const memberContext = useMemo(
@@ -33,11 +35,13 @@ export function useGlobalSearch(query: string) {
 			uploadedReports: reportsQuery.data ?? [],
 			documents: documentsQuery.data ?? [],
 			connectorDocuments: driveConnector.registry ?? [],
+			insuranceKnowledge: insuranceQuery.knowledge,
 		})
 	}, [
 		deferredQuery,
 		documentsQuery.data,
 		driveConnector.registry,
+		insuranceQuery.knowledge,
 		memberContext,
 		reportsQuery.data,
 		user,
@@ -47,6 +51,10 @@ export function useGlobalSearch(query: string) {
 
 	return {
 		results,
-		isLoading: isPending || reportsQuery.isLoading || documentsQuery.isLoading,
+		isLoading:
+			isPending ||
+			reportsQuery.isLoading ||
+			documentsQuery.isLoading ||
+			insuranceQuery.isLoading,
 	}
 }

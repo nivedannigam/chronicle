@@ -11,7 +11,7 @@ import {
 	traceGraph,
 } from '@/shared/knowledge-graph/services/graph-traversal'
 import { recordGraphOperation } from '@/shared/knowledge-graph/observability/graph-observability'
-import type { GraphDomainAdapter } from '@/shared/knowledge-graph/adapters/health-graph.adapter'
+import type { GraphDomainAdapter } from '@/shared/knowledge-graph/contracts/graph-domain-adapter.contract'
 import type {
 	FindEntityQuery,
 	ChronicleEntity,
@@ -128,6 +128,18 @@ export class KnowledgeGraphService {
 		input: import('@/features/health-knowledge/types/health-knowledge-object.types').HealthKnowledge,
 	): GraphSnapshot {
 		return this.ingestDomain('health', input)
+	}
+
+	loadInsuranceKnowledge(
+		input: import('@/features/insurance-knowledge/types/insurance-knowledge-object.types').InsuranceKnowledge,
+	): GraphSnapshot {
+		return this.ingestDomain('insurance', input)
+	}
+
+	loadDocuments(
+		input: import('@/shared/knowledge-graph/adapters/documents-graph.adapter').DocumentsGraphInput,
+	): GraphSnapshot {
+		return this.ingestDomain('documents', input)
 	}
 
 	snapshot(): GraphSnapshot {

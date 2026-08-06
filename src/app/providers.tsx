@@ -2,11 +2,14 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/components/AuthProvider'
 import { FamilyProvider } from '@/features/family/context/FamilyContext'
+import { initializePlatform } from '@/core/platform/bootstrap/initialize-platform'
 import { bootstrapHealthWorkflowEngine } from '@/features/health/workflow'
 import { bootstrapHealthImportNotifications } from '@/features/health-import/services/import-notification.subscriber'
 import { AppRouter } from '@/app/router'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { queryClient } from '@/lib/query-client'
+
+initializePlatform()
 
 export function AppProviders() {
 	bootstrapHealthWorkflowEngine()

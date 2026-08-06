@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { ChevronDown, Cloud, Download, Eye, Folder, Unplug } from 'lucide-react'
+import { Cloud, Download, Eye, Folder, Unplug } from 'lucide-react'
 import { USER_VOCAB } from '@/constants/user-vocabulary'
-import { FigmaHealthSectionLabel } from '@/ui/figma/health/figma-health-primitives'
-import { FC, FigmaIconBox, figmaCardStyle } from '@/ui/figma/v2/atoms'
+import {
+	ModuleSettingsAdvancedSection,
+	ModuleSettingsEmptyCard,
+	ModuleSettingsRow,
+	ModuleSettingsSection,
+} from '@/ui/figma/settings/module-settings-ui'
+import { FC } from '@/ui/figma/v2/atoms'
 
 interface FolderAssignment {
 	id: string
@@ -39,12 +42,10 @@ export function FigmaHealthSettingsView({
 	importCenterAttentionCount?: number
 	onOpenImportCenter: () => void
 }) {
-	const [advancedOpen, setAdvancedOpen] = useState(false)
-
 	return (
 		<div style={{ paddingBottom: 32 }}>
-			<Section label="Google Drive">
-				<Row
+			<ModuleSettingsSection label="Google Drive">
+				<ModuleSettingsRow
 					icon={Cloud}
 					color={driveConnected ? FC.green : FC.amber}
 					title="Google Drive"
@@ -56,37 +57,20 @@ export function FigmaHealthSettingsView({
 					actionLabel={driveConnected ? 'Manage' : 'Connect'}
 					onAction={onConnectDrive}
 				/>
-			</Section>
+			</ModuleSettingsSection>
 
-			<Section label="Assigned folder">
+			<ModuleSettingsSection label="Assigned folder">
 				{isLoadingAssignments ? (
 					<p style={{ color: FC.dim, fontSize: 13, margin: 0 }}>Loading…</p>
 				) : assignments.length === 0 ? (
-					<div
-						style={{
-							...figmaCardStyle,
-							borderRadius: 20,
-							padding: '16px 18px',
-						}}
-					>
-						<p
-							style={{
-								color: FC.mid,
-								fontSize: 14,
-								lineHeight: 1.5,
-								margin: '0 0 12px',
-							}}
-						>
-							No health folder assigned for {memberLabel} yet.
-						</p>
-						<ActionButton
-							label="Choose health folder"
-							onClick={onChooseFolder}
-						/>
-					</div>
+					<ModuleSettingsEmptyCard
+						message={`No health folder assigned for ${memberLabel} yet.`}
+						actionLabel="Choose health folder"
+						onAction={onChooseFolder}
+					/>
 				) : (
 					assignments.map((assignment) => (
-						<Row
+						<ModuleSettingsRow
 							key={assignment.id}
 							icon={Folder}
 							color={FC.blue}
@@ -97,10 +81,10 @@ export function FigmaHealthSettingsView({
 						/>
 					))
 				)}
-			</Section>
+			</ModuleSettingsSection>
 
-			<Section label="Privacy">
-				<Row
+			<ModuleSettingsSection label="Privacy">
+				<ModuleSettingsRow
 					icon={Eye}
 					color={FC.purple}
 					title="Health data"
@@ -108,10 +92,10 @@ export function FigmaHealthSettingsView({
 					actionLabel="Manage"
 					onAction={onPrivacy}
 				/>
-			</Section>
+			</ModuleSettingsSection>
 
-			<Section label="Export">
-				<Row
+			<ModuleSettingsSection label="Export">
+				<ModuleSettingsRow
 					icon={Download}
 					color={FC.teal}
 					title="Export your data"
@@ -119,178 +103,32 @@ export function FigmaHealthSettingsView({
 					actionLabel="Export"
 					onAction={onExport}
 				/>
-			</Section>
+			</ModuleSettingsSection>
 
-			<section style={{ marginBottom: 24 }}>
-				<button
-					type="button"
-					onClick={() => setAdvancedOpen((open) => !open)}
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						width: '100%',
-						background: 'none',
-						border: 'none',
-						padding: '0 0 12px',
-						cursor: 'pointer',
-						fontFamily: 'inherit',
-					}}
-				>
-					<FigmaHealthSectionLabel>
-						{USER_VOCAB.sections.advanced}
-					</FigmaHealthSectionLabel>
-					<ChevronDown
-						size={18}
-						color={FC.mid}
-						style={{
-							transform: advancedOpen ? 'rotate(180deg)' : 'none',
-							transition: 'transform 0.2s ease',
-						}}
-					/>
-				</button>
-
-				{advancedOpen ? (
-					<div style={{ display: 'grid', gap: 12 }}>
-						<Row
-							icon={Folder}
-							color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
-							title={USER_VOCAB.sections.reportImports}
-							subtitle={
-								importCenterAttentionCount > 0
-									? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
-									: 'Recent imports and anything that needs your attention'
-							}
-							actionLabel="Open"
-							onAction={onOpenImportCenter}
-						/>
-						<Row
-							icon={Unplug}
-							color={FC.orange}
-							title="Disconnect Google Drive"
-							subtitle="Stop syncing new reports from Drive"
-							actionLabel={isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
-							onAction={onDisconnect}
-							disabled={!driveConnected || isDisconnecting}
-							tone="danger"
-						/>
-					</div>
-				) : null}
-			</section>
+			<ModuleSettingsAdvancedSection label={USER_VOCAB.sections.advanced}>
+				<ModuleSettingsRow
+					icon={Folder}
+					color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
+					title={USER_VOCAB.sections.reportImports}
+					subtitle={
+						importCenterAttentionCount > 0
+							? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
+							: 'Recent imports and anything that needs your attention'
+					}
+					actionLabel="Open"
+					onAction={onOpenImportCenter}
+				/>
+				<ModuleSettingsRow
+					icon={Unplug}
+					color={FC.orange}
+					title="Disconnect Google Drive"
+					subtitle="Stop syncing new reports from Drive"
+					actionLabel={isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+					onAction={onDisconnect}
+					disabled={!driveConnected || isDisconnecting}
+					tone="danger"
+				/>
+			</ModuleSettingsAdvancedSection>
 		</div>
-	)
-}
-
-function Section({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<section style={{ marginBottom: 24 }}>
-			<div style={{ marginBottom: 12 }}>
-				<FigmaHealthSectionLabel>{label}</FigmaHealthSectionLabel>
-			</div>
-			<div style={{ display: 'grid', gap: 12 }}>{children}</div>
-		</section>
-	)
-}
-
-function Row({
-	icon: Icon,
-	color,
-	title,
-	subtitle,
-	actionLabel,
-	onAction,
-	disabled,
-	tone,
-}: {
-	icon: typeof Cloud
-	color: string
-	title: string
-	subtitle: string
-	actionLabel: string
-	onAction: () => void
-	disabled?: boolean
-	tone?: 'danger'
-}) {
-	return (
-		<div
-			style={{
-				...figmaCardStyle,
-				borderRadius: 20,
-				padding: '16px 18px',
-				display: 'flex',
-				alignItems: 'center',
-				gap: 13,
-			}}
-		>
-			<FigmaIconBox color={color} size={42}>
-				<Icon size={18} color={color} strokeWidth={1.8} />
-			</FigmaIconBox>
-			<div style={{ flex: 1, minWidth: 0 }}>
-				<p
-					style={{
-						color: FC.fg,
-						fontSize: 14.5,
-						fontWeight: 600,
-						margin: '0 0 3px',
-					}}
-				>
-					{title}
-				</p>
-				<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>{subtitle}</p>
-			</div>
-			<button
-				type="button"
-				onClick={onAction}
-				disabled={disabled}
-				style={{
-					background: tone === 'danger' ? `${FC.orange}18` : FC.ghost,
-					border: `1px solid ${tone === 'danger' ? `${FC.orange}35` : FC.line}`,
-					borderRadius: 12,
-					padding: '7px 15px',
-					cursor: disabled ? 'default' : 'pointer',
-					opacity: disabled ? 0.5 : 1,
-					fontFamily: 'inherit',
-					flexShrink: 0,
-				}}
-			>
-				<span
-					style={{
-						color: tone === 'danger' ? FC.orange : FC.mid,
-						fontSize: 13,
-						fontWeight: tone === 'danger' ? 700 : 500,
-					}}
-				>
-					{actionLabel}
-				</span>
-			</button>
-		</div>
-	)
-}
-
-function ActionButton({
-	label,
-	onClick,
-}: {
-	label: string
-	onClick: () => void
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			style={{
-				background: FC.blue,
-				color: '#fff',
-				border: 'none',
-				borderRadius: 12,
-				padding: '8px 14px',
-				cursor: 'pointer',
-				fontFamily: 'inherit',
-				fontWeight: 600,
-				fontSize: 13,
-			}}
-		>
-			{label}
-		</button>
 	)
 }

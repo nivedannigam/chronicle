@@ -5,6 +5,7 @@ import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocument
 import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
+import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
 import {
 	buildTimelineEvents,
 	buildTimelinePreview,
@@ -22,6 +23,10 @@ function buildTimelineSources(input: {
 		typeof useHealthKnowledge
 	>['graph']['profile']['metricHistories']
 	importStatus: ReturnType<typeof useHealthImportStatus>['data']
+	insuranceKnowledge: ReturnType<typeof useInsuranceKnowledge>['knowledge']
+	userId?: string
+	familyMemberId?: string | null
+	accountOwnerMemberId?: string | null
 }): TimelineSources {
 	return {
 		health: {
@@ -31,6 +36,14 @@ function buildTimelineSources(input: {
 		documents: {
 			uploadedDocuments: input.documents ?? [],
 		},
+		insurance: input.insuranceKnowledge
+			? {
+					knowledge: input.insuranceKnowledge,
+					userId: input.userId,
+					familyMemberId: input.familyMemberId ?? null,
+					accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+				}
+			: undefined,
 		system: {
 			lastDriveScanAt: input.importStatus?.lastScanAt ?? null,
 			medicalReportsCount: input.importStatus?.medicalReportsCount ?? 0,
@@ -47,8 +60,10 @@ export function useTimelineSources(): {
 	const reportsQuery = useMemberHealthReports()
 	const documentsQuery = useMemberDocuments()
 	const { user } = useAuth()
+	const { selectedMemberId, accountOwnerMemberId } = useFamilyContext()
 	const { graph } = useHealthKnowledge(user?.id, reportsQuery.data ?? [])
 	const importStatus = useHealthImportStatus(user?.id)
+	const insuranceQuery = useInsuranceKnowledge()
 
 	const sources = useMemo(
 		() =>
@@ -57,17 +72,28 @@ export function useTimelineSources(): {
 				documents: documentsQuery.data,
 				metricHistories: graph.profile.metricHistories,
 				importStatus: importStatus.data,
+				insuranceKnowledge: insuranceQuery.knowledge,
+				userId: user?.id,
+				familyMemberId: selectedMemberId,
+				accountOwnerMemberId,
 			}),
 		[
 			reportsQuery.data,
 			documentsQuery.data,
 			graph.profile.metricHistories,
 			importStatus.data,
+			insuranceQuery.knowledge,
+			user?.id,
+			selectedMemberId,
+			accountOwnerMemberId,
 		],
 	)
 
 	const isLoading =
-		reportsQuery.isLoading || documentsQuery.isLoading || importStatus.isLoading
+		reportsQuery.isLoading ||
+		documentsQuery.isLoading ||
+		importStatus.isLoading ||
+		insuranceQuery.isLoading
 
 	const isError =
 		reportsQuery.isError || documentsQuery.isError || importStatus.isError

@@ -1,19 +1,17 @@
 import type { HealthKnowledge } from '@/features/health-knowledge/types/health-knowledge-object.types'
+import type { GraphDomainAdapter } from '@/shared/knowledge-graph/contracts/graph-domain-adapter.contract'
 import type { GraphStore } from '@/shared/knowledge-graph/store/graph-store'
 import type { ChronicleEntity } from '@/shared/knowledge-graph/types/entity.types'
-
-function entityId(prefix: string, id: string): string {
-	return `${prefix}:${id}`
-}
-
-function relationshipId(type: string, from: string, to: string): string {
-	return `${type}:${from}->${to}`
-}
+import {
+	entityId,
+	relationshipId,
+} from '@/shared/knowledge-graph/utils/graph-id.utils'
 
 export function ingestHealthKnowledge(
 	store: GraphStore,
 	knowledge: HealthKnowledge,
 ): { entityCount: number; relationshipCount: number } {
+	const before = store.snapshot()
 	const memberEntityId = entityId(
 		'family-member',
 		knowledge.familyMember.id ?? knowledge.patient.userId,
@@ -224,22 +222,26 @@ export function ingestHealthKnowledge(
 		}
 	}
 
-	const snapshot = store.snapshot()
+	const after = store.snapshot()
 	return {
-		entityCount: snapshot.entityCount,
-		relationshipCount: snapshot.relationshipCount,
+		entityCount: after.entityCount - before.entityCount,
+		relationshipCount: after.relationshipCount - before.relationshipCount,
 	}
 }
 
-export interface GraphDomainAdapter<TInput = unknown> {
-	readonly domain: ChronicleEntity['domain']
-	ingest(
-		store: GraphStore,
-		input: TInput,
-	): { entityCount: number; relationshipCount: number }
-}
+export type { GraphDomainAdapter } from '@/shared/knowledge-graph/contracts/graph-domain-adapter.contract'
 
 export const healthGraphAdapter: GraphDomainAdapter<HealthKnowledge> = {
 	domain: 'health',
+	providerId: 'health-knowledge',
+	entityTypes: [
+		'Person',
+		'FamilyMember',
+		'HealthReport',
+		'HealthMetric',
+		'HealthCategory',
+		'Recommendation',
+		'TimelineEvent',
+	],
 	ingest: ingestHealthKnowledge,
 }

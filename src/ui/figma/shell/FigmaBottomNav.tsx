@@ -1,4 +1,4 @@
-import { FileText, Heart, Home, Sparkles, User } from 'lucide-react'
+import { BookOpen, Clock, Home, Sparkles, User } from 'lucide-react'
 import { useActiveTab } from '@/hooks/useActiveTab'
 import { FC } from '@/ui/figma/tokens/figma-v2-tokens'
 import type { Tab } from '@/types/navigation'
@@ -10,10 +10,10 @@ const NAV_ITEMS: {
 	center?: boolean
 }[] = [
 	{ id: 'home', Icon: Home, label: 'Home' },
-	{ id: 'health', Icon: Heart, label: 'Health' },
+	{ id: 'library', Icon: BookOpen, label: 'Library' },
 	{ id: 'ask', Icon: Sparkles, label: 'Ask', center: true },
-	{ id: 'more', Icon: FileText, label: 'More' },
-	{ id: 'profile', Icon: User, label: 'Profile' },
+	{ id: 'timeline', Icon: Clock, label: 'Timeline' },
+	{ id: 'profile', Icon: User, label: 'You' },
 ]
 
 const TAB_TRANSITION = 'all 0.28s cubic-bezier(0.34, 1.2, 0.64, 1)'
@@ -99,12 +99,12 @@ export function FigmaBottomNav() {
 								flexDirection: 'column',
 								alignItems: 'center',
 								gap: 4,
-								padding: '6px 12px',
+								padding: '6px 10px',
 								background: 'none',
 								border: 'none',
 								cursor: 'pointer',
 								position: 'relative',
-								minWidth: 56,
+								minWidth: 52,
 								minHeight: 52,
 								fontFamily: 'inherit',
 								transition: TAB_TRANSITION,
@@ -141,7 +141,6 @@ export function FigmaBottomNav() {
 									color: active ? FC.blue : 'rgba(255,255,255,0.28)',
 									fontSize: 10,
 									fontWeight: active ? 600 : 400,
-									letterSpacing: 0.1,
 									position: 'relative',
 									transition: TAB_TRANSITION,
 								}}

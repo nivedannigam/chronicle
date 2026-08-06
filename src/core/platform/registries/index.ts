@@ -1,0 +1,7 @@
+export * from '@/core/platform/registries/module-registry'
+export * from '@/core/platform/registries/knowledge-registry'
+export * from '@/core/platform/registries/timeline-registry'
+export * from '@/core/platform/registries/search-registry'
+export * from '@/core/platform/registries/notification-registry'
+export * from '@/core/platform/registries/document-registry'
+export * from '@/core/platform/registries/ai-registry'

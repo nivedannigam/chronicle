@@ -10,10 +10,10 @@ export interface NavigationItem {
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
 	{ moduleId: 'home', path: ROUTES.home, label: 'Home', badge: '' },
-	{ moduleId: 'health', path: ROUTES.health, label: 'Health', badge: '' },
+	{ moduleId: 'library', path: ROUTES.documents, label: 'Library', badge: '' },
 	{ moduleId: 'ask', path: ROUTES.ask, label: 'Ask', badge: '' },
-	{ moduleId: 'more', path: ROUTES.more, label: 'More', badge: '' },
-	{ moduleId: 'profile', path: ROUTES.profile, label: 'Profile', badge: '' },
+	{ moduleId: 'timeline', path: ROUTES.timeline, label: 'Timeline', badge: '' },
+	{ moduleId: 'profile', path: ROUTES.profile, label: 'You', badge: '' },
 ]
 
 export const NAV_BAR_STYLE = {

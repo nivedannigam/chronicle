@@ -35,11 +35,29 @@ export interface DocumentRelatedItem {
 	reason: string
 }
 
+export interface DocumentModuleLinkView {
+	moduleId: string
+	label: string
+	route: string | null
+}
+
+export interface DocumentAiDiscoveryItem {
+	id: string
+	documentId: string
+	title: string
+	label: string
+	categoryLabel: string
+}
+
+export type DocumentConsumerStatus = 'Ready' | 'Needs Help' | 'Still Organizing'
+
 export interface DocumentIntelligenceView {
 	documentId: string
 	summary: string
 	displayFields: DocumentDisplayField[]
 	relatedDocuments: DocumentRelatedItem[]
+	relatedModules: DocumentModuleLinkView[]
+	aiDiscoveryLabel: string | null
 	activity: DocumentActivityItem[]
 }
 
@@ -58,6 +76,11 @@ export interface ChronicleDocumentSummary {
 	isExpired: boolean
 	fileType: string
 	hasAiSummary: boolean
+	tags: string[]
+	relatedModules: DocumentModuleLinkView[]
+	consumerStatus: DocumentConsumerStatus
+	aiDiscoveryLabel: string | null
+	year: number | null
 }
 
 export interface DocumentsHubView {
@@ -69,6 +92,19 @@ export interface DocumentsHubView {
 	recentlyAdded: ChronicleDocumentSummary[]
 	recentActivity: DocumentActivityItem[]
 	allDocuments: ChronicleDocumentSummary[]
+	expiringSoon: ChronicleDocumentSummary[]
+	aiDiscoveries: DocumentAiDiscoveryItem[]
+	needsAttention: ChronicleDocumentSummary[]
+}
+
+export interface DocumentLibraryFilters {
+	query: string
+	categoryId: string | null
+	familyMemberId: string | null
+	subCategoryId: string | null
+	year: number | null
+	source: ChronicleDocument['source'] | null
+	consumerStatus: DocumentConsumerStatus | null
 }
 
 export type { ChronicleDocument }

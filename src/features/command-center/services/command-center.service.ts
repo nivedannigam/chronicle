@@ -18,6 +18,7 @@ import type {
 import type { HealthMetricHistory } from '@/features/health-knowledge/types'
 import { buildDerivedInsights } from '@/features/health-knowledge/engines/insights.engine'
 import type { HealthImportStatus } from '@/features/health-import/services/health-import-status.service'
+import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type {
 	AttentionItem,
 	CommandCenterBriefing,
@@ -169,6 +170,7 @@ export function buildAttentionItems(input: {
 	importStatus?: HealthImportStatus
 	metricHistories: HealthMetricHistory[]
 	accountOwnerMemberId: string | null
+	insuranceKnowledge?: InsuranceKnowledge | null
 }): AttentionItem[] {
 	const items: AttentionItem[] = []
 
@@ -232,6 +234,24 @@ export function buildAttentionItems(input: {
 			tone: 'attention',
 			path: ROUTES.healthSettings,
 			module: 'health',
+		})
+	}
+
+	for (const policy of input.insuranceKnowledge?.expiringPolicies ?? []) {
+		if (policy.daysUntilExpiry == null || policy.daysUntilExpiry > 60) {
+			continue
+		}
+
+		items.push({
+			id: `insurance-expiry-${policy.id}`,
+			title: policy.productName ?? policy.policyNumber,
+			description:
+				policy.daysUntilExpiry <= 0
+					? 'Policy has expired'
+					: `Renews in ${policy.daysUntilExpiry} day${policy.daysUntilExpiry === 1 ? '' : 's'}`,
+			tone: policy.daysUntilExpiry <= 14 ? 'warning' : 'attention',
+			path: ROUTES.insurancePolicies,
+			module: 'insurance',
 		})
 	}
 
@@ -464,6 +484,7 @@ export function buildCommandCenterBriefing(input: {
 	documents: ChronicleDocument[]
 	metricHistories: HealthMetricHistory[]
 	importStatus?: HealthImportStatus
+	insuranceKnowledge?: InsuranceKnowledge | null
 	loading: CommandCenterBriefing['loading']
 }): CommandCenterBriefing {
 	const accountOwnerMemberId = getAccountOwnerMemberId(input.members)
@@ -488,6 +509,9 @@ export function buildCommandCenterBriefing(input: {
 				metricHistories: input.metricHistories,
 			},
 			documents: { uploadedDocuments: input.documents },
+			insurance: input.insuranceKnowledge
+				? { knowledge: input.insuranceKnowledge }
+				: undefined,
 		},
 	})
 
@@ -499,6 +523,7 @@ export function buildCommandCenterBriefing(input: {
 		importStatus: input.importStatus,
 		metricHistories: input.metricHistories,
 		accountOwnerMemberId,
+		insuranceKnowledge: input.insuranceKnowledge,
 	})
 	const actionableAttention = attentionItems.filter(
 		(item) => item.tone !== 'info',

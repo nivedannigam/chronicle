@@ -7,43 +7,46 @@ import {
 
 /** Home grid categories — meaning-first, not folder-based. */
 export const DOCUMENT_HOME_CATEGORIES = [
-	{ categoryId: 'identity', label: 'Identity', emoji: '🪪', color: FC.blue },
-	{ categoryId: 'insurance', label: 'Insurance', emoji: '🛡️', color: FC.teal },
-	{ categoryId: 'property', label: 'Property', emoji: '🏠', color: FC.orange },
-	{ categoryId: 'financial', label: 'Finance', emoji: '💰', color: FC.amber },
 	{ categoryId: 'medical', label: 'Health', emoji: '🏥', color: FC.green },
+	{ categoryId: 'insurance', label: 'Insurance', emoji: '🛡️', color: FC.teal },
+	{ categoryId: 'identity', label: 'Identity', emoji: '🪪', color: FC.blue },
+	{ categoryId: 'vehicles', label: 'Vehicles', emoji: '🚗', color: FC.orange },
+	{ categoryId: 'property', label: 'Property', emoji: '🏠', color: FC.amber },
+	{ categoryId: 'financial', label: 'Finance', emoji: '💰', color: FC.amber },
+	{ categoryId: 'travel', label: 'Travel', emoji: '✈️', color: FC.purple },
+	{
+		categoryId: 'education',
+		label: 'Education',
+		emoji: '📚',
+		color: FC.pink,
+	},
 	{
 		categoryId: 'employment',
 		label: 'Employment',
 		emoji: '💼',
 		color: FC.indigo,
 	},
-	{ categoryId: 'education', label: 'Education', emoji: '📚', color: FC.pink },
-	{
-		categoryId: 'other',
-		label: 'Travel & Other',
-		emoji: '✈️',
-		color: FC.purple,
-	},
+	{ categoryId: 'personal', label: 'Personal', emoji: '📁', color: FC.mid },
 ] as const
 
 /** Future modules — hidden until product enables them. */
 export const FUTURE_DOCUMENT_MODULES = [
-	{ id: 'vehicles', label: 'Vehicles', available: false },
-	{ id: 'investments', label: 'Investments', available: false },
 	{ id: 'tax', label: 'Tax', available: false },
-	{ id: 'utilities', label: 'Utilities', available: false },
 	{ id: 'legal', label: 'Legal', available: false },
+	{ id: 'utilities', label: 'Utilities', available: false },
 ] as const
 
 const CATEGORY_RELATIONSHIPS: Record<string, string[]> = {
-	identity: ['insurance', 'other', 'financial'],
-	insurance: ['identity', 'property', 'medical'],
+	identity: ['insurance', 'travel', 'financial'],
+	insurance: ['identity', 'property', 'medical', 'vehicles'],
 	property: ['insurance', 'financial', 'employment'],
 	financial: ['property', 'employment', 'insurance'],
 	employment: ['financial', 'identity'],
 	medical: ['insurance', 'identity'],
 	education: ['identity', 'employment'],
+	travel: ['identity', 'insurance'],
+	vehicles: ['insurance', 'identity'],
+	personal: ['identity', 'financial'],
 	other: ['identity', 'insurance'],
 }
 
@@ -71,7 +74,7 @@ export function getCategoryDisplayMeta(categoryId: string) {
 }
 
 export function getAllCategoryIds(): string[] {
-	return DOCUMENT_CATEGORY_REGISTRY.map((category) => category.id)
+	return DOCUMENT_HOME_CATEGORIES.map((category) => category.categoryId)
 }
 
 export function getSubCategoryLabel(
@@ -81,3 +84,5 @@ export function getSubCategoryLabel(
 	if (!subCategoryId) return null
 	return getDocumentSubCategory(categoryId, subCategoryId)?.label ?? null
 }
+
+export { DOCUMENT_CATEGORY_REGISTRY }

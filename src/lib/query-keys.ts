@@ -14,6 +14,8 @@ export const STALE_TIME = {
 	default: 60 * 1000,
 	documents: 2 * 60 * 1000,
 	timeline: 2 * 60 * 1000,
+	insuranceKnowledge: 2 * 60 * 1000,
+	insuranceSources: 30 * 1000,
 } as const
 
 export const queryKeys = {
@@ -88,6 +90,16 @@ export const queryKeys = {
 	timeline: {
 		events: (userId: string | undefined, memberId: string | null | undefined) =>
 			['timeline-events', userId, memberId] as const,
+	},
+	insurance: {
+		knowledge: (
+			userId: string | undefined,
+			memberId: string | null | undefined,
+		) => ['insurance-knowledge', userId, memberId ?? 'all'] as const,
+		sources: (userId: string | undefined) =>
+			['insurance-source-assignments', userId] as const,
+		preferences: (userId: string | undefined) =>
+			['insurance-preferences', userId] as const,
 	},
 } as const
 

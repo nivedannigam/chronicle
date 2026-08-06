@@ -5,7 +5,9 @@ import { documentPath, ROUTES } from '@/constants/routes'
 import type {
 	ChronicleDocumentSummary,
 	DocumentActivityItem,
+	DocumentAiDiscoveryItem,
 	DocumentAttentionItem,
+	DocumentConsumerStatus,
 } from '@/features/documents/types/document-intelligence.types'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -41,6 +43,153 @@ export function DocumentAiBadge() {
 			<Sparkles size={10} color={FC.blue} />
 			<span style={{ color: FC.blue, fontSize: 10, fontWeight: 700 }}>AI</span>
 		</span>
+	)
+}
+
+export function DocumentFilterChip({
+	label,
+	active = false,
+	onClick,
+}: {
+	label: string
+	active?: boolean
+	onClick: () => void
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			style={{
+				background: active ? `${FC.blue}18` : FC.surface,
+				border: `1px solid ${active ? `${FC.blue}35` : FC.line}`,
+				borderRadius: 100,
+				padding: '7px 12px',
+				cursor: 'pointer',
+				fontFamily: 'inherit',
+				color: active ? FC.blue : FC.mid,
+				fontSize: 12,
+				fontWeight: 600,
+				flexShrink: 0,
+			}}
+		>
+			{label}
+		</button>
+	)
+}
+
+function statusColor(status: DocumentConsumerStatus): string {
+	switch (status) {
+		case 'Ready':
+			return FC.green
+		case 'Needs Help':
+			return FC.orange
+		case 'Still Organizing':
+			return FC.amber
+	}
+}
+
+export function DocumentStatusBadge({
+	status,
+}: {
+	status: DocumentConsumerStatus
+}) {
+	const color = statusColor(status)
+
+	return (
+		<span
+			style={{
+				background: `${color}14`,
+				border: `1px solid ${color}33`,
+				borderRadius: 100,
+				padding: '3px 8px',
+				color,
+				fontSize: 10,
+				fontWeight: 700,
+			}}
+		>
+			{status}
+		</span>
+	)
+}
+
+export function DocumentModuleChip({
+	label,
+	onClick,
+}: {
+	label: string
+	onClick?: () => void
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			disabled={!onClick}
+			style={{
+				background: FC.ghost,
+				border: `1px solid ${FC.line}`,
+				borderRadius: 100,
+				padding: '4px 9px',
+				cursor: onClick ? 'pointer' : 'default',
+				fontFamily: 'inherit',
+				color: FC.mid,
+				fontSize: 10.5,
+				fontWeight: 600,
+			}}
+		>
+			{label}
+		</button>
+	)
+}
+
+export function DocumentDiscoveryCard({
+	item,
+}: {
+	item: DocumentAiDiscoveryItem
+}) {
+	const navigate = useNavigate()
+
+	return (
+		<button
+			type="button"
+			onClick={() => navigate(documentPath(item.documentId))}
+			style={{
+				...figmaCardStyle,
+				borderRadius: 18,
+				padding: '14px 16px',
+				marginBottom: 10,
+				width: '100%',
+				textAlign: 'left',
+				cursor: 'pointer',
+				fontFamily: 'inherit',
+				border: `1px solid ${FC.blue}22`,
+				background: `${FC.blue}08`,
+			}}
+		>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 8,
+					marginBottom: 6,
+				}}
+			>
+				<DocumentAiBadge />
+				<span style={{ color: FC.dim, fontSize: 11, fontWeight: 600 }}>
+					{item.categoryLabel}
+				</span>
+			</div>
+			<p
+				style={{
+					color: FC.fg,
+					fontSize: 14,
+					fontWeight: 600,
+					margin: '0 0 4px',
+				}}
+			>
+				{item.title}
+			</p>
+			<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>{item.label}</p>
+		</button>
 	)
 }
 
@@ -246,12 +395,28 @@ export function DocumentSummaryCard({
 						</p>
 						{document.hasAiSummary ? <DocumentAiBadge /> : null}
 					</div>
-					<p style={{ color: FC.mid, fontSize: 12.5, margin: '0 0 4px' }}>
+					<p style={{ color: FC.mid, fontSize: 12.5, margin: '0 0 6px' }}>
 						{document.categoryLabel}
 						{document.subCategoryLabel ? ` · ${document.subCategoryLabel}` : ''}
 						{' · '}
 						{document.ownerLabel}
+						{' · '}
+						{document.sourceLabel}
 					</p>
+					<div
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 6,
+							flexWrap: 'wrap',
+							marginBottom: 6,
+						}}
+					>
+						<DocumentStatusBadge status={document.consumerStatus} />
+						{document.relatedModules.slice(0, 2).map((module) => (
+							<DocumentModuleChip key={module.moduleId} label={module.label} />
+						))}
+					</div>
 					<p
 						style={{
 							color: FC.dim,

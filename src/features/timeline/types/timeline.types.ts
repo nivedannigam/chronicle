@@ -1,5 +1,11 @@
 export type TimelineModule =
-	'health' | 'documents' | 'finance' | 'travel' | 'family' | 'system'
+	| 'health'
+	| 'insurance'
+	| 'documents'
+	| 'finance'
+	| 'travel'
+	| 'family'
+	| 'system'
 
 export type TimelineEventType =
 	| 'report_imported'
@@ -81,6 +87,13 @@ export interface TimelineSources {
 	}
 	documents?: {
 		uploadedDocuments?: import('@/features/documents/types/document.types').ChronicleDocument[]
+	}
+	insurance?: {
+		knowledge?: import('@/features/insurance-knowledge/types/insurance-knowledge-object.types').InsuranceKnowledge
+		rawData?: import('@/features/insurance-knowledge/providers/insurance-knowledge-data-source').InsuranceKnowledgeRawData
+		userId?: string
+		familyMemberId?: string | null
+		accountOwnerMemberId?: string | null
 	}
 	system?: {
 		lastDriveScanAt?: string | null

@@ -75,8 +75,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
 		id: 'insurance',
 		name: 'Insurance',
 		icon: Shield,
-		enabled: false,
-		comingSoon: true,
+		enabled: true,
+		comingSoon: false,
 		color: C.accentBlue,
 	},
 	{
@@ -115,7 +115,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
 
 export const MORE_COMING_SOON_MODULE_IDS = [
 	'finance',
-	'insurance',
 	'travel',
 	'education',
 	'assets',
@@ -127,6 +126,7 @@ export const DASHBOARD_COMING_SOON_MODULE_IDS = MORE_COMING_SOON_MODULE_IDS
 
 export const MODULE_ROUTES: Partial<Record<string, string>> = {
 	health: ROUTES.health,
+	insurance: ROUTES.insurance,
 	documents: ROUTES.documents,
 	family: ROUTES.profileFamily,
 	timeline: ROUTES.timeline,
@@ -139,9 +139,9 @@ export function getModuleById(id: string): ModuleDefinition | undefined {
 export function getModuleByTab(tab: Tab): ModuleDefinition | undefined {
 	const tabModuleIds: Record<Tab, string> = {
 		home: 'home',
-		health: 'health',
+		library: 'documents',
 		ask: 'ask',
-		more: 'more',
+		timeline: 'documents',
 		profile: 'profile',
 	}
 
@@ -150,6 +150,7 @@ export function getModuleByTab(tab: Tab): ModuleDefinition | undefined {
 
 export const EXPLORE_CAPABILITY_IDS = [
 	'health',
+	'insurance',
 	'documents',
 	...MORE_COMING_SOON_MODULE_IDS,
 ] as const

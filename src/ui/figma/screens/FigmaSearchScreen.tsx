@@ -1,58 +1,42 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Clock, FileText, Search, Sparkles, X } from 'lucide-react'
-import { documentPath, healthReportPath, ROUTES } from '@/constants/routes'
+import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { getRecentQuestions } from '@/features/ask/services/ask-history.service'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
+import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
-import {
-	domainColor,
-	domainLabel,
-} from '@/features/search/services/global-search.service'
+import { groupSearchResults } from '@/features/os/services/grouped-search.service'
+import { domainColor } from '@/features/search/services/global-search.service'
 import { useGlobalSearch } from '@/features/search/hooks/useGlobalSearch'
-import type { SemanticSearchHit } from '@/features/intelligence/types/intelligence.types'
 import { FigmaScreenHeader } from '@/ui/figma/shell/FigmaScreenHeader'
 import { FC, FigmaIconBox, FigmaLbl, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 const BROWSE_CATEGORIES = [
-	{ label: 'Health', emoji: '❤️', color: FC.green, domain: 'health' as const },
-	{
-		label: 'Documents',
-		emoji: '📄',
-		color: FC.purple,
-		domain: 'documents' as const,
-	},
-	{
-		label: 'Timeline',
-		emoji: '🕐',
-		color: FC.blue,
-		domain: 'timeline' as const,
-	},
+	{ label: 'Health', emoji: '❤️', color: FC.green },
+	{ label: 'Insurance', emoji: '🛡️', color: FC.blue },
+	{ label: 'Documents', emoji: '📄', color: FC.purple },
+	{ label: 'People', emoji: '👨‍👩‍👧', color: FC.teal },
 ]
-
-function hitPath(hit: SemanticSearchHit): string | null {
-	if (hit.domain === 'documents' && hit.reportId) {
-		return documentPath(hit.reportId)
-	}
-
-	if (hit.domain === 'health' && hit.reportId) {
-		return healthReportPath(hit.reportId)
-	}
-
-	if (hit.domain === 'photos') {
-		return ROUTES.timeline
-	}
-
-	return `${ROUTES.ask}?q=${encodeURIComponent(hit.title)}`
-}
 
 export function FigmaSearchScreen() {
 	const navigate = useNavigate()
 	const [query, setQuery] = useState('')
 	const { results, isLoading } = useGlobalSearch(query)
+	const { members } = useFamilyContext()
 	const { data: documents = [] } = useMemberDocuments()
 	const { data: reports = [] } = useMemberHealthReports()
+
+	const groupedSections = useMemo(
+		() =>
+			groupSearchResults({
+				query,
+				hits: results,
+				members,
+			}),
+		[query, results, members],
+	)
 
 	const recent = useMemo(
 		() =>
@@ -64,20 +48,23 @@ export function FigmaSearchScreen() {
 
 	const trimmedQuery = query.trim()
 	const hasActiveQuery = trimmedQuery.length > 0
-	const showEmptyResults = hasActiveQuery && !isLoading && results.length === 0
+	const showEmptyResults =
+		hasActiveQuery && !isLoading && groupedSections.length === 0
 
 	const browse = useMemo(
 		() =>
 			BROWSE_CATEGORIES.map((category) => ({
 				...category,
 				count:
-					category.domain === 'health'
+					category.label === 'Health'
 						? reports.length
-						: category.domain === 'documents'
+						: category.label === 'Documents'
 							? documents.length
-							: reports.length + documents.length,
+							: category.label === 'People'
+								? members.length
+								: 0,
 			})),
-		[documents.length, reports.length],
+		[documents.length, members.length, reports.length],
 	)
 
 	return (
@@ -156,69 +143,86 @@ export function FigmaSearchScreen() {
 			>
 				{isLoading && hasActiveQuery ? (
 					<ListSkeleton rows={4} height={56} />
-				) : results.length > 0 ? (
-					<div
-						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
-					>
-						{results.map((hit, index) => {
-							const color = domainColor(hit.domain)
-							const path = hitPath(hit)
-
-							return (
-								<button
-									key={hit.id}
-									type="button"
-									onClick={() => path && navigate(path)}
+				) : groupedSections.length > 0 ? (
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+						{groupedSections.map((section) => (
+							<div key={section.id}>
+								<div style={{ marginBottom: 10 }}>
+									<FigmaLbl>
+										{section.emoji} {section.label}
+									</FigmaLbl>
+								</div>
+								<div
 									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 13,
-										padding: '15px 20px',
-										borderBottom:
-											index < results.length - 1
-												? '1px solid rgba(255,255,255,0.05)'
-												: 'none',
-										width: '100%',
-										background: 'none',
-										borderLeft: 'none',
-										borderRight: 'none',
-										borderTop: 'none',
-										cursor: 'pointer',
-										textAlign: 'left',
-										fontFamily: 'inherit',
+										...figmaCardStyle,
+										borderRadius: 22,
+										overflow: 'hidden',
 									}}
 								>
-									<FigmaIconBox color={color}>
-										<FileText size={17} color={color} strokeWidth={1.8} />
-									</FigmaIconBox>
-									<div style={{ flex: 1, minWidth: 0 }}>
-										<p
-											style={{
-												color: FC.fg,
-												fontSize: 14,
-												fontWeight: 500,
-												marginBottom: 3,
-												marginTop: 0,
-											}}
-										>
-											{hit.title}
-										</p>
-										<p
-											style={{
-												color: FC.mid,
-												fontSize: 12.5,
-												margin: 0,
-												overflow: 'hidden',
-												textOverflow: 'ellipsis',
-												whiteSpace: 'nowrap',
-											}}
-										>
-											{hit.snippet || domainLabel(hit.domain)}
-										</p>
-									</div>
-								</button>
-							)
-						})}
+									{section.results.map((result, index) => {
+										const color =
+											result.domain === 'family' || result.domain === 'ask'
+												? FC.blue
+												: domainColor(
+														result.domain as import('@chronicle/core-knowledge').KnowledgeDomain,
+													)
+
+										return (
+											<button
+												key={result.id}
+												type="button"
+												onClick={() => navigate(result.path)}
+												style={{
+													display: 'flex',
+													alignItems: 'center',
+													gap: 13,
+													padding: '15px 20px',
+													borderBottom:
+														index < section.results.length - 1
+															? '1px solid rgba(255,255,255,0.05)'
+															: 'none',
+													width: '100%',
+													background: 'none',
+													border: 'none',
+													cursor: 'pointer',
+													textAlign: 'left',
+													fontFamily: 'inherit',
+												}}
+											>
+												<FigmaIconBox color={color}>
+													<FileText size={17} color={color} strokeWidth={1.8} />
+												</FigmaIconBox>
+												<div style={{ flex: 1, minWidth: 0 }}>
+													<p
+														style={{
+															color: FC.fg,
+															fontSize: 14,
+															fontWeight: 500,
+															marginBottom: 3,
+															marginTop: 0,
+														}}
+													>
+														{result.title}
+													</p>
+													<p
+														style={{
+															color: FC.mid,
+															fontSize: 12.5,
+															margin: 0,
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+															whiteSpace: 'nowrap',
+														}}
+													>
+														{result.subtitle}
+													</p>
+												</div>
+											</button>
+										)
+									})}
+								</div>
+							</div>
+						))}
 					</div>
 				) : showEmptyResults ? (
 					<div
@@ -333,7 +337,7 @@ export function FigmaSearchScreen() {
 							<div
 								style={{
 									display: 'grid',
-									gridTemplateColumns: '1fr 1fr 1fr',
+									gridTemplateColumns: '1fr 1fr',
 									gap: 8,
 								}}
 							>

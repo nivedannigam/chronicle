@@ -4,6 +4,11 @@ import {
 	getSubCategoryLabel,
 } from '@/features/documents/constants/document-category-display'
 import {
+	buildAiDiscoveryLabel,
+	resolveConsumerDocumentStatus,
+	resolveDocumentModuleLinks,
+} from '@/features/documents/services/document-module-links.service'
+import {
 	getDocumentCategory,
 	getDocumentSubCategory,
 } from '@/features/documents/types/document-categories'
@@ -11,6 +16,7 @@ import type { ChronicleDocument } from '@/features/documents/types/document.type
 import type {
 	ChronicleDocumentSummary,
 	DocumentActivityItem,
+	DocumentAiDiscoveryItem,
 	DocumentAttentionItem,
 	DocumentDisplayField,
 	DocumentIntelligenceView,
@@ -341,6 +347,8 @@ export function toDocumentSummary(
 	memberNames: Record<string, string>,
 ): ChronicleDocumentSummary {
 	const categoryMeta = getCategoryDisplayMeta(document.category_id)
+	const issueOrUpload = document.issue_date ?? document.uploaded_at
+	const parsedYear = Date.parse(issueOrUpload)
 
 	return {
 		id: document.id,
@@ -363,6 +371,11 @@ export function toDocumentSummary(
 		isExpired: isExpired(document),
 		fileType: fileTypeBadge(document.mime_type),
 		hasAiSummary: true,
+		tags: document.tags,
+		relatedModules: resolveDocumentModuleLinks(document),
+		consumerStatus: resolveConsumerDocumentStatus(document),
+		aiDiscoveryLabel: buildAiDiscoveryLabel(document),
+		year: Number.isNaN(parsedYear) ? null : new Date(parsedYear).getFullYear(),
 	}
 }
 
@@ -386,6 +399,28 @@ export function buildDocumentsHubView(input: {
 
 	const attention = buildAttentionItems(active)
 
+	const expiringSoon = summaries.filter((summary) => summary.isExpiringSoon)
+	const needsAttention = summaries.filter(
+		(summary) =>
+			summary.isExpired ||
+			summary.consumerStatus === 'Needs Help' ||
+			summary.consumerStatus === 'Still Organizing',
+	)
+	const aiDiscoveries: DocumentAiDiscoveryItem[] = active
+		.filter((document) => buildAiDiscoveryLabel(document))
+		.slice(0, 4)
+		.map((document) => {
+			const summary = toDocumentSummary(document, memberNames)
+
+			return {
+				id: `discovery-${document.id}`,
+				documentId: document.id,
+				title: document.title,
+				label: summary.aiDiscoveryLabel ?? '',
+				categoryLabel: summary.categoryLabel,
+			}
+		})
+
 	return {
 		totalCount: active.length,
 		attentionCount: attention.filter((item) => item.severity !== 'low').length,
@@ -405,6 +440,9 @@ export function buildDocumentsHubView(input: {
 			.slice(0, 4),
 		recentActivity: buildRecentActivity(active),
 		allDocuments: summaries,
+		expiringSoon,
+		aiDiscoveries,
+		needsAttention,
 	}
 }
 
@@ -417,6 +455,8 @@ export function buildDocumentIntelligenceView(input: {
 		summary: buildDocumentSummary(input.document),
 		displayFields: buildDisplayFields(input.document),
 		relatedDocuments: findRelatedDocuments(input.document, input.allDocuments),
+		relatedModules: resolveDocumentModuleLinks(input.document),
+		aiDiscoveryLabel: buildAiDiscoveryLabel(input.document),
 		activity: buildActivityForDocument(input.document).sort(
 			(a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp),
 		),

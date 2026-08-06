@@ -3,26 +3,26 @@ import type { Tab } from '@/types/navigation'
 
 const TAB_ROUTES: Record<Tab, string> = {
 	home: ROUTES.home,
-	health: ROUTES.health,
+	library: ROUTES.documents,
 	ask: ROUTES.ask,
-	more: ROUTES.more,
+	timeline: ROUTES.timeline,
 	profile: ROUTES.profile,
 }
 
-const MORE_MODULE_PREFIXES = [
-	ROUTES.documents,
-	ROUTES.settings,
-	ROUTES.settingsNotifications,
-	ROUTES.settingsAppearance,
+const MODULE_PREFIXES = [
+	ROUTES.health,
+	ROUTES.insurance,
+	ROUTES.more,
 	ROUTES.search,
-	ROUTES.timeline,
 	ROUTES.mail,
 	ROUTES.tasks,
+	ROUTES.settings,
 ] as const
 
 export function tabFromPath(pathname: string): Tab {
 	if (pathname.startsWith(ROUTES.ask)) return 'ask'
-	if (pathname.startsWith(ROUTES.health)) return 'health'
+	if (pathname.startsWith(ROUTES.documents)) return 'library'
+	if (pathname.startsWith(ROUTES.timeline)) return 'timeline'
 	if (
 		pathname.startsWith(ROUTES.profile) ||
 		pathname.startsWith(ROUTES.settings) ||
@@ -30,11 +30,12 @@ export function tabFromPath(pathname: string): Tab {
 	) {
 		return 'profile'
 	}
-	if (pathname.startsWith(ROUTES.more)) return 'more'
 	if (pathname.startsWith(ROUTES.home)) return 'home'
 
-	if (MORE_MODULE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-		return 'more'
+	if (pathname.startsWith(ROUTES.notifications)) return 'home'
+
+	if (MODULE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+		return 'home'
 	}
 
 	return 'home'

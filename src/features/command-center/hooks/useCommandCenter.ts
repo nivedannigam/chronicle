@@ -5,6 +5,7 @@ import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
 import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthKnowledge'
 import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
 import { buildCommandCenterBriefing } from '@/features/command-center/services/command-center.service'
 import { useUser } from '@/features/user/hooks/useUser'
 
@@ -16,6 +17,7 @@ export function useCommandCenter() {
 	const reportsQuery = useUploadedHealthReports(userId)
 	const documentsQuery = useDocuments()
 	const importStatus = useHealthImportStatus(userId)
+	const insuranceQuery = useInsuranceKnowledge()
 	const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
 	const documents = useMemo(
 		() => documentsQuery.data ?? [],
@@ -44,6 +46,7 @@ export function useCommandCenter() {
 				documents,
 				metricHistories: graph.profile.metricHistories,
 				importStatus: importStatus.data,
+				insuranceKnowledge: insuranceQuery.knowledge,
 				loading,
 			}),
 		[
@@ -55,6 +58,7 @@ export function useCommandCenter() {
 			documents,
 			graph.profile.metricHistories,
 			importStatus.data,
+			insuranceQuery.knowledge,
 			loading,
 		],
 	)

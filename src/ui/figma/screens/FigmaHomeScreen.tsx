@@ -1,22 +1,28 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Sparkles } from 'lucide-react'
-import { ROUTES, healthSettingsSection } from '@/constants/routes'
-import { buildTodaysSummary } from '@/features/command-center/services/command-center.service'
-import { useCommandCenter } from '@/features/command-center/hooks/useCommandCenter'
+import { ROUTES } from '@/constants/routes'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
-import { useHealthCoverage } from '@/features/health/hooks/useHealthCoverage'
 import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
+import { useChronicleOs } from '@/features/os/hooks/useChronicleOs'
 import { OnboardingFlow, useOnboarding } from '@/features/onboarding'
 import { memberFirstName, memberInitial } from '@/ui/figma/home/home-ui'
-import { FigmaHomeLabel } from '@/ui/figma/home/home-ui'
+import {
+	DailyBriefCard,
+	LifeScoreHero,
+	NotificationBellButton,
+	OsSectionLabel,
+	QuickActionsRow,
+	RecentActivityList,
+	UpcomingList,
+} from '@/ui/figma/os/os-ui'
 import { FigmaHeaderSearchButton } from '@/ui/figma/shell/FigmaScreenHeader'
 import {
 	FC,
 	MEMBER_COLORS,
 	figmaCardStyle,
 } from '@/ui/figma/tokens/figma-v2-tokens'
+import type { LifeScoreDimension } from '@/features/os/types/os.types'
 
 function attentionForMember(
 	items: AttentionItem[],
@@ -48,47 +54,11 @@ function attentionColor(item: AttentionItem): string {
 
 function attentionIcon(item: AttentionItem): string {
 	const title = item.title.toLowerCase()
-	if (title.includes('credit') || title.includes('payment')) return '💳'
 	if (title.includes('passport') || title.includes('visa')) return '🛂'
 	if (item.module === 'health') return '❤️'
 	if (item.module === 'documents') return '📄'
-	if (item.module === 'family') return '👨‍👩‍👧'
+	if (item.module === 'insurance') return '🛡️'
 	return '⚡'
-}
-
-function attentionCta(item: AttentionItem): string {
-	if (item.title.toLowerCase().includes('credit')) return 'Pay'
-	if (item.title.toLowerCase().includes('passport')) return 'Renew'
-	if (item.module === 'health') return 'Review'
-	if (item.module === 'documents') return 'View'
-	return 'Open'
-}
-
-function moduleTagLabel(module: string): string {
-	return module.charAt(0).toUpperCase() + module.slice(1)
-}
-
-function timeGreeting(): string {
-	const hour = new Date().getHours()
-	if (hour < 12) return 'Good morning'
-	if (hour < 17) return 'Good afternoon'
-	return 'Good evening'
-}
-
-function parseScheduleTime(timestamp: string): number | null {
-	const date = new Date(timestamp)
-	if (Number.isNaN(date.getTime())) return null
-	return date.getHours() * 60 + date.getMinutes()
-}
-
-function formatScheduleClock(timestamp: string): string {
-	const date = new Date(timestamp)
-	if (Number.isNaN(date.getTime())) return '—'
-	return date.toLocaleTimeString('en-US', {
-		hour: 'numeric',
-		minute: '2-digit',
-		hour12: false,
-	})
 }
 
 function StoriesAvatar({
@@ -169,7 +139,6 @@ function StoriesAvatar({
 					color: selected ? color : 'rgba(255,255,255,0.38)',
 					fontSize: 11,
 					fontWeight: selected ? 700 : 400,
-					letterSpacing: selected ? -0.2 : 0,
 				}}
 			>
 				{name}
@@ -179,22 +148,12 @@ function StoriesAvatar({
 }
 
 export function FigmaHomeScreen() {
-	const briefing = useCommandCenter()
+	const os = useChronicleOs()
 	const navigate = useNavigate()
 	const { members, selectedMemberId, setSelectedMemberId } = useFamilyContext()
-	const coverage = useHealthCoverage()
 	const { isVisible, completeStep, dismiss } = useOnboarding()
 
-	const healthModulePath =
-		coverage.failedCount > 0
-			? healthSettingsSection('import-issues')
-			: ROUTES.health
-
-	const showSkeleton =
-		briefing.loading.family &&
-		briefing.loading.health &&
-		briefing.loading.documents &&
-		!briefing.hasAnyData
+	const showSkeleton = os.loading && !os.hasAnyData
 
 	const selectedMember = useMemo(
 		() => members.find((member) => member.id === selectedMemberId) ?? null,
@@ -202,53 +161,23 @@ export function FigmaHomeScreen() {
 	)
 
 	const selectedName =
-		selectedMember?.displayName ?? memberFirstName(briefing.greetingName)
+		selectedMember?.displayName ?? memberFirstName(os.greetingName)
 
 	const memberItems = useMemo(
-		() => attentionForMember(briefing.attentionItems, selectedMemberId),
-		[briefing.attentionItems, selectedMemberId],
+		() => attentionForMember(os.attentionItems, selectedMemberId),
+		[os.attentionItems, selectedMemberId],
 	)
 
-	const nowMins = (() => {
-		const now = new Date()
-		return now.getHours() * 60 + now.getMinutes()
-	})()
-
-	const todaySchedule = useMemo(() => {
-		const today = new Date().toDateString()
-		return briefing.timelinePreview
-			.filter((event) => {
-				const date = new Date(event.timestamp)
-				return !Number.isNaN(date.getTime()) && date.toDateString() === today
-			})
-			.slice(0, 5)
-			.map((event) => ({
-				time: formatScheduleClock(event.timestamp),
-				timeMins: parseScheduleTime(event.timestamp),
-				label: event.familyMemberName
-					? `${event.familyMemberName} — ${event.title}`
-					: event.title,
-				tag: moduleTagLabel(event.sourceModule),
-			}))
-	}, [briefing.timelinePreview])
+	const actionableItems = memberItems.filter((item) => item.tone !== 'info')
+	const statusOk = actionableItems.length === 0
 
 	if (showSkeleton) {
 		return <HomePageSkeleton />
 	}
 
-	const statusOk =
-		memberItems.filter((item) => item.tone !== 'info').length === 0
-	const greet = timeGreeting()
-	const firstName = memberFirstName(briefing.greetingName)
-	const aiSummary = buildTodaysSummary({
-		attentionCount: memberItems.filter((item) => item.tone !== 'info').length,
-		familySetupCount: memberItems.filter((item) => item.tone === 'info').length,
-		reportCount: briefing.healthSnapshot.reportCount,
-		documentCount: briefing.documentCount,
-		expiringCount: briefing.expiringDocuments.length,
-		greetingName: firstName,
-		hasAnyData: briefing.hasAnyData,
-	})
+	const handleDimensionClick = (dimension: LifeScoreDimension) => {
+		navigate(dimension.path)
+	}
 
 	return (
 		<>
@@ -260,7 +189,7 @@ export function FigmaHomeScreen() {
 				<p
 					style={{ color: FC.dim, fontSize: 14, marginBottom: 5, marginTop: 0 }}
 				>
-					{briefing.dateLabel}
+					{os.dateLabel}
 				</p>
 				<div
 					style={{
@@ -281,9 +210,9 @@ export function FigmaHomeScreen() {
 								marginTop: 0,
 							}}
 						>
-							{greet},
+							{os.greeting},
 							<br />
-							{firstName}.
+							{memberFirstName(os.greetingName)}.
 						</h1>
 						<div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
 							<div
@@ -291,7 +220,6 @@ export function FigmaHomeScreen() {
 									width: 7,
 									height: 7,
 									borderRadius: 4,
-									flexShrink: 0,
 									background: statusOk ? FC.green : FC.amber,
 									boxShadow: statusOk
 										? `0 0 8px ${FC.green}90`
@@ -303,114 +231,47 @@ export function FigmaHomeScreen() {
 									color: statusOk ? FC.green : FC.amber,
 									fontSize: 15,
 									fontWeight: 500,
-									letterSpacing: -0.2,
 									margin: 0,
 								}}
 							>
 								{statusOk
-									? 'Everything looks clear.'
-									: `${memberItems.filter((item) => item.tone !== 'info').length} things need you.`}
+									? os.lifeScore.headline
+									: `${actionableItems.length} things need you`}
 							</p>
 						</div>
 					</div>
-					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+					<div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+						<NotificationBellButton
+							count={os.notificationCount}
+							onClick={() => navigate(ROUTES.notifications)}
+						/>
+						<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
+					</div>
 				</div>
 			</div>
 
 			<div style={{ padding: '0 22px 22px' }}>
-				<div
-					style={{
-						background:
-							'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(59,130,246,0.06))',
-						border: '1px solid rgba(99,102,241,0.2)',
-						borderRadius: 24,
-						padding: '20px 22px',
-						boxShadow:
-							'0 4px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
-					}}
-				>
-					<div
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							marginBottom: 12,
-						}}
-					>
-						<Sparkles size={13} color={FC.blue} />
-						<span
-							style={{
-								color: FC.blue,
-								fontSize: 11,
-								fontWeight: 600,
-								letterSpacing: '0.08em',
-								textTransform: 'uppercase',
-							}}
-						>
-							Chronicle AI
-						</span>
-					</div>
-					<p
-						style={{
-							color: 'rgba(255,255,255,0.78)',
-							fontSize: 15,
-							lineHeight: 1.7,
-							letterSpacing: -0.1,
-							margin: 0,
-						}}
-					>
-						{aiSummary}
-					</p>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.ask)}
-						style={{
-							marginTop: 14,
-							display: 'flex',
-							alignItems: 'center',
-							gap: 6,
-							background: 'none',
-							border: 'none',
-							cursor: 'pointer',
-							padding: 0,
-						}}
-					>
-						<span style={{ color: FC.blue, fontSize: 13, fontWeight: 500 }}>
-							Ask a follow-up
-						</span>
-						<ChevronRight size={13} color={FC.blue} />
-					</button>
-				</div>
+				<LifeScoreHero
+					lifeScore={os.lifeScore}
+					onDimensionClick={handleDimensionClick}
+				/>
+			</div>
+
+			<div style={{ padding: '0 22px 22px' }}>
+				<DailyBriefCard
+					brief={os.dailyBrief}
+					onAsk={() => navigate(ROUTES.ask)}
+				/>
 			</div>
 
 			{members.length > 0 ? (
 				<div style={{ padding: '0 22px 22px' }}>
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							alignItems: 'center',
-							marginBottom: 14,
-						}}
+					<OsSectionLabel
+						action="People"
+						onAction={() => navigate(ROUTES.profileFamily)}
 					>
-						<FigmaHomeLabel>Family</FigmaHomeLabel>
-						<button
-							type="button"
-							onClick={() => navigate(ROUTES.profileFamily)}
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 3,
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								padding: 0,
-							}}
-						>
-							<span style={{ color: FC.dim, fontSize: 12 }}>Manage</span>
-							<ChevronRight size={12} color={FC.dim} />
-						</button>
-					</div>
+						Family
+					</OsSectionLabel>
 					<div style={{ display: 'flex', gap: 18 }}>
 						{members.map((member, index) => {
 							const color =
@@ -423,7 +284,7 @@ export function FigmaHomeScreen() {
 									color={color}
 									selected={member.id === selectedMemberId}
 									alertCount={attentionCountForMember(
-										briefing.attentionItems,
+										os.attentionItems,
 										member.id,
 									)}
 									onClick={() => setSelectedMemberId(member.id)}
@@ -434,113 +295,51 @@ export function FigmaHomeScreen() {
 				</div>
 			) : null}
 
-			{memberItems.length === 0 ? (
+			{actionableItems.length > 0 ? (
 				<div style={{ padding: '0 22px 20px' }}>
-					<div
-						style={{
-							background:
-								'linear-gradient(135deg,rgba(16,185,129,0.09),rgba(16,185,129,0.04))',
-							border: '1px solid rgba(16,185,129,0.18)',
-							borderRadius: 22,
-							padding: '18px 20px',
-							display: 'flex',
-							alignItems: 'center',
-							gap: 14,
-						}}
-					>
-						<div
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: 14,
-								flexShrink: 0,
-								background: 'rgba(16,185,129,0.15)',
-								border: '1px solid rgba(16,185,129,0.25)',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							<span style={{ fontSize: 20 }}>✓</span>
-						</div>
-						<div>
-							<p
-								style={{
-									color: FC.green,
-									fontSize: 14.5,
-									fontWeight: 600,
-									marginBottom: 3,
-									marginTop: 0,
-								}}
-							>
-								All clear for {selectedName}
-							</p>
-							<p
-								style={{
-									color: 'rgba(255,255,255,0.38)',
-									fontSize: 12.5,
-									lineHeight: 1.4,
-									margin: 0,
-								}}
-							>
-								No pending actions or upcoming deadlines.
-							</p>
-						</div>
-					</div>
-				</div>
-			) : (
-				<div style={{ padding: '0 22px 20px' }}>
-					<div style={{ marginBottom: 10 }}>
-						<FigmaHomeLabel>Needs Attention — {selectedName}</FigmaHomeLabel>
-					</div>
+					<OsSectionLabel>Needs Attention — {selectedName}</OsSectionLabel>
 					<div
 						style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
 					>
-						{memberItems.map((item, index) => {
+						{actionableItems.map((item, index) => {
 							const color = attentionColor(item)
 							return (
-								<div
+								<button
 									key={item.id}
+									type="button"
+									onClick={() => navigate(item.path)}
 									style={{
+										width: '100%',
 										display: 'flex',
 										alignItems: 'center',
 										gap: 13,
 										padding: '15px 18px',
 										borderBottom:
-											index < memberItems.length - 1
+											index < actionableItems.length - 1
 												? '1px solid rgba(255,255,255,0.05)'
 												: 'none',
+										background: 'none',
+										border: 'none',
+										cursor: 'pointer',
+										textAlign: 'left',
+										fontFamily: 'inherit',
 									}}
 								>
-									<div
-										style={{
-											width: 8,
-											height: 8,
-											borderRadius: 4,
-											background: color,
-											flexShrink: 0,
-											boxShadow: `0 0 8px ${color}60`,
-										}}
-									/>
-									<span style={{ fontSize: 19, flexShrink: 0, lineHeight: 1 }}>
-										{attentionIcon(item)}
-									</span>
+									<span style={{ fontSize: 19 }}>{attentionIcon(item)}</span>
 									<div style={{ flex: 1, minWidth: 0 }}>
 										<p
 											style={{
 												color: FC.fg,
 												fontSize: 14,
 												fontWeight: 500,
-												letterSpacing: -0.2,
-												marginBottom: 2,
-												marginTop: 0,
+												margin: '0 0 2px',
 											}}
 										>
 											{item.title}
 										</p>
 										<p
 											style={{
-												color: 'rgba(255,255,255,0.38)',
+												color: FC.dim,
 												fontSize: 12,
 												margin: 0,
 											}}
@@ -548,203 +347,36 @@ export function FigmaHomeScreen() {
 											{item.description}
 										</p>
 									</div>
-									<button
-										type="button"
-										onClick={() => navigate(item.path)}
-										style={{
-											background: 'none',
-											border: 'none',
-											cursor: 'pointer',
-											padding: '4px 8px',
-										}}
-									>
-										<span style={{ color, fontSize: 12.5, fontWeight: 600 }}>
-											{attentionCta(item)} →
-										</span>
-									</button>
-								</div>
+									<span style={{ color, fontSize: 12, fontWeight: 600 }}>
+										Open →
+									</span>
+								</button>
 							)
 						})}
 					</div>
 				</div>
-			)}
+			) : null}
 
 			<div style={{ padding: '0 22px 20px' }}>
-				<div style={{ marginBottom: 12 }}>
-					<FigmaHomeLabel>Today</FigmaHomeLabel>
-				</div>
-				<div
-					style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}
-				>
-					{todaySchedule.length === 0 ? (
-						<div
-							style={{
-								padding: '14px 18px',
-								color: FC.dim,
-								fontSize: 13,
-								lineHeight: 1.5,
-							}}
-						>
-							No events scheduled for today yet.
-						</div>
-					) : (
-						todaySchedule.map((event, index) => {
-							const isPast =
-								event.timeMins !== null && nowMins > event.timeMins + 60
-							const isNow =
-								event.timeMins !== null &&
-								nowMins >= event.timeMins &&
-								nowMins <= event.timeMins + 60
+				<UpcomingList
+					items={os.upcoming}
+					onItemClick={(path) => navigate(path)}
+				/>
+			</div>
 
-							return (
-								<div
-									key={`${event.time}-${event.label}`}
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 12,
-										padding: '14px 18px',
-										borderBottom:
-											index < todaySchedule.length - 1
-												? '1px solid rgba(255,255,255,0.05)'
-												: 'none',
-										opacity: isPast ? 0.38 : 1,
-										background: isNow ? `${FC.blue}05` : 'none',
-									}}
-								>
-									<div
-										style={{
-											width: 6,
-											height: 6,
-											borderRadius: 3,
-											flexShrink: 0,
-											background: isNow
-												? FC.blue
-												: isPast
-													? 'rgba(255,255,255,0.08)'
-													: 'rgba(255,255,255,0.15)',
-											boxShadow: isNow ? `0 0 7px ${FC.blue}90` : 'none',
-										}}
-									/>
-									<span
-										style={{
-											color: isNow ? FC.blue : FC.dim,
-											fontSize: 13,
-											fontWeight: isNow ? 600 : 500,
-											width: 36,
-											fontVariantNumeric: 'tabular-nums',
-											flexShrink: 0,
-										}}
-									>
-										{event.time}
-									</span>
-									<p
-										style={{
-											flex: 1,
-											color: isPast ? FC.dim : FC.fg,
-											fontSize: 14,
-											fontWeight: 500,
-											letterSpacing: -0.2,
-											margin: 0,
-										}}
-									>
-										{event.label}
-									</p>
-									<div
-										style={{
-											background: isNow ? `${FC.blue}15` : FC.ghost,
-											border: isNow ? `1px solid ${FC.blue}25` : 'none',
-											borderRadius: 8,
-											padding: '3px 9px',
-										}}
-									>
-										<span
-											style={{
-												color: isNow ? FC.blue : FC.dim,
-												fontSize: 11,
-											}}
-										>
-											{event.tag}
-										</span>
-									</div>
-								</div>
-							)
-						})
-					)}
-				</div>
+			<div style={{ padding: '0 22px 20px' }}>
+				<RecentActivityList
+					items={os.recentActivity}
+					onItemClick={(path) => navigate(path)}
+					onViewAll={() => navigate(ROUTES.timeline)}
+				/>
 			</div>
 
 			<div style={{ padding: '0 22px 24px' }}>
-				<div
-					style={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						marginBottom: 12,
-					}}
-				>
-					<FigmaHomeLabel>Explore</FigmaHomeLabel>
-					<button
-						type="button"
-						onClick={() => navigate(ROUTES.more)}
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 3,
-							background: 'none',
-							border: 'none',
-							cursor: 'pointer',
-							padding: 0,
-						}}
-					>
-						<span style={{ color: FC.dim, fontSize: 12 }}>All modules</span>
-						<ChevronRight size={12} color={FC.dim} />
-					</button>
-				</div>
-				<div
-					style={{
-						display: 'grid',
-						gridTemplateColumns: '1fr 1fr 1fr',
-						gap: 10,
-					}}
-				>
-					{[
-						{ emoji: '❤️', label: 'Health', path: healthModulePath },
-						{ emoji: '📄', label: 'Docs', path: ROUTES.documents },
-						{ emoji: '🤖', label: 'Ask AI', path: ROUTES.ask },
-					].map((module) => (
-						<button
-							key={module.label}
-							type="button"
-							onClick={() => navigate(module.path)}
-							style={{
-								background: FC.surface,
-								border: `1px solid ${FC.line}`,
-								borderRadius: 20,
-								padding: '16px 12px',
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'flex-start',
-								gap: 8,
-								cursor: 'pointer',
-								boxShadow: `0 2px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)`,
-								textAlign: 'left',
-							}}
-						>
-							<span style={{ fontSize: 24 }}>{module.emoji}</span>
-							<p
-								style={{
-									color: FC.fg,
-									fontSize: 13,
-									fontWeight: 600,
-									margin: 0,
-								}}
-							>
-								{module.label}
-							</p>
-						</button>
-					))}
-				</div>
+				<QuickActionsRow
+					actions={os.quickActions}
+					onAction={(path) => navigate(path)}
+				/>
 			</div>
 		</>
 	)

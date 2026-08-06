@@ -48,6 +48,7 @@ export const ROUTES = {
 	healthValidation: '/health/validation',
 	healthOcrPreview: '/health/reports/:reportId/ocr',
 	documents: '/documents',
+	documentsLibrary: '/documents/library',
 	documentsExpiring: '/documents/expiring',
 	documentsCategory: '/documents/category/:categoryId',
 	documentDetail: '/documents/:documentId',
@@ -63,6 +64,17 @@ export const ROUTES = {
 	profileConnectionsDrive: '/profile/connections/drive',
 	profilePreferences: '/profile/preferences',
 	profileSecurity: '/profile/security',
+	insurance: '/insurance',
+	insuranceCoverage: '/insurance/coverage',
+	insuranceCoverageDetail: '/insurance/coverage/:categoryId',
+	insurancePolicies: '/insurance/policies',
+	insurancePolicyDetail: '/insurance/policies/:policyId',
+	insuranceClaims: '/insurance/claims',
+	insuranceClaimDetail: '/insurance/claims/:claimId',
+	insuranceTimeline: '/insurance/timeline',
+	insuranceAsk: '/insurance/ask',
+	insuranceSettings: '/insurance/settings',
+	notifications: '/notifications',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
@@ -144,3 +156,43 @@ export function healthAskPath(input?: {
 }
 
 export const isHealthCompareEnabled = import.meta.env.DEV
+
+export function insuranceCoverageDetailPath(categoryId: string) {
+	return `/insurance/coverage/${categoryId}`
+}
+
+export function insurancePolicyDetailPath(policyId: string) {
+	return `/insurance/policies/${policyId}`
+}
+
+export function insuranceClaimDetailPath(claimId: string) {
+	return `/insurance/claims/${claimId}`
+}
+
+export function insuranceAskPath(input?: {
+	q?: string
+	categoryId?: string
+	policyId?: string
+	claimId?: string
+}) {
+	const params = new URLSearchParams()
+
+	if (input?.q) {
+		params.set('q', input.q)
+	}
+
+	if (input?.categoryId) {
+		params.set('categoryId', input.categoryId)
+	}
+
+	if (input?.policyId) {
+		params.set('policyId', input.policyId)
+	}
+
+	if (input?.claimId) {
+		params.set('claimId', input.claimId)
+	}
+
+	const query = params.toString()
+	return query ? `${ROUTES.insuranceAsk}?${query}` : ROUTES.insuranceAsk
+}
