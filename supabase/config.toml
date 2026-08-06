@@ -10,5 +10,8 @@ verify_jwt = true
 [functions.ask-ai]
 verify_jwt = true
 
+[functions.extract-metrics-ai]
+verify_jwt = true
+
 [functions.document-ocr]
 verify_jwt = true

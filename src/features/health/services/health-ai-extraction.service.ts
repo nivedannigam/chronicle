@@ -7,6 +7,7 @@ import { normalizeMetricName } from '@/features/health/extraction/metric-normali
 import {
 	invokeExtractMetricsAiEdgeFunction,
 	type ExtractMetricsAiEdgeMetric,
+	ExtractMetricsAiInvokeError,
 } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
@@ -73,6 +74,18 @@ export function getHealthReportFailureMessage(
 }
 
 export function toAiReprocessUserFacingError(error: unknown): string {
+	if (error instanceof ExtractMetricsAiInvokeError) {
+		const message = error.message.trim()
+
+		if (message.includes('authentication failed')) {
+			return message
+		}
+
+		if (/billing|credits|depleted/i.test(message)) {
+			return message
+		}
+	}
+
 	if (error instanceof Error) {
 		const message = error.message.trim()
 

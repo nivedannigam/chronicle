@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { parseExtractMetricsModelJson } from '../_shared/extract-metrics-prompt.ts'
 import { GeminiRequestError } from '../ask-ai/gemini.ts'
 import { callExtractMetricsGemini } from './gemini.ts'
 import type {
@@ -69,11 +70,11 @@ serve(async (request) => {
 			body,
 		})
 
-		const parsed = parseModelJson(geminiResult.reply)
+		const parsed = parseExtractMetricsModelJson(geminiResult.reply)
 
 		const response: ExtractMetricsAiResponseBody = {
-			metrics: parsed.metrics,
-			metadata: parsed.metadata,
+			metrics: parsed.metrics as ExtractMetricsAiResponseBody['metrics'],
+			metadata: parsed.metadata as ExtractMetricsAiResponseBody['metadata'],
 			warnings: parsed.warnings,
 			model: geminiResult.model,
 			correlationId,
@@ -97,6 +98,15 @@ serve(async (request) => {
 		const message =
 			error instanceof Error ? error.message : 'AI metric extraction failed'
 
+		console.error(
+			JSON.stringify({
+				service: 'extract-metrics-ai',
+				event: 'request_failed',
+				correlationId,
+				message,
+			}),
+		)
+
 		return jsonResponse(
 			{
 				status: 500,
@@ -107,26 +117,6 @@ serve(async (request) => {
 		)
 	}
 })
-
-function parseModelJson(raw: string): {
-	metrics: ExtractMetricsAiResponseBody['metrics']
-	metadata: ExtractMetricsAiResponseBody['metadata']
-	warnings: string[]
-} {
-	const cleaned = raw
-		.trim()
-		.replace(/^```json\s*/i, '')
-		.replace(/^```\s*/i, '')
-		.replace(/\s*```$/i, '')
-
-	const parsed = JSON.parse(cleaned) as ExtractMetricsAiResponseBody
-
-	return {
-		metrics: Array.isArray(parsed.metrics) ? parsed.metrics : [],
-		metadata: parsed.metadata ?? {},
-		warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
-	}
-}
 
 function jsonResponse(payload: unknown, status = 200) {
 	return new Response(JSON.stringify(payload), {
