@@ -31,10 +31,16 @@ import {
 import {
 	AI_REPROCESS_FAILED_USER_MESSAGE,
 	buildHealthReportFromAiExtraction,
+	buildHealthReportWithAiDefaultExtraction,
 	OCR_FAILED_USER_MESSAGE,
 	reportEligibleForAiReprocess,
 	toAiReprocessUserFacingError,
 } from '@/features/health/services/health-ai-extraction.service'
+import { shouldSkipAiMetricExtraction } from '@/features/health/services/health-partial-extraction.service'
+import {
+	getParsedHealthReport,
+	getReportDisplayDate,
+} from '@/features/health/services/health-parsed-report.service'
 import { logHealthAiReprocessEvent } from '@/features/health/services/health-ai-reprocess.observability'
 import {
 	clearRegistryErrorForReport,
@@ -269,24 +275,24 @@ export async function processHealthReport(
 			throw new Error(outcome.error)
 		}
 
-		const processedAt = new Date().toISOString()
 		const { healthReport } = outcome
 
 		if (!healthReport) {
 			throw new Error(UNSUPPORTED_HEALTH_DOCUMENT_MESSAGE)
 		}
 
-		const serializedParsedData = serializeParsedHealthReport(healthReport)
+		const processedAt = new Date().toISOString()
+		const layoutHealthReport = healthReport
 		const parsedReportUpdate = {
 			extracted_text: outcome.extractedText,
-			parsed_data: serializedParsedData,
+			parsed_data: serializeParsedHealthReport(layoutHealthReport),
 			ocr_page_count: outcome.pageCount,
 			ocr_confidence: outcome.confidence,
 			ocr_provider: outcome.ocrProvider,
 			ocr_processing_time_ms: outcome.processingTimeMs,
 			ocr_metadata: outcome.ocrMetadata as Record<string, unknown>,
-			report_type: healthReport.metadata.reportType,
-			report_date: healthReport.metadata.reportDate,
+			report_type: layoutHealthReport.metadata.reportType,
+			report_date: layoutHealthReport.metadata.reportDate,
 			processed_at: processedAt,
 			processing_error: null,
 		}
@@ -300,15 +306,99 @@ export async function processHealthReport(
 			error_message: null,
 		})
 
+		const reportWithOcr: UploadedHealthReport = {
+			...typedReport,
+			...parsedReportUpdate,
+		}
+
+		const useLayoutOnly =
+			options.extractionMode === 'deterministic' ||
+			shouldSkipAiMetricExtraction({
+				fileName: typedReport.file_name,
+				metadata: layoutHealthReport.metadata,
+			})
+
+		let finalHealthReport = layoutHealthReport
+
+		if (!useLayoutOnly && outcome.extractedText.trim().length >= 200) {
+			try {
+				finalHealthReport = await buildHealthReportWithAiDefaultExtraction({
+					report: reportWithOcr,
+					layoutReport: layoutHealthReport,
+				})
+			} catch (aiError) {
+				const userMessage = toAiReprocessUserFacingError(aiError)
+
+				failPipelineStage({
+					reportId,
+					stage: 'PARSING',
+					error: userMessage,
+					details: {
+						pageCount: outcome.pageCount,
+						characters: outcome.extractedText.length,
+						layoutMetricCount: layoutHealthReport.metrics.length,
+						extractionMode: 'ai_default',
+					},
+				})
+
+				await updateReportStatus(reportId, {
+					...parsedReportUpdate,
+					status: 'failed',
+					processing_error: userMessage,
+				})
+
+				await updateQueueStatus(reportId, 'failed', {
+					error_message: userMessage,
+				})
+
+				await safeTransitionWorkflowItem({
+					reportId,
+					toState: 'FAILED',
+					context: {
+						userId: typedReport.user_id,
+						reportId,
+						failureReason: userMessage,
+						failedStage: 'PARSING',
+					},
+				})
+
+				invalidateHealthKnowledgeCache(typedReport.user_id)
+				invalidateAfterHealthImport(typedReport.user_id)
+
+				await syncRegistryWithReportOutcome(reportId, {
+					status: 'failed',
+					errorMessage: userMessage,
+				})
+
+				throw new Error(userMessage)
+			}
+		}
+
+		const serializedParsedData = serializeParsedHealthReport(finalHealthReport)
+		const finalParsedReportUpdate = {
+			...parsedReportUpdate,
+			parsed_data: serializedParsedData,
+			report_type: finalHealthReport.metadata.reportType,
+			report_date: finalHealthReport.metadata.reportDate,
+		}
+
+		await updateReportStatus(reportId, {
+			status: 'parsed',
+			...finalParsedReportUpdate,
+		})
+
 		let persistedMetricCount = 0
 
 		try {
+			const displayDate = getReportDisplayDate(reportWithOcr, finalHealthReport)
+
 			persistedMetricCount = await persistHealthMetrics({
 				userId: typedReport.user_id,
 				reportId,
 				familyMemberId: typedReport.family_member_id ?? null,
-				healthReport,
-				reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
+				healthReport: finalHealthReport,
+				reportDate: displayDate,
+				observedAt: `${displayDate}T12:00:00.000Z`,
 			})
 		} catch (metricError) {
 			const errorDetail = buildWorkflowErrorDetail({
@@ -343,24 +433,20 @@ export async function processHealthReport(
 		const allowsMetriclessCompletion =
 			persistedMetricCount === 0 &&
 			healthReportQualifiesForMetriclessCompletion({
-				metadata: healthReport.metadata,
+				metadata: finalHealthReport.metadata,
 				fileName: typedReport.file_name,
 			})
 
 		if (persistedMetricCount === 0 && !allowsMetriclessCompletion) {
-			const reportWithParsedText: UploadedHealthReport = {
-				...typedReport,
-				...parsedReportUpdate,
-			}
-
 			if (
+				useLayoutOnly &&
 				outcome.extractedText.trim().length >= 200 &&
-				reportEligibleForAiReprocess(reportWithParsedText)
+				reportEligibleForAiReprocess(reportWithOcr)
 			) {
 				try {
 					return await reprocessHealthReportWithAi(reportId)
 				} catch {
-					// Fall through to deterministic failure messaging below.
+					// Fall through to failure messaging below.
 				}
 			}
 
@@ -377,7 +463,7 @@ export async function processHealthReport(
 			})
 
 			await updateReportStatus(reportId, {
-				...parsedReportUpdate,
+				...finalParsedReportUpdate,
 				status: 'failed',
 				processing_error: NO_LAB_METRICS_EXTRACTED_MESSAGE,
 			})
@@ -407,7 +493,7 @@ export async function processHealthReport(
 
 			return {
 				...typedReport,
-				...parsedReportUpdate,
+				...finalParsedReportUpdate,
 				status: 'failed',
 				processing_error: NO_LAB_METRICS_EXTRACTED_MESSAGE,
 			}
@@ -445,7 +531,7 @@ export async function processHealthReport(
 		createKnowledgeItemFromHealthReport({
 			...typedReport,
 			status: 'parsed',
-			...parsedReportUpdate,
+			...finalParsedReportUpdate,
 		})
 
 		try {
@@ -509,7 +595,7 @@ export async function processHealthReport(
 
 		await updateReportStatus(reportId, {
 			status: 'completed',
-			...parsedReportUpdate,
+			...finalParsedReportUpdate,
 		})
 
 		await updateQueueStatus(reportId, 'completed', {
@@ -520,7 +606,7 @@ export async function processHealthReport(
 		const completedReport: UploadedHealthReport = {
 			...typedReport,
 			status: 'completed',
-			...parsedReportUpdate,
+			...finalParsedReportUpdate,
 		}
 
 		invalidateHealthKnowledgeCache(completedReport.user_id)
@@ -839,8 +925,10 @@ async function processHealthReportWithAiText(
 			},
 		})
 
+		const parsedLayout = getParsedHealthReport(typedReport)
 		const healthReport = await buildHealthReportFromAiExtraction({
 			report: typedReport,
+			layoutReport: parsedLayout ?? undefined,
 		})
 		const serializedParsedData = serializeParsedHealthReport(healthReport)
 		const parsedReportUpdate = {
@@ -863,12 +951,18 @@ async function processHealthReportWithAiText(
 		})
 		await updateQueueStatus(reportId, 'parsed', { error_message: null })
 
+		const displayDate = getReportDisplayDate(
+			{ ...typedReport, ...parsedReportUpdate },
+			healthReport,
+		)
+
 		const persistedMetricCount = await persistHealthMetrics({
 			userId: typedReport.user_id,
 			reportId,
 			familyMemberId: typedReport.family_member_id ?? null,
 			healthReport,
-			reportDate: healthReport.metadata.reportDate ?? typedReport.report_date,
+			reportDate: displayDate,
+			observedAt: `${displayDate}T12:00:00.000Z`,
 		})
 
 		if (persistedMetricCount === 0) {

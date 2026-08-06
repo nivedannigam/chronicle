@@ -1,20 +1,28 @@
 import type { ExtractMetricsAiEdgeMetric } from '@/shared/ai/transport/extract-metrics.types'
 import { normalizeExtractMetricsModelMetrics } from '@/shared/ai/prompt/extract-metrics-normalizer'
+import { EXTRACT_METRICS_CHUNK_SIZE } from '@/shared/ai/prompt/extract-metrics-chunking'
 
-export const EXTRACT_METRICS_MAX_OCR_CHARS = 14_000
+export { EXTRACT_METRICS_CHUNK_SIZE as EXTRACT_METRICS_MAX_OCR_CHARS }
 
 const SYSTEM_PROMPT = `You extract structured laboratory metrics from OCR text of medical lab reports.
 Return ONLY valid JSON. Do not invent values that are not supported by the text.
 Use ISO dates (YYYY-MM-DD) when inferring reportDate.
+Extract every laboratory test row you can find — do not stop after the first section.
 If no laboratory metrics are present, return {"metrics":[],"warnings":["no_metrics_found"]}.`
 
 export function buildExtractMetricsPrompt(input: {
 	extractedText: string
 	fileName: string
+	chunkIndex?: number
+	chunkTotal?: number
 }): Array<{ role: string; content: string }> {
 	const trimmedText = input.extractedText
 		.trim()
-		.slice(0, EXTRACT_METRICS_MAX_OCR_CHARS)
+		.slice(0, EXTRACT_METRICS_CHUNK_SIZE)
+	const chunkLabel =
+		input.chunkTotal != null && input.chunkTotal > 1
+			? `OCR text (part ${(input.chunkIndex ?? 0) + 1} of ${input.chunkTotal}):`
+			: 'OCR text:'
 
 	return [
 		{ role: 'system', content: SYSTEM_PROMPT },
@@ -51,7 +59,7 @@ export function buildExtractMetricsPrompt(input: {
 					null,
 					2,
 				),
-				'OCR text:',
+				chunkLabel,
 				trimmedText,
 			].join('\n\n'),
 		},

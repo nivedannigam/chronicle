@@ -30,7 +30,7 @@ export interface ProcessingDebugInfo {
 	normalizationMap: Array<{ raw: string; canonical: string }>
 	extractedMetricCount: number
 	warnings: string[]
-	extractionMethod?: 'deterministic' | 'llm'
+	extractionMethod?: 'deterministic' | 'llm' | 'layout+llm'
 	validationStatus?: 'complete' | 'partial'
 }
 

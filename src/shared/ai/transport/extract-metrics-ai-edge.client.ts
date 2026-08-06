@@ -9,6 +9,10 @@ import {
 	buildExtractMetricsPrompt,
 	parseExtractMetricsModelJson,
 } from '@/shared/ai/prompt/extract-metrics.prompt'
+import {
+	mergeAiExtractedMetrics,
+	splitOcrTextForExtraction,
+} from '@/shared/ai/prompt/extract-metrics-chunking'
 import { invokeAskAiEdgeFunction } from '@/shared/ai/transport/ask-ai-edge.client'
 import type {
 	ExtractMetricsAiEdgeMetric,
@@ -102,6 +106,8 @@ async function invokeDedicatedExtractMetricsFunction(input: {
 	fileName: string
 	model: string
 	accessToken: string
+	chunkIndex?: number
+	chunkTotal?: number
 }): Promise<ExtractMetricsAiEdgeResult> {
 	const { data, error } = await supabase.functions.invoke(
 		'extract-metrics-ai',
@@ -110,6 +116,8 @@ async function invokeDedicatedExtractMetricsFunction(input: {
 				extractedText: input.extractedText,
 				fileName: input.fileName,
 				model: input.model,
+				chunkIndex: input.chunkIndex,
+				chunkTotal: input.chunkTotal,
 			},
 			headers: {
 				Authorization: `Bearer ${input.accessToken}`,
@@ -188,6 +196,8 @@ async function invokeExtractMetricsViaAskAi(input: {
 	extractedText: string
 	fileName: string
 	model: string
+	chunkIndex?: number
+	chunkTotal?: number
 }): Promise<ExtractMetricsAiEdgeResult> {
 	const askResult = await invokeAskAiEdgeFunction({
 		provider: 'gemini',
@@ -195,6 +205,8 @@ async function invokeExtractMetricsViaAskAi(input: {
 		messages: buildExtractMetricsPrompt({
 			extractedText: input.extractedText,
 			fileName: input.fileName,
+			chunkIndex: input.chunkIndex,
+			chunkTotal: input.chunkTotal,
 		}),
 		responseFormat: 'json',
 		temperature: 0.1,
@@ -220,30 +232,21 @@ async function invokeExtractMetricsViaAskAi(input: {
 	})
 }
 
-export async function invokeExtractMetricsAiEdgeFunction(input: {
+async function invokeExtractMetricsSingleChunk(input: {
 	extractedText: string
 	fileName: string
+	model: string
+	accessToken: string
+	chunkIndex?: number
+	chunkTotal?: number
 }): Promise<ExtractMetricsAiEdgeResult> {
-	const config = loadAIPlatformConfig()
-	const model = config.model || GEMINI_MODEL
-
-	let session
-
-	try {
-		session = await requireSupabaseSession()
-	} catch (error) {
-		if (error instanceof SupabaseAuthRequiredError) {
-			throw new ExtractMetricsAiInvokeError(error.message)
-		}
-
-		throw error
-	}
-
 	if (!isDedicatedExtractMetricsEdgeEnabled()) {
 		return invokeExtractMetricsViaAskAi({
 			extractedText: input.extractedText,
 			fileName: input.fileName,
-			model,
+			model: input.model,
+			chunkIndex: input.chunkIndex,
+			chunkTotal: input.chunkTotal,
 		})
 	}
 
@@ -251,8 +254,10 @@ export async function invokeExtractMetricsAiEdgeFunction(input: {
 		return await invokeDedicatedExtractMetricsFunction({
 			extractedText: input.extractedText,
 			fileName: input.fileName,
-			model,
-			accessToken: session.access_token,
+			model: input.model,
+			accessToken: input.accessToken,
+			chunkIndex: input.chunkIndex,
+			chunkTotal: input.chunkTotal,
 		})
 	} catch (primaryError) {
 		if (
@@ -276,7 +281,86 @@ export async function invokeExtractMetricsAiEdgeFunction(input: {
 		return invokeExtractMetricsViaAskAi({
 			extractedText: input.extractedText,
 			fileName: input.fileName,
-			model,
+			model: input.model,
+			chunkIndex: input.chunkIndex,
+			chunkTotal: input.chunkTotal,
 		})
+	}
+}
+
+export async function invokeExtractMetricsAiEdgeFunction(input: {
+	extractedText: string
+	fileName: string
+}): Promise<ExtractMetricsAiEdgeResult> {
+	const config = loadAIPlatformConfig()
+	const model = config.model || GEMINI_MODEL
+
+	let session
+
+	try {
+		session = await requireSupabaseSession()
+	} catch (error) {
+		if (error instanceof SupabaseAuthRequiredError) {
+			throw new ExtractMetricsAiInvokeError(error.message)
+		}
+
+		throw error
+	}
+
+	const chunks = splitOcrTextForExtraction(input.extractedText)
+
+	if (chunks.length === 0) {
+		throw new ExtractMetricsAiInvokeError(
+			'AI extraction requires OCR text from the report.',
+		)
+	}
+
+	const chunkMetricResults: ExtractMetricsAiEdgeMetric[][] = []
+	let mergedMetadata: ExtractMetricsAiEdgeResult['metadata'] = {}
+	const mergedWarnings: string[] = []
+	let totalUsage = {
+		promptTokens: 0,
+		completionTokens: 0,
+		totalTokens: 0,
+	}
+	let lastModel = model
+	let lastCorrelationId: string | undefined
+
+	for (let index = 0; index < chunks.length; index += 1) {
+		const chunkResult = await invokeExtractMetricsSingleChunk({
+			extractedText: chunks[index]!,
+			fileName: input.fileName,
+			model,
+			accessToken: session.access_token,
+			chunkIndex: index,
+			chunkTotal: chunks.length,
+		})
+
+		chunkMetricResults.push(chunkResult.metrics)
+		mergedMetadata = { ...mergedMetadata, ...chunkResult.metadata }
+		mergedWarnings.push(...chunkResult.warnings)
+		totalUsage = {
+			promptTokens: totalUsage.promptTokens + chunkResult.usage.promptTokens,
+			completionTokens:
+				totalUsage.completionTokens + chunkResult.usage.completionTokens,
+			totalTokens: totalUsage.totalTokens + chunkResult.usage.totalTokens,
+		}
+		lastModel = chunkResult.model
+		lastCorrelationId = chunkResult.correlationId
+	}
+
+	const metrics = mergeAiExtractedMetrics(chunkMetricResults)
+
+	if (chunks.length > 1) {
+		mergedWarnings.push(`merged_${chunks.length}_ocr_chunks`)
+	}
+
+	return {
+		metrics,
+		metadata: mergedMetadata,
+		warnings: mergedWarnings,
+		model: lastModel,
+		correlationId: lastCorrelationId,
+		usage: totalUsage,
 	}
 }

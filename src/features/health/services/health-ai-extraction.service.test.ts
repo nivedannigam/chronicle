@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
 	AI_REPROCESS_FAILED_USER_MESSAGE,
+	buildHealthReportWithAiDefaultExtraction,
 	getHealthReportFailureMessage,
 	OCR_FAILED_USER_MESSAGE,
 	PARSING_FAILED_USER_MESSAGE,
@@ -11,6 +12,16 @@ import {
 	validateAiExtractedMetrics,
 } from '@/features/health/services/health-ai-extraction.service'
 import type { UploadedHealthReport } from '@/features/health/types'
+import type { HealthReport } from '@/features/document-intelligence/domain/health-report.domain'
+
+vi.mock('@/shared/ai/transport/extract-metrics-ai-edge.client', () => ({
+	invokeExtractMetricsAiEdgeFunction: vi.fn(),
+	ExtractMetricsAiInvokeError: class ExtractMetricsAiInvokeError extends Error {},
+}))
+
+import { invokeExtractMetricsAiEdgeFunction } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
+
+const mockedInvoke = vi.mocked(invokeExtractMetricsAiEdgeFunction)
 
 describe('health-ai-extraction.service', () => {
 	it('allows AI reprocess when stored OCR text exists', () => {
@@ -108,5 +119,112 @@ describe('health-ai-extraction.service', () => {
 		})
 
 		expect(metrics).toEqual([])
+	})
+
+	it('skips AI extraction for TMT reports', async () => {
+		const layoutReport = {
+			id: 'r1',
+			documentId: 'r1',
+			metadata: {
+				reportType: 'general',
+				laboratory: '',
+				reportDate: '2026-02-01',
+				collectionDate: null,
+				referenceNumber: null,
+				patientName: null,
+				doctorName: null,
+				testNames: [],
+				sourceDocumentId: 'r1',
+				parserVersion: 'test',
+				ocrConfidence: 0,
+				pageCount: 1,
+				ocrProvider: 'google',
+				ocrProcessingTimeMs: 0,
+			},
+			metrics: [],
+			metricResults: [],
+			extractedText: 'TMT negative for ischemia',
+			createdAt: '2026-02-01T00:00:00.000Z',
+		} as HealthReport
+
+		const result = await buildHealthReportWithAiDefaultExtraction({
+			report: {
+				id: 'r1',
+				file_name: 'Feb 2026 - TMT.pdf',
+				extracted_text: 'TMT negative for ischemia',
+			} as UploadedHealthReport,
+			layoutReport,
+		})
+
+		expect(mockedInvoke).not.toHaveBeenCalled()
+		expect(result.debug?.extractionMethod).toBe('deterministic')
+	})
+
+	it('invokes AI for full-body lab reports', async () => {
+		const aiMetrics = [
+			'CREATININE',
+			'TSH',
+			'LDL',
+			'ALT',
+			'HBA1C',
+			...Array.from({ length: 12 }, (_, index) => `METRIC_${index}`),
+		].map((name) => ({
+			rawName: name,
+			displayName: name,
+			value: '1',
+			unit: '',
+			referenceRange: {
+				rawText: '',
+				lowerLimit: null,
+				upperLimit: null,
+				unit: null,
+			},
+			status: 'normal' as const,
+		}))
+
+		mockedInvoke.mockResolvedValueOnce({
+			metrics: aiMetrics,
+			metadata: { reportType: 'general', laboratory: 'Thyrocare' },
+			warnings: [],
+			model: 'gemini',
+			usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+		})
+
+		const layoutReport = {
+			id: 'r2',
+			documentId: 'r2',
+			metadata: {
+				reportType: 'general',
+				laboratory: 'Thyrocare',
+				reportDate: '2026-03-01',
+				collectionDate: null,
+				referenceNumber: null,
+				patientName: null,
+				doctorName: null,
+				testNames: [],
+				sourceDocumentId: 'r2',
+				parserVersion: 'test',
+				ocrConfidence: 0,
+				pageCount: 1,
+				ocrProvider: 'google',
+				ocrProcessingTimeMs: 0,
+			},
+			metrics: [],
+			metricResults: [],
+			extractedText: 'CREATININE 0.9',
+			createdAt: '2026-03-01T00:00:00.000Z',
+		} as HealthReport
+
+		const result = await buildHealthReportWithAiDefaultExtraction({
+			report: {
+				id: 'r2',
+				file_name: 'Mar 2026 - Full Body Checkup.pdf',
+				extracted_text: 'CREATININE 0.9 mg/dL',
+			} as UploadedHealthReport,
+			layoutReport,
+		})
+
+		expect(mockedInvoke).toHaveBeenCalledOnce()
+		expect(result.debug?.extractionMethod).toBe('llm')
 	})
 })

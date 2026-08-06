@@ -4,6 +4,11 @@ import type {
 	MetricStatus,
 } from '@/features/document-intelligence/domain/metric.types'
 import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
+import { mergeExtractedHealthMetrics } from '@/features/health/services/merge-extracted-metrics.service'
+import {
+	isSuspiciousPartialExtraction,
+	shouldSkipAiMetricExtraction,
+} from '@/features/health/services/health-partial-extraction.service'
 import {
 	invokeExtractMetricsAiEdgeFunction,
 	type ExtractMetricsAiEdgeMetric,
@@ -244,6 +249,7 @@ function parseNumeric(value: string): number | null {
 
 export async function buildHealthReportFromAiExtraction(input: {
 	report: UploadedHealthReport
+	layoutReport?: HealthReport
 }): Promise<HealthReport> {
 	const extractedText = input.report.extracted_text?.trim()
 
@@ -254,6 +260,7 @@ export async function buildHealthReportFromAiExtraction(input: {
 	}
 
 	const existing = getParsedHealthReport(input.report)
+	const layoutMetrics = input.layoutReport?.metrics ?? []
 	const aiResult = await invokeExtractMetricsAiEdgeFunction({
 		extractedText,
 		fileName: input.report.file_name,
@@ -263,33 +270,89 @@ export async function buildHealthReportFromAiExtraction(input: {
 		metrics: aiResult.metrics,
 		report: input.report,
 	})
-	const metrics = validatedMetrics.map(toHealthMetric)
+	const aiHealthMetrics = validatedMetrics.map(toHealthMetric)
+	const metrics = mergeExtractedHealthMetrics({
+		layoutMetrics,
+		aiMetrics: aiHealthMetrics,
+	})
+
+	if (
+		metrics.length > 0 &&
+		isSuspiciousPartialExtraction({
+			fileName: input.report.file_name,
+			metrics,
+		})
+	) {
+		throw new Error(
+			'Chronicle could not read a complete panel from this checkup. Try Advanced Reading again or upload a clearer PDF.',
+		)
+	}
+
+	const extractionMethod =
+		layoutMetrics.length > 0 && aiHealthMetrics.length > 0
+			? 'layout+llm'
+			: aiHealthMetrics.length > 0
+				? 'llm'
+				: 'deterministic'
+
+	const layoutMetadata = input.layoutReport?.metadata
 	const metadata = {
 		reportType:
 			aiResult.metadata.reportType ??
+			layoutMetadata?.reportType ??
 			existing?.metadata.reportType ??
 			'general',
 		laboratory:
-			aiResult.metadata.laboratory ?? existing?.metadata.laboratory ?? '',
+			aiResult.metadata.laboratory ??
+			layoutMetadata?.laboratory ??
+			existing?.metadata.laboratory ??
+			'',
 		reportDate:
 			aiResult.metadata.reportDate ??
+			layoutMetadata?.reportDate ??
 			existing?.metadata.reportDate ??
 			input.report.report_date,
-		collectionDate: existing?.metadata.collectionDate ?? null,
-		referenceNumber: existing?.metadata.referenceNumber ?? null,
+		collectionDate:
+			layoutMetadata?.collectionDate ??
+			existing?.metadata.collectionDate ??
+			null,
+		referenceNumber:
+			layoutMetadata?.referenceNumber ??
+			existing?.metadata.referenceNumber ??
+			null,
 		patientName:
-			aiResult.metadata.patientName ?? existing?.metadata.patientName ?? null,
-		doctorName: existing?.metadata.doctorName ?? null,
+			aiResult.metadata.patientName ??
+			layoutMetadata?.patientName ??
+			existing?.metadata.patientName ??
+			null,
+		doctorName:
+			layoutMetadata?.doctorName ?? existing?.metadata.doctorName ?? null,
 		testNames: metrics.map((metric) => metric.displayName),
 		sourceDocumentId: input.report.id,
-		parserVersion: 'ai-text-v1',
+		parserVersion:
+			extractionMethod === 'layout+llm'
+				? 'layout+ai-text-v1'
+				: extractionMethod === 'llm'
+					? 'ai-text-v1'
+					: (layoutMetadata?.parserVersion ?? 'metric-extraction'),
 		ocrConfidence:
-			input.report.ocr_confidence ?? existing?.metadata.ocrConfidence ?? 0,
-		pageCount: input.report.ocr_page_count ?? existing?.metadata.pageCount ?? 0,
+			input.report.ocr_confidence ??
+			layoutMetadata?.ocrConfidence ??
+			existing?.metadata.ocrConfidence ??
+			0,
+		pageCount:
+			input.report.ocr_page_count ??
+			layoutMetadata?.pageCount ??
+			existing?.metadata.pageCount ??
+			0,
 		ocrProvider:
-			input.report.ocr_provider ?? existing?.metadata.ocrProvider ?? '',
+			input.report.ocr_provider ??
+			layoutMetadata?.ocrProvider ??
+			existing?.metadata.ocrProvider ??
+			'',
 		ocrProcessingTimeMs:
 			input.report.ocr_processing_time_ms ??
+			layoutMetadata?.ocrProcessingTimeMs ??
 			existing?.metadata.ocrProcessingTimeMs ??
 			0,
 	}
@@ -318,21 +381,71 @@ export async function buildHealthReportFromAiExtraction(input: {
 			ocrProcessingTimeMs: metadata.ocrProcessingTimeMs,
 			ocrConfidence: metadata.ocrConfidence,
 			pageCount: metadata.pageCount,
-			tableCount: 0,
-			parsedFields: {},
+			tableCount: input.layoutReport?.debug?.tableCount ?? 0,
+			parsedFields: input.layoutReport?.debug?.parsedFields ?? {},
 			normalizationMap: metrics.map((metric) => ({
 				raw: metric.rawName,
 				canonical: metric.displayName,
 			})),
 			extractedMetricCount: metrics.length,
 			warnings: [
-				'Metrics extracted with AI from stored OCR text — verify before clinical use.',
+				extractionMethod === 'layout+llm'
+					? 'Metrics merged from layout parser and AI reading.'
+					: 'Metrics extracted with AI from stored OCR text — verify before clinical use.',
 				...aiResult.warnings,
+				...(input.layoutReport?.debug?.warnings ?? []),
 			],
-			extractionMethod: 'llm',
-			validationStatus: 'partial',
+			extractionMethod,
+			validationStatus:
+				extractionMethod === 'layout+llm' || metrics.length >= 15
+					? 'complete'
+					: 'partial',
 		},
 	}
+}
+
+/** AI-by-default path after OCR: merge layout parser output with chunked AI extraction. */
+export async function buildHealthReportWithAiDefaultExtraction(input: {
+	report: UploadedHealthReport
+	layoutReport: HealthReport
+}): Promise<HealthReport> {
+	if (
+		shouldSkipAiMetricExtraction({
+			fileName: input.report.file_name,
+			metadata: input.layoutReport.metadata,
+		})
+	) {
+		return {
+			...input.layoutReport,
+			debug: {
+				...input.layoutReport.debug,
+				ocrProvider:
+					input.layoutReport.debug?.ocrProvider ??
+					input.layoutReport.metadata.ocrProvider,
+				ocrProcessingTimeMs:
+					input.layoutReport.debug?.ocrProcessingTimeMs ??
+					input.layoutReport.metadata.ocrProcessingTimeMs,
+				ocrConfidence:
+					input.layoutReport.debug?.ocrConfidence ??
+					input.layoutReport.metadata.ocrConfidence,
+				pageCount:
+					input.layoutReport.debug?.pageCount ??
+					input.layoutReport.metadata.pageCount,
+				tableCount: input.layoutReport.debug?.tableCount ?? 0,
+				parsedFields: input.layoutReport.debug?.parsedFields ?? {},
+				normalizationMap: input.layoutReport.debug?.normalizationMap ?? [],
+				extractedMetricCount: input.layoutReport.metrics.length,
+				warnings: input.layoutReport.debug?.warnings ?? [],
+				extractionMethod: 'deterministic',
+				validationStatus: 'complete',
+			},
+		}
+	}
+
+	return buildHealthReportFromAiExtraction({
+		report: input.report,
+		layoutReport: input.layoutReport,
+	})
 }
 
 export const AI_REPROCESS_CONFIRMATION =
