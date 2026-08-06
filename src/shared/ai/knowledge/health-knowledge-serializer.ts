@@ -146,20 +146,119 @@ export function serializeHealthKnowledgeForLLM(
 	}
 }
 
-export function assertNoForbiddenLLMFields(payload: string): void {
-	const forbidden = [
-		/extracted_text/i,
-		/ocr/i,
-		/parsed_data/i,
-		/storage_path/i,
-		/file_name\.pdf/i,
-	]
+const FORBIDDEN_LLM_KEYS = new Set([
+	'extracted_text',
+	'parsed_data',
+	'storage_path',
+	'ocr_page_count',
+	'ocr_confidence',
+	'ocr_provider',
+	'ocr_metadata',
+	'ocr_processing_time_ms',
+	'rawtext',
+	'ocrconfidence',
+	'ocrprovider',
+	'ocrprocessingtimems',
+	'ocrmetadata',
+	'ocrpagecount',
+])
 
-	for (const pattern of forbidden) {
-		if (pattern.test(payload)) {
-			throw new Error(
-				`Prompt payload contains forbidden field matching ${pattern}`,
-			)
+function normalizeForbiddenKey(key: string): string {
+	return key.replace(/[-_\s]/g, '').toLowerCase()
+}
+
+export function isForbiddenLLMKey(key: string): boolean {
+	const normalized = normalizeForbiddenKey(key)
+
+	if (FORBIDDEN_LLM_KEYS.has(normalized)) {
+		return true
+	}
+
+	if (normalized.startsWith('ocr')) {
+		return true
+	}
+
+	return (
+		normalized.includes('extractedtext') ||
+		normalized.includes('parseddata') ||
+		normalized.includes('storagepath')
+	)
+}
+
+function findForbiddenKeyPath(
+	value: unknown,
+	path: string[] = [],
+): string | null {
+	if (value === null || typeof value !== 'object') {
+		return null
+	}
+
+	if (Array.isArray(value)) {
+		for (let index = 0; index < value.length; index += 1) {
+			const found = findForbiddenKeyPath(value[index], [...path, String(index)])
+
+			if (found) {
+				return found
+			}
 		}
+
+		return null
+	}
+
+	for (const [key, child] of Object.entries(value)) {
+		if (isForbiddenLLMKey(key)) {
+			return [...path, key].join('.')
+		}
+
+		const found = findForbiddenKeyPath(child, [...path, key])
+
+		if (found) {
+			return found
+		}
+	}
+
+	return null
+}
+
+/** Walk structured prompt payloads and reject raw OCR / DB field names. */
+export function assertNoForbiddenLLMKeys(value: unknown): void {
+	const forbiddenPath = findForbiddenKeyPath(value)
+
+	if (forbiddenPath) {
+		throw new Error(`Prompt payload contains forbidden field: ${forbiddenPath}`)
+	}
+}
+
+const EVIDENCE_BUNDLE_JSON_MARKER =
+	'EvidenceBundle (use ONLY this structured data — do not invent values):'
+
+function extractEvidenceBundleJson(payload: string): unknown | null {
+	const markerIndex = payload.indexOf(EVIDENCE_BUNDLE_JSON_MARKER)
+
+	if (markerIndex < 0) {
+		return null
+	}
+
+	const jsonText = payload
+		.slice(markerIndex + EVIDENCE_BUNDLE_JSON_MARKER.length)
+		.trim()
+
+	if (!jsonText) {
+		return null
+	}
+
+	try {
+		return JSON.parse(jsonText)
+	} catch {
+		return null
+	}
+}
+
+/** Validates structured evidence keys; allows OCR wording inside user-facing values. */
+export function assertNoForbiddenLLMFields(payload: string): void {
+	const evidencePayload = extractEvidenceBundleJson(payload)
+
+	if (evidencePayload != null) {
+		assertNoForbiddenLLMKeys(evidencePayload)
 	}
 }

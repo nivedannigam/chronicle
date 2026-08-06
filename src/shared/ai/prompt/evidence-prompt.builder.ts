@@ -3,7 +3,10 @@ import {
 	CHRONICLE_HEALTH_SYSTEM_PROMPT,
 	HEALTH_SUMMARIZE_OUTPUT_SCHEMA,
 } from '@/shared/ai/prompt/prompt-templates'
-import { assertNoForbiddenLLMFields } from '@/shared/ai/knowledge/health-knowledge-serializer'
+import {
+	assertNoForbiddenLLMFields,
+	assertNoForbiddenLLMKeys,
+} from '@/shared/ai/knowledge/health-knowledge-serializer'
 import type { SelectedEvidence } from '@/shared/ai/evidence/evidence.types'
 import type { EvidenceBundle } from '@/shared/ai/evidence-planning/types'
 import type { ClassifiedIntent } from '@/shared/ai/intent/intent.types'
@@ -50,6 +53,8 @@ export function buildEvidencePrompt(input: EvidencePromptInput): BuiltPrompt {
 			resolver: input.evidenceBundle.metadata.resolver,
 		},
 	}
+
+	assertNoForbiddenLLMKeys(evidencePayload)
 
 	const evidenceJson = JSON.stringify(evidencePayload, null, 2)
 	const user = [

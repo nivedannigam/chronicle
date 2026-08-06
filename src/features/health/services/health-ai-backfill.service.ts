@@ -8,6 +8,8 @@ import type { UploadedHealthReport } from '@/features/health/types'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
 
 const backfillInFlight = new Set<string>()
+/** One attempt per report per browser session — avoids re-hitting AI every stale refetch. */
+const backfillAttemptedReportIds = new Set<string>()
 
 export function listReportsNeedingAiExtractionBackfill(
 	reports: UploadedHealthReport[],
@@ -30,12 +32,14 @@ export async function backfillAiExtractionForIncompleteReports(
 		const allReports = reports ?? (await fetchUploadedHealthReports())
 		const eligible = listReportsNeedingAiExtractionBackfill(
 			allReports.filter((report) => report.user_id === userId),
-		)
+		).filter((report) => !backfillAttemptedReportIds.has(report.id))
 
 		let processed = 0
 		let failed = 0
 
 		for (const report of eligible) {
+			backfillAttemptedReportIds.add(report.id)
+
 			try {
 				const result = await reprocessHealthReportWithAi(report.id)
 
