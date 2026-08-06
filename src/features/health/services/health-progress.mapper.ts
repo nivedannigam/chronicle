@@ -1,4 +1,6 @@
 import type { HealthCompanionView } from '@/features/health/types/health-companion.types'
+import type { HealthVisit } from '@/features/health/types/health-visit.types'
+import type { UploadedHealthReport } from '@/features/health/types'
 import type { MetricCategoryId } from '@/features/health-knowledge/types'
 import type {
 	HealthKnowledgeGraph,
@@ -16,6 +18,7 @@ import {
 	MIN_CLASSIFIED_FOR_SCORE,
 	pickMostRecentHistory,
 } from '@/features/health-knowledge/services/health-scoring.service'
+import { getReportDisplayDate } from '@/features/health/services/health-parsed-report.service'
 import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import type {
 	ProgressAchievement,
@@ -158,17 +161,122 @@ function buildScoreDelta(
 	return `${sign}${delta}${yearSpan}`
 }
 
-function buildDomainCards(graph: HealthKnowledgeGraph): ProgressDomainCard[] {
+function completedReportIds(reports: UploadedHealthReport[]): Set<string> {
+	return new Set(
+		reports
+			.filter((report) => report.status === 'completed')
+			.map((report) => report.id),
+	)
+}
+
+function scopeHistoriesToReports(
+	histories: HealthMetricHistory[],
+	reportIds: Set<string>,
+): HealthMetricHistory[] {
+	return histories
+		.map((history) => ({
+			...history,
+			observations: history.observations.filter((observation) =>
+				reportIds.has(observation.reportId),
+			),
+		}))
+		.filter((history) => history.observations.length > 0)
+}
+
+function reportIdsForYear(
+	reports: UploadedHealthReport[],
+	year: number,
+	completedIds: Set<string>,
+): Set<string> {
+	const prefix = `${year}-`
+
+	return new Set(
+		reports
+			.filter(
+				(report) =>
+					completedIds.has(report.id) &&
+					getReportDisplayDate(report).startsWith(prefix),
+			)
+			.map((report) => report.id),
+	)
+}
+
+function resolveDomainHistories(input: {
+	graph: HealthKnowledgeGraph
+	config: (typeof PROGRESS_DOMAINS)[number]
+	visits: HealthVisit[]
+	reports: UploadedHealthReport[]
+}): {
+	histories: HealthMetricHistory[]
+	anchorDate: string | undefined
+} {
+	const allHistories = filterHistories(input.graph, input.config)
+	const completedIds = completedReportIds(input.reports)
+	const scopes: Array<Set<string>> = []
+
+	for (const visit of input.visits) {
+		const visitReportIds = visit.reportIds.filter((reportId) =>
+			completedIds.has(reportId),
+		)
+
+		if (visitReportIds.length > 0) {
+			scopes.push(new Set(visitReportIds))
+		}
+	}
+
+	const currentYear = new Date().getFullYear()
+	const yearReportIds = reportIdsForYear(
+		input.reports,
+		currentYear,
+		completedIds,
+	)
+
+	if (yearReportIds.size > 0) {
+		scopes.push(yearReportIds)
+	}
+
+	for (const reportIds of scopes) {
+		const scoped = scopeHistoriesToReports(allHistories, reportIds)
+
+		if (scoped.length === 0) {
+			continue
+		}
+
+		const anchorDate =
+			[...reportIds]
+				.map((reportId) => {
+					const report = input.reports.find((entry) => entry.id === reportId)
+
+					return report ? getReportDisplayDate(report) : undefined
+				})
+				.filter(Boolean)
+				.sort((a, b) => Date.parse(b!) - Date.parse(a!))[0] ??
+			newestObservationDate(scoped)
+
+		return { histories: scoped, anchorDate }
+	}
+
+	return { histories: [], anchorDate: undefined }
+}
+
+function buildDomainCards(input: {
+	graph: HealthKnowledgeGraph
+	visits: HealthVisit[]
+	reports: UploadedHealthReport[]
+}): ProgressDomainCard[] {
 	return PROGRESS_DOMAINS.map((config) => {
-		const histories = filterHistories(graph, config)
+		const allHistories = filterHistories(input.graph, config)
+		const { histories, anchorDate } = resolveDomainHistories({
+			graph: input.graph,
+			config,
+			visits: input.visits,
+			reports: input.reports,
+		})
 		const meta = getCategoryMeta(config.categoryId as MetricCategoryId)
-		const primary = pickMostRecentHistory(histories)
+		const primary = pickMostRecentHistory(allHistories)
 		const sparkline = sparklineFromHistory(primary)
-		const domainStatus = consumerDomainStatus(histories)
-		const lastObserved =
-			domainStatus === 'No Recent Data'
-				? undefined
-				: newestObservationDate(histories)
+		const domainStatus =
+			histories.length > 0 ? consumerDomainStatus(histories) : 'No Recent Data'
 
 		return {
 			id: config.id,
@@ -176,8 +284,9 @@ function buildDomainCards(graph: HealthKnowledgeGraph): ProgressDomainCard[] {
 			emoji: config.emoji,
 			color: meta.color,
 			statusLabel: domainStatus,
-			trendLabel: consumerDomainTrendLabel(histories),
-			lastUpdated: relativeConsumerUpdatedLabel(lastObserved),
+			trendLabel:
+				histories.length > 0 ? consumerDomainTrendLabel(histories) : '—',
+			lastUpdated: relativeConsumerUpdatedLabel(anchorDate),
 			sparkline,
 			hasData: domainStatus !== 'No Recent Data',
 			categoryId: config.categoryId,
@@ -341,6 +450,8 @@ export function buildHealthProgressViewModel(input: {
 	graph: HealthKnowledgeGraph
 	trendSeries?: TrendSeries[]
 	snapshot: HealthCanonicalSnapshot
+	visits: HealthVisit[]
+	reports: UploadedHealthReport[]
 }): ProgressViewModel {
 	const sparkline = buildScoreSparkline(input.graph)
 	const hasEnoughHistory = sparkline.length >= 2
@@ -356,7 +467,11 @@ export function buildHealthProgressViewModel(input: {
 
 	return {
 		overall,
-		domains: buildDomainCards(input.graph),
+		domains: buildDomainCards({
+			graph: input.graph,
+			visits: input.visits,
+			reports: input.reports,
+		}),
 		improvements: buildImprovements(input.companion),
 		watchItems: buildWatchItems(input.companion),
 		milestones: buildMilestones(input.companion),

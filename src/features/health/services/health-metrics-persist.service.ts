@@ -6,7 +6,10 @@ import {
 } from '@/features/health-knowledge/graph/metric-categories'
 import type { PersistHealthMetricsInput } from '@/features/health/types/health-metric-record.types'
 import type { UploadedHealthReport } from '@/features/health/types'
-import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
+import {
+	getParsedHealthReport,
+	getReportDisplayDate,
+} from '@/features/health/services/health-parsed-report.service'
 import {
 	isMissingSchemaError,
 	missingHealthMetricsMessage,
@@ -114,9 +117,10 @@ export async function persistHealthMetrics(
 		healthReport.metadata.reportDate ??
 		healthReport.createdAt.slice(0, 10)
 	const observedAt =
-		healthReport.metadata.reportDate != null
+		input.observedAt ??
+		(healthReport.metadata.reportDate != null
 			? new Date(`${healthReport.metadata.reportDate}T12:00:00`).toISOString()
-			: healthReport.createdAt
+			: healthReport.createdAt)
 	const reportType = healthReport.metadata.reportType
 
 	const metricResults = healthReport.metricResults ?? []
@@ -195,18 +199,29 @@ export async function backfillHealthMetricsFromReports(
 			const hasNewMetrics = [...parsedCanonicalIds].some(
 				(id) => !storedIds.has(id),
 			)
+			const displayDate = getReportDisplayDate(report, parsed)
+			const storedDateMismatch =
+				displayDate !== (report.report_date ?? '') &&
+				displayDate !== (parsed.metadata.reportDate ?? '')
 
-			if (!hasNewMetrics && parsed.metrics.length === storedIds.size) {
+			if (
+				!hasNewMetrics &&
+				parsed.metrics.length === storedIds.size &&
+				!storedDateMismatch
+			) {
 				continue
 			}
 		}
+
+		const displayDate = getReportDisplayDate(report, parsed)
 
 		inserted += await persistHealthMetrics({
 			userId,
 			reportId: report.id,
 			familyMemberId: report.family_member_id ?? null,
 			healthReport: parsed as HealthReport,
-			reportDate: report.report_date,
+			reportDate: displayDate,
+			observedAt: `${displayDate}T12:00:00.000Z`,
 		})
 	}
 

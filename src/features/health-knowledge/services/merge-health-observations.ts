@@ -165,8 +165,12 @@ export function mergeHealthObservations(input: {
 	storedMetrics: StoredHealthMetric[]
 	uploadedReports: UploadedHealthReport[]
 }): HealthObservation[] {
+	const reportIds = new Set(input.uploadedReports.map((report) => report.id))
+	const scopedStoredMetrics = input.storedMetrics.filter((metric) =>
+		reportIds.has(metric.report_id),
+	)
 	const stored = observationsFromStoredMetrics(
-		input.storedMetrics,
+		scopedStoredMetrics,
 		input.uploadedReports,
 	)
 	const parsed = observationsFromUploadedReports(input.uploadedReports)

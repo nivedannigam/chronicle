@@ -144,6 +144,35 @@ describe('buildHealthProgressViewModel', () => {
 			companion: companion(),
 			graph: graph(),
 			snapshot,
+			visits: [
+				{
+					id: 'report-2',
+					title: 'Full Body Checkup',
+					date: '2026-03-09',
+					displayDate: 'Mar 9, 2026',
+					displayMonthYear: 'Mar 2026',
+					hospital: 'Thyrocare',
+					reportIds: ['report-2'],
+					reportCount: 1,
+					documents: [],
+					summaryLine: 'Ready',
+					summaryParagraph: 'Complete',
+					findingCount: 0,
+					status: 'ready',
+					statusLabel: 'Ready',
+					isGrouped: false,
+				},
+			],
+			reports: [
+				{
+					id: 'report-2',
+					user_id: 'user-1',
+					file_name: '2026 Mar Full Body.pdf',
+					status: 'completed',
+					report_date: '2026-03-09',
+					uploaded_at: '2026-03-09T00:00:00.000Z',
+				} as import('@/features/health/types').UploadedHealthReport,
+			],
 		})
 
 		expect(view.overall.score).toBe(84)
@@ -153,6 +182,8 @@ describe('buildHealthProgressViewModel', () => {
 			view.improvements.some((item) => item.label.includes('Triglycerides')),
 		).toBe(true)
 		expect(view.domains.some((domain) => domain.name === 'Heart')).toBe(true)
+		const heart = view.domains.find((domain) => domain.name === 'Heart')
+		expect(heart?.lastUpdated).toBe('Updated Mar 2026')
 		expect(view.milestones[0]?.title).toBe('Annual Checkup')
 	})
 })

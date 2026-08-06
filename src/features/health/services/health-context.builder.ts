@@ -88,6 +88,8 @@ export function buildHealthContextValue(input: {
 		graph: input.graph,
 		trendSeries: input.trendSeries,
 		snapshot,
+		visits,
+		reports: input.reports,
 	})
 	const visitSnapshots = buildHealthVisitSnapshots({
 		graph: input.graph,

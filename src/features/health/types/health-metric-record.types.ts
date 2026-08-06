@@ -30,4 +30,5 @@ export interface PersistHealthMetricsInput {
 	familyMemberId?: string | null
 	healthReport: import('@/features/health/domain/health-report.domain').HealthReport
 	reportDate?: string | null
+	observedAt?: string
 }
