@@ -24,6 +24,7 @@ describe('buildReportHealthImpact', () => {
 			snapshot({
 				majorMetrics: [
 					{
+						canonicalMetricId: 'ldl',
 						displayName: 'LDL',
 						value: '145 mg/dL',
 						status: 'high',
