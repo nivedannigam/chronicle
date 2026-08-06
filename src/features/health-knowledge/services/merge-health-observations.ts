@@ -1,6 +1,7 @@
 import { normalizeMetricName } from '@/features/health/extraction/metric-normalization.engine'
 import {
 	getParsedHealthReport,
+	getReportDisplayDate,
 	getReportDisplayTitle,
 } from '@/features/health/services/health-parsed-report.service'
 import type { HealthObservation } from '@/features/health-knowledge/types'
@@ -42,6 +43,13 @@ export function resolveCanonicalMetricId(
 	}
 
 	return existingId ?? `raw:${slugifyMetricId(rawName)}`
+}
+
+function observationDateFromReport(report: UploadedHealthReport): string {
+	const parsed = getParsedHealthReport(report)
+	const displayDate = getReportDisplayDate(report, parsed)
+
+	return `${displayDate}T12:00:00.000Z`
 }
 
 function observationTimestamp(observation: HealthObservation): number {
@@ -97,7 +105,9 @@ export function observationsFromStoredMetrics(
 			unit: metric.unit,
 			status: metric.status,
 			confidence: metric.confidence,
-			observedAt: metric.observed_at,
+			observedAt: report
+				? observationDateFromReport(report)
+				: metric.observed_at,
 			reportId: metric.report_id,
 			reportTitle: report ? getReportDisplayTitle(report) : 'Health Report',
 			laboratory: report
@@ -137,11 +147,7 @@ export function observationsFromUploadedReports(
 				unit: metric.unit,
 				status: metric.status,
 				confidence: metric.confidence,
-				observedAt:
-					parsed.metadata.reportDate ??
-					report.report_date ??
-					report.processed_at ??
-					report.uploaded_at,
+				observedAt: observationDateFromReport(report),
 				reportId: report.id,
 				reportTitle: getReportDisplayTitle(report),
 				laboratory: parsed.metadata.laboratory,

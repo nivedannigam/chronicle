@@ -211,4 +211,47 @@ describe('mergeHealthObservations', () => {
 		const score = computeHealthScoreFromHistories(graph.profile.metricHistories)
 		expect(score).not.toBeNull()
 	})
+
+	it('uses filename report date when parsed metadata month conflicts', () => {
+		const reports = [
+			report({
+				id: 'report-feb-2026',
+				file_name: 'Feb 2026 Company plan.pdf',
+				uploaded_at: '2026-08-03T10:00:00.000Z',
+				report_date: '2026-08-03',
+				parsed_data: {
+					id: 'report-feb-2026',
+					documentId: 'report-feb-2026',
+					metadata: {
+						reportType: 'general',
+						laboratory: 'Thyrocare',
+						reportDate: '2026-08-03',
+					},
+					metrics: [
+						{
+							canonicalId: 'ldl',
+							displayName: 'LDL Cholesterol',
+							rawName: 'LDL',
+							value: '110',
+							numericValue: 110,
+							unit: 'mg/dL',
+							status: 'high',
+							confidence: 0.9,
+							referenceRange: { rawText: '< 100' },
+						},
+					],
+					metricResults: [],
+					extractedText: '',
+					createdAt: '2026-08-03T00:00:00.000Z',
+				},
+			}),
+		]
+
+		const merged = mergeHealthObservations({
+			storedMetrics: [],
+			uploadedReports: reports,
+		})
+
+		expect(merged[0]?.observedAt).toContain('2026-02')
+	})
 })

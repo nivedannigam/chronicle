@@ -131,6 +131,14 @@ export function consumerDomainStatus(
 		return 'Good'
 	}
 
+	const hasObservations = histories.some(
+		(history) => history.observations.length > 0,
+	)
+
+	if (hasObservations) {
+		return 'Monitor'
+	}
+
 	return 'No Recent Data'
 }
 
@@ -215,27 +223,16 @@ export function relativeConsumerUpdatedLabel(
 		return 'Updated yesterday'
 	}
 
-	if (days < 30) {
+	if (days < 7) {
 		return `Updated ${days} days ago`
 	}
 
-	const months = Math.floor(days / 30)
+	const formatted = new Date(parsed).toLocaleDateString('en-US', {
+		month: 'short',
+		year: 'numeric',
+	})
 
-	if (months === 1) {
-		return 'Updated last month'
-	}
-
-	if (months < 12) {
-		return `Updated ${months} months ago`
-	}
-
-	const years = Math.floor(months / 12)
-
-	if (years >= 2) {
-		return null
-	}
-
-	return years === 1 ? 'Updated last year' : `Updated ${years} years ago`
+	return `Updated ${formatted}`
 }
 
 export function buildCanonicalHealthScore(
