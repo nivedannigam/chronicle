@@ -133,26 +133,28 @@ function buildEvidenceCitations(
 	knowledge: InsuranceKnowledge,
 	policyIds: string[],
 ): EvidenceCitation[] {
-	return policyIds
-		.map((policyId) => {
-			const policy = knowledge.policies.find((item) => item.id === policyId)
+	const citations: EvidenceCitation[] = []
 
-			if (!policy) {
-				return null
-			}
+	for (const policyId of policyIds) {
+		const policy = knowledge.policies.find((item) => item.id === policyId)
 
-			const card = buildPolicyCardViewModel(knowledge, policy)
+		if (!policy) {
+			continue
+		}
 
-			return {
-				reportId: policy.id,
-				reportTitle: card.name,
-				hospital: policy.insurerName,
-				date:
-					policy.renewalDate ?? policy.expiryDate ?? policy.inceptionDate ?? '',
-				source: 'insurance' as const,
-			}
+		const card = buildPolicyCardViewModel(knowledge, policy)
+
+		citations.push({
+			reportId: policy.id,
+			reportTitle: card.name,
+			hospital: policy.insurerName,
+			date:
+				policy.renewalDate ?? policy.expiryDate ?? policy.inceptionDate ?? '',
+			source: 'insurance',
 		})
-		.filter((item): item is EvidenceCitation => item != null)
+	}
+
+	return citations
 }
 
 function buildTrustResponse(input: {

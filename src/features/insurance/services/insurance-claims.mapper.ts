@@ -883,7 +883,6 @@ export function filterClaimCards(input: {
 }
 
 function buildClaimTimeline(
-	knowledge: InsuranceKnowledge,
 	claim: InsuranceKnowledgeClaim,
 	policy: InsuranceKnowledgePolicy,
 	documents: ClaimDocumentViewModel[],
@@ -1173,7 +1172,7 @@ export function buildClaimDetailViewModel(
 
 	const meta = getCategoryMeta(policy.categoryId)
 	const documents = resolveClaimDocuments(knowledge, claim)
-	const timeline = buildClaimTimeline(knowledge, claim, policy, documents)
+	const timeline = buildClaimTimeline(claim, policy, documents)
 
 	const payments =
 		claim.approvedAmount != null && claim.settledDate

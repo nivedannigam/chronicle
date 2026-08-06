@@ -139,7 +139,9 @@ export function InsuranceSettingsPage() {
 						)
 					}
 				}}
-				onUpdatePreferences={updatePreferences}
+				onUpdatePreferences={(patch) => {
+					void updatePreferences(patch)
+				}}
 				onPrivacy={() => navigate(ROUTES.profileSecurity)}
 				onExport={() => navigate(ROUTES.profileSecurity)}
 				onPermissions={() => navigate(ROUTES.profileConnections)}

@@ -51,5 +51,6 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src", "packages/core/*/src", "packages/shared/src"]
+	"include": ["src", "packages/core/*/src", "packages/shared/src"],
+	"exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"]
 }

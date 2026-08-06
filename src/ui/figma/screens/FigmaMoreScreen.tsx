@@ -82,14 +82,6 @@ function ModulePreviewSvg({
 						fill={color}
 					/>
 				))}
-			{preview === 'insurance' && (
-				<path
-					d="M40 4 L68 14 L68 32 Q68 44 40 48 Q12 44 12 32 L12 14 Z"
-					fill="none"
-					stroke={color}
-					strokeWidth={3}
-				/>
-			)}
 			{preview === 'travel' && (
 				<>
 					<path

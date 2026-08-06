@@ -52,7 +52,7 @@ export function FigmaNotificationsScreen() {
 			/>
 
 			<div style={{ flex: 1, overflowY: 'auto', padding: '0 22px 24px' }}>
-				{isLoading ? <ListSkeleton count={4} /> : null}
+				{isLoading ? <ListSkeleton rows={4} /> : null}
 
 				{!isLoading && notifications.length === 0 ? (
 					<div
