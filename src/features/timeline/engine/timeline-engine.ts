@@ -12,6 +12,7 @@ import {
 	scoreTextMatch,
 	tokenizeQuery,
 } from '@/features/intelligence/services/semantic-search.service'
+import { filterLifeTimelineEvents } from '@/features/timeline/utils/life-timeline.utils'
 
 const IMPORTANCE_ORDER: Record<TimelineImportance, number> = {
 	high: 3,
@@ -107,6 +108,10 @@ export function filterTimelineEvents(
 
 			return scoreTextMatch(tokens, body) > 0
 		})
+	}
+
+	if (filters.lifeEventsOnly !== false) {
+		filtered = filterLifeTimelineEvents(filtered)
 	}
 
 	return filtered

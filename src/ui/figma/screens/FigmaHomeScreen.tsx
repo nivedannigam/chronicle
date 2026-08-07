@@ -13,7 +13,7 @@ import {
 	NotificationBellButton,
 	OsSectionLabel,
 	QuickActionsRow,
-	RecentActivityList,
+	LifeFeedList,
 	UpcomingList,
 } from '@/ui/figma/os/os-ui'
 import { FigmaHeaderSearchButton } from '@/ui/figma/shell/FigmaScreenHeader'
@@ -365,8 +365,8 @@ export function FigmaHomeScreen() {
 			</div>
 
 			<div style={{ padding: '0 22px 20px' }}>
-				<RecentActivityList
-					items={os.recentActivity}
+				<LifeFeedList
+					items={os.lifeFeed}
 					onItemClick={(path) => navigate(path)}
 					onViewAll={() => navigate(ROUTES.timeline)}
 				/>

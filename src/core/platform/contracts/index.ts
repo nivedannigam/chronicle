@@ -14,6 +14,8 @@ export type {
 
 export type { ChronicleDocumentConsumer } from '@/core/platform/contracts/document-platform.contract'
 
+export type * from '@/core/platform/contracts/module-provider.contract'
+
 export type * from '@/core/platform/contracts/knowledge-platform.contract'
 export type * from '@/core/platform/contracts/timeline-platform.contract'
 export type * from '@/core/platform/contracts/ai-platform.contract'

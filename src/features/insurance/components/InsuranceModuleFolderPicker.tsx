@@ -1,9 +1,18 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ChevronLeft, File, FileImage, FileText, Folder, X } from 'lucide-react'
+import {
+	ChevronLeft,
+	Check,
+	File,
+	FileImage,
+	FileText,
+	Folder,
+	X,
+} from 'lucide-react'
 import { C } from '@/constants/colors'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
 import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
+import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
 import { useDriveBrowser } from '@/features/connectors/google-drive/hooks/useDriveBrowser'
 import type { DriveBrowseFile } from '@/core/connectors'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
@@ -26,6 +35,14 @@ export function InsuranceModuleFolderPicker({
 	const [error, setError] = useState<string | null>(null)
 
 	const memberLabel = selectedMember ? formatMemberLabel(selectedMember) : 'you'
+
+	const discoveredCategories = useMemo(
+		() =>
+			discoverInsuranceCategoriesFromFolderNames(
+				browser.folders.map((folder) => folder.name),
+			),
+		[browser.folders],
+	)
 
 	const handleSelectFolder = useCallback(async () => {
 		if (!selectedMember || !browser.currentFolderId) {
@@ -58,6 +75,7 @@ export function InsuranceModuleFolderPicker({
 		}
 	}, [
 		assignFolder,
+		browser.currentFolderId,
 		browser.currentFolderName,
 		memberLabel,
 		onAssigned,
@@ -112,7 +130,9 @@ export function InsuranceModuleFolderPicker({
 							Choose insurance folder
 						</p>
 						<p style={{ color: FC.mid, fontSize: 12.5, margin: 0 }}>
-							For {memberLabel}
+							Select your root Insurance folder for {memberLabel}. Chronicle
+							discovers Health, Vehicle, Home, and Life subfolders
+							automatically.
 						</p>
 					</div>
 					<button
@@ -130,6 +150,47 @@ export function InsuranceModuleFolderPicker({
 						<X size={16} color={FC.mid} />
 					</button>
 				</div>
+
+				{discoveredCategories.length > 0 ? (
+					<div
+						style={{
+							marginBottom: 12,
+							padding: '12px 14px',
+							borderRadius: 16,
+							background: `${FC.blue}12`,
+							border: `1px solid ${FC.blue}28`,
+						}}
+					>
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 13,
+								fontWeight: 600,
+								margin: '0 0 8px',
+							}}
+						>
+							Categories found
+						</p>
+						<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+							{discoveredCategories.map((category) => (
+								<span
+									key={category.id}
+									style={{
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: 6,
+										color: FC.mid,
+										fontSize: 12.5,
+										fontWeight: 600,
+									}}
+								>
+									<Check size={14} color={FC.green} />
+									{category.emoji} {category.label}
+								</span>
+							))}
+						</div>
+					</div>
+				) : null}
 
 				<div
 					style={{
@@ -219,7 +280,9 @@ export function InsuranceModuleFolderPicker({
 						opacity: isSaving ? 0.7 : 1,
 					}}
 				>
-					{isSaving ? 'Saving…' : `Use "${browser.currentFolderName}"`}
+					{isSaving
+						? 'Saving…'
+						: `Use "${browser.currentFolderName}" as Insurance folder`}
 				</button>
 			</div>
 		</div>

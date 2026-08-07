@@ -34,6 +34,21 @@ function createReport(
 		ocr_text: null,
 		ocr_metadata: {},
 		parsed_report: null,
+		parsed_data: {
+			metrics: [
+				{
+					canonicalId: 'ldl',
+					displayName: 'LDL',
+					value: '100',
+					unit: 'mg/dL',
+					status: 'normal',
+				},
+			],
+			metadata: {
+				laboratory: 'Thyrocare',
+				reportType: 'Complete Blood Count',
+			},
+		},
 		...overrides,
 	} as UploadedHealthReport
 }
@@ -98,6 +113,9 @@ describe('timeline engine', () => {
 		)
 		expect(
 			result.events.some((event) => event.sourceModule === 'documents'),
+		).toBe(true)
+		expect(
+			result.events.every((event) => event.eventType !== 'report_imported'),
 		).toBe(true)
 	})
 

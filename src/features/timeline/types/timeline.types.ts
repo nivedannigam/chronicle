@@ -27,6 +27,8 @@ export type TimelineEventType =
 
 export type TimelineImportance = 'low' | 'medium' | 'high'
 
+export type TimelineEventCategory = 'life' | 'import' | 'operational'
+
 export interface TimelineEventReference {
 	type: string
 	id: string
@@ -44,6 +46,8 @@ export interface ChronicleTimelineEvent {
 	id: string
 	timestamp: string
 	eventType: TimelineEventType
+	/** Life events appear in Life Timeline; import/operational events are hidden by default. */
+	category: TimelineEventCategory
 	title: string
 	summary: string
 	familyMemberId: string | null
@@ -64,6 +68,8 @@ export interface TimelineFilters {
 	importance?: TimelineImportance[]
 	fromDate?: string
 	toDate?: string
+	/** When true (default), hides import and operational events. */
+	lifeEventsOnly?: boolean
 }
 
 export interface TimelineMonthGroup {

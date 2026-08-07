@@ -31,6 +31,7 @@ export function useChronicleOs(): ChronicleOsHome & {
 	const osHome = useMemo(
 		() =>
 			buildChronicleOsHome({
+				userId: userId ?? '',
 				briefing,
 				metricHistories: graph.profile.metricHistories,
 				insuranceKnowledge: insuranceQuery.knowledge,
@@ -42,6 +43,7 @@ export function useChronicleOs(): ChronicleOsHome & {
 				).length,
 			}),
 		[
+			userId,
 			briefing,
 			graph.profile.metricHistories,
 			insuranceQuery.knowledge,

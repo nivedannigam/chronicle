@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type {
 	DailyBrief,
+	LifeFeedItem,
 	LifeScore,
 	LifeScoreDimension,
 	OsQuickAction,
-	RecentActivityItem,
 	UpcomingItem,
 } from '@/features/os/types/os.types'
 import { FC, figmaCardStyle } from '@/ui/figma/tokens/figma-v2-tokens'
@@ -345,12 +345,12 @@ export function UpcomingList({
 	)
 }
 
-export function RecentActivityList({
+export function LifeFeedList({
 	items,
 	onItemClick,
 	onViewAll,
 }: {
-	items: RecentActivityItem[]
+	items: LifeFeedItem[]
 	onItemClick: (path: string) => void
 	onViewAll?: () => void
 }) {
@@ -361,7 +361,7 @@ export function RecentActivityList({
 	return (
 		<div>
 			<OsSectionLabel action="Timeline" onAction={onViewAll}>
-				Recent Activity
+				Life Feed
 			</OsSectionLabel>
 			<div style={{ ...figmaCardStyle, borderRadius: 22, overflow: 'hidden' }}>
 				{items.slice(0, 5).map((item, index) => (
@@ -420,6 +420,9 @@ export function RecentActivityList({
 		</div>
 	)
 }
+
+/** @deprecated Use LifeFeedList */
+export const RecentActivityList = LifeFeedList
 
 export function QuickActionsRow({
 	actions,

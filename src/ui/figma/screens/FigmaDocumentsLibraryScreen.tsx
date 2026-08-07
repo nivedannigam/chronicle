@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { DOCUMENT_HOME_CATEGORIES } from '@/features/documents/constants/document-category-display'
 import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
+import { useFederatedLibrary } from '@/features/documents/hooks/useFederatedLibrary'
 import {
 	defaultLibraryFilters,
-	filterDocumentLibrary,
+	filterFederatedLibrarySummaries,
 } from '@/features/documents/services/document-library.service'
 import type { DocumentConsumerStatus } from '@/features/documents/types/document-intelligence.types'
 import { ROUTES } from '@/constants/routes'
@@ -32,15 +33,25 @@ const SOURCE_FILTERS = [
 export function FigmaDocumentsLibraryScreen() {
 	const navigate = useNavigate()
 	const { members } = useFamilyContext()
-	const { documents, hub, memberNames, availableYears, isLoading } =
-		useDocumentsContext()
+	const {
+		memberNames,
+		availableYears,
+		isLoading: documentsLoading,
+	} = useDocumentsContext()
+	const federated = useFederatedLibrary()
 	const [filters, setFilters] = useState(defaultLibraryFilters)
 
 	const results = useMemo(
 		() =>
-			filterDocumentLibrary(documents, hub.allDocuments, filters, memberNames),
-		[documents, filters, hub.allDocuments, memberNames],
+			filterFederatedLibrarySummaries(
+				federated.allDocuments,
+				filters,
+				memberNames,
+			),
+		[federated.allDocuments, filters, memberNames],
 	)
+
+	const isLoading = documentsLoading || federated.isLoading
 
 	if (isLoading) {
 		return (
@@ -64,6 +75,30 @@ export function FigmaDocumentsLibraryScreen() {
 				}}
 				placeholder="Passport, Mahindra, insurance, health report, PAN card…"
 			/>
+
+			{federated.moduleSummaries.length > 0 ? (
+				<div style={{ marginBottom: 18 }}>
+					<DocumentSectionLabel>By module</DocumentSectionLabel>
+					<div
+						style={{
+							display: 'flex',
+							gap: 8,
+							overflowX: 'auto',
+							paddingTop: 10,
+							scrollbarWidth: 'none',
+						}}
+					>
+						{federated.moduleSummaries.map((summary) => (
+							<DocumentFilterChip
+								key={summary.moduleId}
+								label={`${summary.emoji} ${summary.label} (${summary.documentCount})`}
+								active={false}
+								onClick={() => {}}
+							/>
+						))}
+					</div>
+				</div>
+			) : null}
 
 			<div style={{ marginBottom: 14 }}>
 				<DocumentSectionLabel>Category</DocumentSectionLabel>
@@ -220,7 +255,9 @@ export function FigmaDocumentsLibraryScreen() {
 
 			<div style={{ marginBottom: 12 }}>
 				<DocumentSectionLabel>
-					{results.length} document{results.length === 1 ? '' : 's'}
+					{results.length} document{results.length === 1 ? '' : 's'} across{' '}
+					{federated.sections.length} module
+					{federated.sections.length === 1 ? '' : 's'}
 				</DocumentSectionLabel>
 			</div>
 

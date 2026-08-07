@@ -182,6 +182,55 @@ export function filterDocumentLibrary(
 	return results
 }
 
+export function filterFederatedLibrarySummaries(
+	summaries: ChronicleDocumentSummary[],
+	filters: DocumentLibraryFilters,
+	memberNames: Record<string, string>,
+): ChronicleDocumentSummary[] {
+	let results = summaries
+
+	if (filters.query.trim()) {
+		const normalized = filters.query.trim().toLowerCase()
+		results = results.filter((summary) =>
+			[
+				summary.title,
+				summary.summary,
+				summary.categoryLabel,
+				summary.tags.join(' '),
+			]
+				.join(' ')
+				.toLowerCase()
+				.includes(normalized),
+		)
+	}
+
+	if (filters.categoryId) {
+		results = results.filter(
+			(summary) => summary.categoryId === filters.categoryId,
+		)
+	}
+
+	if (filters.familyMemberId) {
+		const memberName = memberNames[filters.familyMemberId]
+
+		if (memberName) {
+			results = results.filter((summary) => summary.ownerLabel === memberName)
+		}
+	}
+
+	if (filters.year) {
+		results = results.filter((summary) => summary.year === filters.year)
+	}
+
+	if (filters.consumerStatus) {
+		results = results.filter(
+			(summary) => summary.consumerStatus === filters.consumerStatus,
+		)
+	}
+
+	return results
+}
+
 export function extractAvailableYears(
 	documents: ChronicleDocument[],
 ): number[] {

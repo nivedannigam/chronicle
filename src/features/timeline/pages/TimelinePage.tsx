@@ -20,8 +20,8 @@ export function TimelinePage() {
 			}}
 		>
 			<FigmaScreenHeader
-				title="Timeline"
-				subtitle="One story across health, documents, and family life"
+				title="Life Timeline"
+				subtitle="What happened in your life — not what happened inside Chronicle"
 				actions={
 					<FigmaHeaderSearchButton onClick={() => navigate(ROUTES.search)} />
 				}

@@ -42,16 +42,21 @@ export interface UpcomingItem {
 	emoji: string
 }
 
-export interface RecentActivityItem {
+export interface LifeFeedItem {
 	id: string
 	title: string
 	subtitle: string
 	timestamp: string
 	relativeLabel: string
-	module: PlatformModuleId | 'documents' | 'timeline'
+	module:
+		| import('@/features/timeline/types/timeline.types').TimelineModule
+		| 'timeline'
 	path: RoutePath | string
 	emoji: string
 }
+
+/** @deprecated Use LifeFeedItem */
+export type RecentActivityItem = LifeFeedItem
 
 export interface OsQuickAction {
 	id: string
@@ -67,7 +72,9 @@ export interface ChronicleOsHome {
 	lifeScore: LifeScore
 	dailyBrief: DailyBrief
 	upcoming: UpcomingItem[]
-	recentActivity: RecentActivityItem[]
+	lifeFeed: LifeFeedItem[]
+	/** @deprecated Use lifeFeed */
+	recentActivity: LifeFeedItem[]
 	quickActions: OsQuickAction[]
 	notificationCount: number
 	hasAnyData: boolean

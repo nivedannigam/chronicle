@@ -70,7 +70,7 @@ function buildDocumentTitle(
 		case 'document_issued':
 			return `${label ?? 'Document'} issued`
 		default:
-			return 'Document added to library'
+			return label ?? document.title
 	}
 }
 
@@ -90,6 +90,7 @@ function documentEvent(
 		id: `documents-${eventType}-${document.id}-${timestamp}`,
 		timestamp,
 		eventType,
+		category: eventType === 'document_uploaded' ? 'import' : 'life',
 		title: buildDocumentTitle(document, eventType),
 		summary: [
 			document.title,
@@ -156,17 +157,17 @@ export class DocumentsTimelineProvider implements ChronicleTimelineProvider {
 				if (issued) {
 					events.push(issued)
 				}
-			}
+			} else if (primaryType !== 'document_uploaded') {
+				const fallback = documentEvent(
+					document,
+					primaryType,
+					document.uploaded_at,
+					'medium',
+				)
 
-			const uploaded = documentEvent(
-				document,
-				'document_uploaded',
-				document.uploaded_at,
-				'low',
-			)
-
-			if (uploaded && !document.issue_date) {
-				events.push(uploaded)
+				if (fallback) {
+					events.push(fallback)
+				}
 			}
 
 			if (document.expiry_date) {

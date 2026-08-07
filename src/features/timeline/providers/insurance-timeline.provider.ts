@@ -11,6 +11,7 @@ import type {
 	ChronicleTimelineEvent,
 	TimelineImportance,
 } from '@/features/timeline/types/timeline.types'
+import { INTERNAL_INSURANCE_TIMELINE_TYPES } from '@/features/timeline/utils/life-timeline.utils'
 
 const PROVIDER_ID = 'insurance'
 
@@ -79,11 +80,19 @@ function mapImportance(
 function toChronicleEvent(
 	event: InsuranceKnowledgeTimelineEvent,
 	knowledge: InsuranceKnowledge,
-): ChronicleTimelineEvent {
+): ChronicleTimelineEvent | null {
+	if (INTERNAL_INSURANCE_TIMELINE_TYPES.has(event.type)) {
+		return null
+	}
+
+	const category =
+		event.type === 'premium_paid' ? 'operational' : ('life' as const)
+
 	return {
 		id: `insurance-${event.id}`,
 		timestamp: event.date,
 		eventType: mapEventType(event.type),
+		category,
 		title: event.title,
 		summary: event.description,
 		familyMemberId: knowledge.familyMember.id,
@@ -141,7 +150,9 @@ export class InsuranceTimelineProvider implements ChronicleTimelineProvider {
 			return []
 		}
 
-		return knowledge.timeline.map((event) => toChronicleEvent(event, knowledge))
+		return knowledge.timeline
+			.map((event) => toChronicleEvent(event, knowledge))
+			.filter((event): event is ChronicleTimelineEvent => event != null)
 	}
 }
 

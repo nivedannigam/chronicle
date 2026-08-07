@@ -1,4 +1,5 @@
 import { initializeRelationshipPlatform } from '@/core/relationship/bootstrap/initialize-relationship-platform'
+import { registerModuleProviders } from '@/core/platform/bootstrap/register-module-providers'
 import { registerPlatformModules } from '@/core/platform/bootstrap/register-modules'
 import '@/core/platform/bootstrap/register-knowledge-providers'
 import '@/core/platform/bootstrap/register-timeline-providers'
@@ -13,6 +14,7 @@ export function initializePlatform(): void {
 
 	initialized = true
 	registerPlatformModules()
+	registerModuleProviders()
 	initializeRelationshipPlatform()
 }
 

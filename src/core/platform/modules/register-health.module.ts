@@ -12,13 +12,13 @@ const healthModule: ChroniclePlatformModule = {
 	timelineModule: 'health',
 	settingsPath: ROUTES.healthSettings,
 	askPath: ROUTES.healthAsk,
-	documentsCategoryIds: ['health'],
+	documentsCategoryIds: ['medical'],
 }
 
 const healthDocumentConsumer = {
 	moduleId: 'health' as const,
 	label: 'Health',
-	categoryIds: ['health'],
+	categoryIds: ['medical'],
 }
 
 export function registerHealthPlatformModule(): void {

@@ -48,44 +48,29 @@ function classifyReportEventType(
 	return 'lab_result'
 }
 
-function reportImportedEvent(
+function buildClinicalTitle(
 	report: UploadedHealthReport,
-): ChronicleTimelineEvent | null {
-	if (report.status !== 'completed') {
-		return null
+	reportType: string,
+	eventType: ChronicleTimelineEvent['eventType'],
+): string {
+	const displayTitle = getReportDisplayTitle(report)
+	const combined = `${displayTitle} ${reportType}`.toLowerCase()
+
+	if (/annual|master|full body|comprehensive|health check/i.test(combined)) {
+		return 'Annual Health Checkup'
 	}
 
-	const parsed = getParsedHealthReport(report)
-	const title = getReportDisplayTitle(report)
-
-	return {
-		id: `health-report-imported-${report.id}`,
-		timestamp: report.processed_at ?? report.uploaded_at,
-		eventType: 'report_imported',
-		title: 'Health report imported',
-		summary: title,
-		familyMemberId: report.family_member_id ?? null,
-		sourceModule: 'health',
-		relatedAssets: [
-			{
-				type: 'report',
-				id: report.id,
-				label: title,
-			},
-		],
-		tags: ['health', 'report', parsed?.metadata.reportType ?? 'lab'],
-		importance: 'medium',
-		references: [
-			{
-				type: 'report',
-				id: report.id,
-				label: title,
-			},
-		],
-		metadata: {
-			lab: parsed?.metadata.laboratory ?? '',
-			reportType: parsed?.metadata.reportType ?? report.report_type ?? '',
-		},
+	switch (eventType) {
+		case 'vaccination':
+			return 'Vaccination'
+		case 'medication':
+			return 'Medication Recorded'
+		case 'procedure':
+			return 'Medical Procedure'
+		case 'diagnosis':
+			return 'Diagnosis Recorded'
+		default:
+			return displayTitle || 'Health Checkup'
 	}
 }
 
@@ -116,16 +101,8 @@ function reportClinicalEvent(
 		id: `health-clinical-${report.id}`,
 		timestamp,
 		eventType,
-		title:
-			eventType === 'vaccination'
-				? 'Vaccination recorded'
-				: eventType === 'medication'
-					? 'Medication documented'
-					: eventType === 'procedure'
-						? 'Procedure recorded'
-						: eventType === 'diagnosis'
-							? 'Diagnosis recorded'
-							: 'Lab results recorded',
+		category: 'life',
+		title: buildClinicalTitle(report, reportType, eventType),
 		summary:
 			metricCount > 0
 				? `${metricCount} result${metricCount === 1 ? '' : 's'} from ${parsed.metadata.laboratory}`
@@ -178,12 +155,13 @@ function semanticTimelineEvents(
 				id: `health-semantic-${event.id}`,
 				timestamp: event.date,
 				eventType,
+				category: 'life',
 				title:
 					event.kind === 'improvement' || event.kind === 'resolution'
 						? 'Health marker improved'
 						: event.kind === 'finding'
-							? 'New health finding'
-							: 'Metric change recorded',
+							? 'Important health finding'
+							: 'Health trend noted',
 				summary: event.label,
 				familyMemberId: null,
 				sourceModule: 'health',
@@ -238,12 +216,7 @@ export class HealthTimelineProvider implements ChronicleTimelineProvider {
 		const events: ChronicleTimelineEvent[] = []
 
 		for (const report of getReports(query)) {
-			const imported = reportImportedEvent(report)
 			const clinical = reportClinicalEvent(report)
-
-			if (imported) {
-				events.push(imported)
-			}
 
 			if (clinical) {
 				events.push(clinical)

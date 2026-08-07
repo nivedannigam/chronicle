@@ -6,15 +6,14 @@ import type { ChronicleDocument } from '@/features/documents/types/document.type
 import type { HealthMetricHistory } from '@/features/health-knowledge/types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import { buildDailyBrief } from '@/features/os/services/daily-brief.service'
+import { buildLifeFeed } from '@/features/os/services/life-feed.service'
 import { buildLifeScore } from '@/features/os/services/life-score.service'
-import {
-	buildRecentActivity,
-	buildUpcomingItems,
-} from '@/features/os/services/upcoming.service'
+import { buildUpcomingItems } from '@/features/os/services/upcoming.service'
 import type {
 	ChronicleOsHome,
 	OsQuickAction,
 } from '@/features/os/types/os.types'
+import type { TimelineSources } from '@/features/timeline/types/timeline.types'
 
 const DEFAULT_QUICK_ACTIONS: OsQuickAction[] = [
 	{ id: 'ask', label: 'Ask Chronicle', emoji: '✨', path: ROUTES.ask },
@@ -23,6 +22,7 @@ const DEFAULT_QUICK_ACTIONS: OsQuickAction[] = [
 ]
 
 export function buildChronicleOsHome(input: {
+	userId: string
 	briefing: CommandCenterBriefing
 	metricHistories: HealthMetricHistory[]
 	insuranceKnowledge: InsuranceKnowledge | null
@@ -54,10 +54,23 @@ export function buildChronicleOsHome(input: {
 		members: input.members,
 	})
 
-	const recentActivity = buildRecentActivity({
-		documents: input.documents,
-		reports: input.reports,
-		insuranceKnowledge: input.insuranceKnowledge,
+	const timelineSources: TimelineSources = {
+		health: {
+			uploadedReports: input.reports,
+			metricHistories: input.metricHistories,
+		},
+		documents: {
+			uploadedDocuments: input.documents,
+		},
+		insurance: {
+			knowledge: input.insuranceKnowledge ?? undefined,
+		},
+	}
+
+	const lifeFeed = buildLifeFeed({
+		userId: input.userId,
+		sources: timelineSources,
+		limit: 6,
 	})
 
 	return {
@@ -67,7 +80,8 @@ export function buildChronicleOsHome(input: {
 		lifeScore,
 		dailyBrief,
 		upcoming,
-		recentActivity,
+		lifeFeed,
+		recentActivity: lifeFeed,
 		quickActions: DEFAULT_QUICK_ACTIONS,
 		notificationCount: input.notificationCount,
 		hasAnyData: input.briefing.hasAnyData,
