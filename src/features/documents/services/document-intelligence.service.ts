@@ -183,7 +183,7 @@ export function buildDisplayFields(
 	return fields.slice(0, 8)
 }
 
-function buildAttentionItems(
+export function buildAttentionItems(
 	documents: ChronicleDocument[],
 ): DocumentAttentionItem[] {
 	const items: DocumentAttentionItem[] = []

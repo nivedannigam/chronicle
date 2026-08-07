@@ -10,6 +10,10 @@ import { useInsuranceContext } from '@/features/insurance/context/InsuranceConte
 import { useInsurancePreferences } from '@/features/insurance/hooks/useInsurancePreferences'
 import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
 import {
+	buildModuleProviderQuery,
+	resolveModuleLibraryDocumentCount,
+} from '@/core/platform/services/federated-library.service'
+import {
 	clearInsurancePreferences,
 	recordInsuranceLastScan,
 } from '@/features/insurance/services/insurance-preferences.service'
@@ -52,6 +56,23 @@ export function InsuranceSettingsPage() {
 			null
 		)
 	}, [assignments, selectedMemberId])
+
+	const insuranceDocumentCount = useMemo(() => {
+		if (!userId || !selectedMember) {
+			return 0
+		}
+
+		return resolveModuleLibraryDocumentCount({
+			moduleId: 'insurance',
+			query: buildModuleProviderQuery({
+				userId,
+				memberNames: { [selectedMember.id]: selectedMember.displayName },
+				healthReports: [],
+				chronicleDocuments: [],
+				insuranceKnowledge: knowledge,
+			}),
+		})
+	}, [knowledge, selectedMember, userId])
 
 	if (!userId) {
 		return (
@@ -122,7 +143,7 @@ export function InsuranceSettingsPage() {
 				driveLabel={driveConnector.googleEmail ?? 'Google Drive'}
 				folderName={memberAssignment?.folderName ?? null}
 				folderPath={memberAssignment?.folderPath ?? null}
-				documentCount={knowledge.documents.length}
+				documentCount={insuranceDocumentCount}
 				lastScannedLabel={lastScannedLabel}
 				isLoadingFolder={sourcesLoading}
 				preferences={resolvedPreferences}

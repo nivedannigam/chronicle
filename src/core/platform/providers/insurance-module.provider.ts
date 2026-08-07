@@ -1,4 +1,4 @@
-import { ROUTES } from '@/constants/routes'
+import { ROUTES, insurancePolicyDetailPath } from '@/constants/routes'
 import type {
 	ChronicleModuleProvider,
 	ModuleDocumentSection,
@@ -95,6 +95,55 @@ export const insuranceModuleProvider: ChronicleModuleProvider = {
 				policy.categoryId,
 				(categoryCounts.get(policy.categoryId) ?? 0) + 1,
 			)
+
+			const alreadyListed = documents.some(
+				(document) =>
+					document.id === policy.id ||
+					document.title === policy.productName ||
+					document.title === policy.policyNumber,
+			)
+
+			if (!alreadyListed) {
+				documents.push({
+					id: `insurance-policy-${policy.id}`,
+					title: policy.productName ?? policy.policyNumber,
+					categoryId: 'insurance',
+					categoryLabel: 'Insurance',
+					subCategoryLabel: getCategoryMeta(
+						policy.categoryId as PolicyCategoryId,
+					).name,
+					ownerLabel: knowledge?.familyMember.id
+						? (memberNames[knowledge.familyMember.id] ?? 'Family member')
+						: 'Account owner',
+					sourceLabel: 'Insurance policy',
+					summary: policy.policyNumber,
+					displayDate: policy.inceptionDate
+						? new Date(policy.inceptionDate).toLocaleDateString('en-US', {
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric',
+							})
+						: '—',
+					expiresLabel: policy.expiryDate ?? null,
+					isExpiringSoon: false,
+					isExpired: policy.status === 'expired',
+					fileType: 'POLICY',
+					hasAiSummary: true,
+					tags: ['insurance', policy.categoryId],
+					relatedModules: [
+						{
+							moduleId: 'insurance',
+							label: 'Insurance',
+							route: insurancePolicyDetailPath(policy.id),
+						},
+					],
+					consumerStatus: 'Ready',
+					aiDiscoveryLabel: null,
+					year: policy.inceptionDate
+						? new Date(policy.inceptionDate).getFullYear()
+						: null,
+				})
+			}
 		}
 
 		if (documents.length === 0 && (knowledge?.policies.length ?? 0) === 0) {
@@ -120,7 +169,7 @@ export const insuranceModuleProvider: ChronicleModuleProvider = {
 			moduleId: 'insurance',
 			label: 'Insurance',
 			emoji: '🛡️',
-			totalCount: Math.max(documents.length, knowledge?.policies.length ?? 0),
+			totalCount: documents.length,
 			categories,
 			documents,
 		}

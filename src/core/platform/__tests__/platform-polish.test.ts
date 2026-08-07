@@ -1,7 +1,11 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { registerModuleProviders } from '@/core/platform/bootstrap/register-module-providers'
 import { clearModuleProviders } from '@/core/platform/registries/module-provider-registry'
-import { buildFederatedLibraryView } from '@/core/platform/services/federated-library.service'
+import {
+	buildFederatedLibraryView,
+	buildLibraryHubView,
+	buildModuleProviderQuery,
+} from '@/core/platform/services/federated-library.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
@@ -111,6 +115,40 @@ describe('Federated Library', () => {
 		expect(view.totalCount).toBe(2)
 		expect(
 			view.moduleSummaries.some((summary) => summary.moduleId === 'health'),
+		).toBe(true)
+	})
+
+	it('buildLibraryHubView counts health reports in category cards', () => {
+		const report = {
+			id: 'report-h2',
+			user_id: 'user-1',
+			family_member_id: 'member-1',
+			file_name: 'checkup.pdf',
+			storage_path: 'path',
+			status: 'completed',
+			report_type: 'Annual Checkup',
+			report_date: '2025-06-15',
+			uploaded_at: '2025-06-16T10:00:00.000Z',
+			processed_at: '2025-06-16T11:00:00.000Z',
+		} as UploadedHealthReport
+
+		const query = buildModuleProviderQuery({
+			userId: 'user-1',
+			memberNames: { 'member-1': 'Alex' },
+			healthReports: [report],
+			chronicleDocuments: [],
+			insuranceKnowledge: null,
+		})
+
+		const { hub } = buildLibraryHubView({
+			query,
+			chronicleDocuments: [],
+		})
+
+		expect(hub.categoryCounts.medical).toBe(1)
+		expect(hub.totalCount).toBeGreaterThanOrEqual(1)
+		expect(
+			hub.allDocuments.some((document) => document.id === 'report-h2'),
 		).toBe(true)
 	})
 })
