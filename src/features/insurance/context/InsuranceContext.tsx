@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
+import { useInsuranceMemberSetup } from '@/features/insurance/hooks/useInsuranceMemberSetup'
 import { buildInsuranceContextValue } from '@/features/insurance/services/insurance-context.builder'
 import type { InsuranceContextValue } from '@/features/insurance/types/insurance-context.types'
 import { insuranceKnowledgeProvider } from '@/features/insurance-knowledge'
@@ -45,31 +46,48 @@ export function InsuranceProvider({ children }: { children: ReactNode }) {
 		isAccountOwner: selectedMember?.isAccountOwner,
 	})
 
-	const value = useMemo(() => {
-		const resolvedKnowledge =
-			knowledge ??
-			insuranceKnowledgeProvider.buildFromRawData(emptyRawData(), {
-				userId: user?.id ?? '',
-				familyMemberId: selectedMember?.id ?? null,
-				accountOwnerMemberId: accountOwnerMemberId ?? null,
-			})
+	const resolvedKnowledge =
+		knowledge ??
+		insuranceKnowledgeProvider.buildFromRawData(emptyRawData(), {
+			userId: user?.id ?? '',
+			familyMemberId: selectedMember?.id ?? null,
+			accountOwnerMemberId: accountOwnerMemberId ?? null,
+		})
 
+	const setup = useInsuranceMemberSetup({
+		hasPolicies: resolvedKnowledge.policies.some(
+			(policy) => policy.isDisplayReady,
+		),
+		documentCount: resolvedKnowledge.documents.length,
+	})
+
+	const value = useMemo(() => {
 		return buildInsuranceContextValue({
 			knowledge: resolvedKnowledge,
 			memberName,
-			isLoading,
+			isLoading: isLoading || setup.isLoading,
 			isError,
 			refetch: () => void refetch(),
+			setup: {
+				hasFolderAssigned: setup.hasFolderAssigned,
+				hasDiscoveredDocuments: setup.hasDiscoveredDocuments,
+				isProcessing: setup.isProcessing,
+				processingCount: setup.processingCount,
+				setupStatus: setup.setupStatus,
+			},
 		})
 	}, [
-		knowledge,
+		resolvedKnowledge,
 		memberName,
 		isLoading,
+		setup.isLoading,
+		setup.hasFolderAssigned,
+		setup.hasDiscoveredDocuments,
+		setup.isProcessing,
+		setup.processingCount,
+		setup.setupStatus,
 		isError,
 		refetch,
-		user?.id,
-		selectedMember?.id,
-		accountOwnerMemberId,
 	])
 
 	return (

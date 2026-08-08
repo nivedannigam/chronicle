@@ -11,6 +11,15 @@ import type {
 import type { InsuranceTimelineViewModel } from '@/features/insurance/services/insurance-timeline.mapper'
 import type { ProtectionOverviewViewModel } from '@/features/insurance/services/insurance-protection.mapper'
 
+export type InsuranceSetupStatus =
+	| 'connect_drive'
+	| 'assign_folder'
+	| 'scanning'
+	| 'processing'
+	| 'partial'
+	| 'ready'
+	| 'empty_folder'
+
 export interface InsuranceContextValue {
 	knowledge: InsuranceKnowledge
 	home: InsuranceHomeViewModel
@@ -22,6 +31,11 @@ export interface InsuranceContextValue {
 	getClaimDetail: (claimId: string) => ClaimDetailViewModel | null
 	hasPolicies: boolean
 	hasClaims: boolean
+	hasFolderAssigned: boolean
+	hasDiscoveredDocuments: boolean
+	isProcessing: boolean
+	processingCount: number
+	setupStatus: InsuranceSetupStatus
 	isLoading: boolean
 	isError: boolean
 	refetch: () => void

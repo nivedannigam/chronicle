@@ -1,5 +1,6 @@
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import { buildInsuranceHomeViewModel } from '@/features/insurance/services/insurance-home.mapper'
+import type { InsuranceSetupStatus } from '@/features/insurance/hooks/useInsuranceMemberSetup'
 import {
 	buildPoliciesListViewModel,
 	buildPolicyDetailViewModel,
@@ -17,6 +18,13 @@ export function buildInsuranceContextValue(input: {
 	isLoading: boolean
 	isError: boolean
 	refetch: () => void
+	setup: {
+		hasFolderAssigned: boolean
+		hasDiscoveredDocuments: boolean
+		isProcessing: boolean
+		processingCount: number
+		setupStatus: InsuranceSetupStatus
+	}
 }) {
 	const home = buildInsuranceHomeViewModel({
 		knowledge: input.knowledge,
@@ -40,6 +48,11 @@ export function buildInsuranceContextValue(input: {
 			buildClaimDetailViewModel(input.knowledge, claimId),
 		hasPolicies: home.hasPolicies,
 		hasClaims: claims.totalCount > 0,
+		hasFolderAssigned: input.setup.hasFolderAssigned,
+		hasDiscoveredDocuments: input.setup.hasDiscoveredDocuments,
+		isProcessing: input.setup.isProcessing,
+		processingCount: input.setup.processingCount,
+		setupStatus: input.setup.setupStatus,
 		isLoading: input.isLoading,
 		isError: input.isError,
 		refetch: input.refetch,

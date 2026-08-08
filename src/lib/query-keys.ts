@@ -98,6 +98,8 @@ export const queryKeys = {
 		) => ['insurance-knowledge', userId, memberId ?? 'all'] as const,
 		sources: (userId: string | undefined) =>
 			['insurance-source-assignments', userId] as const,
+		importStatus: (userId: string | undefined) =>
+			['insurance-import-status', userId] as const,
 		preferences: (userId: string | undefined) =>
 			['insurance-preferences', userId] as const,
 	},

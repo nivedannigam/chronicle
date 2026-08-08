@@ -71,19 +71,6 @@ function buildCategoryCounts(
 		counts[summary.categoryId] = (counts[summary.categoryId] ?? 0) + 1
 	}
 
-	for (const section of federated.sections) {
-		if (
-			section.moduleId === 'insurance' &&
-			section.totalCount > section.documents.length
-		) {
-			counts.insurance = Math.max(counts.insurance ?? 0, section.totalCount)
-		}
-
-		if (section.moduleId === 'health' && section.totalCount > 0) {
-			counts.medical = Math.max(counts.medical ?? 0, section.totalCount)
-		}
-	}
-
 	return counts
 }
 
@@ -167,6 +154,7 @@ export function buildLibraryHubView(input: {
 
 export function buildModuleProviderQuery(input: {
 	userId: string
+	memberId?: string | null
 	memberNames: Record<string, string>
 	healthReports: UploadedHealthReport[]
 	chronicleDocuments: ChronicleDocument[]
@@ -174,6 +162,7 @@ export function buildModuleProviderQuery(input: {
 }): ModuleProviderQuery {
 	return {
 		userId: input.userId,
+		memberId: input.memberId ?? null,
 		memberNames: input.memberNames,
 		sources: {
 			health: { uploadedReports: input.healthReports },

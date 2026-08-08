@@ -10,8 +10,15 @@ import { FigmaInsuranceProtectionView } from '@/ui/figma/insurance/FigmaInsuranc
 
 export function InsuranceProtectionPage() {
 	const navigate = useNavigate()
-	const { protection, hasPolicies, isLoading, isError, refetch } =
-		useInsuranceContext()
+	const {
+		protection,
+		hasPolicies,
+		hasFolderAssigned,
+		isProcessing,
+		isLoading,
+		isError,
+		refetch,
+	} = useInsuranceContext()
 
 	if (isLoading) {
 		return <InsuranceHomeSkeleton />
@@ -36,9 +43,19 @@ export function InsuranceProtectionPage() {
 		return (
 			<InsuranceHomeEmptyState
 				emoji="🛡️"
-				title={INSURANCE_COPY.emptyProtectionTitle}
-				body={INSURANCE_COPY.emptyProtectionBody}
-				primaryLabel={INSURANCE_COPY.connectFolder}
+				title={
+					hasFolderAssigned && isProcessing
+						? 'Building your protection picture'
+						: INSURANCE_COPY.emptyProtectionTitle
+				}
+				body={
+					hasFolderAssigned && isProcessing
+						? 'Chronicle is organizing policies from your connected insurance folder.'
+						: INSURANCE_COPY.emptyProtectionBody
+				}
+				primaryLabel={
+					hasFolderAssigned ? 'View settings' : INSURANCE_COPY.connectFolder
+				}
 				onPrimary={() => navigate(ROUTES.insuranceSettings)}
 			/>
 		)

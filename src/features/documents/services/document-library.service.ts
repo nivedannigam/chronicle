@@ -104,6 +104,52 @@ export function searchDocumentsNaturalLanguage(
 	return scored.map((entry) => entry.document)
 }
 
+function summarySearchHaystack(summary: ChronicleDocumentSummary): string {
+	return [
+		summary.title,
+		summary.summary,
+		summary.categoryLabel,
+		summary.subCategoryLabel,
+		summary.ownerLabel,
+		summary.sourceLabel,
+		summary.tags.join(' '),
+		summary.relatedModules.map((module) => module.label).join(' '),
+	]
+		.filter(Boolean)
+		.join(' ')
+		.toLowerCase()
+}
+
+export function searchFederatedLibrarySummaries(
+	summaries: ChronicleDocumentSummary[],
+	query: string,
+): ChronicleDocumentSummary[] {
+	const normalized = query.trim().toLowerCase()
+
+	if (!normalized) {
+		return summaries
+	}
+
+	const expandedTerms = expandNaturalLanguageQuery(normalized)
+
+	return summaries
+		.map((summary) => {
+			const haystack = summarySearchHaystack(summary)
+			let score = 0
+
+			for (const term of expandedTerms) {
+				if (haystack.includes(term)) {
+					score += term.length >= 4 ? 3 : 1
+				}
+			}
+
+			return { summary, score }
+		})
+		.filter((entry) => entry.score > 0)
+		.sort((left, right) => right.score - left.score)
+		.map((entry) => entry.summary)
+}
+
 function documentYear(document: ChronicleDocument): number | null {
 	const date = document.issue_date ?? document.uploaded_at
 	const parsed = Date.parse(date)
@@ -190,17 +236,14 @@ export function filterFederatedLibrarySummaries(
 	let results = summaries
 
 	if (filters.query.trim()) {
-		const normalized = filters.query.trim().toLowerCase()
+		results = searchFederatedLibrarySummaries(results, filters.query)
+	}
+
+	if (filters.moduleId) {
 		results = results.filter((summary) =>
-			[
-				summary.title,
-				summary.summary,
-				summary.categoryLabel,
-				summary.tags.join(' '),
-			]
-				.join(' ')
-				.toLowerCase()
-				.includes(normalized),
+			summary.relatedModules.some(
+				(module) => module.moduleId === filters.moduleId,
+			),
 		)
 	}
 
@@ -220,6 +263,15 @@ export function filterFederatedLibrarySummaries(
 
 	if (filters.year) {
 		results = results.filter((summary) => summary.year === filters.year)
+	}
+
+	if (filters.source) {
+		const sourceLabel =
+			filters.source === 'google-drive' ? 'google drive' : filters.source
+
+		results = results.filter((summary) =>
+			summary.sourceLabel.toLowerCase().includes(sourceLabel),
+		)
 	}
 
 	if (filters.consumerStatus) {
@@ -252,6 +304,7 @@ export function defaultLibraryFilters(): DocumentLibraryFilters {
 		year: null,
 		source: null,
 		consumerStatus: null,
+		moduleId: null,
 	}
 }
 

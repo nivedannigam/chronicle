@@ -105,6 +105,7 @@ export interface DocumentLibraryFilters {
 	year: number | null
 	source: ChronicleDocument['source'] | null
 	consumerStatus: DocumentConsumerStatus | null
+	moduleId: string | null
 }
 
 export type { ChronicleDocument }

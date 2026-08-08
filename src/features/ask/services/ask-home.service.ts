@@ -11,7 +11,11 @@ import {
 	buildDynamicSuggestionChips,
 	type DynamicSuggestionChip,
 } from '@/features/ask/services/dynamic-suggestions.service'
-import { buildDocumentsHubView } from '@/features/documents/services/document-intelligence.service'
+import {
+	buildLibraryHubView,
+	buildModuleProviderQuery,
+} from '@/core/platform/services/federated-library.service'
+import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
@@ -66,6 +70,7 @@ export function buildAskHomeView(input: {
 	members: FamilyMemberWithAliases[]
 	uploadedReports: UploadedHealthReport[]
 	documents: ChronicleDocument[]
+	insuranceKnowledge?: InsuranceKnowledge | null
 }): AskHomeView {
 	const displayName = resolveMemberDisplayName({
 		profileName: input.userName,
@@ -106,12 +111,19 @@ export function buildAskHomeView(input: {
 		displayReadyCount === 0 &&
 		listAskSessions(input.userId).some((session) => session.turnCount > 0)
 
-	const documentsHub = buildDocumentsHubView({
-		documents: input.documents,
-		memberNames: Object.fromEntries(
-			input.members.map((member) => [member.id, member.displayName]),
-		),
-	})
+	const documentsHub = buildLibraryHubView({
+		query: buildModuleProviderQuery({
+			userId: input.userId,
+			memberId: input.selectedMember?.id ?? null,
+			memberNames: Object.fromEntries(
+				input.members.map((member) => [member.id, member.displayName]),
+			),
+			healthReports: input.uploadedReports,
+			chronicleDocuments: input.documents,
+			insuranceKnowledge: input.insuranceKnowledge ?? null,
+		}),
+		chronicleDocuments: input.documents,
+	}).hub
 
 	const recentInsights: AskHomeInsight[] = []
 

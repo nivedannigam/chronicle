@@ -140,3 +140,29 @@ export function invalidateAfterImportReview(userId: string | undefined) {
 	invalidateHealthDashboardQueries(userId)
 	invalidateHealthWorkflowQueries(userId)
 }
+
+export function invalidateInsuranceKnowledgeQueries(
+	userId: string | undefined,
+) {
+	void queryClient.invalidateQueries({
+		queryKey: ['insurance-knowledge', userId],
+	})
+}
+
+export function invalidateInsuranceImportQueries(userId: string | undefined) {
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.insurance.importStatus(userId),
+	})
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.insurance.sources(userId),
+	})
+	invalidateInsuranceKnowledgeQueries(userId)
+	void queryClient.invalidateQueries({
+		queryKey: queryKeys.documents.list(userId),
+	})
+}
+
+export function invalidateAfterInsuranceImport(userId: string | undefined) {
+	invalidateInsuranceImportQueries(userId)
+	invalidateConnectorRegistryQueries(userId)
+}

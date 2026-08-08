@@ -4,7 +4,10 @@ import {
 	resolveConsumerDocumentStatus,
 	resolveDocumentModuleLinks,
 } from '@/features/documents/services/document-module-links.service'
-import { searchDocumentsNaturalLanguage } from '@/features/documents/services/document-library.service'
+import {
+	searchDocumentsNaturalLanguage,
+	searchFederatedLibrarySummaries,
+} from '@/features/documents/services/document-library.service'
 import { buildDocumentsHubView } from '@/features/documents/services/document-intelligence.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 
@@ -146,6 +149,39 @@ describe('searchDocumentsNaturalLanguage', () => {
 	})
 })
 
+describe('searchFederatedLibrarySummaries', () => {
+	it('finds health documents by natural language aliases', () => {
+		const results = searchFederatedLibrarySummaries(
+			[
+				{
+					id: 'health-1',
+					title: 'Annual Health Checkup',
+					categoryId: 'medical',
+					categoryLabel: 'Health',
+					subCategoryLabel: null,
+					ownerLabel: 'Alex',
+					sourceLabel: 'Google Drive',
+					summary: 'Lab report',
+					displayDate: 'Jan 1, 2026',
+					expiresLabel: null,
+					isExpiringSoon: false,
+					isExpired: false,
+					fileType: 'PDF',
+					hasAiSummary: true,
+					tags: ['health'],
+					relatedModules: [],
+					consumerStatus: 'Ready',
+					aiDiscoveryLabel: null,
+					year: 2026,
+				},
+			],
+			'health report',
+		)
+
+		expect(results).toHaveLength(1)
+	})
+})
+
 describe('buildDocumentsHubView', () => {
 	it('includes ai discoveries and needs attention sections', () => {
 		const hub = buildDocumentsHubView({
@@ -162,6 +198,6 @@ describe('buildDocumentsHubView', () => {
 
 		expect(hub.aiDiscoveries.length).toBeGreaterThan(0)
 		expect(hub.needsAttention.length).toBeGreaterThan(0)
-		expect(hub.totalCount).toBe(2)
+		expect(hub.totalCount).toBe(1)
 	})
 })

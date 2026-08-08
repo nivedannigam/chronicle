@@ -6,6 +6,7 @@ import {
 	buildLibraryHubView,
 	buildModuleProviderQuery,
 } from '@/core/platform/services/federated-library.service'
+import { searchFederatedLibrarySummaries } from '@/features/documents/services/document-library.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
@@ -150,6 +151,94 @@ describe('Federated Library', () => {
 		expect(
 			hub.allDocuments.some((document) => document.id === 'report-h2'),
 		).toBe(true)
+	})
+
+	it('member-filtered query excludes other members chronicle docs', () => {
+		const report = {
+			id: 'report-member',
+			user_id: 'user-1',
+			family_member_id: 'member-1',
+			file_name: 'lab.pdf',
+			storage_path: 'path',
+			status: 'completed',
+			report_type: 'Lab',
+			report_date: '2025-01-01',
+			uploaded_at: '2025-01-02T00:00:00.000Z',
+			processed_at: '2025-01-02T01:00:00.000Z',
+		} as UploadedHealthReport
+
+		const otherMemberDoc = {
+			id: 'doc-other-member',
+			user_id: 'user-1',
+			family_member_id: 'member-2',
+			category_id: 'identity',
+			sub_category_id: 'passport',
+			title: 'Passport',
+			file_name: 'passport.pdf',
+			storage_path: 'path',
+			mime_type: 'application/pdf',
+			status: 'active',
+			source: 'upload',
+			tags: [],
+			knowledge_refs: [],
+			audit: [],
+			uploaded_at: '2025-02-01T00:00:00.000Z',
+			created_at: '2025-02-01T00:00:00.000Z',
+			updated_at: '2025-02-01T00:00:00.000Z',
+		} as ChronicleDocument
+
+		const query = buildModuleProviderQuery({
+			userId: 'user-1',
+			memberId: 'member-1',
+			memberNames: {
+				'member-1': 'Alex',
+				'member-2': 'Sam',
+			},
+			healthReports: [report],
+			chronicleDocuments: [otherMemberDoc],
+			insuranceKnowledge: null,
+		})
+
+		const view = buildFederatedLibraryView(query)
+
+		expect(view.allDocuments.some((doc) => doc.id === 'report-member')).toBe(
+			true,
+		)
+		expect(view.allDocuments.some((doc) => doc.id === 'doc-other-member')).toBe(
+			false,
+		)
+	})
+
+	it('searchFederatedLibrarySummaries finds health report titles', () => {
+		const summaries = searchFederatedLibrarySummaries(
+			[
+				{
+					id: 'report-search',
+					title: 'Jan 2026 Full Body Checkup',
+					categoryId: 'medical',
+					categoryLabel: 'Health',
+					subCategoryLabel: 'general',
+					ownerLabel: 'Alex',
+					sourceLabel: 'Google Drive',
+					summary: 'Lab report',
+					displayDate: 'Jan 15, 2026',
+					expiresLabel: null,
+					isExpiringSoon: false,
+					isExpired: false,
+					fileType: 'PDF',
+					hasAiSummary: true,
+					tags: ['health'],
+					relatedModules: [],
+					consumerStatus: 'Ready',
+					aiDiscoveryLabel: null,
+					year: 2026,
+				},
+			],
+			'checkup',
+		)
+
+		expect(summaries).toHaveLength(1)
+		expect(summaries[0]?.id).toBe('report-search')
 	})
 })
 

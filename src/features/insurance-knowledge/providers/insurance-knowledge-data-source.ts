@@ -1,9 +1,15 @@
 import type { ConnectorDocumentRecord } from '@/core/connectors'
 import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
 import { listFamilyMembersWithAliases } from '@/features/family/services/family.service'
+import { listInsuranceSourceAssignments } from '@/features/family/services/insurance-sources.service'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import type { InsuranceKnowledgeGetInput } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
-import type { InsuranceKnowledgeRawRecords } from '@/features/insurance-knowledge/types/insurance-record.types'
+import type {
+	InsuranceDocumentRecord,
+	InsuranceKnowledgeRawRecords,
+	InsurancePolicyRecord,
+} from '@/features/insurance-knowledge/types/insurance-record.types'
+import { supabase } from '@/lib/supabase'
 
 const GOOGLE_DRIVE = 'google-drive'
 
@@ -18,21 +24,126 @@ export interface InsuranceKnowledgeDataSource {
 	): Promise<InsuranceKnowledgeRawData>
 }
 
-/**
- * Default data source — returns empty insurance records until DB/import layer exists.
- * The knowledge provider still builds a valid empty InsuranceKnowledge object.
- */
+function mapPolicy(row: Record<string, unknown>): InsurancePolicyRecord {
+	return {
+		id: row.id as string,
+		userId: row.user_id as string,
+		familyMemberId: (row.family_member_id as string | null) ?? null,
+		policyNumber: row.policy_number as string,
+		policyType: row.policy_type as InsurancePolicyRecord['policyType'],
+		productName: (row.product_name as string | null) ?? null,
+		insurerId: (row.insurer_id as string) ?? 'unknown-insurer',
+		status: row.status as InsurancePolicyRecord['status'],
+		inceptionDate: (row.inception_date as string | null) ?? null,
+		expiryDate: (row.expiry_date as string | null) ?? null,
+		renewalDate: (row.renewal_date as string | null) ?? null,
+		sumInsured: row.sum_insured != null ? Number(row.sum_insured) : null,
+		currency: (row.currency as string) ?? 'INR',
+		sourceDocumentIds: Array.isArray(row.source_document_ids)
+			? (row.source_document_ids as string[])
+			: [],
+		extractionMethod:
+			row.extraction_method as InsurancePolicyRecord['extractionMethod'],
+		confidence: Number(row.confidence ?? 0.5),
+		createdAt: row.created_at as string,
+		updatedAt: row.updated_at as string,
+	}
+}
+
+function mapDocument(row: Record<string, unknown>): InsuranceDocumentRecord {
+	return {
+		id: row.id as string,
+		userId: row.user_id as string,
+		familyMemberId: (row.family_member_id as string | null) ?? null,
+		fileName: row.file_name as string,
+		storagePath: (row.storage_path as string | null) ?? '',
+		documentKind: row.document_kind as InsuranceDocumentRecord['documentKind'],
+		status: row.status as string,
+		linkedPolicyIds: [],
+		parsedData: (row.parsed_data as Record<string, unknown> | null) ?? null,
+		uploadedAt: row.uploaded_at as string,
+		processedAt: (row.processed_at as string | null) ?? null,
+	}
+}
+
+async function fetchInsurancePolicies(
+	userId: string,
+): Promise<InsurancePolicyRecord[]> {
+	const { data, error } = await supabase
+		.from('insurance_policies')
+		.select('*')
+		.eq('user_id', userId)
+		.order('updated_at', { ascending: false })
+
+	if (error) {
+		if (error.message.includes('insurance_policies')) {
+			return []
+		}
+
+		throw new Error(error.message)
+	}
+
+	return (data ?? []).map((row) => mapPolicy(row as Record<string, unknown>))
+}
+
+async function fetchInsuranceDocuments(
+	userId: string,
+): Promise<InsuranceDocumentRecord[]> {
+	const { data, error } = await supabase
+		.from('insurance_documents')
+		.select('*')
+		.eq('user_id', userId)
+		.order('uploaded_at', { ascending: false })
+
+	if (error) {
+		if (error.message.includes('insurance_documents')) {
+			return []
+		}
+
+		throw new Error(error.message)
+	}
+
+	return (data ?? []).map((row) => mapDocument(row as Record<string, unknown>))
+}
+
+async function fetchScopedImportRegistry(
+	userId: string,
+): Promise<ConnectorDocumentRecord[]> {
+	const assignments = await listInsuranceSourceAssignments(userId)
+	const folderIds = new Set(
+		assignments.map((assignment) => assignment.folderId),
+	)
+
+	if (folderIds.size === 0) {
+		return []
+	}
+
+	const registry = await listRegistryRecords(userId, GOOGLE_DRIVE).catch(
+		() => [],
+	)
+
+	return registry.filter(
+		(row) =>
+			(row.targetModule === 'insurance' ||
+				row.discoveryCategory === 'insurance_policy') &&
+			(row.folderId == null || folderIds.has(row.folderId)),
+	)
+}
+
 export class DefaultInsuranceKnowledgeDataSource implements InsuranceKnowledgeDataSource {
 	async fetchRawData(
 		input: InsuranceKnowledgeGetInput,
 	): Promise<InsuranceKnowledgeRawData> {
-		const [familyMembers, importRegistry] = await Promise.all([
-			listFamilyMembersWithAliases(input.userId),
-			listRegistryRecords(input.userId, GOOGLE_DRIVE).catch(() => []),
-		])
+		const [familyMembers, policies, documents, importRegistry] =
+			await Promise.all([
+				listFamilyMembersWithAliases(input.userId),
+				fetchInsurancePolicies(input.userId),
+				fetchInsuranceDocuments(input.userId),
+				fetchScopedImportRegistry(input.userId),
+			])
 
 		return {
-			policies: [],
+			policies,
 			coverages: [],
 			members: [],
 			nominees: [],
@@ -41,7 +152,7 @@ export class DefaultInsuranceKnowledgeDataSource implements InsuranceKnowledgeDa
 			claims: [],
 			benefits: [],
 			exclusions: [],
-			documents: [],
+			documents,
 			insurers: [],
 			familyMembers,
 			importRegistry,

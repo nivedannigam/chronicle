@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-	assignModuleFolder,
-	listModuleFolderAssignments,
-	removeModuleFolderAssignment,
-} from '@/features/settings/services/module-folder-assignments.service'
+	assignInsuranceSourceFolder,
+	listInsuranceSourceAssignments,
+	removeInsuranceSourceAssignment,
+	toModuleFolderAssignments,
+} from '@/features/family/services/insurance-sources.service'
 import type { ModuleFolderAssignment } from '@/features/settings/types/chronicle-module.types'
 import { queryKeys, STALE_TIME } from '@/lib/query-keys'
 
@@ -12,7 +13,7 @@ export function useInsuranceSources(userId: string | undefined) {
 
 	const query = useQuery({
 		queryKey: queryKeys.insurance.sources(userId),
-		queryFn: () => listModuleFolderAssignments(userId!, 'insurance'),
+		queryFn: () => listInsuranceSourceAssignments(userId!),
 		enabled: Boolean(userId),
 		staleTime: STALE_TIME.insuranceSources,
 	})
@@ -25,16 +26,21 @@ export function useInsuranceSources(userId: string | undefined) {
 			familyMemberId: string
 			familyMemberName: string
 			memberLabel: string
+			discoveredCategories?: string[]
 			mode?: 'add' | 'replace'
 		}) => {
 			if (!userId) {
 				throw new Error('You must be signed in.')
 			}
 
-			return assignModuleFolder({
+			return assignInsuranceSourceFolder({
 				userId,
-				moduleId: 'insurance',
-				...input,
+				externalFolderId: input.externalFolderId,
+				folderName: input.folderName,
+				folderPath: input.folderPath,
+				familyMemberId: input.familyMemberId,
+				discoveredCategories: input.discoveredCategories,
+				mode: input.mode,
 			})
 		},
 		onSuccess: (assignments) => {
@@ -53,15 +59,19 @@ export function useInsuranceSources(userId: string | undefined) {
 				throw new Error('You must be signed in.')
 			}
 
-			await removeModuleFolderAssignment(userId, 'insurance', assignmentId)
+			await removeInsuranceSourceAssignment(userId, assignmentId)
 		},
 		onSuccess: async () => {
 			await query.refetch()
 		},
 	})
 
+	const assignments: ModuleFolderAssignment[] = toModuleFolderAssignments(
+		query.data ?? [],
+	)
+
 	return {
-		assignments: query.data ?? [],
+		assignments,
 		isLoading: query.isLoading,
 		isFetching: query.isFetching,
 		isError: query.isError,
@@ -74,6 +84,7 @@ export function useInsuranceSources(userId: string | undefined) {
 			familyMemberId: string
 			familyMemberName: string
 			memberLabel: string
+			discoveredCategories?: string[]
 			mode?: 'add' | 'replace'
 		}) => assignMutation.mutateAsync(input),
 		removeAssignment: async (assignmentId: string) =>

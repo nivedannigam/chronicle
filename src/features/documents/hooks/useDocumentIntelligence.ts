@@ -1,13 +1,23 @@
 import { useMemo } from 'react'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useDocumentsContextOptional } from '@/features/documents/context/DocumentsContext'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
-import { buildDocumentsHubView } from '@/features/documents/services/document-intelligence.service'
+import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
+import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
+import {
+	buildLibraryHubView,
+	buildModuleProviderQuery,
+} from '@/core/platform/services/federated-library.service'
 
 export function useDocumentIntelligence() {
 	const context = useDocumentsContextOptional()
 	const memberDocuments = useMemberDocuments()
-	const { members } = useFamilyContext()
+	const { members, selectedMemberId } = useFamilyContext()
+	const { user } = useAuth()
+	const userId = user?.id
+	const reportsQuery = useUploadedHealthReports(userId)
+	const insuranceQuery = useInsuranceKnowledge()
 
 	const memberNames = useMemo(() => {
 		if (context) {
@@ -26,11 +36,28 @@ export function useDocumentIntelligence() {
 			return context.hub
 		}
 
-		return buildDocumentsHubView({
-			documents: memberDocuments.data ?? [],
+		const query = buildModuleProviderQuery({
+			userId: userId ?? '',
+			memberId: selectedMemberId,
 			memberNames,
+			healthReports: reportsQuery.data ?? [],
+			chronicleDocuments: memberDocuments.data ?? [],
+			insuranceKnowledge: insuranceQuery.knowledge,
 		})
-	}, [context, memberDocuments.data, memberNames])
+
+		return buildLibraryHubView({
+			query,
+			chronicleDocuments: memberDocuments.data ?? [],
+		}).hub
+	}, [
+		context,
+		userId,
+		selectedMemberId,
+		memberNames,
+		reportsQuery.data,
+		memberDocuments.data,
+		insuranceQuery.knowledge,
+	])
 
 	if (context) {
 		return {
@@ -49,8 +76,16 @@ export function useDocumentIntelligence() {
 		allDocuments: memberDocuments.allDocuments,
 		hub,
 		memberNames,
-		isLoading: memberDocuments.isLoading,
-		isError: memberDocuments.isError,
-		refetch: memberDocuments.refetch,
+		isLoading:
+			memberDocuments.isLoading ||
+			reportsQuery.isLoading ||
+			insuranceQuery.isLoading,
+		isError:
+			memberDocuments.isError || reportsQuery.isError || insuranceQuery.isError,
+		refetch: () => {
+			void memberDocuments.refetch()
+			void reportsQuery.refetch()
+			void insuranceQuery.refetch()
+		},
 	}
 }

@@ -60,6 +60,9 @@ export function InsuranceModuleFolderPicker({
 				familyMemberId: selectedMember.id,
 				familyMemberName: selectedMember.displayName,
 				memberLabel,
+				discoveredCategories: discoveredCategories.map(
+					(category) => category.id,
+				),
 				mode: 'replace',
 			})
 			onAssigned?.()
@@ -78,6 +81,7 @@ export function InsuranceModuleFolderPicker({
 		browser.currentFolderId,
 		browser.currentFolderName,
 		memberLabel,
+		discoveredCategories,
 		onAssigned,
 		onClose,
 		selectedMember,

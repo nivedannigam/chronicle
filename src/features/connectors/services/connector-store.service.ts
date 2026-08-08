@@ -50,6 +50,8 @@ function mapRegistry(row: Record<string, unknown>): ConnectorDocumentRecord {
 			row.registry_status as ConnectorDocumentRecord['registryStatus'],
 		importStatus: row.import_status as ImportQueueStatus,
 		healthReportId: (row.health_report_id as string | null) ?? null,
+		insuranceDocumentId: (row.insurance_document_id as string | null) ?? null,
+		targetModule: (row.target_module as string | null) ?? null,
 		knowledgeGraphStatus: (row.knowledge_graph_status as string | null) ?? null,
 		errorMessage: (row.error_message as string | null) ?? null,
 		familyMemberId: (row.family_member_id as string | null) ?? null,
@@ -301,6 +303,7 @@ export async function upsertRegistryRecord(input: {
 	discoveryConfidence?: number
 	discoveryReason?: string
 	approvalStatus?: ConnectorDocumentRecord['approvalStatus']
+	targetModule?: string | null
 }) {
 	const { data, error } = await supabase
 		.from('connector_document_registry')
@@ -322,6 +325,7 @@ export async function upsertRegistryRecord(input: {
 				discovery_confidence: input.discoveryConfidence ?? null,
 				discovery_reason: input.discoveryReason ?? null,
 				approval_status: input.approvalStatus ?? null,
+				target_module: input.targetModule ?? null,
 				last_sync_at: new Date().toISOString(),
 				registry_status: 'discovered',
 				import_status: 'discovered',

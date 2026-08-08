@@ -76,9 +76,10 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 	const { hub, federated } = useMemo(() => {
 		const query = buildModuleProviderQuery({
 			userId: userId ?? '',
+			memberId: selectedMemberId,
 			memberNames,
 			healthReports,
-			chronicleDocuments: allDocuments,
+			chronicleDocuments: chronicleDocumentsForQuery,
 			insuranceKnowledge: insuranceQuery.knowledge,
 		})
 
@@ -90,8 +91,8 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 		userId,
 		memberNames,
 		healthReports,
-		allDocuments,
 		chronicleDocumentsForQuery,
+		selectedMemberId,
 		insuranceQuery.knowledge,
 	])
 

@@ -18,6 +18,21 @@ function isGeneralLibraryDocument(document: ChronicleDocument): boolean {
 	return !MODULE_OWNED_CATEGORIES.has(document.category_id)
 }
 
+function matchesQueryMember(
+	document: ChronicleDocument,
+	memberId?: string | null,
+): boolean {
+	if (!memberId) {
+		return true
+	}
+
+	if (!document.family_member_id) {
+		return true
+	}
+
+	return document.family_member_id === memberId
+}
+
 export const documentsModuleProvider: ChronicleModuleProvider = {
 	moduleId: 'documents',
 	label: 'Library',
@@ -28,6 +43,7 @@ export const documentsModuleProvider: ChronicleModuleProvider = {
 		const memberNames = query.memberNames ?? {}
 		const documents = (query.sources.documents?.uploadedDocuments ?? [])
 			.filter(isGeneralLibraryDocument)
+			.filter((document) => matchesQueryMember(document, query.memberId))
 			.map((document) => toDocumentSummary(document, memberNames))
 
 		if (documents.length === 0) {
@@ -64,9 +80,9 @@ export const documentsModuleProvider: ChronicleModuleProvider = {
 	},
 
 	getSummary(query: ModuleProviderQuery): ModuleSummary | null {
-		const count = (query.sources.documents?.uploadedDocuments ?? []).filter(
-			isGeneralLibraryDocument,
-		).length
+		const count = (query.sources.documents?.uploadedDocuments ?? [])
+			.filter(isGeneralLibraryDocument)
+			.filter((document) => matchesQueryMember(document, query.memberId)).length
 
 		if (count === 0) {
 			return null

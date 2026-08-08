@@ -88,12 +88,27 @@ export function FigmaDocumentsLibraryScreen() {
 							scrollbarWidth: 'none',
 						}}
 					>
+						<DocumentFilterChip
+							label="All modules"
+							active={!filters.moduleId}
+							onClick={() =>
+								setFilters((current) => ({ ...current, moduleId: null }))
+							}
+						/>
 						{federated.moduleSummaries.map((summary) => (
 							<DocumentFilterChip
 								key={summary.moduleId}
 								label={`${summary.emoji} ${summary.label} (${summary.documentCount})`}
-								active={false}
-								onClick={() => {}}
+								active={filters.moduleId === summary.moduleId}
+								onClick={() =>
+									setFilters((current) => ({
+										...current,
+										moduleId:
+											current.moduleId === summary.moduleId
+												? null
+												: summary.moduleId,
+									}))
+								}
 							/>
 						))}
 					</div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { DOCUMENT_HOME_CATEGORIES } from '@/features/documents/constants/document-category-display'
 import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
-import { searchDocumentsNaturalLanguage } from '@/features/documents/services/document-library.service'
+import { searchFederatedLibrarySummaries } from '@/features/documents/services/document-library.service'
 import { ROUTES, documentsCategoryPath } from '@/constants/routes'
 import {
 	DocumentAttentionCard,
@@ -18,22 +18,15 @@ import { FC } from '@/ui/figma/v2/atoms'
 export function FigmaDocumentsScreen() {
 	const navigate = useNavigate()
 	const [query, setQuery] = useState('')
-	const { hub, documents, memberNames, isLoading } = useDocumentsContext()
+	const { hub, isLoading } = useDocumentsContext()
 
 	const filteredDocuments = useMemo(() => {
 		if (!query.trim()) {
 			return hub.allDocuments
 		}
 
-		const matched = searchDocumentsNaturalLanguage(
-			documents,
-			query,
-			memberNames,
-		)
-		const ids = new Set(matched.map((document) => document.id))
-
-		return hub.allDocuments.filter((document) => ids.has(document.id))
-	}, [documents, hub.allDocuments, memberNames, query])
+		return searchFederatedLibrarySummaries(hub.allDocuments, query)
+	}, [hub.allDocuments, query])
 
 	const categories = useMemo(
 		() =>

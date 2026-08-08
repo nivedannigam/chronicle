@@ -2,11 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryDisplayMeta } from '@/features/documents/constants/document-category-display'
-import { useDocumentIntelligence } from '@/features/documents/hooks/useDocumentIntelligence'
-import {
-	filterDocumentsByCategory,
-	toDocumentSummary,
-} from '@/features/documents/services/document-intelligence.service'
+import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
 import {
 	DocumentSectionLabel,
 	DocumentSummaryCard,
@@ -18,14 +14,14 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 export function DocumentsCategoryPage() {
 	const navigate = useNavigate()
 	const { categoryId = '' } = useParams()
-	const { documents, memberNames, isLoading } = useDocumentIntelligence()
+	const { hub, isLoading } = useDocumentsContext()
 	const meta = getCategoryDisplayMeta(categoryId)
 
 	const items = useMemo(() => {
-		return filterDocumentsByCategory(documents, categoryId).map((document) =>
-			toDocumentSummary(document, memberNames),
+		return hub.allDocuments.filter(
+			(document) => document.categoryId === categoryId,
 		)
-	}, [categoryId, documents, memberNames])
+	}, [categoryId, hub.allDocuments])
 
 	if (isLoading) {
 		return (

@@ -5,33 +5,19 @@ import { C } from '@/constants/colors'
 import { documentPath } from '@/constants/routes'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
-import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
-import { documentsExpiringWithin } from '@/features/documents/services/document.service'
+import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
 import { FigmaCard } from '@/ui/figma/components/primitives'
 import { HealthPageIntro } from '@/ui/figma/health/health-ui'
 
-function formatDate(value: string | null): string {
-	if (!value) {
-		return '—'
-	}
-
-	return new Date(value).toLocaleDateString('en-US', {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	})
-}
-
 export function DocumentsExpiringPage() {
-	const {
-		data: documents = [],
-		isLoading,
-		isError,
-		refetch,
-	} = useMemberDocuments()
+	const { hub, isLoading, isError, refetch } = useDocumentsContext()
+
 	const expiring = useMemo(
-		() => documentsExpiringWithin(documents, 365),
-		[documents],
+		() =>
+			hub.allDocuments.filter(
+				(document) => document.isExpiringSoon || document.isExpired,
+			),
+		[hub.allDocuments],
 	)
 
 	return (
@@ -48,63 +34,44 @@ export function DocumentsExpiringPage() {
 			) : null}
 
 			{isLoading ? (
-				<ListSkeleton rows={3} height={56} />
+				<ListSkeleton rows={4} />
 			) : expiring.length === 0 ? (
-				<FigmaCard
-					style={{
-						border: `1px dashed ${C.border}`,
-						padding: '24px 16px',
-						fontSize: 14,
-						color: C.textMuted,
-						lineHeight: 1.55,
-						textAlign: 'center',
-					}}
-				>
-					<div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-					No upcoming expiries found in your document library.
-				</FigmaCard>
+				<p style={{ color: C.textMuted, fontSize: 14, margin: 0 }}>
+					No expiring documents right now.
+				</p>
 			) : (
-				<div style={{ display: 'grid', gap: 10 }}>
-					{expiring.map((document) => (
+				expiring.map((document) => (
+					<Link
+						key={document.id}
+						to={documentPath(document.id)}
+						style={{ textDecoration: 'none', color: 'inherit' }}
+					>
 						<FigmaCard
-							key={document.id}
 							style={{
-								background: `${C.orange}10`,
-								border: `1px solid ${C.orange}33`,
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'space-between',
+								marginBottom: 10,
+								padding: '14px 16px',
 							}}
 						>
-							<Link
-								to={documentPath(document.id)}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: 12,
-									padding: '14px 16px',
-									textDecoration: 'none',
-									color: C.text,
-								}}
-							>
-								<div style={{ flex: 1, minWidth: 0 }}>
-									<div
-										style={{
-											fontWeight: 700,
-											marginBottom: 4,
-											overflow: 'hidden',
-											textOverflow: 'ellipsis',
-											whiteSpace: 'nowrap',
-										}}
-									>
-										{document.title}
-									</div>
-									<div style={{ fontSize: 12, color: C.orange }}>
-										Expires {formatDate(document.expiry_date)}
-									</div>
+							<div>
+								<div style={{ fontWeight: 600, color: C.text, fontSize: 14 }}>
+									{document.title}
 								</div>
-								<ChevronRight size={16} color={C.textMuted} />
-							</Link>
+								<div style={{ color: C.textMuted, fontSize: 12, marginTop: 4 }}>
+									{document.categoryLabel}
+									{document.expiresLabel
+										? ` · Expires ${document.expiresLabel}`
+										: document.isExpired
+											? ' · Expired'
+											: ''}
+								</div>
+							</div>
+							<ChevronRight size={18} color={C.textMuted} />
 						</FigmaCard>
-					))}
-				</div>
+					</Link>
+				))
 			)}
 		</div>
 	)

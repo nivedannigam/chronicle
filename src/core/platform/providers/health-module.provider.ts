@@ -9,6 +9,7 @@ import {
 	getReportDisplayTitle,
 	getParsedHealthReport,
 } from '@/features/health/services/health-parsed-report.service'
+import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
 import type { UploadedHealthReport } from '@/features/health/types'
 import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 
@@ -74,18 +75,40 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 	priority: 10,
 
 	getDocumentSection(query: ModuleProviderQuery): ModuleDocumentSection | null {
+		const memberNames = query.memberNames ?? {}
 		const reports = (query.sources.health?.uploadedReports ?? []).filter(
 			(report) => report.status === 'completed',
 		)
+		const medicalChronicleDocs = (
+			query.sources.documents?.uploadedDocuments ?? []
+		).filter(
+			(document) =>
+				document.category_id === 'medical' && document.status !== 'failed',
+		)
 
-		if (reports.length === 0) {
-			return null
+		const documents: ChronicleDocumentSummary[] = []
+		const seenIds = new Set<string>()
+
+		for (const report of reports) {
+			const summary = healthReportToSummary(report, memberNames)
+			if (!seenIds.has(summary.id)) {
+				seenIds.add(summary.id)
+				documents.push(summary)
+			}
 		}
 
-		const memberNames = query.memberNames ?? {}
-		const documents = reports.map((report) =>
-			healthReportToSummary(report, memberNames),
-		)
+		for (const document of medicalChronicleDocs) {
+			if (seenIds.has(document.id)) {
+				continue
+			}
+
+			seenIds.add(document.id)
+			documents.push(toDocumentSummary(document, memberNames))
+		}
+
+		if (documents.length === 0) {
+			return null
+		}
 
 		return {
 			moduleId: 'health',
@@ -100,9 +123,16 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 	},
 
 	getSummary(query: ModuleProviderQuery): ModuleSummary | null {
-		const count = (query.sources.health?.uploadedReports ?? []).filter(
+		const reportCount = (query.sources.health?.uploadedReports ?? []).filter(
 			(report) => report.status === 'completed',
 		).length
+		const medicalChronicleCount = (
+			query.sources.documents?.uploadedDocuments ?? []
+		).filter(
+			(document) =>
+				document.category_id === 'medical' && document.status !== 'failed',
+		).length
+		const count = reportCount + medicalChronicleCount
 
 		if (count === 0) {
 			return null
