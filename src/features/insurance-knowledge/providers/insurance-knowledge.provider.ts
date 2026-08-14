@@ -1,4 +1,5 @@
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
+import type { ConnectorDocumentRecord } from '@/core/connectors'
 import { buildKnowledgeConfidence } from '@/features/insurance-knowledge/engines/confidence.model'
 import {
 	aggregateCoverageByCategory,
@@ -37,6 +38,7 @@ import type {
 	InsuranceKnowledge,
 	InsuranceKnowledgeClaim,
 	InsuranceKnowledgeCoverageGap,
+	InsuranceKnowledgeDocumentRef,
 	InsuranceKnowledgeFamilyMember,
 	InsuranceKnowledgeGetInput,
 	InsuranceKnowledgeRelationship,
@@ -56,6 +58,78 @@ function resolveInsurerName(
 		insurers.find((insurer) => insurer.id === insurerId)?.displayName ??
 		insurerId
 	)
+}
+
+function isInsuranceRegistryRow(row: ConnectorDocumentRecord): boolean {
+	return (
+		row.targetModule === 'insurance' ||
+		row.discoveryCategory === 'insurance_policy'
+	)
+}
+
+function registryRowMatchesMember(
+	row: ConnectorDocumentRecord,
+	input: InsuranceKnowledgeGetInput,
+): boolean {
+	if (input.familyMemberId == null) {
+		return true
+	}
+
+	if (row.familyMemberId === input.familyMemberId) {
+		return true
+	}
+
+	return (
+		row.familyMemberId == null &&
+		input.familyMemberId === (input.accountOwnerMemberId ?? null)
+	)
+}
+
+function mapRegistryRowToDocumentRef(
+	row: ConnectorDocumentRecord,
+): InsuranceKnowledgeDocumentRef {
+	return {
+		id: `insurance-registry-${row.id}`,
+		fileName: row.fileName,
+		documentKind: 'unknown',
+		status: row.insuranceDocumentId ? row.importStatus : 'discovered',
+		linkedPolicyIds: [],
+		uploadedAt:
+			row.externalModifiedAt ??
+			row.importedAt ??
+			row.lastSyncAt ??
+			new Date().toISOString(),
+		isDisplayReady: false,
+	}
+}
+
+function buildKnowledgeDocuments(input: {
+	mergedDocuments: InsuranceKnowledgeRawData['documents']
+	importRegistry: ConnectorDocumentRecord[]
+	memberInput: InsuranceKnowledgeGetInput
+}): InsuranceKnowledgeDocumentRef[] {
+	const importedDocuments = input.mergedDocuments.map((document) => ({
+		id: document.id,
+		fileName: document.fileName,
+		documentKind: document.documentKind,
+		status: document.status,
+		linkedPolicyIds: document.linkedPolicyIds,
+		uploadedAt: document.uploadedAt,
+		isDisplayReady: document.status === 'completed',
+	}))
+
+	const importedNames = new Set(
+		importedDocuments.map((document) => document.fileName.toLowerCase()),
+	)
+
+	const registryDocuments = input.importRegistry
+		.filter(isInsuranceRegistryRow)
+		.filter((row) => registryRowMatchesMember(row, input.memberInput))
+		.filter((row) => !row.insuranceDocumentId)
+		.filter((row) => !importedNames.has(row.fileName.toLowerCase()))
+		.map(mapRegistryRowToDocumentRef)
+
+	return [...importedDocuments, ...registryDocuments]
 }
 
 function toRankablePolicy(
@@ -262,15 +336,11 @@ export class InsuranceKnowledgeProvider {
 					: 'medium',
 		}))
 
-		const documents = merged.documents.map((document) => ({
-			id: document.id,
-			fileName: document.fileName,
-			documentKind: document.documentKind,
-			status: document.status,
-			linkedPolicyIds: document.linkedPolicyIds,
-			uploadedAt: document.uploadedAt,
-			isDisplayReady: document.status === 'completed',
-		}))
+		const documents = buildKnowledgeDocuments({
+			mergedDocuments: merged.documents,
+			importRegistry: raw.importRegistry,
+			memberInput: input,
+		})
 
 		const limitations = buildKnowledgeLimitations({
 			policies,

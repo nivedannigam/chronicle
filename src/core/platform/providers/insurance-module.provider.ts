@@ -21,6 +21,7 @@ function insuranceKnowledgeDocToSummary(
 		fileName: string
 		documentKind: string
 		uploadedAt: string
+		isDisplayReady?: boolean
 	},
 	memberNames: Record<string, string>,
 	memberId: string | null | undefined,
@@ -54,7 +55,7 @@ function insuranceKnowledgeDocToSummary(
 				route: ROUTES.insurancePolicies,
 			},
 		],
-		consumerStatus: 'Ready',
+		consumerStatus: document.isDisplayReady ? 'Ready' : 'Still Organizing',
 		aiDiscoveryLabel: null,
 		year: new Date(document.uploadedAt).getFullYear(),
 	}

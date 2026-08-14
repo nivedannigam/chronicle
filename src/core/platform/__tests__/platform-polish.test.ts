@@ -153,6 +153,37 @@ describe('Federated Library', () => {
 		).toBe(true)
 	})
 
+	it('includes in-progress health imports with Still Organizing status', () => {
+		const report = {
+			id: 'report-processing',
+			user_id: 'user-1',
+			family_member_id: 'member-1',
+			file_name: 'pending-lab.pdf',
+			storage_path: 'path',
+			status: 'processing',
+			report_type: 'Lab',
+			report_date: '2025-06-15',
+			uploaded_at: '2025-06-16T10:00:00.000Z',
+			processed_at: null,
+		} as UploadedHealthReport
+
+		const query = buildModuleProviderQuery({
+			userId: 'user-1',
+			memberNames: { 'member-1': 'Alex' },
+			healthReports: [report],
+			chronicleDocuments: [],
+			insuranceKnowledge: null,
+		})
+
+		const { hub } = buildLibraryHubView({
+			query,
+			chronicleDocuments: [],
+		})
+
+		expect(hub.categoryCounts.medical).toBe(1)
+		expect(hub.allDocuments[0]?.consumerStatus).toBe('Still Organizing')
+	})
+
 	it('member-filtered query excludes other members chronicle docs', () => {
 		const report = {
 			id: 'report-member',

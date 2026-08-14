@@ -9,9 +9,30 @@ import {
 	getReportDisplayTitle,
 	getParsedHealthReport,
 } from '@/features/health/services/health-parsed-report.service'
+import { mapProductReportStatus } from '@/features/health/services/health-product.mapper'
 import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
 import type { UploadedHealthReport } from '@/features/health/types'
-import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
+import type {
+	ChronicleDocumentSummary,
+	DocumentConsumerStatus,
+} from '@/features/documents/types/document-intelligence.types'
+
+function isLibraryHealthReport(report: UploadedHealthReport): boolean {
+	return report.status !== 'failed'
+}
+
+function mapHealthReportConsumerStatus(
+	report: UploadedHealthReport,
+): DocumentConsumerStatus {
+	switch (mapProductReportStatus(report)) {
+		case 'ready':
+			return 'Ready'
+		case 'organizing':
+			return 'Still Organizing'
+		default:
+			return 'Needs Help'
+	}
+}
 
 function formatDisplayDate(value: string): string {
 	const date = new Date(value)
@@ -61,8 +82,7 @@ function healthReportToSummary(
 				route: healthReportPath(report.id),
 			},
 		],
-		consumerStatus:
-			report.status === 'completed' ? 'Ready' : 'Still Organizing',
+		consumerStatus: mapHealthReportConsumerStatus(report),
 		aiDiscoveryLabel: null,
 		year: new Date(reportDate).getFullYear(),
 	}
@@ -77,7 +97,7 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 	getDocumentSection(query: ModuleProviderQuery): ModuleDocumentSection | null {
 		const memberNames = query.memberNames ?? {}
 		const reports = (query.sources.health?.uploadedReports ?? []).filter(
-			(report) => report.status === 'completed',
+			isLibraryHealthReport,
 		)
 		const medicalChronicleDocs = (
 			query.sources.documents?.uploadedDocuments ?? []
@@ -124,7 +144,7 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 
 	getSummary(query: ModuleProviderQuery): ModuleSummary | null {
 		const reportCount = (query.sources.health?.uploadedReports ?? []).filter(
-			(report) => report.status === 'completed',
+			isLibraryHealthReport,
 		).length
 		const medicalChronicleCount = (
 			query.sources.documents?.uploadedDocuments ?? []
