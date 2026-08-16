@@ -5,6 +5,7 @@ import { filterReportsForMember } from '@/features/family/utils/member-display'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
 import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
+import { useVehicleKnowledge } from '@/features/vehicles/hooks/useVehicleKnowledge'
 import type { FederatedLibraryView } from '@/core/platform/contracts/module-provider.contract'
 import {
 	buildLibraryHubView,
@@ -40,6 +41,7 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 	const { members, selectedMemberId, accountOwnerMemberId } = useFamilyContext()
 	const reportsQuery = useUploadedHealthReports(userId)
 	const insuranceQuery = useInsuranceKnowledge()
+	const vehicleQuery = useVehicleKnowledge()
 
 	const memberNames = useMemo(() => {
 		const map: Record<string, string> = {}
@@ -81,6 +83,7 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 			healthReports,
 			chronicleDocuments: chronicleDocumentsForQuery,
 			insuranceKnowledge: insuranceQuery.knowledge,
+			vehicleKnowledge: vehicleQuery.knowledge,
 		})
 
 		return buildLibraryHubView({
@@ -94,6 +97,7 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 		chronicleDocumentsForQuery,
 		selectedMemberId,
 		insuranceQuery.knowledge,
+		vehicleQuery.knowledge,
 	])
 
 	const availableYears = useMemo(
@@ -109,7 +113,10 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 	)
 
 	const isLoading =
-		documentsLoading || reportsQuery.isLoading || insuranceQuery.isLoading
+		documentsLoading ||
+		reportsQuery.isLoading ||
+		insuranceQuery.isLoading ||
+		vehicleQuery.isLoading
 
 	const value = useMemo(
 		() => ({

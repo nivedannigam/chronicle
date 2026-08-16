@@ -1,6 +1,7 @@
 export type TimelineModule =
 	| 'health'
 	| 'insurance'
+	| 'vehicles'
 	| 'documents'
 	| 'finance'
 	| 'travel'

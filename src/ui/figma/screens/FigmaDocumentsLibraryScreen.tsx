@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { DOCUMENT_HOME_CATEGORIES } from '@/features/documents/constants/document-category-display'
 import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
@@ -8,7 +8,10 @@ import {
 	defaultLibraryFilters,
 	filterFederatedLibrarySummaries,
 } from '@/features/documents/services/document-library.service'
-import type { DocumentConsumerStatus } from '@/features/documents/types/document-intelligence.types'
+import type {
+	DocumentConsumerStatus,
+	DocumentLibraryFilters,
+} from '@/features/documents/types/document-intelligence.types'
 import { ROUTES } from '@/constants/routes'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import {
@@ -30,16 +33,47 @@ const SOURCE_FILTERS = [
 	{ id: 'upload', label: 'Manual Upload' },
 ] as const
 
+function resolveActiveFilterLabel(
+	filters: ReturnType<typeof defaultLibraryFilters>,
+): string | null {
+	if (filters.moduleId) {
+		return filters.moduleId === 'health'
+			? 'Health'
+			: filters.moduleId === 'insurance'
+				? 'Insurance'
+				: filters.moduleId === 'vehicles'
+					? 'Vehicles'
+					: 'Library'
+	}
+
+	if (filters.categoryId) {
+		return (
+			DOCUMENT_HOME_CATEGORIES.find(
+				(category) => category.categoryId === filters.categoryId,
+			)?.label ?? filters.categoryId
+		)
+	}
+
+	return null
+}
+
 export function FigmaDocumentsLibraryScreen() {
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const { members } = useFamilyContext()
 	const {
+		hub,
 		memberNames,
 		availableYears,
 		isLoading: documentsLoading,
 	} = useDocumentsContext()
 	const federated = useFederatedLibrary()
-	const [filters, setFilters] = useState(defaultLibraryFilters)
+	const [filters, setFilters] = useState(() => ({
+		...defaultLibraryFilters(),
+		categoryId: searchParams.get('category'),
+		moduleId: searchParams.get('module') as
+			DocumentLibraryFilters['moduleId'] | null,
+	}))
 
 	const results = useMemo(
 		() =>
@@ -50,6 +84,19 @@ export function FigmaDocumentsLibraryScreen() {
 			),
 		[federated.allDocuments, filters, memberNames],
 	)
+
+	const filteredModuleCount = useMemo(() => {
+		const moduleIds = new Set(
+			results.flatMap((document) =>
+				document.relatedModules.map((module) => module.moduleId),
+			),
+		)
+
+		return moduleIds.size
+	}, [results])
+
+	const activeFilterLabel = resolveActiveFilterLabel(filters)
+	const totalAvailable = federated.allDocuments.length
 
 	const isLoading = documentsLoading || federated.isLoading
 
@@ -133,22 +180,26 @@ export function FigmaDocumentsLibraryScreen() {
 							setFilters((current) => ({ ...current, categoryId: null }))
 						}
 					/>
-					{DOCUMENT_HOME_CATEGORIES.map((category) => (
-						<DocumentFilterChip
-							key={category.categoryId}
-							label={category.label}
-							active={filters.categoryId === category.categoryId}
-							onClick={() =>
-								setFilters((current) => ({
-									...current,
-									categoryId:
-										current.categoryId === category.categoryId
-											? null
-											: category.categoryId,
-								}))
-							}
-						/>
-					))}
+					{DOCUMENT_HOME_CATEGORIES.map((category) => {
+						const count = hub.categoryCounts[category.categoryId] ?? 0
+
+						return (
+							<DocumentFilterChip
+								key={category.categoryId}
+								label={`${category.label}${count > 0 ? ` (${count})` : ''}`}
+								active={filters.categoryId === category.categoryId}
+								onClick={() =>
+									setFilters((current) => ({
+										...current,
+										categoryId:
+											current.categoryId === category.categoryId
+												? null
+												: category.categoryId,
+									}))
+								}
+							/>
+						)
+					})}
 				</div>
 			</div>
 
@@ -270,17 +321,60 @@ export function FigmaDocumentsLibraryScreen() {
 
 			<div style={{ marginBottom: 12 }}>
 				<DocumentSectionLabel>
-					{results.length} document{results.length === 1 ? '' : 's'} across{' '}
-					{federated.sections.length} module
-					{federated.sections.length === 1 ? '' : 's'}
+					{results.length} document{results.length === 1 ? '' : 's'}
+					{filteredModuleCount > 0
+						? ` across ${filteredModuleCount} module${filteredModuleCount === 1 ? '' : 's'}`
+						: ''}
+					{totalAvailable > 0 && results.length !== totalAvailable
+						? ` · ${totalAvailable} total`
+						: ''}
 				</DocumentSectionLabel>
 			</div>
 
 			{results.length === 0 ? (
-				<p style={{ color: FC.mid, fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-					No documents match your filters. Try a different search or connect
-					your Google Drive folder.
-				</p>
+				<div>
+					<p
+						style={{ color: FC.mid, fontSize: 14, lineHeight: 1.5, margin: 0 }}
+					>
+						{activeFilterLabel
+							? `No ${activeFilterLabel.toLowerCase()} documents match your filters.`
+							: 'No documents match your filters.'}
+					</p>
+					{activeFilterLabel && totalAvailable > 0 ? (
+						<button
+							type="button"
+							onClick={() =>
+								setFilters({
+									...defaultLibraryFilters(),
+								})
+							}
+							style={{
+								marginTop: 12,
+								background: 'none',
+								border: 'none',
+								color: FC.blue,
+								fontSize: 13,
+								fontWeight: 700,
+								cursor: 'pointer',
+								fontFamily: 'inherit',
+								padding: 0,
+							}}
+						>
+							Show all {totalAvailable} documents
+						</button>
+					) : (
+						<p
+							style={{
+								color: FC.mid,
+								fontSize: 13,
+								lineHeight: 1.5,
+								margin: '8px 0 0',
+							}}
+						>
+							Try a different search or connect your Google Drive folder.
+						</p>
+					)}
+				</div>
 			) : (
 				results.map((document) => (
 					<DocumentSummaryCard

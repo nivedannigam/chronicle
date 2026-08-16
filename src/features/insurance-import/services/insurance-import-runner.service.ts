@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
+import { isInsuranceRegistryRow } from '@/features/connectors/services/registry-module-routing.service'
 import { listInsuranceSourceAssignments } from '@/features/family/services/insurance-sources.service'
 import { invalidateInsuranceKnowledgeCache } from '@/features/insurance-knowledge/services/insurance-knowledge-cache'
 import { runInsuranceDiscovery } from '@/features/insurance-import/services/insurance-discovery-engine.service'
@@ -15,11 +16,7 @@ async function importDiscoveredInsuranceFiles(userId: string): Promise<number> {
 	const assignmentFolderIds = new Set(assignments.map((a) => a.folderId))
 	const registry = await listRegistryRecords(userId, 'google-drive')
 
-	const insuranceRows = registry.filter(
-		(row) =>
-			row.targetModule === 'insurance' ||
-			row.discoveryCategory === 'insurance_policy',
-	)
+	const insuranceRows = registry.filter((row) => isInsuranceRegistryRow(row))
 
 	let imported = 0
 

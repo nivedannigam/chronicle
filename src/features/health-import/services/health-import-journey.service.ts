@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
+import { resolveHealthDiscoveryFolderIds } from '@/features/connectors/services/registry-module-routing.service'
 import { invalidateHealthKnowledgeCache } from '@/features/health-knowledge/services/health-knowledge-cache'
 import { healthKnowledgeService } from '@/features/health-knowledge/services/health-knowledge.service'
 import { invalidateAfterHealthImport } from '@/lib/query-invalidation'
@@ -131,6 +132,43 @@ export async function runHealthImportJourney(
 ): Promise<ImportJourneyResult> {
 	const phasesCompleted: ImportJourneyPhase[] = ['assign']
 	const phasesSucceeded: ImportJourneyPhase[] = ['assign']
+	const healthFolderIds = await resolveHealthDiscoveryFolderIds(
+		userId,
+		folderIds,
+	)
+
+	if (healthFolderIds.length === 0) {
+		phasesCompleted.push('scanning', 'detection', 'summary')
+		phasesSucceeded.push('scanning', 'detection', 'summary')
+
+		emitProgress(
+			onProgress,
+			'summary',
+			phasesCompleted,
+			phasesSucceeded,
+			'No health folders to scan. Insurance-assigned folders use the Insurance import pipeline.',
+		)
+
+		return buildResult({
+			outcome: 'no_reports',
+			filesFound: 0,
+			documentsScanned: 0,
+			importCandidates: 0,
+			medicalReports: 0,
+			needsReview: 0,
+			skippedIgnored: 0,
+			reportsImported: 0,
+			importedThisRun: 0,
+			failedThisRun: 0,
+			skippedThisRun: 0,
+			autoApprovedCount: 0,
+			metricsExtracted: 0,
+			failedCount: 0,
+			errorMessage: null,
+			phasesCompleted,
+			phasesSucceeded,
+		})
+	}
 
 	emitProgress(
 		onProgress,
@@ -144,7 +182,7 @@ export async function runHealthImportJourney(
 		const { run } = await runMedicalDiscovery({
 			userId,
 			mode: 'manual',
-			folderIds,
+			folderIds: healthFolderIds,
 		})
 
 		phasesCompleted.push('scanning')

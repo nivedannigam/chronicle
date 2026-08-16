@@ -16,6 +16,8 @@ export const STALE_TIME = {
 	timeline: 2 * 60 * 1000,
 	insuranceKnowledge: 2 * 60 * 1000,
 	insuranceSources: 30 * 1000,
+	vehicleKnowledge: 2 * 60 * 1000,
+	vehicleSources: 30 * 1000,
 } as const
 
 export const queryKeys = {
@@ -102,6 +104,16 @@ export const queryKeys = {
 			['insurance-import-status', userId] as const,
 		preferences: (userId: string | undefined) =>
 			['insurance-preferences', userId] as const,
+	},
+	vehicles: {
+		knowledge: (
+			userId: string | undefined,
+			memberId: string | null | undefined,
+		) => ['vehicle-knowledge', userId, memberId ?? 'all'] as const,
+		sources: (userId: string | undefined) =>
+			['vehicle-source-assignments', userId] as const,
+		importStatus: (userId: string | undefined) =>
+			['vehicle-import-status', userId] as const,
 	},
 } as const
 

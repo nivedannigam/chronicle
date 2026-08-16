@@ -51,6 +51,7 @@ function mapRegistry(row: Record<string, unknown>): ConnectorDocumentRecord {
 		importStatus: row.import_status as ImportQueueStatus,
 		healthReportId: (row.health_report_id as string | null) ?? null,
 		insuranceDocumentId: (row.insurance_document_id as string | null) ?? null,
+		vehicleDocumentId: (row.vehicle_document_id as string | null) ?? null,
 		targetModule: (row.target_module as string | null) ?? null,
 		knowledgeGraphStatus: (row.knowledge_graph_status as string | null) ?? null,
 		errorMessage: (row.error_message as string | null) ?? null,

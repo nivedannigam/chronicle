@@ -1,6 +1,7 @@
 import type { PlatformModuleId } from '@/core/platform/contracts/platform-module.contract'
 import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
+import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { ChronicleTimelineEvent } from '@/features/timeline/types/timeline.types'
@@ -15,6 +16,9 @@ export interface ModuleProviderSources {
 	}
 	insurance?: {
 		knowledge?: InsuranceKnowledge | null
+	}
+	vehicles?: {
+		knowledge?: VehicleKnowledge | null
 	}
 }
 

@@ -1,5 +1,6 @@
 import { healthModuleProvider } from '@/core/platform/providers/health-module.provider'
 import { insuranceModuleProvider } from '@/core/platform/providers/insurance-module.provider'
+import { vehiclesModuleProvider } from '@/core/platform/providers/vehicles-module.provider'
 import { documentsModuleProvider } from '@/core/platform/providers/documents-module.provider'
 import {
 	registerModuleProvider,
@@ -18,6 +19,7 @@ export function registerModuleProviders(): void {
 	for (const provider of [
 		healthModuleProvider,
 		insuranceModuleProvider,
+		vehiclesModuleProvider,
 		documentsModuleProvider,
 	]) {
 		registerModuleProvider(provider)

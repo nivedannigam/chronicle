@@ -74,6 +74,11 @@ export const ROUTES = {
 	insuranceTimeline: '/insurance/timeline',
 	insuranceAsk: '/insurance/ask',
 	insuranceSettings: '/insurance/settings',
+	vehicles: '/vehicles',
+	vehiclesTimeline: '/vehicles/timeline',
+	vehiclesSettings: '/vehicles/settings',
+	vehiclesAsk: '/vehicles/ask',
+	vehiclesDetail: '/vehicles/:vehicleSlug',
 	notifications: '/notifications',
 } as const
 
@@ -195,4 +200,8 @@ export function insuranceAskPath(input?: {
 
 	const query = params.toString()
 	return query ? `${ROUTES.insuranceAsk}?${query}` : ROUTES.insuranceAsk
+}
+
+export function vehicleDetailPath(vehicleSlug: string) {
+	return `/vehicles/${vehicleSlug}`
 }

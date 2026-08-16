@@ -38,7 +38,11 @@ export type DocumentRegistryStatus =
 	| 'duplicate'
 
 export type DiscoveryCategory =
-	'likely_medical' | 'needs_review' | 'ignored' | 'insurance_policy'
+	| 'likely_medical'
+	| 'needs_review'
+	| 'ignored'
+	| 'insurance_policy'
+	| 'vehicle_document'
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
@@ -72,6 +76,7 @@ export interface ConnectorDocumentRecord {
 	importStatus: ImportQueueStatus
 	healthReportId: string | null
 	insuranceDocumentId: string | null
+	vehicleDocumentId: string | null
 	targetModule: string | null
 	knowledgeGraphStatus: string | null
 	errorMessage: string | null

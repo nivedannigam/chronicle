@@ -18,6 +18,8 @@ import { mapAssignmentError } from '@/features/family/utils/assignment-errors'
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
 import { dedupeMemberLabels } from '@/features/family/utils/dedupe-member-labels'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
+import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
+import { isInsuranceAssignedFolder } from '@/features/connectors/services/registry-module-routing.service'
 import { invalidateAfterFolderAssignment } from '@/lib/query-invalidation'
 import { resetFailedImportCandidates } from '@/features/medical-discovery/services/import-pipeline.service'
 import type {
@@ -191,6 +193,52 @@ export function useFolderAssignmentFlow({
 			setErrorMessage(null)
 
 			try {
+				if (await isInsuranceAssignedFolder(userId, info.externalFolderId)) {
+					setJourneyPhase('scanning')
+					setJourneyPhasesCompleted(['assign', 'scanning'])
+					setJourneyPhasesSucceeded(['assign'])
+
+					try {
+						await runInsuranceImportSync(userId)
+					} catch (insuranceError) {
+						const message =
+							insuranceError instanceof Error
+								? insuranceError.message
+								: 'Insurance import failed'
+
+						setErrorMessage(message)
+					}
+
+					const skippedResult: ImportJourneyResult = {
+						outcome: 'no_reports',
+						filesFound: 0,
+						documentsScanned: 0,
+						importCandidates: 0,
+						medicalReports: 0,
+						needsReview: 0,
+						skippedIgnored: 0,
+						reportsImported: 0,
+						importedThisRun: 0,
+						failedThisRun: 0,
+						skippedThisRun: 0,
+						autoApprovedCount: 0,
+						metricsExtracted: 0,
+						failedCount: 0,
+						errorMessage: null,
+						phasesCompleted: ['assign', 'scanning', 'detection', 'summary'],
+						phasesSucceeded: ['assign', 'scanning', 'detection', 'summary'],
+					}
+
+					setJourneyResult(skippedResult)
+					setJourneyPhase('summary')
+					setJourneyPhasesCompleted(skippedResult.phasesCompleted)
+					setJourneyPhasesSucceeded(skippedResult.phasesSucceeded)
+					invalidateAfterFolderAssignment(userId)
+					await onRefresh()
+					onJourneyComplete?.(skippedResult)
+					return
+				}
+
 				const result = await runHealthImportJourney(
 					userId,
 					[info.externalFolderId],

@@ -8,7 +8,7 @@ import { toDocumentSummary } from '@/features/documents/services/document-intell
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 
 /** Categories owned by domain modules — excluded from the general library section. */
-const MODULE_OWNED_CATEGORIES = new Set(['medical', 'insurance'])
+const MODULE_OWNED_CATEGORIES = new Set(['medical', 'insurance', 'vehicles'])
 
 function isGeneralLibraryDocument(document: ChronicleDocument): boolean {
 	if (document.status === 'failed') {

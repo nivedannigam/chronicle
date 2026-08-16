@@ -7,6 +7,7 @@ import type {
 const MODULE_EMOJI: Record<TimelineModule, string> = {
 	health: '❤️',
 	insurance: '🛡️',
+	vehicles: '🚗',
 	documents: '📄',
 	finance: '💰',
 	travel: '✈️',

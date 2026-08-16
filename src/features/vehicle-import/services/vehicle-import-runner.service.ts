@@ -1,0 +1,218 @@
+import { supabase } from '@/lib/supabase'
+import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
+import { isVehicleRegistryRow } from '@/features/connectors/services/registry-module-routing.service'
+import { listVehicleSourceAssignments } from '@/features/family/services/vehicle-sources.service'
+import { invalidateVehicleKnowledgeCache } from '@/features/vehicle-knowledge/services/vehicle-knowledge-cache'
+import { runVehicleDiscovery } from '@/features/vehicle-import/services/vehicle-discovery-engine.service'
+import {
+	createVehicleDocumentFromRegistry,
+	processVehicleDocument,
+} from '@/features/vehicle-import/services/vehicle-processing.service'
+import { classifyVehicleDocument } from '@/features/vehicle-knowledge/utils/vehicle-document-classifier'
+import {
+	resolveVehicleNameFromPath,
+	slugifyVehicleName,
+} from '@/features/vehicle-knowledge/utils/vehicle-folder-resolver'
+import type {
+	VehicleDiscoveryRunSummary,
+	VehicleImportStatusSnapshot,
+} from '@/features/vehicle-import/types/vehicle-import.types'
+
+async function ensureVehicleId(input: {
+	userId: string
+	displayName: string
+	familyMemberId: string | null
+}): Promise<string> {
+	const slug = slugifyVehicleName(input.displayName)
+
+	const { data: existing } = await supabase
+		.from('vehicles')
+		.select('id')
+		.eq('user_id', input.userId)
+		.eq('slug', slug)
+		.maybeSingle()
+
+	if (existing?.id) {
+		return existing.id as string
+	}
+
+	const { data, error } = await supabase
+		.from('vehicles')
+		.insert({
+			user_id: input.userId,
+			family_member_id: input.familyMemberId,
+			display_name: input.displayName,
+			slug,
+			category: 'car',
+			status: 'active',
+			source: 'folder_discovery',
+		})
+		.select('id')
+		.single()
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	return data.id as string
+}
+
+async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
+	const assignments = await listVehicleSourceAssignments(userId)
+	const assignmentFolderIds = new Set(assignments.map((a) => a.folderId))
+	const registry = await listRegistryRecords(userId, 'google-drive')
+	const vehicleRows = registry.filter((row) => isVehicleRegistryRow(row))
+
+	let imported = 0
+
+	for (const row of vehicleRows) {
+		if (row.vehicleDocumentId) {
+			continue
+		}
+
+		if (row.folderId && !assignmentFolderIds.has(row.folderId)) {
+			continue
+		}
+
+		const assignment =
+			assignments.find((entry) => entry.folderId === row.folderId) ??
+			assignments[0] ??
+			null
+
+		if (!assignment) {
+			continue
+		}
+
+		const classification = classifyVehicleDocument({
+			fileName: row.fileName,
+			folderPath: row.folderPath,
+		})
+		const vehicleName = resolveVehicleNameFromPath({
+			folderPath: row.folderPath,
+			rootFolderPath: assignment.folderPath,
+			rootFolderName: assignment.folderName,
+		})
+		const vehicleId = await ensureVehicleId({
+			userId,
+			displayName: vehicleName,
+			familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
+		})
+
+		const documentId = await createVehicleDocumentFromRegistry({
+			userId,
+			registryId: row.id,
+			fileName: row.fileName,
+			familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
+			folderAssignmentId: assignment.id,
+			vehicleId,
+			documentType: classification.documentType,
+			documentSubtype: classification.documentSubtype,
+		})
+
+		await supabase
+			.from('connector_document_registry')
+			.update({
+				vehicle_document_id: documentId,
+				target_module: 'vehicles',
+				import_status: 'completed',
+				imported_at: new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+			})
+			.eq('id', row.id)
+
+		await processVehicleDocument({
+			userId,
+			documentId,
+			fileName: row.fileName,
+			folderPath: row.folderPath,
+			assignment,
+		})
+
+		imported += 1
+	}
+
+	return imported
+}
+
+export async function runVehicleImportSync(userId: string): Promise<{
+	discovered: number
+	imported: number
+}> {
+	await runVehicleDiscovery({ userId })
+	const imported = await importDiscoveredVehicleFiles(userId)
+
+	invalidateVehicleKnowledgeCache(userId)
+
+	return {
+		discovered: imported,
+		imported,
+	}
+}
+
+function mapDiscoveryRun(
+	row: Record<string, unknown>,
+): VehicleDiscoveryRunSummary {
+	return {
+		id: row.id as string,
+		status: row.status as VehicleDiscoveryRunSummary['status'],
+		startedAt: row.started_at as string,
+		completedAt: (row.completed_at as string | null) ?? null,
+		foldersScanned: Number(row.folders_scanned ?? 0),
+		filesScanned: Number(row.files_scanned ?? 0),
+		documentCount: Number(row.document_count ?? 0),
+		duplicateCount: Number(row.duplicate_count ?? 0),
+		errorMessage: (row.error_message as string | null) ?? null,
+	}
+}
+
+export async function getVehicleImportStatus(
+	userId: string,
+): Promise<VehicleImportStatusSnapshot> {
+	const { data: documents, error } = await supabase
+		.from('vehicle_documents')
+		.select('status')
+		.eq('user_id', userId)
+
+	if (error) {
+		if (error.message.includes('vehicle_documents')) {
+			return {
+				isScanning: false,
+				processingCount: 0,
+				completedDocumentCount: 0,
+				failedCount: 0,
+				lastRun: null,
+			}
+		}
+
+		throw new Error(error.message)
+	}
+
+	const rows = documents ?? []
+	const processingCount = rows.filter((row) =>
+		['uploaded', 'queued', 'processing', 'downloading'].includes(
+			row.status as string,
+		),
+	).length
+	const completedDocumentCount = rows.filter(
+		(row) => row.status === 'completed',
+	).length
+	const failedCount = rows.filter((row) => row.status === 'failed').length
+
+	const { data: lastRun } = await supabase
+		.from('vehicle_discovery_runs')
+		.select('*')
+		.eq('user_id', userId)
+		.order('started_at', { ascending: false })
+		.limit(1)
+		.maybeSingle()
+
+	return {
+		isScanning: processingCount > 0,
+		processingCount,
+		completedDocumentCount,
+		failedCount,
+		lastRun: lastRun
+			? mapDiscoveryRun(lastRun as Record<string, unknown>)
+			: null,
+	}
+}

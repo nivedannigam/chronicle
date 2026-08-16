@@ -5,6 +5,7 @@ export type KnowledgeDomainId =
 	| 'documents'
 	| 'finance'
 	| 'insurance'
+	| 'vehicles'
 	| 'travel'
 	| 'mail'
 	| 'tasks'

@@ -6,6 +6,10 @@ import {
 	updateRegistryRecord,
 } from '@/features/connectors/services/connector-store.service'
 import {
+	isInsuranceRegistryRow,
+	isVehicleRegistryRow,
+} from '@/features/connectors/services/registry-module-routing.service'
+import {
 	checkForDuplicate,
 	duplicateSkipMessage,
 } from '@/features/health-import/services/duplicate-detection.service'
@@ -156,6 +160,19 @@ export async function queueApprovedImports(
 	const summary = createEmptySummary()
 
 	for (const row of approved) {
+		if (
+			isInsuranceRegistryRow({
+				targetModule: (row.target_module as string | null) ?? null,
+				discoveryCategory: (row.discovery_category as string | null) ?? null,
+			}) ||
+			isVehicleRegistryRow({
+				targetModule: (row.target_module as string | null) ?? null,
+				discoveryCategory: (row.discovery_category as string | null) ?? null,
+			})
+		) {
+			continue
+		}
+
 		try {
 			const fileName = row.file_name as string
 			const mimeType = row.mime_type as string

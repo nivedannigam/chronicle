@@ -7,6 +7,7 @@ import type {
 const MODULE_COLORS: Record<TimelineModule, string> = {
 	health: C.teal,
 	insurance: C.accentBlue,
+	vehicles: C.orange,
 	documents: C.accent,
 	finance: C.greenAlt,
 	travel: C.orange,

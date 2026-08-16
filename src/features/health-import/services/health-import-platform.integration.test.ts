@@ -11,7 +11,19 @@ const mockListRegistryRecords = vi.fn()
 const mockInvalidateHealthKnowledgeCache = vi.fn()
 const mockInvalidateAfterHealthImport = vi.fn()
 const mockReprocessStuckHealthReports = vi.fn()
+const mockResolveHealthDiscoveryFolderIds = vi.fn()
 const mockSupabaseFrom = vi.fn()
+
+vi.mock(
+	'@/features/connectors/services/registry-module-routing.service',
+	() => ({
+		resolveHealthDiscoveryFolderIds: (...args: unknown[]) =>
+			mockResolveHealthDiscoveryFolderIds(...args),
+		isInsuranceAssignedFolder: vi.fn(async () => false),
+		isInsuranceRegistryRow: vi.fn(() => false),
+		listInsuranceAssignedExternalFolderIds: vi.fn(async () => new Set()),
+	}),
+)
 
 vi.mock(
 	'@/features/medical-discovery/services/medical-discovery-engine.service',
@@ -115,6 +127,10 @@ function mockCompletedReportsQuery() {
 describe('health import platform regression', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+
+		mockResolveHealthDiscoveryFolderIds.mockImplementation(
+			async (_userId: string, folderIds?: string[]) => folderIds ?? [],
+		)
 
 		mockRunMedicalDiscovery.mockResolvedValue({
 			run: {

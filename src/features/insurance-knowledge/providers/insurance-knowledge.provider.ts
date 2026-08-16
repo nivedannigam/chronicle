@@ -1,5 +1,6 @@
 import { resolveMemberDisplayName } from '@/features/family/utils/member-display'
 import type { ConnectorDocumentRecord } from '@/core/connectors'
+import { isInsuranceRegistryRow } from '@/features/connectors/services/registry-module-routing.service'
 import { buildKnowledgeConfidence } from '@/features/insurance-knowledge/engines/confidence.model'
 import {
 	aggregateCoverageByCategory,
@@ -57,13 +58,6 @@ function resolveInsurerName(
 	return (
 		insurers.find((insurer) => insurer.id === insurerId)?.displayName ??
 		insurerId
-	)
-}
-
-function isInsuranceRegistryRow(row: ConnectorDocumentRecord): boolean {
-	return (
-		row.targetModule === 'insurance' ||
-		row.discoveryCategory === 'insurance_policy'
 	)
 }
 

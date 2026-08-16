@@ -11,7 +11,7 @@ const MODULE_ROUTES: Record<string, string | null> = {
 	health: '/health',
 	insurance: '/insurance',
 	identity: null,
-	vehicles: null,
+	vehicles: '/vehicles',
 	property: null,
 	finance: null,
 	travel: null,

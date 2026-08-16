@@ -10,6 +10,7 @@ import type { ConnectorSyncMode } from '@/core/connectors'
 import { processImportQueueWithProgress } from '@/features/health-import/services/health-import-runner.service'
 import { runHealthImportSync } from '@/features/health-import/services/health-import-runner.service'
 import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
+import { runVehicleImportSync } from '@/features/vehicle-import/services/vehicle-import-runner.service'
 
 export async function processImportQueue(
 	userId: string,
@@ -38,6 +39,17 @@ export async function runGoogleDriveSync(input: {
 			error instanceof Error ? error.message : 'Insurance import failed'
 
 		if (!message.includes('No insurance folders configured')) {
+			throw error
+		}
+	}
+
+	try {
+		await runVehicleImportSync(input.userId)
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Vehicle import failed'
+
+		if (!message.includes('No vehicle folders configured')) {
 			throw error
 		}
 	}

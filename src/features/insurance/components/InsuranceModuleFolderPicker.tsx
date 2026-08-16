@@ -14,6 +14,7 @@ import { formatMemberLabel } from '@/features/family/services/folder-match.servi
 import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
 import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
 import { useDriveBrowser } from '@/features/connectors/google-drive/hooks/useDriveBrowser'
+import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
 import type { DriveBrowseFile } from '@/core/connectors'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -65,6 +66,7 @@ export function InsuranceModuleFolderPicker({
 				),
 				mode: 'replace',
 			})
+			await runInsuranceImportSync(userId)
 			onAssigned?.()
 			onClose()
 		} catch (caught) {
@@ -85,6 +87,7 @@ export function InsuranceModuleFolderPicker({
 		onAssigned,
 		onClose,
 		selectedMember,
+		userId,
 	])
 
 	if (!open) {

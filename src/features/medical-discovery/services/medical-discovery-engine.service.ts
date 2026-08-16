@@ -2,6 +2,11 @@ import { resolveReportDateFromFileName } from '@/features/health/extraction/heal
 import { supabase } from '@/lib/supabase'
 import { discoverDriveFiles } from '@/features/connectors/google-drive/services/google-drive-api.service'
 import { findRegistryByExternalFileId } from '@/features/connectors/services/connector-store.service'
+import {
+	isInsuranceRegistryRow,
+	isVehicleRegistryRow,
+	resolveHealthDiscoveryFolderIds,
+} from '@/features/connectors/services/registry-module-routing.service'
 import { listHealthSourceAssignments } from '@/features/family/services/health-sources.service'
 import {
 	checkDiscoveryDuplicate,
@@ -90,16 +95,48 @@ export async function runMedicalDiscovery(input: {
 }> {
 	const mode = input.mode ?? 'manual'
 	const assignments = await listHealthSourceAssignments(input.userId)
-	const allFolderIds = [...new Set(assignments.map((a) => a.externalFolderId))]
-	const folderIds =
-		input.folderIds && input.folderIds.length > 0
-			? input.folderIds.filter((id) => allFolderIds.includes(id))
-			: allFolderIds
+	const folderIds = await resolveHealthDiscoveryFolderIds(
+		input.userId,
+		input.folderIds,
+	)
 
 	if (folderIds.length === 0) {
-		throw new Error(
-			'No health folders configured. Assign folders in Health Sources first.',
+		const hasHealthAssignments = assignments.some(
+			(assignment) => assignment.externalFolderId,
 		)
+
+		if (!hasHealthAssignments) {
+			throw new Error(
+				'No health folders configured. Assign folders in Health Sources first.',
+			)
+		}
+
+		const run = await createDiscoveryRun(input.userId, mode)
+
+		await completeDiscoveryRun(run.id, {
+			status: 'completed',
+			foldersScanned: 0,
+			filesScanned: 0,
+			medicalCount: 0,
+			reviewCount: 0,
+			ignoredCount: 0,
+			duplicateCount: 0,
+		})
+
+		return {
+			run: {
+				...run,
+				status: 'completed',
+				completedAt: new Date().toISOString(),
+				foldersScanned: 0,
+				filesScanned: 0,
+				medicalCount: 0,
+				reviewCount: 0,
+				ignoredCount: 0,
+				duplicateCount: 0,
+			},
+			files: [],
+		}
 	}
 
 	const run = await createDiscoveryRun(input.userId, mode)
@@ -136,6 +173,22 @@ export async function runMedicalDiscovery(input: {
 				'google-drive',
 				item.externalFileId,
 			)
+
+			if (existing && isInsuranceRegistryRow(existing)) {
+				input.onProgress?.({
+					scanned: index + 1,
+					total: response.items.length,
+				})
+				continue
+			}
+
+			if (existing && isVehicleRegistryRow(existing)) {
+				input.onProgress?.({
+					scanned: index + 1,
+					total: response.items.length,
+				})
+				continue
+			}
 
 			const duplicate = await checkDiscoveryDuplicate({
 				userId: input.userId,

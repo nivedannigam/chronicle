@@ -12,6 +12,7 @@ import type {
 } from '@/features/documents/types/document-intelligence.types'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
+import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 
 function ensureModuleProvidersRegistered(): void {
@@ -159,6 +160,7 @@ export function buildModuleProviderQuery(input: {
 	healthReports: UploadedHealthReport[]
 	chronicleDocuments: ChronicleDocument[]
 	insuranceKnowledge: InsuranceKnowledge | null
+	vehicleKnowledge?: VehicleKnowledge | null
 }): ModuleProviderQuery {
 	return {
 		userId: input.userId,
@@ -168,18 +170,27 @@ export function buildModuleProviderQuery(input: {
 			health: { uploadedReports: input.healthReports },
 			documents: { uploadedDocuments: input.chronicleDocuments },
 			insurance: { knowledge: input.insuranceKnowledge },
+			vehicles: { knowledge: input.vehicleKnowledge ?? null },
 		},
 	}
 }
 
 export function resolveModuleLibraryDocumentCount(input: {
-	moduleId: 'health' | 'insurance' | 'documents'
+	moduleId: 'health' | 'insurance' | 'vehicles' | 'documents'
 	query: ModuleProviderQuery
 }): number {
 	ensureModuleProvidersRegistered()
 
 	if (input.moduleId === 'insurance') {
 		return resolveInsuranceDocumentCount(input.query)
+	}
+
+	if (input.moduleId === 'vehicles') {
+		return (
+			getRegisteredModuleProviders()
+				.find((provider) => provider.moduleId === 'vehicles')
+				?.getSummary?.(input.query)?.documentCount ?? 0
+		)
 	}
 
 	const section = getRegisteredModuleProviders()

@@ -67,6 +67,13 @@ import {
 	InsuranceProtectionPage,
 	InsuranceProtectionDetailPage,
 } from '@/features/insurance'
+import {
+	VehicleLayout,
+	VehicleHomePage,
+	VehicleDetailPage,
+	VehicleTimelinePage,
+	VehicleSettingsPage,
+} from '@/features/vehicles'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
@@ -263,6 +270,13 @@ export function AppRouter() {
 						<Route path="timeline" element={<InsuranceTimelinePage />} />
 						<Route path="ask" element={<InsuranceAskPage />} />
 						<Route path="settings" element={<InsuranceSettingsPage />} />
+					</Route>
+
+					<Route path={ROUTES.vehicles} element={<VehicleLayout />}>
+						<Route index element={<VehicleHomePage />} />
+						<Route path="timeline" element={<VehicleTimelinePage />} />
+						<Route path="settings" element={<VehicleSettingsPage />} />
+						<Route path=":vehicleSlug" element={<VehicleDetailPage />} />
 					</Route>
 
 					<Route

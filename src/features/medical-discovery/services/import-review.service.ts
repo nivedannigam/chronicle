@@ -1,4 +1,8 @@
 import { supabase } from '@/lib/supabase'
+import {
+	isInsuranceRegistryRow,
+	isVehicleRegistryRow,
+} from '@/features/connectors/services/registry-module-routing.service'
 import { transitionWorkflowItem } from '@/features/health/workflow'
 import { advanceImportWorkflowToApproved } from '@/features/health/workflow/advance-import-workflow'
 import type {
@@ -67,7 +71,10 @@ export async function listReviewDocuments(
 		.eq('user_id', userId)
 		.eq('connector_id', 'google-drive')
 		.neq('discovery_category', 'ignored')
+		.neq('discovery_category', 'insurance_policy')
+		.neq('discovery_category', 'vehicle_document')
 		.neq('approval_status', 'rejected')
+		.or('target_module.is.null,target_module.neq.insurance')
 		.order('discovery_confidence', { ascending: false })
 
 	if (filter === 'pending') {
@@ -178,6 +185,7 @@ export async function approveAllLikelyMedical(userId: string): Promise<number> {
 		.eq('connector_id', 'google-drive')
 		.eq('discovery_category', 'likely_medical')
 		.eq('approval_status', 'pending')
+		.or('target_module.is.null,target_module.neq.insurance')
 		.select('id')
 
 	if (error) {
@@ -205,7 +213,10 @@ export async function approveAllImportCandidates(
 		.eq('user_id', userId)
 		.eq('connector_id', 'google-drive')
 		.in('discovery_category', ['likely_medical', 'needs_review'])
+		.neq('discovery_category', 'insurance_policy')
+		.neq('discovery_category', 'vehicle_document')
 		.eq('approval_status', 'pending')
+		.or('target_module.is.null,target_module.neq.insurance')
 		.select('id')
 
 	if (error) {
@@ -256,10 +267,23 @@ export async function listApprovedForImport(userId: string) {
 		.eq('connector_id', 'google-drive')
 		.eq('approval_status', 'approved')
 		.in('import_status', ['discovered', 'queued', 'retry', 'failed'])
+		.neq('discovery_category', 'insurance_policy')
+		.neq('discovery_category', 'vehicle_document')
+		.or('target_module.is.null,target_module.neq.insurance')
 
 	if (error) {
 		throw new Error(error.message)
 	}
 
-	return data ?? []
+	return (data ?? []).filter(
+		(row) =>
+			!isInsuranceRegistryRow({
+				targetModule: (row.target_module as string | null) ?? null,
+				discoveryCategory: (row.discovery_category as string | null) ?? null,
+			}) &&
+			!isVehicleRegistryRow({
+				targetModule: (row.target_module as string | null) ?? null,
+				discoveryCategory: (row.discovery_category as string | null) ?? null,
+			}),
+	)
 }
