@@ -20,16 +20,16 @@ const DOCUMENT_TABS: {
 	end?: boolean
 }[] = [
 	{
-		id: 'home',
-		label: 'Home',
+		id: 'browse',
+		label: 'Browse',
 		path: ROUTES.documents,
 		Icon: Home,
 		color: FC.blue,
 		end: true,
 	},
 	{
-		id: 'library',
-		label: 'Library',
+		id: 'all',
+		label: 'All',
 		path: ROUTES.documentsLibrary,
 		Icon: FolderOpen,
 		color: FC.teal,

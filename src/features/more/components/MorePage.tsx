@@ -1,5 +1,5 @@
-import { FigmaMoreScreen } from '@/ui/figma/screens/FigmaMoreScreen'
+import { ModulesPage } from '@/features/modules'
 
 export function MorePage() {
-	return <FigmaMoreScreen />
+	return <ModulesPage />
 }

@@ -18,4 +18,7 @@ export {
 export { FigmaStatusBar } from '@/ui/figma/shell/StatusBar'
 export { FigmaHomeScreen } from '@/ui/figma/screens/FigmaHomeScreen'
 export { FigmaAskScreen } from '@/ui/figma/screens/FigmaAskScreen'
-export { FigmaMoreScreen } from '@/ui/figma/screens/FigmaMoreScreen'
+export {
+	FigmaModulesScreen,
+	FigmaMoreScreen,
+} from '@/ui/figma/screens/FigmaModulesScreen'

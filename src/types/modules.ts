@@ -7,6 +7,8 @@ export interface ModuleDefinition {
 	enabled: boolean
 	comingSoon: boolean
 	color?: string
+	description?: string
+	route?: string
 }
 
 export interface SettingsItem {

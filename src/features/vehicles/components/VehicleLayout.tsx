@@ -66,6 +66,8 @@ export function VehicleLayout() {
 			header={
 				<FigmaScreenHeader
 					title="Vehicles"
+					onBack={() => navigate(ROUTES.modules)}
+					backLabel="Modules"
 					actions={
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 							<FamilyMemberSwitcher />

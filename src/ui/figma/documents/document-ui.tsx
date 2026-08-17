@@ -114,11 +114,20 @@ export function DocumentStatusBadge({
 
 export function DocumentModuleChip({
 	label,
+	count,
+	emoji,
 	onClick,
 }: {
 	label: string
+	count?: number
+	emoji?: string
 	onClick?: () => void
 }) {
+	const displayLabel =
+		count != null
+			? `${emoji ? `${emoji} ` : ''}${label} ${count}`
+			: `${emoji ? `${emoji} ` : ''}${label}`
+
 	return (
 		<button
 			type="button"
@@ -128,15 +137,15 @@ export function DocumentModuleChip({
 				background: FC.ghost,
 				border: `1px solid ${FC.line}`,
 				borderRadius: 100,
-				padding: '4px 9px',
+				padding: '8px 12px',
 				cursor: onClick ? 'pointer' : 'default',
 				fontFamily: 'inherit',
 				color: FC.mid,
-				fontSize: 10.5,
+				fontSize: 12,
 				fontWeight: 600,
 			}}
 		>
-			{label}
+			{displayLabel}
 		</button>
 	)
 }

@@ -19,6 +19,7 @@ export const ROUTES = {
 	mail: '/mail',
 	tasks: '/tasks',
 	more: '/more',
+	modules: '/modules',
 	health: '/health',
 	healthProgress: '/health/progress',
 	healthReports: '/health/reports',

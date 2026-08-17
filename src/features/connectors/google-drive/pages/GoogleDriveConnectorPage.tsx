@@ -62,7 +62,7 @@ export function GoogleDriveConnectorPage() {
 		<div style={{ padding: '18px 18px 20px', color: C.text }}>
 			<button
 				type="button"
-				onClick={() => navigate(ROUTES.more)}
+				onClick={() => navigate(ROUTES.modules)}
 				style={{
 					display: 'flex',
 					alignItems: 'center',

@@ -94,6 +94,8 @@ export function HealthLayout() {
 			header={
 				<FigmaScreenHeader
 					title="Health"
+					onBack={() => navigate(ROUTES.modules)}
+					backLabel="Modules"
 					actions={
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 							<FamilyMemberSwitcher />

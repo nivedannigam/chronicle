@@ -10,9 +10,9 @@ export interface NavigationItem {
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
 	{ moduleId: 'home', path: ROUTES.home, label: 'Home', badge: '' },
-	{ moduleId: 'library', path: ROUTES.documents, label: 'Library', badge: '' },
+	{ moduleId: 'modules', path: ROUTES.modules, label: 'Modules', badge: '' },
 	{ moduleId: 'ask', path: ROUTES.ask, label: 'Ask', badge: '' },
-	{ moduleId: 'timeline', path: ROUTES.timeline, label: 'Timeline', badge: '' },
+	{ moduleId: 'library', path: ROUTES.documents, label: 'Library', badge: '' },
 	{ moduleId: 'profile', path: ROUTES.profile, label: 'You', badge: '' },
 ]
 

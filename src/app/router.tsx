@@ -32,7 +32,7 @@ import {
 	FamilyMemberFormPage,
 	FamilyOverviewPage,
 } from '@/features/family'
-import { MorePage } from '@/features/more'
+import { ModulesPage } from '@/features/modules'
 import {
 	SettingsAccountPage,
 	SettingsAppearancePage,
@@ -143,7 +143,11 @@ export function AppRouter() {
 					<Route path={ROUTES.notifications} element={<NotificationsPage />} />
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
-					<Route path={ROUTES.more} element={<MorePage />} />
+					<Route path={ROUTES.modules} element={<ModulesPage />} />
+					<Route
+						path={ROUTES.more}
+						element={<Navigate to={ROUTES.modules} replace />}
+					/>
 					<Route path={ROUTES.documents} element={<DocumentsLayout />}>
 						<Route index element={<DocumentsPage />} />
 						<Route path="library" element={<DocumentsLibraryPage />} />

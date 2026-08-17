@@ -103,6 +103,8 @@ export function InsuranceLayout() {
 			header={
 				<FigmaScreenHeader
 					title="Insurance"
+					onBack={() => navigate(ROUTES.modules)}
+					backLabel="Modules"
 					actions={
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 							<FamilyMemberSwitcher />

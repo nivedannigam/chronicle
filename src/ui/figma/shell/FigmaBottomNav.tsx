@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Home, Sparkles, User } from 'lucide-react'
+import { BookOpen, Home, LayoutGrid, Sparkles, User } from 'lucide-react'
 import { useActiveTab } from '@/hooks/useActiveTab'
 import { FC } from '@/ui/figma/tokens/figma-v2-tokens'
 import type { Tab } from '@/types/navigation'
@@ -10,9 +10,9 @@ const NAV_ITEMS: {
 	center?: boolean
 }[] = [
 	{ id: 'home', Icon: Home, label: 'Home' },
-	{ id: 'library', Icon: BookOpen, label: 'Library' },
+	{ id: 'modules', Icon: LayoutGrid, label: 'Modules' },
 	{ id: 'ask', Icon: Sparkles, label: 'Ask', center: true },
-	{ id: 'timeline', Icon: Clock, label: 'Timeline' },
+	{ id: 'library', Icon: BookOpen, label: 'Library' },
 	{ id: 'profile', Icon: User, label: 'You' },
 ]
 

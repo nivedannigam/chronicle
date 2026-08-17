@@ -12,7 +12,7 @@ interface HealthPageHeaderProps {
 export function HealthPageHeader({
 	title,
 	subtitle,
-	backTo = ROUTES.more,
+	backTo = ROUTES.modules,
 }: HealthPageHeaderProps) {
 	const navigate = useNavigate()
 
@@ -36,7 +36,7 @@ export function HealthPageHeader({
 				}}
 			>
 				<ArrowLeft size={18} />
-				Back
+				Modules
 			</button>
 			<div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em' }}>
 				{title}
