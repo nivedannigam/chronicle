@@ -4,6 +4,7 @@ import {
 	findRegistryByExternalFileId,
 	upsertRegistryRecord,
 } from '@/features/connectors/services/connector-store.service'
+import { resolveModuleFolderAssignmentForFile } from '@/features/connectors/services/module-folder-assignment-resolver'
 import { listInsuranceSourceAssignments } from '@/features/family/services/insurance-sources.service'
 import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
 import type { InsuranceDiscoveryRunSummary } from '@/features/insurance-import/types/insurance-import.types'
@@ -112,9 +113,7 @@ export async function runInsuranceDiscovery(input: {
 				continue
 			}
 
-			const assignment = assignments.find(
-				(entry) => entry.externalFolderId === item.folderExternalId,
-			)
+			const assignment = resolveModuleFolderAssignmentForFile(item, assignments)
 
 			if (!assignment) {
 				continue

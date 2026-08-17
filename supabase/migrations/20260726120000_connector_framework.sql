@@ -114,22 +114,27 @@ ALTER TABLE public.connector_document_registry ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.connector_import_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.connector_sync_runs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own connector connections" ON public.connector_connections;
 CREATE POLICY "Users manage own connector connections"
 	ON public.connector_connections FOR ALL TO authenticated
 	USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own connector folders" ON public.connector_folders;
 CREATE POLICY "Users manage own connector folders"
 	ON public.connector_folders FOR ALL TO authenticated
 	USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own connector registry" ON public.connector_document_registry;
 CREATE POLICY "Users manage own connector registry"
 	ON public.connector_document_registry FOR ALL TO authenticated
 	USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own connector import queue" ON public.connector_import_queue;
 CREATE POLICY "Users manage own connector import queue"
 	ON public.connector_import_queue FOR ALL TO authenticated
 	USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own connector sync runs" ON public.connector_sync_runs;
 CREATE POLICY "Users manage own connector sync runs"
 	ON public.connector_sync_runs FOR ALL TO authenticated
 	USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

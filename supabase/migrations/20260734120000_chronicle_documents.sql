@@ -51,6 +51,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS chronicle_documents_external_file_idx
 
 ALTER TABLE public.chronicle_documents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own documents" ON public.chronicle_documents;
 CREATE POLICY "Users manage own documents"
 	ON public.chronicle_documents
 	FOR ALL
@@ -71,6 +72,7 @@ SET
 	file_size_limit = EXCLUDED.file_size_limit,
 	allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+DROP POLICY IF EXISTS "Users upload own document files" ON storage.objects;
 CREATE POLICY "Users upload own document files"
 	ON storage.objects
 	FOR INSERT
@@ -80,6 +82,7 @@ CREATE POLICY "Users upload own document files"
 		AND auth.uid()::text = (storage.foldername(name))[1]
 	);
 
+DROP POLICY IF EXISTS "Users read own document files" ON storage.objects;
 CREATE POLICY "Users read own document files"
 	ON storage.objects
 	FOR SELECT
@@ -89,6 +92,7 @@ CREATE POLICY "Users read own document files"
 		AND auth.uid()::text = (storage.foldername(name))[1]
 	);
 
+DROP POLICY IF EXISTS "Users delete own document files" ON storage.objects;
 CREATE POLICY "Users delete own document files"
 	ON storage.objects
 	FOR DELETE

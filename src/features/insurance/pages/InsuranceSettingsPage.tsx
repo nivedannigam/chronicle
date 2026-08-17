@@ -24,6 +24,7 @@ import {
 	formatLastScannedLabel,
 } from '@/features/settings/services/module-folder-assignments.service'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
+import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
 import { FigmaInsuranceSettingsView } from '@/ui/figma/insurance/FigmaInsuranceSettingsView'
 
 export function InsuranceSettingsPage() {
@@ -119,7 +120,12 @@ export function InsuranceSettingsPage() {
 
 	const handleForceRescan = async () => {
 		recordScan()
-		await driveConnector.sync()
+		try {
+			await driveConnector.sync()
+		} catch {
+			// Health sync may fail when only insurance is configured.
+		}
+		await runInsuranceImportSync(userId)
 		await refresh()
 		await refetchKnowledge()
 	}

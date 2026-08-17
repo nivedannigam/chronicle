@@ -19,18 +19,21 @@ CREATE INDEX IF NOT EXISTS health_reports_uploaded_at_idx
 
 ALTER TABLE public.health_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own health reports" ON public.health_reports;
 CREATE POLICY "Users can view own health reports"
 	ON public.health_reports
 	FOR SELECT
 	TO authenticated
 	USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own health reports" ON public.health_reports;
 CREATE POLICY "Users can insert own health reports"
 	ON public.health_reports
 	FOR INSERT
 	TO authenticated
 	WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own health reports" ON public.health_reports;
 CREATE POLICY "Users can delete own health reports"
 	ON public.health_reports
 	FOR DELETE
@@ -51,6 +54,7 @@ SET
 	file_size_limit = EXCLUDED.file_size_limit,
 	allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+DROP POLICY IF EXISTS "Users can upload own health report files" ON storage.objects;
 CREATE POLICY "Users can upload own health report files"
 	ON storage.objects
 	FOR INSERT
@@ -60,6 +64,7 @@ CREATE POLICY "Users can upload own health report files"
 		AND auth.uid()::text = (storage.foldername(name))[1]
 	);
 
+DROP POLICY IF EXISTS "Users can read own health report files" ON storage.objects;
 CREATE POLICY "Users can read own health report files"
 	ON storage.objects
 	FOR SELECT
@@ -69,6 +74,7 @@ CREATE POLICY "Users can read own health report files"
 		AND auth.uid()::text = (storage.foldername(name))[1]
 	);
 
+DROP POLICY IF EXISTS "Users can delete own health report files" ON storage.objects;
 CREATE POLICY "Users can delete own health report files"
 	ON storage.objects
 	FOR DELETE
