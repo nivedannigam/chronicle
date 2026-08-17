@@ -138,7 +138,7 @@ export function FigmaImportCenterView({
 				)}
 			</Section>
 
-			<Section label="Needs your help">
+			<Section label={USER_VOCAB.sections.needsAttention}>
 				{view.needsHelp.length === 0 ? (
 					<EmptySection message="Chronicle has everything it needs for now." />
 				) : (

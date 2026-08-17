@@ -20,6 +20,8 @@ export const ROUTES = {
 	tasks: '/tasks',
 	more: '/more',
 	modules: '/modules',
+	setup: '/setup',
+	reviewDocuments: '/health/review-documents',
 	health: '/health',
 	healthProgress: '/health/progress',
 	healthReports: '/health/reports',
@@ -65,6 +67,8 @@ export const ROUTES = {
 	profileConnectionsDrive: '/profile/connections/drive',
 	profilePreferences: '/profile/preferences',
 	profileSecurity: '/profile/security',
+	profileAdvanced: '/profile/advanced',
+	profileStorage: '/profile/storage',
 	insurance: '/insurance',
 	insuranceCoverage: '/insurance/coverage',
 	insuranceCoverageDetail: '/insurance/coverage/:categoryId',
@@ -127,7 +131,7 @@ export function healthSettingsSection(section: HealthSettingsSection) {
 		section === 'import-issues' ||
 		section === 'import'
 	) {
-		return ROUTES.healthImportCenter
+		return ROUTES.reviewDocuments
 	}
 
 	return ROUTES.healthSettings

@@ -33,6 +33,7 @@ import {
 	FamilyOverviewPage,
 } from '@/features/family'
 import { ModulesPage } from '@/features/modules'
+import { SetupPage } from '@/features/setup'
 import {
 	SettingsAccountPage,
 	SettingsAppearancePage,
@@ -41,6 +42,8 @@ import {
 	ProfileConnectionsPage,
 	ProfileDrivePage,
 	ProfileSecurityPage,
+	ProfileAdvancedPage,
+	ProfileStoragePage,
 	PreferencesPage,
 } from '@/features/settings'
 import { TasksPage } from '@/features/tasks'
@@ -143,6 +146,7 @@ export function AppRouter() {
 					<Route path={ROUTES.notifications} element={<NotificationsPage />} />
 					<Route path={ROUTES.mail} element={<MailPage />} />
 					<Route path={ROUTES.tasks} element={<TasksPage />} />
+					<Route path={ROUTES.setup} element={<SetupPage />} />
 					<Route path={ROUTES.modules} element={<ModulesPage />} />
 					<Route
 						path={ROUTES.more}
@@ -192,6 +196,14 @@ export function AppRouter() {
 						element={<ProfileSecurityPage />}
 					/>
 					<Route
+						path={ROUTES.profileAdvanced}
+						element={<ProfileAdvancedPage />}
+					/>
+					<Route
+						path={ROUTES.profileStorage}
+						element={<ProfileStoragePage />}
+					/>
+					<Route
 						path={ROUTES.settingsAccount}
 						element={<Navigate to={ROUTES.profilePersonal} replace />}
 					/>
@@ -205,15 +217,15 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.settingsImport}
-						element={<Navigate to={ROUTES.healthImportCenter} replace />}
+						element={<Navigate to={ROUTES.reviewDocuments} replace />}
 					/>
 					<Route
 						path={ROUTES.connectorsGoogleDrive}
-						element={<Navigate to={ROUTES.healthFolderSetup} replace />}
+						element={<Navigate to={ROUTES.profileConnectionsDrive} replace />}
 					/>
 					<Route
 						path={ROUTES.healthImport}
-						element={<Navigate to={ROUTES.healthImportCenter} replace />}
+						element={<Navigate to={ROUTES.reviewDocuments} replace />}
 					/>
 					<Route
 						path={ROUTES.healthTrends}
@@ -221,7 +233,7 @@ export function AppRouter() {
 					/>
 					<Route
 						path={ROUTES.healthImportReview}
-						element={<Navigate to={ROUTES.healthImportCenter} replace />}
+						element={<Navigate to={ROUTES.reviewDocuments} replace />}
 					/>
 
 					<Route path={ROUTES.health} element={<HealthLayout />}>
@@ -232,10 +244,17 @@ export function AppRouter() {
 						<Route path="visits/:visitId" element={<HealthVisitDetailPage />} />
 						<Route path="ask" element={<HealthAskPage />} />
 						<Route path="settings" element={<HealthSettingsPage />} />
-						<Route path="import-center" element={<HealthImportCenterPage />} />
+						<Route
+							path="review-documents"
+							element={<HealthImportCenterPage />}
+						/>
+						<Route
+							path="import-center"
+							element={<Navigate to="../review-documents" replace />}
+						/>
 						<Route
 							path="settings/import"
-							element={<Navigate to={ROUTES.healthImportCenter} replace />}
+							element={<Navigate to={ROUTES.reviewDocuments} replace />}
 						/>
 						<Route
 							path="settings/folders"
@@ -312,7 +331,7 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthImportDebug}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthKnowledgeDebug}
@@ -324,11 +343,11 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthDiscovery}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportWizard}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthCompare}
@@ -343,15 +362,15 @@ export function AppRouter() {
 							/>
 							<Route
 								path={ROUTES.healthDiscovery}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportWizard}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthImportDebug}
-								element={<Navigate to={ROUTES.healthImportCenter} replace />}
+								element={<Navigate to={ROUTES.reviewDocuments} replace />}
 							/>
 							<Route
 								path={ROUTES.healthKnowledgeDebug}

@@ -66,6 +66,54 @@ export function buildExtractMetricsPrompt(input: {
 	]
 }
 
+export function buildExtractMetricsDirectPrompt(input: {
+	fileName: string
+}): Array<{ role: string; content: string }> {
+	return [
+		{
+			role: 'system',
+			content: `${SYSTEM_PROMPT}
+Read the attached medical report document directly. Do not rely on OCR text.`,
+		},
+		{
+			role: 'user',
+			content: [
+				`File name: ${input.fileName}`,
+				'Extract laboratory metrics as JSON with this shape:',
+				JSON.stringify(
+					{
+						metrics: [
+							{
+								rawName: 'HEMOGLOBIN',
+								displayName: 'Hemoglobin',
+								value: '13.5',
+								unit: 'g/dL',
+								referenceRange: {
+									rawText: '12.0-16.0',
+									lowerLimit: 12,
+									upperLimit: 16,
+									unit: 'g/dL',
+								},
+								status: 'normal',
+							},
+						],
+						metadata: {
+							laboratory: 'Example Lab',
+							reportDate: '2026-03-09',
+							patientName: null,
+							reportType: 'general',
+						},
+						warnings: [],
+					},
+					null,
+					2,
+				),
+				'Read the attached document and extract all laboratory metrics you can find.',
+			].join('\n\n'),
+		},
+	]
+}
+
 export function parseExtractMetricsModelJson(raw: string): {
 	metrics: ExtractMetricsAiEdgeMetric[]
 	metadata: {

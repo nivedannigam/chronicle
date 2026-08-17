@@ -18,6 +18,7 @@ import {
 	type VehicleSourceAssignment,
 } from '@/features/family/services/vehicle-sources.service'
 import type { DomainDocumentExtractionResult } from '@/shared/ai/types/domain-document-extraction.types'
+import { isAiStructuredExtractionMethod } from '@/shared/ai/types/document-extraction.types'
 import { invalidateVehicleKnowledgeCache } from '@/features/vehicle-knowledge/services/vehicle-knowledge-cache'
 
 function mergeDomainVehicleExtraction(input: {
@@ -32,7 +33,7 @@ function mergeDomainVehicleExtraction(input: {
 	})
 	const ai = input.domainResult.vehicle
 
-	if (!ai || input.domainResult.method !== 'llm') {
+	if (!ai || !isAiStructuredExtractionMethod(input.domainResult.method)) {
 		return base
 	}
 

@@ -5,11 +5,19 @@ export interface AskAiMessage {
 	content: string
 }
 
+export interface AskAiDocumentAttachment {
+	bucket: 'health-reports' | 'personal-documents'
+	storagePath: string
+	mimeType?: string
+	fileName?: string
+}
+
 export interface AskAiRequestBody {
 	action?: 'ping'
 	provider?: AskAiProvider
 	model?: string
 	messages?: AskAiMessage[]
+	documentAttachment?: AskAiDocumentAttachment
 	responseFormat?: 'text' | 'json'
 	temperature?: number
 	maxTokens?: number

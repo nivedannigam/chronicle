@@ -233,14 +233,14 @@ function consumerRecommendationTitle(step: HealthNextStep): string {
 
 function consumerRecommendationPath(step: HealthNextStep): string | undefined {
 	if (step.id === 'review-imports') {
-		return ROUTES.healthImportCenter
+		return ROUTES.reviewDocuments
 	}
 
 	if (
 		step.actionPath?.includes('settings') &&
 		step.actionPath.includes('review')
 	) {
-		return ROUTES.healthImportCenter
+		return ROUTES.reviewDocuments
 	}
 
 	return step.actionPath

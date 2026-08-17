@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Cloud, Heart } from 'lucide-react'
+import { Cloud } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
@@ -34,29 +34,22 @@ export function FigmaProfileConnectionsScreen() {
 
 	return (
 		<ProfilePageShell
-			title="Connected Accounts"
+			title="Connected services"
 			subtitle="Services linked to your Chronicle account"
-			backLabel="Profile"
+			backLabel="You"
 			onBack={() => navigate(ROUTES.profile)}
 		>
-			<ProfileSectionCard title="Active">
+			<ProfileSectionCard title="Available">
 				<ProfileNavRow
 					icon={Cloud}
 					label="Google Drive"
 					subtitle={
 						driveConnected
 							? `${drive.googleEmail ?? 'Connected'} · Last sync ${formatLastSync(lastSync)}`
-							: 'Connect to import health documents'
+							: 'Connect to organize your documents'
 					}
 					iconBg={FC.green}
 					onClick={() => navigate(ROUTES.profileConnectionsDrive)}
-				/>
-				<ProfileNavRow
-					icon={Heart}
-					label="Health import"
-					subtitle="Folder assignments and scan settings"
-					iconBg={FC.red}
-					onClick={() => navigate(ROUTES.healthSettings)}
 					isLast
 				/>
 			</ProfileSectionCard>
@@ -70,8 +63,8 @@ export function FigmaProfileConnectionsScreen() {
 					padding: '0 4px',
 				}}
 			>
-				Google Calendar, email, and wearable integrations will appear here when
-				available.
+				Module folders are configured in each module's Settings. Google Drive
+				connection is managed here.
 			</p>
 		</ProfilePageShell>
 	)

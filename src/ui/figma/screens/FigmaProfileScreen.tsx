@@ -1,13 +1,27 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HardDrive, Heart, Lock, Sliders, User, Users } from 'lucide-react'
+import {
+	Bell,
+	Download,
+	HardDrive,
+	Lock,
+	Palette,
+	Settings2,
+	Sliders,
+	User,
+	Users,
+} from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { readChronicleSetupState } from '@/features/setup/services/chronicle-setup.service'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { FAMILY_ROLE_LABELS } from '@/features/family/constants/family-roles'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
+import { useHealthSources } from '@/features/family/hooks/useHealthSources'
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
+import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
+import { useVehicleSources } from '@/features/vehicles/hooks/useVehicleSources'
 import { useUser } from '@/features/user/hooks/useUser'
 import {
 	ProfileAvatar,
@@ -51,6 +65,9 @@ export function FigmaProfileScreen() {
 	const { allReports } = useMemberHealthReports()
 	const { data: documents = [] } = useMemberDocuments()
 	const drive = useGoogleDriveConnector(user?.id ?? '')
+	const { assignments: healthAssignments } = useHealthSources(user?.id)
+	const { assignments: insuranceAssignments } = useInsuranceSources(user?.id)
+	const { moduleAssignments: vehicleAssignments } = useVehicleSources(user?.id)
 
 	const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'You'
 	const email = user?.email ?? ''
@@ -59,6 +76,10 @@ export function FigmaProfileScreen() {
 		: 'Account Owner'
 
 	const driveConnected = drive.connectionStatus === 'connected'
+	const setupState = readChronicleSetupState()
+	const rootFolderLabel =
+		setupState.rootFolder?.folderPath ?? setupState.rootFolder?.folderName
+
 	const registryLastSync = drive.registry.reduce<string | null>(
 		(latest, record) => {
 			const candidate = record.lastSyncAt ?? record.importedAt
@@ -81,6 +102,18 @@ export function FigmaProfileScreen() {
 		drive.latestSync?.completedAt ??
 		drive.latestSync?.startedAt ??
 		registryLastSync
+
+	const hasModuleAssignments = useMemo(
+		() =>
+			healthAssignments.length > 0 ||
+			insuranceAssignments.length > 0 ||
+			vehicleAssignments.length > 0,
+		[
+			healthAssignments.length,
+			insuranceAssignments.length,
+			vehicleAssignments.length,
+		],
+	)
 
 	const stats = useMemo(
 		() => [
@@ -124,7 +157,7 @@ export function FigmaProfileScreen() {
 						margin: 0,
 					}}
 				>
-					Profile
+					You
 				</h1>
 			</div>
 			<div
@@ -207,6 +240,43 @@ export function FigmaProfileScreen() {
 				</div>
 			</div>
 
+			{!driveConnected || !hasModuleAssignments ? (
+				<div style={{ marginBottom: 18 }}>
+					<button
+						type="button"
+						onClick={() => navigate(ROUTES.setup)}
+						style={{
+							width: '100%',
+							borderRadius: 18,
+							border: `1px solid ${FC.blue}35`,
+							background: `${FC.blue}12`,
+							padding: '14px 16px',
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+							textAlign: 'left',
+						}}
+					>
+						<p
+							style={{
+								color: FC.fg,
+								fontSize: 14,
+								fontWeight: 700,
+								margin: '0 0 4px',
+							}}
+						>
+							{driveConnected
+								? 'Finish connecting your folders'
+								: 'Connect Chronicle to your documents'}
+						</p>
+						<p style={{ color: FC.dim, fontSize: 12.5, margin: 0 }}>
+							{rootFolderLabel
+								? `Chronicle folder: ${rootFolderLabel}`
+								: 'A quick setup journey gets Chronicle ready.'}
+						</p>
+					</button>
+				</div>
+			) : null}
+
 			<div
 				style={{
 					display: 'grid',
@@ -229,7 +299,7 @@ export function FigmaProfileScreen() {
 			<ProfileSectionCard title="Account">
 				<ProfileNavRow
 					icon={User}
-					label="Personal"
+					label="Profile"
 					subtitle="Name, email, language, timezone"
 					iconBg={FC.blue}
 					onClick={() => navigate(ROUTES.profilePersonal)}
@@ -243,43 +313,60 @@ export function FigmaProfileScreen() {
 				/>
 				<ProfileNavRow
 					icon={HardDrive}
-					label="Connected Accounts"
+					label="Connected services"
 					subtitle={
 						driveConnected
-							? `Google Drive · synced ${formatLastSync(lastSync)}`
-							: 'Connect Google Drive and more'
+							? `Google Drive · ${rootFolderLabel ?? 'Connected'}`
+							: 'Connect Google Drive'
 					}
 					iconBg={FC.green}
 					onClick={() => navigate(ROUTES.profileConnections)}
 				/>
 				<ProfileNavRow
-					icon={Sliders}
-					label="Preferences"
-					subtitle="Default member, AI style, notifications"
-					iconBg={FC.indigo}
-					onClick={() => navigate(ROUTES.profilePreferences)}
-					isLast
-				/>
-			</ProfileSectionCard>
-
-			<ProfileSectionCard title="Privacy & Security">
-				<ProfileNavRow
 					icon={Lock}
-					label="Security"
+					label="Privacy"
 					subtitle="Authentication, data, sign out"
 					iconBg={FC.amber}
 					onClick={() => navigate(ROUTES.profileSecurity)}
+				/>
+				<ProfileNavRow
+					icon={Bell}
+					label="Notifications"
+					subtitle="Reminders and alerts"
+					iconBg={FC.orange}
+					onClick={() => navigate(ROUTES.settingsNotifications)}
+				/>
+				<ProfileNavRow
+					icon={Palette}
+					label="Appearance"
+					subtitle="Theme and display"
+					iconBg={FC.indigo}
+					onClick={() => navigate(ROUTES.settingsAppearance)}
+				/>
+				<ProfileNavRow
+					icon={Download}
+					label="Storage & export"
+					subtitle="Download and manage your data"
+					iconBg={FC.teal}
+					onClick={() => navigate(ROUTES.profileStorage)}
+				/>
+				<ProfileNavRow
+					icon={Settings2}
+					label="Advanced"
+					subtitle="Diagnostics and troubleshooting"
+					iconBg={FC.mid}
+					onClick={() => navigate(ROUTES.profileAdvanced)}
 					isLast
 				/>
 			</ProfileSectionCard>
 
-			<ProfileSectionCard title="Modules">
+			<ProfileSectionCard title="Preferences">
 				<ProfileNavRow
-					icon={Heart}
-					label="Health setup"
-					subtitle="Import sources, folders, scan settings"
-					iconBg={FC.red}
-					onClick={() => navigate(ROUTES.healthSettings)}
+					icon={Sliders}
+					label="Preferences"
+					subtitle="Default member, AI style, display format"
+					iconBg={FC.indigo}
+					onClick={() => navigate(ROUTES.profilePreferences)}
 					isLast
 				/>
 			</ProfileSectionCard>

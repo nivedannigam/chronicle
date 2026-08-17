@@ -1,5 +1,9 @@
 import type { InsurancePolicyType } from '@/features/insurance-knowledge/types/insurance-record.types'
 import type { VehicleDocumentTypeId } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
+import type {
+	DocumentExtractionMethod,
+	DocumentExtractionObservability,
+} from '@/shared/ai/types/document-extraction.types'
 
 export type DomainDocumentExtractionTarget = 'insurance' | 'vehicles'
 
@@ -44,8 +48,9 @@ export interface VehicleDocumentAiExtraction {
 
 export interface DomainDocumentExtractionResult {
 	target: DomainDocumentExtractionTarget
-	method: 'llm' | 'metadata_fallback'
+	method: DocumentExtractionMethod
 	extractedText: string | null
 	insurance?: InsuranceDocumentExtraction
 	vehicle?: VehicleDocumentAiExtraction
+	observability?: DocumentExtractionObservability
 }

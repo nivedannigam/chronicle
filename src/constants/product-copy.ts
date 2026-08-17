@@ -13,9 +13,9 @@ export const ONBOARDING_COPY = {
 	stepFamilyTitle: 'Start with your family',
 	stepFamilyBody:
 		'Add family members so health records and documents stay organized by person.',
-	stepHealthTitle: 'Connect health records',
+	stepHealthTitle: 'Connect your documents',
 	stepHealthBody:
-		'Link Google Drive and Chronicle will find lab reports and organize them for you.',
+		'Connect Google Drive and choose your Chronicle folder. Chronicle will find Health, Insurance, and Vehicles folders automatically.',
 	stepDocumentTitle: 'Add an important document',
 	stepDocumentBody:
 		'Upload a passport, insurance policy, or any document you want to keep handy.',

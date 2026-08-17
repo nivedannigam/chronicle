@@ -57,7 +57,11 @@ export const USER_VOCAB = {
 		healthImpact: 'Health impact',
 		relatedVisits: 'Related visits',
 		advanced: 'Advanced',
-		reportImports: 'Report imports',
+		reportImports: 'Review documents',
+		reviewDocuments: 'Review documents',
+		needsAttention: 'Needs your attention',
+		dataSource: 'Data source',
+		importPreferences: 'Import preferences',
 	},
 	messages: {
 		couldNotUnderstand: "Chronicle couldn't understand this report yet.",

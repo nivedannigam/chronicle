@@ -150,6 +150,7 @@ serve(async (request) => {
 			correlationId,
 			timings,
 			startedAt,
+			userId: user.id,
 		})
 	} catch (error) {
 		return handleFailure({
@@ -204,12 +205,15 @@ async function handleGeminiComplete(input: {
 	correlationId: string
 	timings: RequestTimings
 	startedAt: number
+	userId: string
 }): Promise<Response> {
 	try {
 		const geminiResult = await callGemini({
 			correlationId: input.correlationId,
 			body: input.body,
 			mode: 'complete',
+			documentAttachment: input.body.documentAttachment,
+			userId: input.userId,
 		})
 
 		input.timings.geminiMs = Math.round(geminiResult.geminiMs)

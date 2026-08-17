@@ -39,6 +39,12 @@ export interface AskAiEdgeInvokeBody {
 	provider: 'gemini'
 	model: string
 	messages: Array<{ role: string; content: string }>
+	documentAttachment?: {
+		bucket: 'health-reports' | 'personal-documents'
+		storagePath: string
+		mimeType?: string
+		fileName?: string
+	}
 	responseFormat?: 'text' | 'json'
 	temperature?: number
 	maxTokens?: number
@@ -126,6 +132,7 @@ export async function invokeAskAiEdgeFunction(
 			provider,
 			model,
 			messages: body.messages,
+			documentAttachment: body.documentAttachment,
 			responseFormat: body.responseFormat ?? 'json',
 			temperature: body.temperature,
 			maxTokens: body.maxTokens,

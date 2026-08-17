@@ -85,7 +85,7 @@ export function HealthSettingsPage() {
 			onDisconnect={() => void handleDisconnect()}
 			isDisconnecting={isDisconnecting}
 			importCenterAttentionCount={importAttention.needsAttentionCount}
-			onOpenImportCenter={() => navigate(ROUTES.healthImportCenter)}
+			onOpenImportCenter={() => navigate(ROUTES.reviewDocuments)}
 		/>
 	)
 }

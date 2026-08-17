@@ -32,6 +32,7 @@ import {
 	AI_REPROCESS_FAILED_USER_MESSAGE,
 	buildHealthReportFromAiExtraction,
 	buildHealthReportWithAiDefaultExtraction,
+	buildHealthReportFromAiDirectExtraction,
 	OCR_FAILED_USER_MESSAGE,
 	reportEligibleForAiReprocess,
 	toAiReprocessUserFacingError,
@@ -55,6 +56,7 @@ import {
 	clearRegistryErrorForReport,
 	syncRegistryWithReportOutcome,
 } from '@/features/health-import/services/registry-report-sync.service'
+import type { HealthReport } from '@/features/document-intelligence/domain/health-report.domain'
 import type {
 	HealthReportStatus,
 	UploadedHealthReport,
@@ -148,6 +150,259 @@ export async function enqueueHealthReportProcessing(
 	await updateReportStatus(reportId, { status: 'queued' })
 }
 
+async function completeHealthReportAfterExtraction(input: {
+	reportId: string
+	typedReport: UploadedHealthReport
+	finalHealthReport: HealthReport
+	parsedReportUpdate: ReportUpdate
+	outcome: {
+		pageCount: number
+		characters: number
+		confidence: number | null
+		processingTimeMs: number
+	}
+	useLayoutOnly?: boolean
+	reportWithOcr?: UploadedHealthReport
+}): Promise<UploadedHealthReport> {
+	const processedAt =
+		input.parsedReportUpdate.processed_at ?? new Date().toISOString()
+	const reportWithOcr = input.reportWithOcr ?? {
+		...input.typedReport,
+		...input.parsedReportUpdate,
+	}
+	const finalParsedReportUpdate = {
+		...input.parsedReportUpdate,
+		parsed_data: serializeParsedHealthReport(input.finalHealthReport),
+		report_type: input.finalHealthReport.metadata.reportType,
+		report_date: input.finalHealthReport.metadata.reportDate,
+	}
+
+	await updateReportStatus(input.reportId, {
+		status: 'parsed',
+		...finalParsedReportUpdate,
+	})
+
+	let persistedMetricCount = 0
+
+	try {
+		const displayDate = getReportDisplayDate(
+			reportWithOcr,
+			input.finalHealthReport,
+		)
+
+		persistedMetricCount = await persistHealthMetrics({
+			userId: input.typedReport.user_id,
+			reportId: input.reportId,
+			familyMemberId: input.typedReport.family_member_id ?? null,
+			healthReport: input.finalHealthReport,
+			reportDate: displayDate,
+			observedAt: `${displayDate}T12:00:00.000Z`,
+		})
+	} catch (metricError) {
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'PARSING',
+			error: metricError,
+		})
+
+		await updateReportStatus(input.reportId, {
+			status: 'failed',
+			processing_error: errorDetail.userMessage,
+		})
+		await updateQueueStatus(input.reportId, 'failed', {
+			completed_at: processedAt,
+			error_message: errorDetail.userMessage,
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId: input.reportId,
+			toState: 'FAILED',
+			context: {
+				userId: input.typedReport.user_id,
+				reportId: input.reportId,
+				failureReason: errorDetail.userMessage,
+				failedStage: 'PARSING',
+				errorDetail,
+			},
+		})
+
+		throw metricError
+	}
+
+	const allowsMetriclessCompletion =
+		persistedMetricCount === 0 &&
+		healthReportQualifiesForMetriclessCompletion({
+			metadata: input.finalHealthReport.metadata,
+			fileName: input.typedReport.file_name,
+		})
+
+	if (persistedMetricCount === 0 && !allowsMetriclessCompletion) {
+		failPipelineStage({
+			reportId: input.reportId,
+			stage: 'PARSING',
+			error: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+			details: {
+				pageCount: input.outcome.pageCount,
+				characters: input.outcome.characters,
+				confidence: input.outcome.confidence,
+				metricCount: 0,
+			},
+		})
+
+		await updateReportStatus(input.reportId, {
+			...finalParsedReportUpdate,
+			status: 'failed',
+			processing_error: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+		})
+
+		await updateQueueStatus(input.reportId, 'failed', {
+			error_message: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId: input.reportId,
+			toState: 'FAILED',
+			context: {
+				userId: input.typedReport.user_id,
+				reportId: input.reportId,
+				failureReason: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+				failedStage: 'PARSING',
+			},
+		})
+
+		invalidateHealthKnowledgeCache(input.typedReport.user_id)
+		invalidateAfterHealthImport(input.typedReport.user_id)
+
+		await syncRegistryWithReportOutcome(input.reportId, {
+			status: 'failed',
+			errorMessage: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+		})
+
+		return {
+			...input.typedReport,
+			...finalParsedReportUpdate,
+			status: 'failed',
+			processing_error: NO_LAB_METRICS_EXTRACTED_MESSAGE,
+		}
+	}
+
+	completePipelineStage({
+		reportId: input.reportId,
+		stage: 'PARSING',
+		nextStage: 'INDEXING',
+		details: {
+			pageCount: input.outcome.pageCount,
+			characters: input.outcome.characters,
+			confidence: input.outcome.confidence,
+			processingTimeMs: input.outcome.processingTimeMs,
+			metricCount: persistedMetricCount,
+		},
+	})
+
+	startPipelineStage({
+		reportId: input.reportId,
+		stage: 'INDEXING',
+		nextStage: 'READY',
+	})
+
+	await safeTransitionWorkflowItem({
+		reportId: input.reportId,
+		toState: 'INDEXING',
+		context: {
+			userId: input.typedReport.user_id,
+			reportId: input.reportId,
+			progress: { label: 'Generating metrics' },
+		},
+	})
+
+	createKnowledgeItemFromHealthReport({
+		...input.typedReport,
+		status: 'parsed',
+		...finalParsedReportUpdate,
+	})
+
+	try {
+		await persistHealthKnowledgeGraph(
+			input.typedReport.user_id,
+			input.typedReport.family_member_id ?? null,
+		)
+	} catch (indexError) {
+		const errorDetail = buildWorkflowErrorDetail({
+			stage: 'INDEXING',
+			error: indexError,
+		})
+
+		await updateReportStatus(input.reportId, {
+			status: 'failed',
+			processing_error: errorDetail.userMessage,
+		})
+		await updateQueueStatus(input.reportId, 'failed', {
+			completed_at: processedAt,
+			error_message: errorDetail.userMessage,
+		})
+
+		await safeTransitionWorkflowItem({
+			reportId: input.reportId,
+			toState: 'FAILED',
+			context: {
+				userId: input.typedReport.user_id,
+				reportId: input.reportId,
+				failureReason: errorDetail.userMessage,
+				failedStage: 'INDEXING',
+				errorDetail,
+			},
+		})
+
+		throw indexError
+	}
+
+	completePipelineStage({
+		reportId: input.reportId,
+		stage: 'INDEXING',
+		nextStage: 'READY',
+	})
+
+	startPipelineStage({
+		reportId: input.reportId,
+		stage: 'READY',
+		details: { reportId: input.reportId },
+	})
+
+	completePipelineStage({
+		reportId: input.reportId,
+		stage: 'READY',
+		details: { reportId: input.reportId },
+	})
+
+	await safeTransitionWorkflowItem({
+		reportId: input.reportId,
+		toState: 'READY',
+		context: { userId: input.typedReport.user_id, reportId: input.reportId },
+	})
+
+	await updateReportStatus(input.reportId, {
+		status: 'completed',
+		...finalParsedReportUpdate,
+	})
+
+	await updateQueueStatus(input.reportId, 'completed', {
+		completed_at: processedAt,
+		error_message: null,
+	})
+
+	const completedReport: UploadedHealthReport = {
+		...input.typedReport,
+		status: 'completed',
+		...finalParsedReportUpdate,
+	}
+
+	invalidateHealthKnowledgeCache(completedReport.user_id)
+	invalidateAfterHealthImport(completedReport.user_id)
+
+	await syncRegistryWithReportOutcome(input.reportId, { status: 'completed' })
+
+	return completedReport
+}
+
 export async function processHealthReport(
 	reportId: string,
 	options: { force?: boolean; extractionMode?: HealthExtractionMode } = {},
@@ -228,6 +483,52 @@ async function executeProcessHealthReport(
 			stage: 'OCR',
 			nextStage: 'PARSING',
 		})
+
+		await safeTransitionWorkflowItem({
+			reportId,
+			toState: 'OCR',
+			context: {
+				userId: typedReport.user_id,
+				reportId,
+				progress: { label: 'Reading your document…' },
+				worker: documentProcessingConfig.ocrProvider,
+			},
+		})
+
+		const aiDirectHealthReport = await buildHealthReportFromAiDirectExtraction({
+			report: typedReport,
+		})
+
+		if (aiDirectHealthReport) {
+			return await completeHealthReportAfterExtraction({
+				reportId,
+				typedReport,
+				finalHealthReport: aiDirectHealthReport,
+				parsedReportUpdate: {
+					extracted_text: null,
+					parsed_data: serializeParsedHealthReport(aiDirectHealthReport),
+					ocr_page_count: 0,
+					ocr_confidence: null,
+					ocr_provider: null,
+					ocr_processing_time_ms: null,
+					ocr_metadata: {
+						extractionMethod: 'ai_direct',
+						extractionSuccess: true,
+						attemptCount: 1,
+					},
+					report_type: aiDirectHealthReport.metadata.reportType,
+					report_date: aiDirectHealthReport.metadata.reportDate,
+					processed_at: new Date().toISOString(),
+					processing_error: null,
+				},
+				outcome: {
+					pageCount: 0,
+					characters: 0,
+					confidence: null,
+					processingTimeMs: 0,
+				},
+			})
+		}
 
 		await safeTransitionWorkflowItem({
 			reportId,

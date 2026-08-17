@@ -10,6 +10,7 @@ import { FigmaImportCenterView } from '@/ui/figma/health/FigmaImportCenterView'
 import { HealthConfirmSheet } from '@/ui/figma/health/HealthConfirmSheet'
 import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { ROUTES } from '@/constants/routes'
+import { FC } from '@/ui/figma/v2/atoms'
 
 export function HealthImportCenterPage() {
 	const navigate = useNavigate()
@@ -60,35 +61,53 @@ export function HealthImportCenterPage() {
 
 	return (
 		<>
-			<FigmaImportCenterView
-				view={center.view}
-				busyItemId={center.busyItemId}
-				onKeep={(registryId) => void center.handleKeep(registryId)}
-				onIgnore={(registryId) => void center.handleIgnore(registryId)}
-				onChooseMember={(registryId, memberId) =>
-					void center.handleChooseMember(registryId, memberId)
-				}
-				onTryAgain={(input) => void center.handleTryAgain(input)}
-				onReprocessWithAi={(input) => setAdvancedReadingTarget(input)}
-				onMove={center.handleMove}
-			/>
-			<HealthConfirmSheet
-				isOpen={advancedReadingTarget != null}
-				title={USER_VOCAB.actions.advancedReading}
-				message={AI_REPROCESS_CONFIRMATION}
-				confirmLabel={USER_VOCAB.actions.advancedReading}
-				onConfirm={() => {
-					if (!advancedReadingTarget) {
-						return
+			<div style={{ padding: '0 22px 8px' }}>
+				<h1
+					style={{
+						color: FC.fg,
+						fontSize: 28,
+						fontWeight: 800,
+						letterSpacing: -1,
+						margin: '0 0 6px',
+					}}
+				>
+					Review documents
+				</h1>
+				<p style={{ color: FC.mid, fontSize: 14, margin: 0 }}>
+					{USER_VOCAB.sections.needsAttention}
+				</p>
+			</div>
+			<div style={{ padding: '0 22px' }}>
+				<FigmaImportCenterView
+					view={center.view}
+					busyItemId={center.busyItemId}
+					onKeep={(registryId) => void center.handleKeep(registryId)}
+					onIgnore={(registryId) => void center.handleIgnore(registryId)}
+					onChooseMember={(registryId, memberId) =>
+						void center.handleChooseMember(registryId, memberId)
 					}
+					onTryAgain={(input) => void center.handleTryAgain(input)}
+					onReprocessWithAi={(input) => setAdvancedReadingTarget(input)}
+					onMove={center.handleMove}
+				/>
+				<HealthConfirmSheet
+					isOpen={advancedReadingTarget != null}
+					title={USER_VOCAB.actions.advancedReading}
+					message={AI_REPROCESS_CONFIRMATION}
+					confirmLabel={USER_VOCAB.actions.advancedReading}
+					onConfirm={() => {
+						if (!advancedReadingTarget) {
+							return
+						}
 
-					void center
-						.handleReprocessWithAi(advancedReadingTarget)
-						.finally(() => setAdvancedReadingTarget(null))
-				}}
-				onCancel={() => setAdvancedReadingTarget(null)}
-				isBusy={center.busyItemId === advancedReadingTarget?.itemId}
-			/>
+						void center
+							.handleReprocessWithAi(advancedReadingTarget)
+							.finally(() => setAdvancedReadingTarget(null))
+					}}
+					onCancel={() => setAdvancedReadingTarget(null)}
+					isBusy={center.busyItemId === advancedReadingTarget?.itemId}
+				/>
+			</div>
 		</>
 	)
 }

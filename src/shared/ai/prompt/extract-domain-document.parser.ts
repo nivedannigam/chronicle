@@ -124,3 +124,83 @@ export function parseVehicleExtractionJson(
 		rawFields: parsed as Record<string, string | number | null>,
 	}
 }
+
+function countMeaningfulStrings(values: Array<string | null>): number {
+	return values.filter((value) => value != null && value.trim()).length
+}
+
+export function isInsuranceExtractionSufficient(
+	extraction: InsuranceDocumentExtraction,
+): boolean {
+	const coreFields = countMeaningfulStrings([
+		extraction.policyNumber,
+		extraction.insurer,
+		extraction.productName,
+	])
+	const dateFields = countMeaningfulStrings([
+		extraction.inceptionDate,
+		extraction.expiryDate,
+		extraction.renewalDate,
+	])
+	const numericFields =
+		(extraction.sumInsured != null ? 1 : 0) +
+		(extraction.premium != null ? 1 : 0)
+
+	if (extraction.policyNumber && extraction.insurer) {
+		return true
+	}
+
+	return coreFields + dateFields + numericFields >= 3
+}
+
+export function isVehicleExtractionSufficient(
+	extraction: VehicleDocumentAiExtraction,
+): boolean {
+	const identifierCount = countMeaningfulStrings([
+		extraction.registrationNumber,
+		extraction.vin,
+		extraction.engineNumber,
+	])
+	const detailCount = countMeaningfulStrings([
+		extraction.make,
+		extraction.model,
+		extraction.documentDate,
+		extraction.expiryDate,
+		extraction.provider,
+	])
+
+	if (
+		identifierCount >= 1 &&
+		(detailCount >= 1 || extraction.facts.length >= 2)
+	) {
+		return true
+	}
+
+	return identifierCount >= 1 && extraction.facts.length >= 3
+}
+
+export function validateInsuranceExtractionJson(
+	content: string,
+): InsuranceDocumentExtraction {
+	const parsed = parseInsuranceExtractionJson(content)
+
+	if (!isInsuranceExtractionSufficient(parsed)) {
+		throw new Error(
+			'Insurance extraction returned insufficient structured data.',
+		)
+	}
+
+	return parsed
+}
+
+export function validateVehicleExtractionJson(
+	content: string,
+): VehicleDocumentAiExtraction {
+	const parsed = parseVehicleExtractionJson(content)
+
+	if (!isVehicleExtractionSufficient(parsed)) {
+		throw new Error('Vehicle extraction returned insufficient structured data.')
+	}
+
+	return parsed
+}

@@ -32,7 +32,7 @@ const STEPS: {
 		id: 'health',
 		title: ONBOARDING_COPY.stepHealthTitle,
 		body: ONBOARDING_COPY.stepHealthBody,
-		action: { label: 'Connect health records', path: ROUTES.healthSettings },
+		action: { label: 'Connect Google Drive', path: ROUTES.setup },
 	},
 	{
 		id: 'document',

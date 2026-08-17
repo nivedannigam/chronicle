@@ -31,7 +31,10 @@ import {
 	parseInsuranceExtractionJson,
 	parseVehicleExtractionJson,
 } from '@/shared/ai/prompt/extract-domain-document.parser'
-import { extractDomainDocumentWithAi } from '@/shared/ai/transport/extract-domain-document.client'
+import {
+	extractDomainDocumentWithAi,
+	extractDomainDocumentWithAiDirect,
+} from '@/shared/ai/transport/extract-domain-document.client'
 import {
 	getRegisteredPlatformModuleIds,
 	clearPlatformModules,
@@ -61,8 +64,16 @@ vi.mock(
 	}),
 )
 
+vi.mock('@/shared/ai/transport/ask-ai-edge.client', () => ({
+	isAskAiEdgeConfigured: vi.fn(() => true),
+	assertAskAiEdgeConfigured: vi.fn(),
+	invokeAskAiEdgeFunction: vi.fn(),
+	AskAiEdgeInvokeError: class AskAiEdgeInvokeError extends Error {},
+}))
+
 vi.mock('@/shared/ai/transport/extract-domain-document.client', () => ({
 	extractDomainDocumentWithAi: vi.fn(),
+	extractDomainDocumentWithAiDirect: vi.fn(),
 }))
 
 const insuranceProvider = new InsuranceKnowledgeProvider({
@@ -300,20 +311,25 @@ describe('domain modules contract', () => {
 			})
 
 			expect(result.download).toBeNull()
-			expect(result.extraction.method).toBe('metadata_fallback')
+			expect(result.extraction.method).toBe('deterministic_fallback')
 			expect(result.extraction.insurance?.productName).toBe('health-policy')
 		})
 
-		it('uses LLM extraction when OCR text and AI client succeed', async () => {
+		it('uses OCR fallback extraction when AI direct fails but OCR text succeeds', async () => {
 			vi.mocked(downloadRegistryDocumentToStorage).mockResolvedValueOnce({
 				storagePath: 'users/user-1/docs/doc-1.pdf',
+				fileSize: 1000,
 			})
+			vi.mocked(extractDomainDocumentWithAiDirect).mockRejectedValueOnce(
+				new Error('AI direct failed'),
+			)
 			vi.mocked(extractTextFromStoredPdf).mockResolvedValueOnce({
 				text: `${'Policy Schedule\nInsurer: ICICI Lombard\nPolicy Number: POL 123456\n'.repeat(8)}`,
+				confidence: 0.9,
 			})
 			vi.mocked(extractDomainDocumentWithAi).mockResolvedValueOnce({
 				target: 'insurance',
-				method: 'llm',
+				method: 'ocr_fallback',
 				extractedText: 'Policy Number POL 123456',
 				insurance: {
 					insurer: 'ICICI Lombard',
@@ -344,7 +360,7 @@ describe('domain modules contract', () => {
 			})
 
 			expect(result.download?.storagePath).toBe('users/user-1/docs/doc-1.pdf')
-			expect(result.extraction.method).toBe('llm')
+			expect(result.extraction.method).toBe('ocr_fallback')
 			expect(result.extraction.insurance?.policyNumber).toBe('POL 123456')
 		})
 

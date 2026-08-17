@@ -6,6 +6,7 @@ import {
 import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
 import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
 import {
+	buildExtractMetricsDirectPrompt,
 	buildExtractMetricsPrompt,
 	parseExtractMetricsModelJson,
 } from '@/shared/ai/prompt/extract-metrics.prompt'
@@ -363,4 +364,48 @@ export async function invokeExtractMetricsAiEdgeFunction(input: {
 		correlationId: lastCorrelationId,
 		usage: totalUsage,
 	}
+}
+
+export async function invokeExtractMetricsAiDirectFromDocument(input: {
+	fileName: string
+	storagePath: string
+	bucket?: 'health-reports' | 'personal-documents'
+}): Promise<ExtractMetricsAiEdgeResult> {
+	const config = loadAIPlatformConfig()
+	const model = config.model || GEMINI_MODEL
+
+	const askResult = await invokeAskAiEdgeFunction({
+		provider: 'gemini',
+		model,
+		messages: buildExtractMetricsDirectPrompt({
+			fileName: input.fileName,
+		}),
+		documentAttachment: {
+			bucket: input.bucket ?? 'health-reports',
+			storagePath: input.storagePath,
+			fileName: input.fileName,
+			mimeType: 'application/pdf',
+		},
+		responseFormat: 'json',
+		temperature: 0.1,
+		maxTokens: 8192,
+	})
+
+	const parsed = parseExtractMetricsModelJson(askResult.content)
+
+	if (parsed.metrics.length === 0) {
+		throw new ExtractMetricsAiInvokeError(
+			'AI direct extraction returned no usable laboratory metrics.',
+			{
+				correlationId: askResult.correlationId,
+			},
+		)
+	}
+
+	return toExtractMetricsResult({
+		parsed,
+		model: askResult.model,
+		correlationId: askResult.correlationId,
+		usage: askResult.usage,
+	})
 }

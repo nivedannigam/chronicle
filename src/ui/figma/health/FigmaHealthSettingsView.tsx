@@ -44,7 +44,7 @@ export function FigmaHealthSettingsView({
 }) {
 	return (
 		<div style={{ paddingBottom: 32 }}>
-			<ModuleSettingsSection label="Google Drive">
+			<ModuleSettingsSection label={USER_VOCAB.sections.dataSource}>
 				<ModuleSettingsRow
 					icon={Cloud}
 					color={driveConnected ? FC.green : FC.amber}
@@ -52,20 +52,17 @@ export function FigmaHealthSettingsView({
 					subtitle={
 						driveConnected
 							? 'Connected to your account'
-							: 'Connect to import health records'
+							: 'Connect to organize health records'
 					}
 					actionLabel={driveConnected ? 'Manage' : 'Connect'}
 					onAction={onConnectDrive}
 				/>
-			</ModuleSettingsSection>
-
-			<ModuleSettingsSection label="Assigned folder">
 				{isLoadingAssignments ? (
 					<p style={{ color: FC.dim, fontSize: 13, margin: 0 }}>Loading…</p>
 				) : assignments.length === 0 ? (
 					<ModuleSettingsEmptyCard
-						message={`No health folder assigned for ${memberLabel} yet.`}
-						actionLabel="Choose health folder"
+						message={`No health folder connected for ${memberLabel} yet.`}
+						actionLabel="Choose folder"
 						onAction={onChooseFolder}
 					/>
 				) : (
@@ -74,8 +71,8 @@ export function FigmaHealthSettingsView({
 							key={assignment.id}
 							icon={Folder}
 							color={FC.blue}
-							title={memberLabel}
-							subtitle={assignment.folderName}
+							title="Connected folder"
+							subtitle={`Chronicle/Health · ${assignment.folderName}`}
 							actionLabel="Change"
 							onAction={onChangeFolder}
 						/>
@@ -83,18 +80,26 @@ export function FigmaHealthSettingsView({
 				)}
 			</ModuleSettingsSection>
 
-			<ModuleSettingsSection label="Privacy">
+			<ModuleSettingsSection label={USER_VOCAB.sections.importPreferences}>
 				<ModuleSettingsRow
 					icon={Eye}
 					color={FC.purple}
-					title="Health data"
-					subtitle="Stored securely in your account"
-					actionLabel="Manage"
+					title="Family member handling"
+					subtitle={`Currently managing records for ${memberLabel}`}
+					actionLabel="Family"
 					onAction={onPrivacy}
 				/>
 			</ModuleSettingsSection>
 
-			<ModuleSettingsSection label="Export">
+			<ModuleSettingsSection label="Privacy">
+				<ModuleSettingsRow
+					icon={Eye}
+					color={FC.purple}
+					title="Health data visibility"
+					subtitle="Stored securely in your account"
+					actionLabel="Manage"
+					onAction={onPrivacy}
+				/>
 				<ModuleSettingsRow
 					icon={Download}
 					color={FC.teal}
@@ -105,16 +110,25 @@ export function FigmaHealthSettingsView({
 				/>
 			</ModuleSettingsSection>
 
+			{importCenterAttentionCount > 0 ? (
+				<ModuleSettingsSection label={USER_VOCAB.sections.needsAttention}>
+					<ModuleSettingsRow
+						icon={Folder}
+						color={FC.amber}
+						title={USER_VOCAB.sections.reviewDocuments}
+						subtitle={`${importCenterAttentionCount} document${importCenterAttentionCount === 1 ? '' : 's'} need your attention`}
+						actionLabel="Review"
+						onAction={onOpenImportCenter}
+					/>
+				</ModuleSettingsSection>
+			) : null}
+
 			<ModuleSettingsAdvancedSection label={USER_VOCAB.sections.advanced}>
 				<ModuleSettingsRow
 					icon={Folder}
-					color={importCenterAttentionCount > 0 ? FC.amber : FC.teal}
-					title={USER_VOCAB.sections.reportImports}
-					subtitle={
-						importCenterAttentionCount > 0
-							? `${importCenterAttentionCount} item${importCenterAttentionCount === 1 ? '' : 's'} need your help`
-							: 'Recent imports and anything that needs your attention'
-					}
+					color={FC.teal}
+					title={USER_VOCAB.sections.reviewDocuments}
+					subtitle="Documents that need your attention"
 					actionLabel="Open"
 					onAction={onOpenImportCenter}
 				/>

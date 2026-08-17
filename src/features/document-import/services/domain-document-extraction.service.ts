@@ -1,11 +1,9 @@
-import { extractDomainDocumentWithAi } from '@/shared/ai/transport/extract-domain-document.client'
 import type { DomainDocumentExtractionResult } from '@/shared/ai/types/domain-document-extraction.types'
-import {
-	downloadRegistryDocumentToStorage,
-	extractTextFromStoredPdf,
-} from '@/features/document-import/services/domain-document-text.service'
+import { downloadRegistryDocumentToStorage } from '@/features/document-import/services/domain-document-text.service'
+import { orchestrateDomainDocumentExtraction } from '@/features/document-import/services/document-extraction-orchestrator.service'
 import { extractVehicleDocument } from '@/features/vehicle-knowledge/extraction/vehicle-document-extraction.service'
 import type { InsurancePolicyType } from '@/features/insurance-knowledge/types/insurance-record.types'
+import { DOCUMENTS_BUCKET } from '@/features/documents/types/document.types'
 
 function inferPolicyTypeFromHint(
 	categoryHint: string | null,
@@ -32,7 +30,7 @@ function buildInsuranceMetadataFallback(input: {
 }): DomainDocumentExtractionResult {
 	return {
 		target: 'insurance',
-		method: 'metadata_fallback',
+		method: 'deterministic_fallback',
 		extractedText: null,
 		insurance: {
 			insurer: null,
@@ -64,7 +62,7 @@ function buildVehicleMetadataFallback(input: {
 
 	return {
 		target: 'vehicles',
-		method: 'metadata_fallback',
+		method: 'deterministic_fallback',
 		extractedText: null,
 		vehicle: {
 			documentType: extraction.documentType,
@@ -147,75 +145,64 @@ export async function extractRegistryDocumentForDomain(input: {
 	}
 
 	try {
-		const { text } = await extractTextFromStoredPdf({
+		const extraction = await orchestrateDomainDocumentExtraction({
+			target: input.target,
 			userId: input.userId,
 			documentId: input.documentId,
 			fileName: input.fileName,
+			folderPath: input.folderPath,
+			categoryHint: input.categoryHint,
 			storagePath,
+			bucket: DOCUMENTS_BUCKET,
+			buildMetadataFallback: () =>
+				input.target === 'insurance'
+					? buildInsuranceMetadataFallback(input)
+					: buildVehicleMetadataFallback(input),
 		})
 
-		if (text.trim().length >= 80) {
-			try {
-				const extraction = await extractDomainDocumentWithAi({
-					target: input.target,
+		if (
+			extraction.method === 'deterministic_fallback' &&
+			extraction.extractedText == null
+		) {
+			if (input.target === 'vehicles') {
+				const vehicleExtraction = extractVehicleDocument({
 					fileName: input.fileName,
 					folderPath: input.folderPath,
-					extractedText: text,
+					text: extraction.extractedText ?? undefined,
 				})
 
-				return { download, extraction }
-			} catch {
-				// fall through to metadata with OCR text attached
+				return {
+					download,
+					extraction: {
+						...extraction,
+						vehicle: {
+							documentType: vehicleExtraction.documentType,
+							documentSubtype: vehicleExtraction.documentSubtype,
+							registrationNumber:
+								vehicleExtraction.identifiers.registrationNumber,
+							vin: vehicleExtraction.identifiers.vin,
+							engineNumber: vehicleExtraction.identifiers.engineNumber,
+							make: vehicleExtraction.make,
+							model: vehicleExtraction.model,
+							variant: vehicleExtraction.variant,
+							documentDate: vehicleExtraction.documentDate,
+							expiryDate: vehicleExtraction.expiryDate,
+							provider: vehicleExtraction.provider,
+							facts: vehicleExtraction.facts.map((fact) => ({
+								factKey: fact.factKey,
+								factValue: fact.factValue,
+								valueDate: fact.valueDate ?? null,
+								valueNumber: fact.valueNumber ?? null,
+							})),
+							confidence: vehicleExtraction.confidence,
+							rawFields: vehicleExtraction.rawFields,
+						},
+					},
+				}
 			}
 		}
 
-		if (input.target === 'insurance') {
-			const fallback = buildInsuranceMetadataFallback(input)
-			return {
-				download,
-				extraction: {
-					...fallback,
-					extractedText: text || null,
-				},
-			}
-		}
-
-		const vehicleExtraction = extractVehicleDocument({
-			fileName: input.fileName,
-			folderPath: input.folderPath,
-			text,
-		})
-
-		return {
-			download,
-			extraction: {
-				target: 'vehicles',
-				method:
-					text.trim().length >= 80 ? 'metadata_fallback' : 'metadata_fallback',
-				extractedText: text || null,
-				vehicle: {
-					documentType: vehicleExtraction.documentType,
-					documentSubtype: vehicleExtraction.documentSubtype,
-					registrationNumber: vehicleExtraction.identifiers.registrationNumber,
-					vin: vehicleExtraction.identifiers.vin,
-					engineNumber: vehicleExtraction.identifiers.engineNumber,
-					make: vehicleExtraction.make,
-					model: vehicleExtraction.model,
-					variant: vehicleExtraction.variant,
-					documentDate: vehicleExtraction.documentDate,
-					expiryDate: vehicleExtraction.expiryDate,
-					provider: vehicleExtraction.provider,
-					facts: vehicleExtraction.facts.map((fact) => ({
-						factKey: fact.factKey,
-						factValue: fact.factValue,
-						valueDate: fact.valueDate ?? null,
-						valueNumber: fact.valueNumber ?? null,
-					})),
-					confidence: vehicleExtraction.confidence,
-					rawFields: vehicleExtraction.rawFields,
-				},
-			},
-		}
+		return { download, extraction }
 	} catch {
 		if (input.target === 'insurance') {
 			return {

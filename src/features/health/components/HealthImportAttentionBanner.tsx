@@ -9,7 +9,7 @@ export function HealthImportAttentionBanner({ message }: { message: string }) {
 	return (
 		<button
 			type="button"
-			onClick={() => navigate(ROUTES.healthImportCenter)}
+			onClick={() => navigate(ROUTES.reviewDocuments)}
 			style={{
 				...figmaCardStyle,
 				borderRadius: 18,

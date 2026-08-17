@@ -109,7 +109,7 @@ export function VehicleSettingsPage() {
 						onClick={() => void handleForceRescan()}
 						className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 disabled:opacity-50"
 					>
-						{isScanning ? 'Scanning…' : 'Force rescan'}
+						{isScanning ? 'Checking…' : 'Check for new documents'}
 					</button>
 				</div>
 			</div>

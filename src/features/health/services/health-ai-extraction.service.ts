@@ -11,9 +11,11 @@ import {
 } from '@/features/health/services/health-partial-extraction.service'
 import {
 	invokeExtractMetricsAiEdgeFunction,
+	invokeExtractMetricsAiDirectFromDocument,
 	type ExtractMetricsAiEdgeMetric,
 	ExtractMetricsAiInvokeError,
 } from '@/shared/ai/transport/extract-metrics-ai-edge.client'
+import { isAskAiEdgeConfigured } from '@/shared/ai/transport/ask-ai-edge.client'
 import type { UploadedHealthReport } from '@/features/health/types'
 import { USER_VOCAB } from '@/constants/user-vocabulary'
 import { getParsedHealthReport } from '@/features/health/services/health-parsed-report.service'
@@ -23,9 +25,8 @@ import {
 	reportNeedsReprocess,
 } from '@/features/health/services/report-readiness.service'
 
-/** Shown when standard reading failed before any text was stored. */
-export const OCR_FAILED_USER_MESSAGE =
-	"We couldn't read this document using our standard reader."
+/** Shown when reading failed before any text was stored. */
+export const OCR_FAILED_USER_MESSAGE = "We couldn't read this document yet."
 
 /** Shown when standard reading succeeded but organizing results failed. */
 export const PARSING_FAILED_USER_MESSAGE =
@@ -446,6 +447,135 @@ export async function buildHealthReportWithAiDefaultExtraction(input: {
 		report: input.report,
 		layoutReport: input.layoutReport,
 	})
+}
+
+export function isHealthAiDirectExtractionSufficient(input: {
+	healthReport: HealthReport
+	fileName: string
+}): boolean {
+	if (input.healthReport.metrics.length > 0) {
+		return true
+	}
+
+	return healthReportQualifiesForMetriclessCompletion({
+		metadata: input.healthReport.metadata,
+		fileName: input.fileName,
+	})
+}
+
+export async function buildHealthReportFromAiDirectExtraction(input: {
+	report: UploadedHealthReport
+}): Promise<HealthReport | null> {
+	if (!input.report.storage_path?.trim() || !isAskAiEdgeConfigured()) {
+		return null
+	}
+
+	if (
+		shouldSkipAiMetricExtraction({
+			fileName: input.report.file_name,
+			metadata: {},
+		})
+	) {
+		return null
+	}
+
+	try {
+		const aiResult = await invokeExtractMetricsAiDirectFromDocument({
+			fileName: input.report.file_name,
+			storagePath: input.report.storage_path,
+			bucket: 'health-reports',
+		})
+		const validatedMetrics = resolveAiExtractedMetrics({
+			metrics: aiResult.metrics,
+			report: input.report,
+		})
+		const aiHealthMetrics = validatedMetrics.map(toHealthMetric)
+		const existing = getParsedHealthReport(input.report)
+
+		if (
+			aiHealthMetrics.length > 0 &&
+			isSuspiciousPartialExtraction({
+				fileName: input.report.file_name,
+				metrics: aiHealthMetrics,
+			})
+		) {
+			return null
+		}
+
+		const metadata = {
+			reportType:
+				aiResult.metadata.reportType ??
+				existing?.metadata.reportType ??
+				'general',
+			laboratory:
+				aiResult.metadata.laboratory ?? existing?.metadata.laboratory ?? '',
+			reportDate:
+				aiResult.metadata.reportDate ??
+				existing?.metadata.reportDate ??
+				input.report.report_date,
+			collectionDate: existing?.metadata.collectionDate ?? null,
+			referenceNumber: existing?.metadata.referenceNumber ?? null,
+			patientName:
+				aiResult.metadata.patientName ?? existing?.metadata.patientName ?? null,
+			doctorName: existing?.metadata.doctorName ?? null,
+			testNames: aiHealthMetrics.map((metric) => metric.displayName),
+			sourceDocumentId: input.report.id,
+			parserVersion: 'ai-direct-v1',
+			ocrConfidence: 0,
+			pageCount: 0,
+			ocrProvider: '',
+			ocrProcessingTimeMs: 0,
+		}
+
+		const healthReport: HealthReport = {
+			id: input.report.id,
+			documentId: input.report.id,
+			metadata,
+			metrics: aiHealthMetrics,
+			metricResults: aiHealthMetrics.map((metric) => ({
+				rawName: metric.rawName,
+				canonicalId: metric.canonicalId,
+				displayName: metric.displayName,
+				value: metric.value,
+				numericValue: metric.numericValue,
+				unit: metric.unit,
+				referenceRange: metric.referenceRange,
+				status: metric.status,
+				confidence: metric.confidence,
+				source: 'text' as const,
+			})),
+			extractedText: '',
+			createdAt: input.report.processed_at ?? new Date().toISOString(),
+			debug: {
+				ocrProvider: '',
+				ocrProcessingTimeMs: 0,
+				ocrConfidence: 0,
+				pageCount: 0,
+				tableCount: 0,
+				parsedFields: {},
+				normalizationMap: aiHealthMetrics.map((metric) => ({
+					raw: metric.rawName,
+					canonical: metric.displayName,
+				})),
+				extractedMetricCount: aiHealthMetrics.length,
+				warnings: [
+					'Metrics extracted with AI direct document reading — verify before clinical use.',
+					...aiResult.warnings,
+				],
+				extractionMethod: 'llm',
+				validationStatus: aiHealthMetrics.length >= 15 ? 'complete' : 'partial',
+			},
+		}
+
+		return isHealthAiDirectExtractionSufficient({
+			healthReport,
+			fileName: input.report.file_name,
+		})
+			? healthReport
+			: null
+	} catch {
+		return null
+	}
 }
 
 export const AI_REPROCESS_CONFIRMATION =

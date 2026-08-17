@@ -10,6 +10,7 @@ import type {
 	GeminiCallResult,
 	TokenUsage,
 } from './types.ts'
+import type { AskAiDocumentAttachment } from './types.ts'
 
 export function resolveGeminiApiKey(): string | null {
 	return (
@@ -40,14 +41,27 @@ function mapRoleToGeminiContent(role: string): 'user' | 'model' {
 	return role === 'assistant' ? 'model' : 'user'
 }
 
-export function mapMessagesToGeminiContents(messages: AskAiMessage[]): {
+export function mapMessagesToGeminiContents(
+	messages: AskAiMessage[],
+	documentAttachment?: {
+		mimeType: string
+		base64Data: string
+	},
+): {
 	systemInstruction?: { parts: Array<{ text: string }> }
-	contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>
+	contents: Array<{
+		role: 'user' | 'model'
+		parts: Array<
+			{ text: string } | { inlineData: { mimeType: string; data: string } }
+		>
+	}>
 } {
 	const systemParts: string[] = []
 	const contents: Array<{
 		role: 'user' | 'model'
-		parts: Array<{ text: string }>
+		parts: Array<
+			{ text: string } | { inlineData: { mimeType: string; data: string } }
+		>
 	}> = []
 
 	for (const message of messages) {
@@ -75,6 +89,26 @@ export function mapMessagesToGeminiContents(messages: AskAiMessage[]): {
 		})
 	}
 
+	if (documentAttachment) {
+		const lastUserIndex = contents.findLastIndex(
+			(content) => content.role === 'user',
+		)
+		const targetIndex = lastUserIndex >= 0 ? lastUserIndex : contents.length - 1
+
+		contents[targetIndex] = {
+			...contents[targetIndex]!,
+			parts: [
+				...contents[targetIndex]!.parts,
+				{
+					inlineData: {
+						mimeType: documentAttachment.mimeType,
+						data: documentAttachment.base64Data,
+					},
+				},
+			],
+		}
+	}
+
 	return {
 		systemInstruction:
 			systemParts.length > 0
@@ -86,6 +120,10 @@ export function mapMessagesToGeminiContents(messages: AskAiMessage[]): {
 
 export function buildGeminiGenerateBody(
 	body: AskAiRequestBody,
+	documentAttachment?: {
+		mimeType: string
+		base64Data: string
+	},
 ): Record<string, unknown> {
 	const messages = body.messages ?? []
 
@@ -97,7 +135,7 @@ export function buildGeminiGenerateBody(
 		})
 	}
 
-	const mapped = mapMessagesToGeminiContents(messages)
+	const mapped = mapMessagesToGeminiContents(messages, documentAttachment)
 	const generationConfig: Record<string, unknown> = {}
 
 	if (typeof body.temperature === 'number') {
@@ -177,14 +215,39 @@ export async function callGemini(input: {
 	correlationId: string
 	body: AskAiRequestBody
 	mode: 'ping' | 'complete'
+	documentAttachment?: AskAiDocumentAttachment
+	userId?: string
 }): Promise<GeminiCallResult> {
 	const apiKey = resolveGeminiApiKey()
 	const model = resolveGeminiModel(input.body)
 	const requestUrl = buildGeminiRequestUrl(model, apiKey ?? '')
+	let inlineAttachment:
+		| {
+				mimeType: string
+				base64Data: string
+		  }
+		| undefined
+
+	if (input.mode === 'complete' && input.documentAttachment && input.userId) {
+		const { downloadDocumentAttachmentBytes, encodeBytesToBase64 } =
+			await import('./document-attachment.ts')
+		const downloaded = await downloadDocumentAttachmentBytes({
+			supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+			serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+			userId: input.userId,
+			attachment: input.documentAttachment,
+		})
+
+		inlineAttachment = {
+			mimeType: downloaded.mimeType,
+			base64Data: encodeBytesToBase64(downloaded.bytes),
+		}
+	}
+
 	const requestBody =
 		input.mode === 'ping'
 			? buildPingGeminiBody()
-			: buildGeminiGenerateBody(input.body)
+			: buildGeminiGenerateBody(input.body, inlineAttachment)
 	const messageCount = input.body.messages?.length ?? 0
 	const promptSizeChars =
 		input.mode === 'ping'
