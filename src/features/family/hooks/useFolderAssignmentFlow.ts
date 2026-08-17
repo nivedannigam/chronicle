@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
+	resolveActiveFolderAssignmentModule,
+	type FolderAssignmentModuleId,
+	type FolderAssignmentModuleMode,
+} from '@/features/connectors/services/folder-assignment-module.resolver'
+import {
 	formatMemberLabel,
 	suggestFolderAssignment,
 } from '@/features/family/services/folder-match.service'
@@ -7,6 +12,14 @@ import {
 	assignHealthSourceFolders,
 	getMemberExistingFolders,
 } from '@/features/family/services/health-sources.service'
+import {
+	assignInsuranceSourceFolder,
+	listInsuranceSourceAssignments,
+} from '@/features/family/services/insurance-sources.service'
+import {
+	assignVehicleSourceFolder,
+	listVehicleSourceAssignments,
+} from '@/features/family/services/vehicle-sources.service'
 import type {
 	AssignmentSuccessInfo,
 	ExistingFolderMode,
@@ -17,25 +30,147 @@ import type {
 import { mapAssignmentError } from '@/features/family/utils/assignment-errors'
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
 import { dedupeMemberLabels } from '@/features/family/utils/dedupe-member-labels'
+import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
 import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
-import { isInsuranceAssignedFolder } from '@/features/connectors/services/registry-module-routing.service'
+import { runVehicleImportSync } from '@/features/vehicle-import/services/vehicle-import-runner.service'
 import { invalidateAfterFolderAssignment } from '@/lib/query-invalidation'
 import { resetFailedImportCandidates } from '@/features/medical-discovery/services/import-pipeline.service'
 import type {
 	ImportJourneyPhase,
 	ImportJourneyResult,
 } from '@/features/health-import/types/health-import-journey.types'
+import type { ModuleFolderAssignment } from '@/features/settings/types/chronicle-module.types'
+
+type FolderAssignmentSnapshot = Pick<
+	ModuleFolderAssignment,
+	| 'id'
+	| 'userId'
+	| 'folderId'
+	| 'familyMemberId'
+	| 'familyMemberName'
+	| 'memberLabel'
+	| 'externalFolderId'
+	| 'folderName'
+	| 'assignedAt'
+	| 'enabled'
+>
 
 interface UseFolderAssignmentFlowOptions {
 	userId: string
 	folderId: string
 	folderName: string
 	members: FamilyMemberWithAliases[]
-	assignments: HealthSourceAssignment[]
+	assignments?: HealthSourceAssignment[]
+	insuranceAssignments?: FolderAssignmentSnapshot[]
+	vehicleAssignments?: FolderAssignmentSnapshot[]
+	moduleMode?: FolderAssignmentModuleMode
+	childFolderNames?: string[]
 	preferredMemberId?: string | null
 	onRefresh: () => Promise<void>
 	onJourneyComplete?: (result: ImportJourneyResult) => void
+}
+
+function toBadgeAssignments(
+	assignments: FolderAssignmentSnapshot[],
+): HealthSourceAssignment[] {
+	return assignments.map((assignment) => ({
+		id: assignment.id,
+		userId: assignment.userId,
+		connectorId: 'google-drive',
+		folderId: assignment.folderId,
+		familyMemberId: assignment.familyMemberId,
+		familyMemberName: assignment.familyMemberName,
+		memberLabel: assignment.memberLabel,
+		externalFolderId: assignment.externalFolderId,
+		folderName: assignment.folderName,
+		assignedAt: assignment.assignedAt,
+		enabled: assignment.enabled,
+	}))
+}
+
+async function getExistingFoldersForModule(
+	userId: string,
+	moduleId: FolderAssignmentModuleId,
+	familyMemberId: string,
+	excludeExternalFolderId?: string,
+): Promise<HealthSourceAssignment[]> {
+	switch (moduleId) {
+		case 'insurance': {
+			const assignments = await listInsuranceSourceAssignments(userId, {
+				skipMigration: true,
+			})
+
+			return toBadgeAssignments(
+				assignments.filter(
+					(assignment) =>
+						assignment.familyMemberId === familyMemberId &&
+						assignment.externalFolderId !== excludeExternalFolderId,
+				),
+			)
+		}
+		case 'vehicles': {
+			const assignments = await listVehicleSourceAssignments(userId)
+
+			return toBadgeAssignments(
+				assignments.filter(
+					(assignment) =>
+						assignment.familyMemberId === familyMemberId &&
+						assignment.externalFolderId !== excludeExternalFolderId,
+				),
+			)
+		}
+		default:
+			return getMemberExistingFolders(
+				userId,
+				familyMemberId,
+				excludeExternalFolderId,
+			)
+	}
+}
+
+function buildModuleImportResult(
+	moduleId: FolderAssignmentModuleId,
+	input: {
+		imported: number
+		discovered: number
+		errorMessage?: string | null
+	},
+): ImportJourneyResult {
+	const phasesCompleted: ImportJourneyPhase[] = [
+		'assign',
+		'scanning',
+		'detection',
+		'summary',
+	]
+	const succeeded = input.errorMessage
+		? (['assign'] as ImportJourneyPhase[])
+		: phasesCompleted
+
+	return {
+		outcome: input.errorMessage
+			? 'failed'
+			: input.imported > 0
+				? 'success'
+				: 'no_reports',
+		filesFound: input.discovered,
+		documentsScanned: input.discovered,
+		importCandidates: input.discovered,
+		medicalReports: moduleId === 'health' ? input.imported : 0,
+		needsReview: 0,
+		skippedIgnored: 0,
+		reportsImported: input.imported,
+		importedThisRun: input.imported,
+		failedThisRun: input.errorMessage ? 1 : 0,
+		skippedThisRun: 0,
+		autoApprovedCount: input.imported,
+		metricsExtracted: 0,
+		failedCount: input.errorMessage ? 1 : 0,
+		errorMessage: input.errorMessage ?? null,
+		primaryError: input.errorMessage ?? null,
+		phasesCompleted,
+		phasesSucceeded: succeeded,
+	}
 }
 
 export function useFolderAssignmentFlow({
@@ -43,7 +178,11 @@ export function useFolderAssignmentFlow({
 	folderId,
 	folderName,
 	members,
-	assignments,
+	assignments = [],
+	insuranceAssignments = [],
+	vehicleAssignments = [],
+	moduleMode = 'health',
+	childFolderNames = [],
 	preferredMemberId,
 	onRefresh,
 	onJourneyComplete,
@@ -51,12 +190,45 @@ export function useFolderAssignmentFlow({
 	const uniqueMembers = useMemo(() => dedupeFamilyMembers(members), [members])
 	const journeyStartedRef = useRef(false)
 
+	const moduleHints = useMemo(
+		() => ({
+			externalFolderId: folderId,
+			insuranceFolderIds: new Set(
+				insuranceAssignments.map((assignment) => assignment.externalFolderId),
+			),
+			vehicleFolderIds: new Set(
+				vehicleAssignments.map((assignment) => assignment.externalFolderId),
+			),
+		}),
+		[folderId, insuranceAssignments, vehicleAssignments],
+	)
+
+	const resolvedModule = useMemo(
+		() =>
+			resolveActiveFolderAssignmentModule(moduleMode, folderName, moduleHints),
+		[folderName, moduleHints, moduleMode],
+	)
+
+	const [activeModuleId, setActiveModuleId] =
+		useState<FolderAssignmentModuleId>(resolvedModule)
+
+	const moduleAssignments = useMemo(() => {
+		switch (activeModuleId) {
+			case 'insurance':
+				return toBadgeAssignments(insuranceAssignments)
+			case 'vehicles':
+				return toBadgeAssignments(vehicleAssignments)
+			default:
+				return assignments
+		}
+	}, [activeModuleId, assignments, insuranceAssignments, vehicleAssignments])
+
 	const currentFolderAssignments = useMemo(
 		() =>
-			assignments.filter(
+			moduleAssignments.filter(
 				(assignment) => assignment.externalFolderId === folderId,
 			),
-		[assignments, folderId],
+		[moduleAssignments, folderId],
 	)
 
 	const suggestion = useMemo(
@@ -101,14 +273,15 @@ export function useFolderAssignmentFlow({
 		setJourneyResult(null)
 		setIsJourneyRunning(false)
 		journeyStartedRef.current = false
-	}, [])
+		setActiveModuleId(resolvedModule)
+	}, [resolvedModule])
 
 	const open = useCallback(() => {
 		resetState()
 
 		if (currentFolderAssignments.length > 0) {
 			setSelectedMemberIds(
-				currentFolderAssignments.map((a) => a.familyMemberId),
+				currentFolderAssignments.map((assignment) => assignment.familyMemberId),
 			)
 			setStep('pick')
 		} else if (
@@ -155,13 +328,14 @@ export function useFolderAssignmentFlow({
 	}, [])
 
 	const checkExistingAndProceed = useCallback(
-		async (memberIds: string[]) => {
+		async (memberIds: string[], moduleId: FolderAssignmentModuleId) => {
 			if (memberIds.length !== 1) {
 				return false
 			}
 
-			const existing = await getMemberExistingFolders(
+			const existing = await getExistingFoldersForModule(
 				userId,
+				moduleId,
 				memberIds[0],
 				folderId,
 			)
@@ -178,8 +352,82 @@ export function useFolderAssignmentFlow({
 		[folderId, userId],
 	)
 
+	const runModuleImportJourney = useCallback(
+		async (
+			moduleId: FolderAssignmentModuleId,
+			info: AssignmentSuccessInfo,
+		): Promise<ImportJourneyResult> => {
+			if (moduleId === 'insurance') {
+				setJourneyPhase('scanning')
+				setJourneyPhasesCompleted(['assign', 'scanning'])
+				setJourneyPhasesSucceeded(['assign'])
+
+				try {
+					const syncResult = await runInsuranceImportSync(userId)
+
+					setJourneyPhase('detection')
+					setJourneyPhasesCompleted(['assign', 'scanning', 'detection'])
+					setJourneyPhasesSucceeded(['assign', 'scanning', 'detection'])
+
+					return buildModuleImportResult('insurance', {
+						imported: syncResult.imported,
+						discovered: syncResult.discovered,
+					})
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : 'Insurance import failed'
+
+					return buildModuleImportResult('insurance', {
+						imported: 0,
+						discovered: 0,
+						errorMessage: message,
+					})
+				}
+			}
+
+			if (moduleId === 'vehicles') {
+				setJourneyPhase('scanning')
+				setJourneyPhasesCompleted(['assign', 'scanning'])
+				setJourneyPhasesSucceeded(['assign'])
+
+				try {
+					const syncResult = await runVehicleImportSync(userId)
+
+					setJourneyPhase('detection')
+					setJourneyPhasesCompleted(['assign', 'scanning', 'detection'])
+					setJourneyPhasesSucceeded(['assign', 'scanning', 'detection'])
+
+					return buildModuleImportResult('vehicles', {
+						imported: syncResult.imported,
+						discovered: syncResult.discovered,
+					})
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : 'Vehicle import failed'
+
+					return buildModuleImportResult('vehicles', {
+						imported: 0,
+						discovered: 0,
+						errorMessage: message,
+					})
+				}
+			}
+
+			return runHealthImportJourney(
+				userId,
+				[info.externalFolderId],
+				({ phase, phasesCompleted, phasesSucceeded }) => {
+					setJourneyPhase(phase)
+					setJourneyPhasesCompleted(phasesCompleted)
+					setJourneyPhasesSucceeded(phasesSucceeded)
+				},
+			)
+		},
+		[userId],
+	)
+
 	const startImportJourney = useCallback(
-		async (info: AssignmentSuccessInfo) => {
+		async (info: AssignmentSuccessInfo, moduleId: FolderAssignmentModuleId) => {
 			if (journeyStartedRef.current) {
 				return
 			}
@@ -193,61 +441,7 @@ export function useFolderAssignmentFlow({
 			setErrorMessage(null)
 
 			try {
-				if (await isInsuranceAssignedFolder(userId, info.externalFolderId)) {
-					setJourneyPhase('scanning')
-					setJourneyPhasesCompleted(['assign', 'scanning'])
-					setJourneyPhasesSucceeded(['assign'])
-
-					try {
-						await runInsuranceImportSync(userId)
-					} catch (insuranceError) {
-						const message =
-							insuranceError instanceof Error
-								? insuranceError.message
-								: 'Insurance import failed'
-
-						setErrorMessage(message)
-					}
-
-					const skippedResult: ImportJourneyResult = {
-						outcome: 'no_reports',
-						filesFound: 0,
-						documentsScanned: 0,
-						importCandidates: 0,
-						medicalReports: 0,
-						needsReview: 0,
-						skippedIgnored: 0,
-						reportsImported: 0,
-						importedThisRun: 0,
-						failedThisRun: 0,
-						skippedThisRun: 0,
-						autoApprovedCount: 0,
-						metricsExtracted: 0,
-						failedCount: 0,
-						errorMessage: null,
-						phasesCompleted: ['assign', 'scanning', 'detection', 'summary'],
-						phasesSucceeded: ['assign', 'scanning', 'detection', 'summary'],
-					}
-
-					setJourneyResult(skippedResult)
-					setJourneyPhase('summary')
-					setJourneyPhasesCompleted(skippedResult.phasesCompleted)
-					setJourneyPhasesSucceeded(skippedResult.phasesSucceeded)
-					invalidateAfterFolderAssignment(userId)
-					await onRefresh()
-					onJourneyComplete?.(skippedResult)
-					return
-				}
-
-				const result = await runHealthImportJourney(
-					userId,
-					[info.externalFolderId],
-					({ phase, phasesCompleted, phasesSucceeded }) => {
-						setJourneyPhase(phase)
-						setJourneyPhasesCompleted(phasesCompleted)
-						setJourneyPhasesSucceeded(phasesSucceeded)
-					},
-				)
+				const result = await runModuleImportJourney(moduleId, info)
 
 				setJourneyResult(result)
 				setJourneyPhase('summary')
@@ -296,22 +490,75 @@ export function useFolderAssignmentFlow({
 				setIsJourneyRunning(false)
 			}
 		},
-		[onJourneyComplete, onRefresh, userId],
+		[onJourneyComplete, onRefresh, runModuleImportJourney, userId],
+	)
+
+	const assignModuleFolders = useCallback(
+		async (
+			moduleId: FolderAssignmentModuleId,
+			memberIds: string[],
+			mode: ExistingFolderMode,
+		) => {
+			switch (moduleId) {
+				case 'insurance': {
+					const discoveredCategories =
+						discoverInsuranceCategoriesFromFolderNames(
+							childFolderNames.length > 0 ? childFolderNames : [folderName],
+						).map((category) => category.id)
+
+					for (const memberId of memberIds) {
+						await assignInsuranceSourceFolder({
+							userId,
+							externalFolderId: folderId,
+							folderName,
+							folderPath: folderName,
+							familyMemberId: memberId,
+							discoveredCategories,
+							mode,
+						})
+					}
+					return
+				}
+				case 'vehicles': {
+					for (const memberId of memberIds) {
+						await assignVehicleSourceFolder({
+							userId,
+							externalFolderId: folderId,
+							folderName,
+							folderPath: folderName,
+							familyMemberId: memberId,
+							mode,
+						})
+					}
+					return
+				}
+				default:
+					await assignHealthSourceFolders({
+						userId,
+						externalFolderId: folderId,
+						folderName,
+						familyMemberIds: memberIds,
+						mode,
+					})
+			}
+		},
+		[childFolderNames, folderId, folderName, userId],
 	)
 
 	const performAssign = useCallback(
 		async (memberIds: string[], mode: ExistingFolderMode = 'add') => {
+			const moduleId = resolveActiveFolderAssignmentModule(
+				moduleMode,
+				folderName,
+				moduleHints,
+			)
+
+			setActiveModuleId(moduleId)
 			setIsSaving(true)
 			setErrorMessage(null)
 
 			try {
-				await assignHealthSourceFolders({
-					userId,
-					externalFolderId: folderId,
-					folderName,
-					familyMemberIds: memberIds,
-					mode,
-				})
+				await assignModuleFolders(moduleId, memberIds, mode)
 				invalidateAfterFolderAssignment(userId)
 				await onRefresh()
 
@@ -331,7 +578,7 @@ export function useFolderAssignmentFlow({
 				setSuccessInfo(info)
 				setStep('journey')
 				setJourneyPhase('assign')
-				void startImportJourney(info)
+				void startImportJourney(info, moduleId)
 			} catch (error) {
 				setErrorMessage(mapAssignmentError(error))
 			} finally {
@@ -339,8 +586,11 @@ export function useFolderAssignmentFlow({
 			}
 		},
 		[
+			assignModuleFolders,
 			folderId,
 			folderName,
+			moduleHints,
+			moduleMode,
 			onRefresh,
 			startImportJourney,
 			uniqueMembers,
@@ -353,13 +603,29 @@ export function useFolderAssignmentFlow({
 			return
 		}
 
+		const moduleId = resolveActiveFolderAssignmentModule(
+			moduleMode,
+			folderName,
+			moduleHints,
+		)
+
 		setSelectedMemberIds([suggestion.memberId])
-		const hasExisting = await checkExistingAndProceed([suggestion.memberId])
+		const hasExisting = await checkExistingAndProceed(
+			[suggestion.memberId],
+			moduleId,
+		)
 
 		if (!hasExisting) {
 			await performAssign([suggestion.memberId], 'add')
 		}
-	}, [checkExistingAndProceed, performAssign, suggestion])
+	}, [
+		checkExistingAndProceed,
+		folderName,
+		moduleHints,
+		moduleMode,
+		performAssign,
+		suggestion,
+	])
 
 	const handleChooseDifferentPerson = useCallback(() => {
 		setErrorMessage(null)
@@ -374,12 +640,28 @@ export function useFolderAssignmentFlow({
 			return
 		}
 
-		const hasExisting = await checkExistingAndProceed(selectedMemberIds)
+		const moduleId = resolveActiveFolderAssignmentModule(
+			moduleMode,
+			folderName,
+			moduleHints,
+		)
+
+		const hasExisting = await checkExistingAndProceed(
+			selectedMemberIds,
+			moduleId,
+		)
 
 		if (!hasExisting) {
 			await performAssign(selectedMemberIds, 'add')
 		}
-	}, [checkExistingAndProceed, performAssign, selectedMemberIds])
+	}, [
+		checkExistingAndProceed,
+		folderName,
+		moduleHints,
+		moduleMode,
+		performAssign,
+		selectedMemberIds,
+	])
 
 	const handleContinueExisting = useCallback(async () => {
 		await performAssign(selectedMemberIds, existingMode)
@@ -393,10 +675,13 @@ export function useFolderAssignmentFlow({
 		journeyStartedRef.current = false
 
 		void (async () => {
-			await resetFailedImportCandidates(userId)
-			await startImportJourney(successInfo)
+			if (activeModuleId === 'health') {
+				await resetFailedImportCandidates(userId)
+			}
+
+			await startImportJourney(successInfo, activeModuleId)
 		})()
-	}, [startImportJourney, successInfo, userId])
+	}, [activeModuleId, startImportJourney, successInfo, userId])
 
 	const handleChooseDifferentFolder = useCallback(() => {
 		journeyStartedRef.current = false
@@ -423,6 +708,7 @@ export function useFolderAssignmentFlow({
 		isJourneyRunning,
 		currentFolderAssignments,
 		isAssigned,
+		activeModuleId,
 		open,
 		close,
 		toggleMember,

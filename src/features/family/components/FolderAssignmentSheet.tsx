@@ -4,6 +4,10 @@ import { BottomSheet } from '@/components/layout/mobile'
 import { C } from '@/constants/colors'
 import { ROUTES, healthSettingsSection } from '@/constants/routes'
 import {
+	MODULE_FOLDER_LABELS,
+	type FolderAssignmentModuleId,
+} from '@/features/connectors/services/folder-assignment-module.resolver'
+import {
 	formatMemberLabel,
 	getNonRedundantAliases,
 } from '@/features/family/services/folder-match.service'
@@ -29,6 +33,7 @@ interface FolderAssignmentSheetProps {
 	members: FamilyMemberWithAliases[]
 	isOpen: boolean
 	folderName: string
+	moduleId?: FolderAssignmentModuleId
 	step: FolderAssignmentStep
 	suggestion: FolderMatchSuggestion | null
 	selectedMemberIds: string[]
@@ -58,6 +63,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 		members,
 		isOpen,
 		folderName,
+		moduleId = 'health',
 		step,
 		suggestion,
 		selectedMemberIds,
@@ -86,6 +92,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 	const uniqueMembers = dedupeFamilyMembers(members)
 	const preventClose = isSaving || isJourneyRunning
 	const journeyOutcome = journeyResult?.outcome ?? null
+	const moduleLabel = MODULE_FOLDER_LABELS[moduleId]
 	const oauthError = Boolean(
 		errorMessage &&
 		/(401|UNAUTHENTICATED|GOOGLE_AUTH_EXPIRED|RECONNECT)/i.test(errorMessage),
@@ -160,12 +167,33 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 				isRunning={isJourneyRunning}
 				oauthError={oauthError}
 				needsReview={journeyResult?.needsReview ?? 0}
+				moduleId={moduleId}
 				onViewDashboard={() => {
 					onClose()
+					if (moduleId === 'insurance') {
+						navigate(ROUTES.insurance)
+						return
+					}
+
+					if (moduleId === 'vehicles') {
+						navigate(ROUTES.vehicles)
+						return
+					}
+
 					navigate(ROUTES.health)
 				}}
 				onReview={() => {
 					onClose()
+					if (moduleId === 'insurance') {
+						navigate(ROUTES.insuranceSettings)
+						return
+					}
+
+					if (moduleId === 'vehicles') {
+						navigate(ROUTES.vehiclesSettings)
+						return
+					}
+
 					navigate(healthSettingsSection('review'))
 				}}
 				onReconnect={() => {
@@ -182,7 +210,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 			isOpen={isOpen}
 			onClose={preventClose ? undefined : onClose}
 			preventClose={preventClose}
-			aria-label="Assign Health Folder"
+			aria-label={`Assign ${moduleLabel} Folder`}
 			footer={footer}
 			header={
 				step === 'journey' ? null : (
@@ -190,7 +218,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 						title={
 							step === 'existing'
 								? 'Existing Folder Assignment'
-								: 'Assign Health Folder'
+								: `Assign ${moduleLabel} Folder`
 						}
 						subtitle={
 							step === 'existing'
@@ -213,6 +241,7 @@ export function FolderAssignmentSheet(props: FolderAssignmentSheetProps) {
 					result={journeyResult}
 					isRunning={isJourneyRunning}
 					errorMessage={errorMessage}
+					moduleId={moduleId}
 					onRetry={onRetryJourney}
 					onChooseDifferentFolder={onChooseDifferentFolder}
 					onClose={onClose}

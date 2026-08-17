@@ -2,9 +2,13 @@ import { Check, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { C } from '@/constants/colors'
 import { ROUTES, healthSettingsSection } from '@/constants/routes'
+import type { FolderAssignmentModuleId } from '@/features/connectors/services/folder-assignment-module.resolver'
+import { MODULE_FOLDER_LABELS } from '@/features/connectors/services/folder-assignment-module.resolver'
 import type { AssignmentSuccessInfo } from '@/features/family/types/family.types'
 import {
 	IMPORT_JOURNEY_STEPS,
+	INSURANCE_IMPORT_JOURNEY_STEPS,
+	VEHICLE_IMPORT_JOURNEY_STEPS,
 	type ImportJourneyOutcome,
 	type ImportJourneyPhase,
 	type ImportJourneyResult,
@@ -18,11 +22,45 @@ interface ImportJourneyStepProps {
 	result: ImportJourneyResult | null
 	isRunning: boolean
 	errorMessage: string | null
+	moduleId?: FolderAssignmentModuleId
 	onRetry: () => void
 	onChooseDifferentFolder: () => void
 	onClose: () => void
 	/** When true, action buttons render via ImportJourneyFooter instead of inline. */
 	hideFooter?: boolean
+}
+
+function journeyStepsForModule(moduleId: FolderAssignmentModuleId) {
+	switch (moduleId) {
+		case 'insurance':
+			return INSURANCE_IMPORT_JOURNEY_STEPS
+		case 'vehicles':
+			return VEHICLE_IMPORT_JOURNEY_STEPS
+		default:
+			return IMPORT_JOURNEY_STEPS
+	}
+}
+
+function journeyTitleForModule(
+	moduleId: FolderAssignmentModuleId,
+	phase: ImportJourneyPhase,
+	outcome: ImportJourneyOutcome | null,
+): string {
+	const moduleLabel = MODULE_FOLDER_LABELS[moduleId]
+
+	if (phase === 'summary') {
+		if (outcome === 'candidates_found') {
+			return 'Scan Complete'
+		}
+
+		return moduleId === 'health'
+			? 'Import Summary'
+			: `${moduleLabel} Import Summary`
+	}
+
+	return moduleId === 'health'
+		? 'Importing Health Reports'
+		: `Importing ${moduleLabel} Documents`
 }
 
 function isOAuthError(message: string | null | undefined): boolean {
@@ -48,6 +86,7 @@ export function ImportJourneyStep({
 	result,
 	isRunning,
 	errorMessage,
+	moduleId = 'health',
 	onRetry,
 	onChooseDifferentFolder,
 	onClose,
@@ -57,6 +96,7 @@ export function ImportJourneyStep({
 	const outcome = result?.outcome ?? null
 	const completedSet = new Set(phasesCompleted)
 	const succeededSet = new Set(phasesSucceeded)
+	const journeySteps = journeyStepsForModule(moduleId)
 	const memberLabel =
 		successInfo.memberLabels[0] ?? successInfo.memberLabels.join(' · ')
 	const failureMessage =
@@ -78,11 +118,7 @@ export function ImportJourneyStep({
 					textAlign: 'center',
 				}}
 			>
-				{phase === 'summary'
-					? outcome === 'candidates_found'
-						? 'Scan Complete'
-						: 'Import Summary'
-					: 'Importing Health Reports'}
+				{journeyTitleForModule(moduleId, phase, outcome)}
 			</div>
 			<div
 				style={{
@@ -110,7 +146,7 @@ export function ImportJourneyStep({
 					marginBottom: 18,
 				}}
 			>
-				{IMPORT_JOURNEY_STEPS.map((step) => {
+				{journeySteps.map((step) => {
 					const isComplete = succeededSet.has(step.phase)
 					const isFailed =
 						phase === 'summary' &&
@@ -141,8 +177,19 @@ export function ImportJourneyStep({
 			{phase === 'summary' && result ? (
 				<SummaryPanel
 					result={result}
+					moduleId={moduleId}
 					onReview={() => {
 						onClose()
+						if (moduleId === 'insurance') {
+							navigate(ROUTES.insuranceSettings)
+							return
+						}
+
+						if (moduleId === 'vehicles') {
+							navigate(ROUTES.vehiclesSettings)
+							return
+						}
+
 						navigate(healthSettingsSection('review'))
 					}}
 				/>
@@ -158,12 +205,33 @@ export function ImportJourneyStep({
 					isRunning={isRunning}
 					oauthError={oauthError}
 					needsReview={result?.needsReview ?? 0}
+					moduleId={moduleId}
 					onViewDashboard={() => {
 						onClose()
+						if (moduleId === 'insurance') {
+							navigate(ROUTES.insurance)
+							return
+						}
+
+						if (moduleId === 'vehicles') {
+							navigate(ROUTES.vehicles)
+							return
+						}
+
 						navigate(ROUTES.health)
 					}}
 					onReview={() => {
 						onClose()
+						if (moduleId === 'insurance') {
+							navigate(ROUTES.insuranceSettings)
+							return
+						}
+
+						if (moduleId === 'vehicles') {
+							navigate(ROUTES.vehiclesSettings)
+							return
+						}
+
 						navigate(healthSettingsSection('review'))
 					}}
 					onReconnect={() => {
@@ -264,13 +332,16 @@ function JourneyStepRow({
 
 function SummaryPanel({
 	result,
+	moduleId,
 	onReview,
 }: {
 	result: ImportJourneyResult
+	moduleId: FolderAssignmentModuleId
 	onReview: () => void
 }) {
 	const failureMessage = result.primaryError ?? result.errorMessage
 	const extraErrorCount = (result.errorSamples?.length ?? 0) - 1
+	const isHealthModule = moduleId === 'health'
 
 	return (
 		<div
@@ -284,39 +355,76 @@ function SummaryPanel({
 		>
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
 				<Stat
-					label="Files found"
+					label={isHealthModule ? 'Files found' : 'Documents discovered'}
 					value={String(result.filesFound)}
-					hint="Discovered in your Drive folder"
+					hint={
+						isHealthModule
+							? 'Discovered in your Drive folder'
+							: 'Matched in your assigned folder'
+					}
 				/>
 				<Stat
-					label="Candidates this scan"
-					value={String(result.importCandidates)}
-					hint="Possible health reports found in this scan"
+					label={isHealthModule ? 'Candidates this scan' : 'Imported this run'}
+					value={String(
+						isHealthModule ? result.importCandidates : result.importedThisRun,
+					)}
+					hint={
+						isHealthModule
+							? 'Possible health reports found in this scan'
+							: 'Processed during this import'
+					}
 				/>
-				<Stat
-					label="Imported this run"
-					value={String(result.importedThisRun)}
-					hint="Auto-approved and processed"
-				/>
-				<Stat label="Failed this run" value={String(result.failedThisRun)} />
-				<Stat label="Skipped this run" value={String(result.skippedThisRun)} />
-				<Stat label="Total imported" value={String(result.reportsImported)} />
-				<Stat
-					label="Needs review"
-					value={String(result.needsReview)}
-					hint="Review in Setup to import remaining files"
-				/>
-				<Stat label="Auto-approved" value={String(result.autoApprovedCount)} />
-				<Stat
-					label="Results organized"
-					value={String(result.metricsExtracted)}
-					hint="From imported reports this run"
-				/>
+				{isHealthModule ? (
+					<>
+						<Stat
+							label="Imported this run"
+							value={String(result.importedThisRun)}
+							hint="Auto-approved and processed"
+						/>
+						<Stat
+							label="Failed this run"
+							value={String(result.failedThisRun)}
+						/>
+						<Stat
+							label="Skipped this run"
+							value={String(result.skippedThisRun)}
+						/>
+						<Stat
+							label="Total imported"
+							value={String(result.reportsImported)}
+						/>
+						<Stat
+							label="Needs review"
+							value={String(result.needsReview)}
+							hint="Review in Setup to import remaining files"
+						/>
+						<Stat
+							label="Auto-approved"
+							value={String(result.autoApprovedCount)}
+						/>
+						<Stat
+							label="Results organized"
+							value={String(result.metricsExtracted)}
+							hint="From imported reports this run"
+						/>
+					</>
+				) : (
+					<>
+						<Stat
+							label="Total imported"
+							value={String(result.reportsImported)}
+						/>
+						<Stat
+							label="Failed this run"
+							value={String(result.failedThisRun)}
+						/>
+					</>
+				)}
 				{result.failedCount > 0 ? (
 					<Stat label="Total failed" value={String(result.failedCount)} />
 				) : null}
 			</div>
-			{result.needsReview > 0 ? (
+			{isHealthModule && result.needsReview > 0 ? (
 				<button
 					type="button"
 					onClick={onReview}
@@ -423,6 +531,7 @@ export function ImportJourneyFooter({
 	isRunning,
 	oauthError,
 	needsReview,
+	moduleId = 'health',
 	onViewDashboard,
 	onReview,
 	onReconnect,
@@ -433,6 +542,7 @@ export function ImportJourneyFooter({
 	isRunning: boolean
 	oauthError: boolean
 	needsReview: number
+	moduleId?: FolderAssignmentModuleId
 	onViewDashboard: () => void
 	onReview: () => void
 	onReconnect: () => void
@@ -443,10 +553,17 @@ export function ImportJourneyFooter({
 		return null
 	}
 
+	const dashboardLabel =
+		moduleId === 'insurance'
+			? 'Open Insurance'
+			: moduleId === 'vehicles'
+				? 'Open Vehicles'
+				: 'Open Health'
+
 	if (outcome === 'success' || outcome === 'partial_success') {
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-				{needsReview > 0 ? (
+				{moduleId === 'health' && needsReview > 0 ? (
 					<ActionButton
 						label={`Review remaining ${needsReview}`}
 						variant="primary"
@@ -454,8 +571,10 @@ export function ImportJourneyFooter({
 					/>
 				) : null}
 				<ActionButton
-					label="Open Health"
-					variant={needsReview > 0 ? 'secondary' : 'primary'}
+					label={dashboardLabel}
+					variant={
+						moduleId === 'health' && needsReview > 0 ? 'secondary' : 'primary'
+					}
 					onClick={onViewDashboard}
 				/>
 				{outcome === 'partial_success' ? (

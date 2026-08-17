@@ -7,9 +7,12 @@ import { useFamilyMembers } from '@/features/family/hooks/useFamilyMembers'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { useFolderAssignmentFlow } from '@/features/family/hooks/useFolderAssignmentFlow'
 import { useHealthSources } from '@/features/family/hooks/useHealthSources'
+import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
+import { useVehicleSources } from '@/features/vehicles/hooks/useVehicleSources'
 import { useDriveBrowser } from '@/features/connectors/google-drive/hooks/useDriveBrowser'
 import { useUser } from '@/features/user/hooks/useUser'
 import type { DriveBrowseFile } from '@/core/connectors'
+import type { HealthSourceAssignment } from '@/features/family/types/family.types'
 import type { ImportJourneyResult } from '@/features/health-import/types/health-import-journey.types'
 
 interface DriveBrowserProps {
@@ -21,19 +24,33 @@ export function DriveBrowser({ userId }: DriveBrowserProps) {
 	const { selectedMemberId } = useFamilyContext()
 	const browser = useDriveBrowser(userId)
 	const { members } = useFamilyMembers(userId, profile?.name ?? 'Me')
-	const { assignments, refresh } = useHealthSources(userId)
+	const { assignments: healthAssignments, refresh: refreshHealth } =
+		useHealthSources(userId)
+	const { assignments: insuranceAssignments, refresh: refreshInsurance } =
+		useInsuranceSources(userId)
+	const { moduleAssignments: vehicleAssignments, refresh: refreshVehicle } =
+		useVehicleSources(userId)
 	const [journeyResult, setJourneyResult] =
 		useState<ImportJourneyResult | null>(null)
+
+	const childFolderNames = useMemo(
+		() => browser.folders.map((folder) => folder.name),
+		[browser.folders],
+	)
 
 	const flow = useFolderAssignmentFlow({
 		userId,
 		folderId: browser.currentFolderId,
 		folderName: browser.currentFolderName,
 		members,
-		assignments,
+		assignments: healthAssignments,
+		insuranceAssignments,
+		vehicleAssignments,
+		moduleMode: 'auto',
+		childFolderNames,
 		preferredMemberId: selectedMemberId,
 		onRefresh: async () => {
-			await refresh()
+			await Promise.all([refreshHealth(), refreshInsurance(), refreshVehicle()])
 		},
 		onJourneyComplete: (result) => {
 			setJourneyResult(result)
@@ -41,15 +58,49 @@ export function DriveBrowser({ userId }: DriveBrowserProps) {
 	})
 
 	const assignmentsByFolderId = useMemo(() => {
-		const map = new Map<string, typeof assignments>()
+		const map = new Map<string, HealthSourceAssignment[]>()
 
-		for (const assignment of assignments) {
-			const existing = map.get(assignment.externalFolderId) ?? []
-			map.set(assignment.externalFolderId, [...existing, assignment])
+		const addAssignments = (entries: HealthSourceAssignment[]) => {
+			for (const assignment of entries) {
+				const existing = map.get(assignment.externalFolderId) ?? []
+				map.set(assignment.externalFolderId, [...existing, assignment])
+			}
 		}
 
+		addAssignments(healthAssignments)
+		addAssignments(
+			insuranceAssignments.map((assignment) => ({
+				id: assignment.id,
+				userId: assignment.userId,
+				connectorId: 'google-drive' as const,
+				folderId: assignment.folderId,
+				familyMemberId: assignment.familyMemberId,
+				familyMemberName: assignment.familyMemberName,
+				memberLabel: assignment.memberLabel,
+				externalFolderId: assignment.externalFolderId,
+				folderName: assignment.folderName,
+				assignedAt: assignment.assignedAt,
+				enabled: assignment.enabled,
+			})),
+		)
+		addAssignments(
+			vehicleAssignments.map((assignment) => ({
+				id: assignment.id,
+				userId: assignment.userId,
+				connectorId: 'google-drive' as const,
+				folderId: assignment.folderId,
+				familyMemberId: assignment.familyMemberId,
+				familyMemberName: assignment.familyMemberName,
+				memberLabel: assignment.memberLabel,
+				externalFolderId: assignment.externalFolderId,
+				folderName: assignment.folderName,
+				assignedAt: assignment.assignedAt,
+				enabled: assignment.enabled,
+			})),
+		)
+
 		return map
-	}, [assignments])
+	}, [healthAssignments, insuranceAssignments, vehicleAssignments])
 
 	return (
 		<div
@@ -284,6 +335,7 @@ export function DriveBrowser({ userId }: DriveBrowserProps) {
 				members={members}
 				isOpen={flow.isOpen}
 				folderName={browser.currentFolderName}
+				moduleId={flow.activeModuleId}
 				step={flow.step}
 				suggestion={flow.suggestion}
 				selectedMemberIds={flow.selectedMemberIds}

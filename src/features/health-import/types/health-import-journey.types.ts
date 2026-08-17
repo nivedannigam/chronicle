@@ -52,6 +52,26 @@ export const IMPORT_JOURNEY_STEPS: {
 	{ phase: 'summary', label: 'Done' },
 ]
 
+export const INSURANCE_IMPORT_JOURNEY_STEPS: {
+	phase: ImportJourneyPhase
+	label: string
+}[] = [
+	{ phase: 'assign', label: 'Folder connected' },
+	{ phase: 'scanning', label: 'Drive Search' },
+	{ phase: 'detection', label: 'Policy Discovery' },
+	{ phase: 'summary', label: 'Done' },
+]
+
+export const VEHICLE_IMPORT_JOURNEY_STEPS: {
+	phase: ImportJourneyPhase
+	label: string
+}[] = [
+	{ phase: 'assign', label: 'Folder connected' },
+	{ phase: 'scanning', label: 'Drive Search' },
+	{ phase: 'detection', label: 'Document Discovery' },
+	{ phase: 'summary', label: 'Done' },
+]
+
 export interface ImportQueueRunResult {
 	importedThisRun: number
 	failedThisRun: number
