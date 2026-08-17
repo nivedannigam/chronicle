@@ -1,5 +1,4 @@
 import type {
-	VehicleAttentionItem,
 	VehicleKnowledge,
 	VehicleKnowledgeDocument,
 	VehicleKnowledgeFact,
@@ -13,21 +12,45 @@ import type {
 	VehicleTimelineRecord,
 } from '@/features/vehicle-knowledge/types/vehicle-record.types'
 import type { VehicleKnowledgeRawData } from '@/features/vehicle-knowledge/providers/vehicle-knowledge-data-source'
+import { buildVehicleAttention } from '@/features/vehicle-knowledge/engines/vehicle-attention.engine'
+import { buildVehicleCompleteness } from '@/features/vehicle-knowledge/engines/vehicle-completeness.engine'
+import {
+	computeVehicleCurrentState,
+	pickLatestExpiryForVehicle,
+} from '@/features/vehicle-knowledge/engines/vehicle-state.engine'
 
 const FACT_LABELS: Record<string, string> = {
 	registration_number: 'Registration number',
 	registration_date: 'Registration date',
+	owner: 'Owner',
+	make: 'Make',
+	model: 'Model',
+	variant: 'Variant',
+	fuel_type: 'Fuel type',
+	color: 'Color',
 	insurance_provider: 'Insurance provider',
 	policy_number: 'Policy number',
 	policy_start: 'Policy start',
 	policy_expiry: 'Policy expiry',
 	idv: 'IDV',
 	premium: 'Premium',
+	puc_certificate_number: 'PUC certificate number',
 	puc_expiry: 'PUC expiry',
+	warranty_provider: 'Warranty provider',
 	warranty_expiry: 'Warranty expiry',
 	service_date: 'Service date',
 	service_mileage: 'Service mileage',
 	service_amount: 'Service amount',
+	service_center: 'Service center',
+	service_type: 'Service type',
+	next_service_date: 'Next service date',
+	next_service_mileage: 'Next service mileage',
+	lender: 'Lender',
+	agreement_number: 'Agreement number',
+	financed_amount: 'Financed amount',
+	monthly_payment: 'Monthly payment',
+	tenure: 'Tenure',
+	outstanding_amount: 'Outstanding amount',
 	vin: 'VIN',
 	engine_number: 'Engine number',
 	purchase_date: 'Purchase date',
@@ -39,12 +62,7 @@ const CATEGORY_LABELS = {
 	other: 'Vehicle',
 } as const
 
-function daysUntil(date: string | null): number | null {
-	if (!date) return null
-	const parsed = Date.parse(date)
-	if (Number.isNaN(parsed)) return null
-	return Math.ceil((parsed - Date.now()) / (1000 * 60 * 60 * 24))
-}
+const UNASSIGNED_SLUG = '_unassigned-documents'
 
 function formatDateLabel(date: string | null): string | null {
 	if (!date) return null
@@ -57,105 +75,14 @@ function formatDateLabel(date: string | null): string | null {
 	})
 }
 
-function latestFact(
-	facts: VehicleFactRecord[],
-	vehicleId: string,
-	key: string,
-): VehicleFactRecord | null {
+function documentNameById(
+	documents: VehicleDocumentRecord[],
+	documentId: string | null,
+): string | null {
+	if (!documentId) return null
 	return (
-		facts
-			.filter((fact) => fact.vehicleId === vehicleId && fact.factKey === key)
-			.sort((left, right) =>
-				(right.valueDate ?? '').localeCompare(left.valueDate ?? ''),
-			)[0] ?? null
+		documents.find((document) => document.id === documentId)?.fileName ?? null
 	)
-}
-
-function buildAttention(input: {
-	vehicles: VehicleKnowledgeVehicle[]
-	documents: VehicleDocumentRecord[]
-}): VehicleAttentionItem[] {
-	const items: VehicleAttentionItem[] = []
-
-	for (const vehicle of input.vehicles) {
-		const insuranceDays = daysUntil(vehicle.insuranceExpiry)
-		const pucDays = daysUntil(vehicle.pucExpiry)
-		const warrantyDays = daysUntil(vehicle.warrantyExpiry)
-
-		if (insuranceDays != null && insuranceDays < 0) {
-			items.push({
-				id: `${vehicle.id}-insurance-expired`,
-				vehicleId: vehicle.id,
-				severity: 'high',
-				title: `${vehicle.displayName} insurance expired`,
-				body: 'Renew your motor insurance to stay covered.',
-				actionLabel: 'View insurance',
-			})
-		} else if (insuranceDays != null && insuranceDays <= 30) {
-			items.push({
-				id: `${vehicle.id}-insurance-soon`,
-				vehicleId: vehicle.id,
-				severity: 'medium',
-				title: `${vehicle.displayName} insurance expires soon`,
-				body: `Valid until ${formatDateLabel(vehicle.insuranceExpiry)}.`,
-				actionLabel: 'View insurance',
-			})
-		}
-
-		if (pucDays != null && pucDays < 0) {
-			items.push({
-				id: `${vehicle.id}-puc-expired`,
-				vehicleId: vehicle.id,
-				severity: 'high',
-				title: `${vehicle.displayName} PUC expired`,
-				body: 'Renew your pollution certificate.',
-				actionLabel: 'View compliance',
-			})
-		} else if (pucDays != null && pucDays <= 30) {
-			items.push({
-				id: `${vehicle.id}-puc-soon`,
-				vehicleId: vehicle.id,
-				severity: 'medium',
-				title: `${vehicle.displayName} PUC expires soon`,
-				body: `Valid until ${formatDateLabel(vehicle.pucExpiry)}.`,
-				actionLabel: 'View compliance',
-			})
-		}
-
-		if (warrantyDays != null && warrantyDays <= 30 && warrantyDays >= 0) {
-			items.push({
-				id: `${vehicle.id}-warranty-soon`,
-				vehicleId: vehicle.id,
-				severity: 'medium',
-				title: `${vehicle.displayName} warranty ending soon`,
-				body: `Valid until ${formatDateLabel(vehicle.warrantyExpiry)}.`,
-				actionLabel: 'View warranty',
-			})
-		}
-
-		const hasRegistration = input.documents.some(
-			(document) =>
-				document.vehicleId === vehicle.id &&
-				document.documentType === 'registration' &&
-				document.status === 'completed',
-		)
-
-		if (!hasRegistration && vehicle.documentCount > 0) {
-			items.push({
-				id: `${vehicle.id}-missing-rc`,
-				vehicleId: vehicle.id,
-				severity: 'high',
-				title: `${vehicle.displayName} registration not found`,
-				body: 'We have not found a registration certificate yet.',
-				actionLabel: 'View documents',
-			})
-		}
-	}
-
-	return items.sort((left, right) => {
-		const rank = { high: 0, medium: 1, low: 2 } as const
-		return rank[left.severity] - rank[right.severity]
-	})
 }
 
 function buildVehicle(
@@ -166,29 +93,29 @@ function buildVehicle(
 	const vehicleDocuments = documents.filter(
 		(document) => document.vehicleId === record.id,
 	)
-	const insuranceExpiry =
-		latestFact(facts, record.id, 'policy_expiry')?.valueDate ??
-		vehicleDocuments.find((document) => document.documentType === 'insurance')
-			?.expiryDate ??
-		null
-	const pucExpiry =
-		latestFact(facts, record.id, 'puc_expiry')?.valueDate ??
-		vehicleDocuments.find(
-			(document) =>
-				document.documentType === 'compliance' &&
-				document.documentSubtype === 'puc',
-		)?.expiryDate ??
-		null
-	const warrantyExpiry =
-		latestFact(facts, record.id, 'warranty_expiry')?.valueDate ?? null
-	const lastService =
-		latestFact(facts, record.id, 'service_date')?.valueDate ??
-		vehicleDocuments
-			.filter((document) => document.documentType === 'service')
-			.sort((left, right) =>
-				(right.documentDate ?? '').localeCompare(left.documentDate ?? ''),
-			)[0]?.documentDate ??
-		null
+	const currentState = computeVehicleCurrentState({
+		vehicleId: record.id,
+		registrationNumber: record.registrationNumber,
+		documents,
+		facts,
+	})
+	const completeness = buildVehicleCompleteness({
+		vehicleId: record.id,
+		documents,
+	})
+	const latestDates = pickLatestExpiryForVehicle({
+		vehicleId: record.id,
+		documents,
+		facts,
+	})
+	const nextServiceFact = facts
+		.filter(
+			(fact) =>
+				fact.vehicleId === record.id && fact.factKey === 'next_service_date',
+		)
+		.sort((left, right) =>
+			(right.valueDate ?? '').localeCompare(left.valueDate ?? ''),
+		)[0]
 
 	return {
 		id: record.id,
@@ -209,14 +136,21 @@ function buildVehicle(
 		model: record.model,
 		variant: record.variant,
 		documentCount: vehicleDocuments.length,
-		insuranceExpiry,
-		pucExpiry,
-		warrantyExpiry,
-		lastServiceDate: lastService,
-		nextServiceLabel: lastService ? 'Based on your last service record' : null,
+		insuranceExpiry: latestDates.insuranceExpiry,
+		pucExpiry: latestDates.pucExpiry,
+		warrantyExpiry: latestDates.warrantyExpiry,
+		lastServiceDate: latestDates.lastServiceDate,
+		nextServiceLabel: nextServiceFact?.valueDate
+			? `Next service ${formatDateLabel(nextServiceFact.valueDate)}`
+			: latestDates.lastServiceDate
+				? 'Based on your last service record'
+				: null,
 		isDisplayReady: vehicleDocuments.some(
 			(document) => document.status === 'completed',
 		),
+		currentState,
+		completeness,
+		limitations: completeness.limitations,
 	}
 }
 
@@ -235,6 +169,10 @@ export function buildVehicleKnowledgeFromRawData(
 
 	const vehicles = raw.vehicles
 		.filter((vehicle) => {
+			if (vehicle.slug === UNASSIGNED_SLUG) {
+				return false
+			}
+
 			if (!input.familyMemberId) return true
 			if (!vehicle.familyMemberId) {
 				return input.familyMemberId === input.accountOwnerMemberId
@@ -278,12 +216,14 @@ export function buildVehicleKnowledgeFromRawData(
 			valueDate: fact.valueDate,
 			confidence: fact.confidence,
 			sourceDocumentId: fact.documentId,
+			sourceDocumentName: documentNameById(raw.documents, fact.documentId),
 		}))
 
 	const timeline: VehicleKnowledgeTimelineEvent[] = raw.timeline
 		.filter((event) =>
 			vehicles.some((vehicle) => vehicle.id === event.vehicleId),
 		)
+		.sort((left, right) => right.eventDate.localeCompare(left.eventDate))
 		.map((event: VehicleTimelineRecord) => ({
 			id: event.id,
 			vehicleId: event.vehicleId,
@@ -295,10 +235,19 @@ export function buildVehicleKnowledgeFromRawData(
 			evidenceIds: event.evidenceIds,
 		}))
 
-	const attention = buildAttention({
-		vehicles,
+	const attention = buildVehicleAttention({
+		vehicles: vehicles.map((vehicle) => ({
+			id: vehicle.id,
+			displayName: vehicle.displayName,
+			currentState: vehicle.currentState,
+		})),
 		documents: raw.documents,
+		timeline: raw.timeline,
 	})
+
+	const limitations = [
+		...new Set(vehicles.flatMap((vehicle) => vehicle.limitations)),
+	]
 
 	const headline =
 		vehicles.length === 1
@@ -334,5 +283,6 @@ export function buildVehicleKnowledgeFromRawData(
 		},
 		hasVehicles: vehicles.length > 0,
 		documentCount: documents.length,
+		limitations,
 	}
 }

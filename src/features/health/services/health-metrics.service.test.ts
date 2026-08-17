@@ -42,6 +42,15 @@ const uploadedReport = {
 	processed_at: '2024-06-01T11:00:00.000Z',
 } as UploadedHealthReport
 
+const uploadedReportTwo = {
+	id: 'report-2',
+	user_id: 'user-1',
+	file_name: 'CBC_Followup.pdf',
+	status: 'completed',
+	uploaded_at: '2024-12-01T10:00:00.000Z',
+	processed_at: '2024-12-01T11:00:00.000Z',
+} as UploadedHealthReport
+
 describe('storedMetricsToUiMetrics', () => {
 	it('maps stored metrics to UI rows with unit and reference range', () => {
 		const uiMetrics = storedMetricsToUiMetrics([createStoredMetric()])
@@ -70,7 +79,7 @@ describe('buildHealthKnowledgeGraph with stored metrics', () => {
 	it('prefers stored metrics over parsed_data for metric histories', () => {
 		const graph = buildHealthKnowledgeGraph({
 			personId: 'user-1',
-			uploadedReports: [uploadedReport],
+			uploadedReports: [uploadedReport, uploadedReportTwo],
 			storedMetrics: [
 				createStoredMetric(),
 				createStoredMetric({

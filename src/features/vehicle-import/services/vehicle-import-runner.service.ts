@@ -7,55 +7,14 @@ import { runVehicleDiscovery } from '@/features/vehicle-import/services/vehicle-
 import {
 	createVehicleDocumentFromRegistry,
 	processVehicleDocument,
+	reprocessStuckVehicleDocuments,
+	resolveProvisionalVehicleId,
 } from '@/features/vehicle-import/services/vehicle-processing.service'
 import { classifyVehicleDocument } from '@/features/vehicle-knowledge/utils/vehicle-document-classifier'
-import {
-	resolveVehicleNameFromPath,
-	slugifyVehicleName,
-} from '@/features/vehicle-knowledge/utils/vehicle-folder-resolver'
 import type {
 	VehicleDiscoveryRunSummary,
 	VehicleImportStatusSnapshot,
 } from '@/features/vehicle-import/types/vehicle-import.types'
-
-async function ensureVehicleId(input: {
-	userId: string
-	displayName: string
-	familyMemberId: string | null
-}): Promise<string> {
-	const slug = slugifyVehicleName(input.displayName)
-
-	const { data: existing } = await supabase
-		.from('vehicles')
-		.select('id')
-		.eq('user_id', input.userId)
-		.eq('slug', slug)
-		.maybeSingle()
-
-	if (existing?.id) {
-		return existing.id as string
-	}
-
-	const { data, error } = await supabase
-		.from('vehicles')
-		.insert({
-			user_id: input.userId,
-			family_member_id: input.familyMemberId,
-			display_name: input.displayName,
-			slug,
-			category: 'car',
-			status: 'active',
-			source: 'folder_discovery',
-		})
-		.select('id')
-		.single()
-
-	if (error) {
-		throw new Error(error.message)
-	}
-
-	return data.id as string
-}
 
 async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
 	const assignments = await listVehicleSourceAssignments(userId)
@@ -87,14 +46,11 @@ async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
 			fileName: row.fileName,
 			folderPath: row.folderPath,
 		})
-		const vehicleName = resolveVehicleNameFromPath({
-			folderPath: row.folderPath,
-			rootFolderPath: assignment.folderPath,
-			rootFolderName: assignment.folderName,
-		})
-		const vehicleId = await ensureVehicleId({
+		const vehicleId = await resolveProvisionalVehicleId({
 			userId,
-			displayName: vehicleName,
+			fileName: row.fileName,
+			folderPath: row.folderPath,
+			assignment,
 			familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
 		})
 
@@ -126,6 +82,8 @@ async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
 			fileName: row.fileName,
 			folderPath: row.folderPath,
 			assignment,
+			registryId: row.id,
+			externalFileId: row.externalFileId,
 		})
 
 		imported += 1
@@ -140,6 +98,10 @@ export async function runVehicleImportSync(userId: string): Promise<{
 }> {
 	await runVehicleDiscovery({ userId })
 	const imported = await importDiscoveredVehicleFiles(userId)
+
+	if (imported === 0) {
+		await reprocessStuckVehicleDocuments(userId)
+	}
 
 	invalidateVehicleKnowledgeCache(userId)
 

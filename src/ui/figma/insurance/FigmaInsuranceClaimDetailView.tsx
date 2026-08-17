@@ -445,6 +445,8 @@ export function FigmaInsuranceClaimDetailView({
 					navigate(
 						insuranceAskPath({
 							q: detail.askPrompt,
+							claimId: detail.id,
+							policyId: detail.policyId,
 						}),
 					)
 				}

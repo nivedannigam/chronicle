@@ -73,6 +73,7 @@ import {
 	VehicleDetailPage,
 	VehicleTimelinePage,
 	VehicleSettingsPage,
+	VehicleAskPage,
 } from '@/features/vehicles'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
@@ -275,6 +276,7 @@ export function AppRouter() {
 					<Route path={ROUTES.vehicles} element={<VehicleLayout />}>
 						<Route index element={<VehicleHomePage />} />
 						<Route path="timeline" element={<VehicleTimelinePage />} />
+						<Route path="ask" element={<VehicleAskPage />} />
 						<Route path="settings" element={<VehicleSettingsPage />} />
 						<Route path=":vehicleSlug" element={<VehicleDetailPage />} />
 					</Route>

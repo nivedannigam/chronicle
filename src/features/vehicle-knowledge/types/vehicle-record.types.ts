@@ -41,6 +41,7 @@ export interface VehicleDocumentRecord {
 	status: string
 	documentDate: string | null
 	expiryDate: string | null
+	storagePath: string | null
 	uploadedAt: string
 	processedAt: string | null
 }

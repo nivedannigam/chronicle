@@ -136,6 +136,7 @@ export interface InsuranceDocumentRecord {
 	id: string
 	userId: string
 	familyMemberId: string | null
+	registryId: string | null
 	fileName: string
 	storagePath: string
 	documentKind: InsuranceDocumentKind

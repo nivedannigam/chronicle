@@ -315,10 +315,21 @@ export function buildInsuranceKnowledgeSourceKey(
 }
 
 export function isPolicyDisplayReady(policy: InsurancePolicyRecord): boolean {
+	const hasRealInsurer =
+		policy.insurerId.trim().length > 0 && policy.insurerId !== 'unknown-insurer'
+	const hasPolicyNumber = policy.policyNumber.trim().length > 0
+	const hasMeaningfulCoverage =
+		(policy.sumInsured != null && policy.sumInsured > 0) ||
+		Boolean(policy.expiryDate)
+	const hasAiExtraction =
+		policy.extractionMethod === 'llm' ||
+		policy.extractionMethod === 'layout+llm'
+
 	return (
-		policy.policyNumber.trim().length > 0 &&
-		policy.insurerId.trim().length > 0 &&
-		(policy.sumInsured != null || policy.expiryDate != null)
+		hasPolicyNumber &&
+		hasRealInsurer &&
+		hasMeaningfulCoverage &&
+		(hasAiExtraction || policy.confidence >= 0.65)
 	)
 }
 

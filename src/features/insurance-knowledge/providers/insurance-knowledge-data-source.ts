@@ -9,6 +9,7 @@ import type {
 	InsuranceKnowledgeRawRecords,
 	InsurancePolicyRecord,
 } from '@/features/insurance-knowledge/types/insurance-record.types'
+import { deriveInsuranceRecordsFromDocuments } from '@/features/insurance-knowledge/services/derive-insurance-records-from-documents'
 import { supabase } from '@/lib/supabase'
 
 const GOOGLE_DRIVE = 'google-drive'
@@ -55,6 +56,7 @@ function mapDocument(row: Record<string, unknown>): InsuranceDocumentRecord {
 		id: row.id as string,
 		userId: row.user_id as string,
 		familyMemberId: (row.family_member_id as string | null) ?? null,
+		registryId: (row.registry_id as string | null) ?? null,
 		fileName: row.file_name as string,
 		storagePath: (row.storage_path as string | null) ?? '',
 		documentKind: row.document_kind as InsuranceDocumentRecord['documentKind'],
@@ -142,18 +144,20 @@ export class DefaultInsuranceKnowledgeDataSource implements InsuranceKnowledgeDa
 				fetchScopedImportRegistry(input.userId),
 			])
 
+		const derived = deriveInsuranceRecordsFromDocuments({ policies, documents })
+
 		return {
 			policies,
 			coverages: [],
-			members: [],
+			members: derived.members,
 			nominees: [],
-			premiums: [],
-			renewals: [],
+			premiums: derived.premiums,
+			renewals: derived.renewals,
 			claims: [],
 			benefits: [],
 			exclusions: [],
-			documents,
-			insurers: [],
+			documents: derived.documents,
+			insurers: derived.insurers,
 			familyMembers,
 			importRegistry,
 		}

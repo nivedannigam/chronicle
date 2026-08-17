@@ -24,6 +24,10 @@ vi.mock('@/features/family/services/insurance-sources.service', () => ({
 	]),
 }))
 
+vi.mock('@/features/family/services/vehicle-sources.service', () => ({
+	listVehicleSourceAssignments: vi.fn(async () => []),
+}))
+
 describe('registry-module-routing.service', () => {
 	it('detects insurance registry rows', () => {
 		expect(

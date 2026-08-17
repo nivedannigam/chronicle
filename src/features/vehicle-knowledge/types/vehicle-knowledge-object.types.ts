@@ -6,6 +6,8 @@ import type {
 	VehicleTimelineEventType,
 } from '@/features/vehicle-knowledge/types/vehicle-knowledge.types'
 import type { VehicleDocumentTypeId } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
+import type { VehicleCurrentState } from '@/features/vehicle-knowledge/engines/vehicle-state.engine'
+import type { VehicleCompleteness } from '@/features/vehicle-knowledge/engines/vehicle-completeness.engine'
 
 export interface VehicleKnowledgeFamilyMember {
 	id: string | null
@@ -38,6 +40,7 @@ export interface VehicleKnowledgeFact {
 	valueDate: string | null
 	confidence: number
 	sourceDocumentId: string | null
+	sourceDocumentName: string | null
 }
 
 export interface VehicleKnowledgeTimelineEvent {
@@ -85,6 +88,9 @@ export interface VehicleKnowledgeVehicle {
 	lastServiceDate: string | null
 	nextServiceLabel: string | null
 	isDisplayReady: boolean
+	currentState: VehicleCurrentState
+	completeness: VehicleCompleteness
+	limitations: string[]
 }
 
 export interface VehicleKnowledgeSummary {
@@ -103,4 +109,5 @@ export interface VehicleKnowledge {
 	summary: VehicleKnowledgeSummary
 	hasVehicles: boolean
 	documentCount: number
+	limitations: string[]
 }

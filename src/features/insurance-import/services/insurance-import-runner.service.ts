@@ -7,6 +7,7 @@ import { runInsuranceDiscovery } from '@/features/insurance-import/services/insu
 import {
 	createInsuranceDocumentFromRegistry,
 	processInsuranceDocument,
+	reprocessStuckInsuranceDocuments,
 } from '@/features/insurance-import/services/insurance-processing.service'
 import type { InsuranceImportStatusSnapshot } from '@/features/insurance-import/types/insurance-import.types'
 import { invalidateInsuranceImportQueries } from '@/lib/query-invalidation'
@@ -61,6 +62,9 @@ async function importDiscoveredInsuranceFiles(userId: string): Promise<number> {
 			fileName: row.fileName,
 			familyMemberId: row.familyMemberId ?? assignment?.familyMemberId ?? null,
 			categoryHint,
+			folderPath: row.folderPath,
+			registryId: row.id,
+			externalFileId: row.externalFileId,
 		})
 
 		imported += 1
@@ -75,6 +79,10 @@ export async function runInsuranceImportSync(userId: string): Promise<{
 }> {
 	await runInsuranceDiscovery({ userId })
 	const imported = await importDiscoveredInsuranceFiles(userId)
+
+	if (imported === 0) {
+		await reprocessStuckInsuranceDocuments(userId)
+	}
 
 	invalidateInsuranceKnowledgeCache(userId)
 	invalidateInsuranceImportQueries(userId)

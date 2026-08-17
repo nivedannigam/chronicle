@@ -9,6 +9,8 @@
 		"lint": "eslint .",
 		"preview": "vite preview",
 		"test": "vitest run",
+		"test:modules": "vitest run src/features/__tests__/domain-modules.contract.test.ts src/features/health/evidence src/features/insurance/__tests__ src/features/insurance-import/services/insurance-processing.service.test.ts src/features/insurance-knowledge/__tests__ src/features/insurance-knowledge/services/derive-insurance-records-from-documents.test.ts src/features/vehicles/__tests__ src/features/ask/services/__tests__/domain-companion-ask.service.test.ts src/shared/ai/prompt/__tests__/extract-domain-document.parser.test.ts src/shared/ai/companion/companion-platform.test.ts src/shared/ai/pipeline/ai-platform.pipeline.test.ts",
+		"test:health": "vitest run src/features/health src/features/health-knowledge src/features/health-import src/features/ask",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"prepare": "husky",

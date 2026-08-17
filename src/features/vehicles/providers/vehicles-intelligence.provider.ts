@@ -58,6 +58,9 @@ function searchVehicles(input: {
 			vehicle.registrationNumber ?? '',
 			vehicle.make ?? '',
 			vehicle.model ?? '',
+			vehicle.vin ?? '',
+			vehicle.currentState.insurance.label,
+			vehicle.currentState.puc.label,
 		].join(' ')
 		const score = scoreTextMatch(tokens, body)
 
@@ -83,6 +86,7 @@ function searchVehicles(input: {
 			document.fileName,
 			vehicle?.displayName ?? '',
 			document.documentType,
+			document.documentSubtype,
 		].join(' ')
 		const score = scoreTextMatch(tokens, body)
 
@@ -95,6 +99,31 @@ function searchVehicles(input: {
 				snippet: `${vehicle?.displayName ?? 'Vehicle'} · ${document.documentType}`,
 				score,
 				reportId: document.id,
+			})
+		}
+	}
+
+	for (const fact of input.knowledge.facts) {
+		const vehicle = input.knowledge.vehicles.find(
+			(entry) => entry.id === fact.vehicleId,
+		)
+		const body = [
+			fact.label,
+			fact.displayValue,
+			fact.factKey.replace(/_/g, ' '),
+			vehicle?.displayName ?? '',
+			fact.sourceDocumentName ?? '',
+		].join(' ')
+		const score = scoreTextMatch(tokens, body)
+
+		if (score > 0) {
+			hits.push({
+				id: `vehicle-fact-${fact.id}`,
+				domain: 'vehicles',
+				kind: 'metric',
+				title: `${vehicle?.displayName ?? 'Vehicle'} · ${fact.label}`,
+				snippet: `${fact.displayValue}${fact.sourceDocumentName ? ` · ${fact.sourceDocumentName}` : ''}`,
+				score,
 			})
 		}
 	}

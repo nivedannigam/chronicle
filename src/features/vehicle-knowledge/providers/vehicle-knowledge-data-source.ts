@@ -64,6 +64,7 @@ function mapDocument(row: Record<string, unknown>): VehicleDocumentRecord {
 		status: row.status as string,
 		documentDate: (row.document_date as string | null) ?? null,
 		expiryDate: (row.expiry_date as string | null) ?? null,
+		storagePath: (row.storage_path as string | null) ?? null,
 		uploadedAt: row.uploaded_at as string,
 		processedAt: (row.processed_at as string | null) ?? null,
 	}

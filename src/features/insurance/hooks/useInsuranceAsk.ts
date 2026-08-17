@@ -8,6 +8,10 @@ import { conversationMemory } from '@/features/ask/memory/conversation-memory'
 import type { AskConversationTurn } from '@/features/ask/types'
 import { buildInsuranceAskTurn } from '@/features/insurance/services/insurance-ask.engine'
 import {
+	buildDomainCompanionAskTurn,
+	useCompanionAskForDomain,
+} from '@/features/ask/services/domain-companion-ask.service'
+import {
 	createInsuranceAskSession,
 	deleteInsuranceAskSession,
 	ensureInsuranceAskSession,
@@ -103,6 +107,7 @@ export function useInsuranceAsk(
 	scope?: InsuranceAskScope,
 ) {
 	const memberId = memberContext?.selectedMemberId ?? null
+	const useCompanionAsk = useCompanionAskForDomain('insurance')
 	const sessionKey = useMemo(
 		() => buildInsuranceSessionKey(userId, memberId),
 		[userId, memberId],
@@ -245,24 +250,42 @@ export function useInsuranceAsk(
 					: loadInsuranceSessionTurns(sessionId)
 
 			try {
-				const turn = buildInsuranceAskTurn({
-					knowledge,
-					question,
-					memberId,
-					memberName: memberContext?.selectedMemberName ?? null,
-					sessionKey,
-					scope,
-				})
+				const turn = useCompanionAsk
+					? await buildDomainCompanionAskTurn({
+							domain: 'insurance',
+							knowledge,
+							question,
+							userId,
+							familyMemberId: memberId,
+							memberName: memberContext?.selectedMemberName ?? null,
+							sessionKey,
+							scope,
+							onStream: (partial) => {
+								if (activeRequestRef.current === requestId) {
+									setStreamingAnswer(partial)
+								}
+							},
+						})
+					: buildInsuranceAskTurn({
+							knowledge,
+							question,
+							memberId,
+							memberName: memberContext?.selectedMemberName ?? null,
+							sessionKey,
+							scope,
+						})
 
-				await streamAnswer(
-					turn.answer,
-					(partial) => {
-						if (activeRequestRef.current === requestId) {
-							setStreamingAnswer(partial)
-						}
-					},
-					() => activeRequestRef.current !== requestId,
-				)
+				if (!useCompanionAsk) {
+					await streamAnswer(
+						turn.answer,
+						(partial) => {
+							if (activeRequestRef.current === requestId) {
+								setStreamingAnswer(partial)
+							}
+						},
+						() => activeRequestRef.current !== requestId,
+					)
+				}
 
 				if (activeRequestRef.current !== requestId) {
 					return null
@@ -322,6 +345,7 @@ export function useInsuranceAsk(
 			persistTurns,
 			memberId,
 			scope,
+			useCompanionAsk,
 		],
 	)
 

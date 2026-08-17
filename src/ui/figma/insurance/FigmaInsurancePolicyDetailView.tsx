@@ -606,6 +606,7 @@ export function FigmaInsurancePolicyDetailView({
 					navigate(
 						insuranceAskPath({
 							q: detail.askPrompt,
+							policyId: detail.id,
 						}),
 					)
 				}

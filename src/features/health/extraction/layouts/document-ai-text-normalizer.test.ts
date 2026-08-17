@@ -10,6 +10,8 @@ import {
 import { extractMetricsFromLayouts } from '@/features/health/extraction/layouts/layout-extractor.registry'
 
 const FIXTURE_DIR = path.resolve(process.cwd(), '_fixtures/lab-reports')
+const shouldRunPdfCorpusTests =
+	process.env.CHRONICLE_PDF_FIXTURES === 'true' && existsSync(FIXTURE_DIR)
 
 function simulateDocumentAiSpacing(text: string): string {
 	return text
@@ -176,7 +178,7 @@ ug/dl
 	})
 
 	it('does not reduce extraction counts on native PDF corpus text', async () => {
-		if (!existsSync(FIXTURE_DIR)) {
+		if (!shouldRunPdfCorpusTests) {
 			return
 		}
 
@@ -202,7 +204,7 @@ ug/dl
 	})
 
 	it('preserves extraction across full PDF corpus with Document AI spacing', async () => {
-		if (!existsSync(FIXTURE_DIR)) {
+		if (!shouldRunPdfCorpusTests) {
 			return
 		}
 

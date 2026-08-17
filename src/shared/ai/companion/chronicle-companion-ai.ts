@@ -9,6 +9,7 @@ import {
 } from '@/shared/ai/pipeline/ai-platform.pipeline'
 import type { AIPlatformResult } from '@/shared/ai/types/pipeline.types'
 import type { KnowledgeDomainId } from '@/shared/ai/types/ai-platform.types'
+import type { InsuranceAskScope } from '@/features/insurance/types/insurance-ask.types'
 
 export interface ChronicleCompanionAskInput {
 	userId: string
@@ -17,6 +18,7 @@ export interface ChronicleCompanionAskInput {
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
+	insuranceScope?: InsuranceAskScope
 	categoryId?: string
 	reportId?: string
 	reportIds?: string[]
@@ -47,29 +49,62 @@ export class ChronicleCompanionAI {
 			input.conversationTurns ?? [],
 		)
 
-		if (domain !== 'health') {
-			throw new Error(
-				`Domain "${domain}" is not yet supported by Chronicle Companion AI.`,
-			)
+		if (domain === 'health') {
+			const result = await this.pipeline.runHealthQuestion({
+				userId: input.userId,
+				question: input.question,
+				familyMemberId: input.familyMemberId,
+				accountOwnerMemberId: input.accountOwnerMemberId,
+				memberName: input.memberName,
+				categoryId: input.categoryId,
+				reportId: input.reportId,
+				reportIds: input.reportIds,
+				conversationTurns: input.conversationTurns,
+				memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
+			})
+
+			return {
+				...result,
+				memoryContext,
+			}
 		}
 
-		const result = await this.pipeline.runHealthQuestion({
-			userId: input.userId,
-			question: input.question,
-			familyMemberId: input.familyMemberId,
-			accountOwnerMemberId: input.accountOwnerMemberId,
-			memberName: input.memberName,
-			categoryId: input.categoryId,
-			reportId: input.reportId,
-			reportIds: input.reportIds,
-			conversationTurns: input.conversationTurns,
-			memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
-		})
+		if (domain === 'insurance') {
+			const result = await this.pipeline.runInsuranceQuestion({
+				userId: input.userId,
+				question: input.question,
+				familyMemberId: input.familyMemberId,
+				accountOwnerMemberId: input.accountOwnerMemberId,
+				memberName: input.memberName,
+				memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
+				insuranceScope: input.insuranceScope,
+			})
 
-		return {
-			...result,
-			memoryContext,
+			return {
+				...result,
+				memoryContext,
+			}
 		}
+
+		if (domain === 'vehicles') {
+			const result = await this.pipeline.runVehicleQuestion({
+				userId: input.userId,
+				question: input.question,
+				familyMemberId: input.familyMemberId,
+				accountOwnerMemberId: input.accountOwnerMemberId,
+				memberName: input.memberName,
+				memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
+			})
+
+			return {
+				...result,
+				memoryContext,
+			}
+		}
+
+		throw new Error(
+			`Domain "${domain}" is not yet supported by Chronicle Companion AI.`,
+		)
 	}
 }
 
