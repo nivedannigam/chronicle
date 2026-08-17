@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FolderOpen, type LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
@@ -6,6 +6,9 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ConnectorSettingsPanel } from '@/features/connectors/google-drive/components/ConnectorSettingsPanel'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { logConnectorRequest } from '@/features/connectors/services/connector-request-logger'
+import { useHealthSources } from '@/features/family/hooks/useHealthSources'
+import { useInsuranceSources } from '@/features/insurance/hooks/useInsuranceSources'
+import { useVehicleSources } from '@/features/vehicles/hooks/useVehicleSources'
 import {
 	ProfilePageShell,
 	ProfileSectionCard,
@@ -26,12 +29,63 @@ function formatLastSync(isoDate: string | null | undefined): string {
 	})
 }
 
+function buildFolderModuleLabels(input: {
+	folderIds: string[]
+	healthFolderIds: Set<string>
+	insuranceFolderIds: Set<string>
+	vehicleFolderIds: Set<string>
+}): Map<string, string[]> {
+	const labels = new Map<string, string[]>()
+
+	for (const folderId of input.folderIds) {
+		const modules: string[] = []
+
+		if (input.healthFolderIds.has(folderId)) {
+			modules.push('Health')
+		}
+
+		if (input.insuranceFolderIds.has(folderId)) {
+			modules.push('Insurance')
+		}
+
+		if (input.vehicleFolderIds.has(folderId)) {
+			modules.push('Vehicles')
+		}
+
+		labels.set(folderId, modules)
+	}
+
+	return labels
+}
+
+function formatFolderSummary(
+	folders: Array<{ id: string; alias: string; displayName: string }>,
+	moduleLabels: Map<string, string[]>,
+): string {
+	return folders
+		.slice(0, 3)
+		.map((folder) => {
+			const name = folder.alias || folder.displayName
+			const modules = moduleLabels.get(folder.id) ?? []
+
+			if (modules.length === 0) {
+				return name
+			}
+
+			return `${name} (${modules.join(', ')})`
+		})
+		.join(' · ')
+}
+
 export function FigmaProfileDriveScreen() {
 	const navigate = useNavigate()
 	const { user, session } = useAuth()
 	const userId = user?.id
 	const { connectionStatus, finalizeOAuthReturn, refresh, ...connector } =
 		useGoogleDriveConnector(userId)
+	const { assignments: healthAssignments } = useHealthSources(userId)
+	const { assignments: insuranceAssignments } = useInsuranceSources(userId)
+	const { moduleAssignments: vehicleAssignments } = useVehicleSources(userId)
 	const lastFinalizedTokenRef = useRef<string | null>(null)
 
 	useEffect(() => {
@@ -63,12 +117,32 @@ export function FigmaProfileDriveScreen() {
 		finalizeOAuthReturn,
 	])
 
+	const { enabledFolders, folderModuleLabels } = useMemo(() => {
+		const enabled = connector.folders.filter((folder) => folder.enabled)
+
+		return {
+			enabledFolders: enabled,
+			folderModuleLabels: buildFolderModuleLabels({
+				folderIds: enabled.map((folder) => folder.id),
+				healthFolderIds: new Set(healthAssignments.map((a) => a.folderId)),
+				insuranceFolderIds: new Set(
+					insuranceAssignments.map((a) => a.folderId),
+				),
+				vehicleFolderIds: new Set(vehicleAssignments.map((a) => a.folderId)),
+			}),
+		}
+	}, [
+		connector.folders,
+		healthAssignments,
+		insuranceAssignments,
+		vehicleAssignments,
+	])
+
 	if (!userId) {
 		return null
 	}
 
 	const isConnected = connectionStatus === 'connected'
-	const enabledFolders = connector.folders.filter((folder) => folder.enabled)
 	const lastSync =
 		connector.latestSync?.completedAt ?? connector.latestSync?.startedAt
 
@@ -113,10 +187,7 @@ export function FigmaProfileDriveScreen() {
 										lineHeight: 1.45,
 									}}
 								>
-									{enabledFolders
-										.slice(0, 3)
-										.map((folder) => folder.alias || folder.displayName)
-										.join(' · ')}
+									{formatFolderSummary(enabledFolders, folderModuleLabels)}
 									{enabledFolders.length > 3
 										? ` · +${enabledFolders.length - 3} more`
 										: ''}
@@ -133,8 +204,20 @@ export function FigmaProfileDriveScreen() {
 							>
 								<ActionButton
 									icon={FolderOpen}
-									label="Assign health folders"
+									label="Health folders"
 									onClick={() => navigate(ROUTES.healthFolderSetup)}
+								/>
+								<ActionButton
+									icon={FolderOpen}
+									label="Insurance folders"
+									tone="secondary"
+									onClick={() => navigate(ROUTES.insuranceSettings)}
+								/>
+								<ActionButton
+									icon={FolderOpen}
+									label="Vehicle folders"
+									tone="secondary"
+									onClick={() => navigate(ROUTES.vehiclesSettings)}
 								/>
 							</div>
 						</div>
@@ -169,8 +252,9 @@ export function FigmaProfileDriveScreen() {
 					padding: '0 4px',
 				}}
 			>
-				Chronicle uses read-only access. Folder selection and document import
-				are configured in Health setup.
+				Chronicle uses read-only access. Assign folders separately in Health,
+				Insurance, and Vehicles settings — this page only shows the shared Drive
+				connection and import totals.
 			</p>
 		</ProfilePageShell>
 	)
