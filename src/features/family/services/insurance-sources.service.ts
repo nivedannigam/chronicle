@@ -1,7 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { formatMemberLabel } from '@/features/family/services/folder-match.service'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
-import { listModuleFolderAssignments } from '@/features/settings/services/module-folder-assignments.service'
+import {
+	clearModuleFolderAssignments,
+	listModuleFolderAssignments,
+} from '@/features/settings/services/module-folder-assignments.service'
 import type { ModuleFolderAssignment } from '@/features/settings/types/chronicle-module.types'
 
 export interface InsuranceSourceAssignment {
@@ -19,6 +22,8 @@ export interface InsuranceSourceAssignment {
 	assignedAt: string
 	enabled: boolean
 }
+
+const legacyMigrationAttemptedForUser = new Set<string>()
 
 function mapAssignment(
 	row: Record<string, unknown>,
@@ -106,7 +111,60 @@ async function upsertConnectorFolder(input: {
 	return data.id as string
 }
 
+async function persistInsuranceSourceFolder(input: {
+	userId: string
+	externalFolderId: string
+	folderName: string
+	folderPath?: string | null
+	familyMemberId: string
+	discoveredCategories?: string[]
+	mode?: 'add' | 'replace'
+}): Promise<void> {
+	const folderId = await upsertConnectorFolder({
+		userId: input.userId,
+		externalFolderId: input.externalFolderId,
+		folderName: input.folderName,
+	})
+
+	if (input.mode === 'replace') {
+		const { error } = await supabase
+			.from('insurance_folder_assignments')
+			.delete()
+			.eq('user_id', input.userId)
+			.eq('family_member_id', input.familyMemberId)
+
+		if (error) {
+			throw new Error(error.message)
+		}
+	}
+
+	const { error: insertError } = await supabase
+		.from('insurance_folder_assignments')
+		.upsert(
+			{
+				user_id: input.userId,
+				connector_id: 'google-drive',
+				folder_id: folderId,
+				family_member_id: input.familyMemberId,
+				folder_path: input.folderPath ?? input.folderName,
+				discovered_categories: input.discoveredCategories ?? [],
+				assigned_at: new Date().toISOString(),
+			},
+			{ onConflict: 'folder_id,family_member_id' },
+		)
+
+	if (insertError) {
+		throw new Error(insertError.message)
+	}
+}
+
 async function migrateLocalStorageAssignments(userId: string): Promise<void> {
+	if (legacyMigrationAttemptedForUser.has(userId)) {
+		return
+	}
+
+	legacyMigrationAttemptedForUser.add(userId)
+
 	const localAssignments = await listModuleFolderAssignments(
 		userId,
 		'insurance',
@@ -118,7 +176,7 @@ async function migrateLocalStorageAssignments(userId: string): Promise<void> {
 
 	for (const assignment of localAssignments) {
 		try {
-			await assignInsuranceSourceFolder({
+			await persistInsuranceSourceFolder({
 				userId,
 				externalFolderId: assignment.externalFolderId,
 				folderName: assignment.folderName,
@@ -131,12 +189,17 @@ async function migrateLocalStorageAssignments(userId: string): Promise<void> {
 			// Best-effort migration from legacy localStorage assignments.
 		}
 	}
+
+	await clearModuleFolderAssignments(userId, 'insurance')
 }
 
 export async function listInsuranceSourceAssignments(
 	userId: string,
+	options?: { skipMigration?: boolean },
 ): Promise<InsuranceSourceAssignment[]> {
-	await migrateLocalStorageAssignments(userId)
+	if (!options?.skipMigration) {
+		await migrateLocalStorageAssignments(userId)
+	}
 
 	const { data, error } = await supabase
 		.from('insurance_folder_assignments')
@@ -192,44 +255,9 @@ export async function assignInsuranceSourceFolder(input: {
 	discoveredCategories?: string[]
 	mode?: 'add' | 'replace'
 }): Promise<InsuranceSourceAssignment[]> {
-	const folderId = await upsertConnectorFolder({
-		userId: input.userId,
-		externalFolderId: input.externalFolderId,
-		folderName: input.folderName,
-	})
+	await persistInsuranceSourceFolder(input)
 
-	if (input.mode === 'replace') {
-		const { error } = await supabase
-			.from('insurance_folder_assignments')
-			.delete()
-			.eq('user_id', input.userId)
-			.eq('family_member_id', input.familyMemberId)
-
-		if (error) {
-			throw new Error(error.message)
-		}
-	}
-
-	const { error: insertError } = await supabase
-		.from('insurance_folder_assignments')
-		.upsert(
-			{
-				user_id: input.userId,
-				connector_id: 'google-drive',
-				folder_id: folderId,
-				family_member_id: input.familyMemberId,
-				folder_path: input.folderPath ?? input.folderName,
-				discovered_categories: input.discoveredCategories ?? [],
-				assigned_at: new Date().toISOString(),
-			},
-			{ onConflict: 'folder_id,family_member_id' },
-		)
-
-	if (insertError) {
-		throw new Error(insertError.message)
-	}
-
-	return listInsuranceSourceAssignments(input.userId)
+	return listInsuranceSourceAssignments(input.userId, { skipMigration: true })
 }
 
 export async function removeInsuranceSourceAssignment(
@@ -265,4 +293,9 @@ export function toModuleFolderAssignments(
 		assignedAt: assignment.assignedAt,
 		enabled: assignment.enabled,
 	}))
+}
+
+/** @internal Test helper to reset in-memory migration guard. */
+export function resetInsuranceLegacyMigrationForTests(): void {
+	legacyMigrationAttemptedForUser.clear()
 }
