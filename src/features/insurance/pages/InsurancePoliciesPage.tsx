@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { INSURANCE_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
+import { MODULE_UX_COPY } from '@/features/modules/contracts/module-ux.contract'
 import { useInsuranceContext } from '@/features/insurance/context/InsuranceContext'
 import {
 	InsuranceHomeEmptyState,
@@ -42,12 +43,12 @@ export function InsurancePoliciesPage() {
 				emoji="📄"
 				title={
 					hasFolderAssigned && isProcessing
-						? 'Scanning for policies'
+						? MODULE_UX_COPY.organizingPolicies.title
 						: INSURANCE_COPY.emptyPoliciesTitle
 				}
 				body={
 					hasFolderAssigned && isProcessing
-						? 'Your insurance folder is connected. Policies will appear here once processing completes.'
+						? MODULE_UX_COPY.organizingPolicies.body
 						: INSURANCE_COPY.emptyPoliciesBody
 				}
 				primaryLabel={

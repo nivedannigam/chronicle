@@ -46,6 +46,10 @@ function resolveDocumentEventType(
 		return 'document_issued'
 	}
 
+	if (category === 'identity') {
+		return 'document_issued'
+	}
+
 	return 'document_uploaded'
 }
 
@@ -68,6 +72,9 @@ function buildDocumentTitle(
 		case 'document_expiry':
 			return `${label ?? 'Document'} expiry approaching`
 		case 'document_issued':
+			if (document.category_id === 'identity' && !document.issue_date) {
+				return `${label ?? 'Identity document'} added`
+			}
 			return `${label ?? 'Document'} issued`
 		default:
 			return label ?? document.title
@@ -94,7 +101,11 @@ function documentEvent(
 		title: buildDocumentTitle(document, eventType),
 		summary: [
 			document.title,
-			document.document_number ? `No. ${document.document_number}` : null,
+			document.category_id === 'identity'
+				? null
+				: document.document_number
+					? `No. ${document.document_number}`
+					: null,
 			document.issuer ? `Issuer: ${document.issuer}` : null,
 		]
 			.filter(Boolean)
@@ -146,7 +157,18 @@ export class DocumentsTimelineProvider implements ChronicleTimelineProvider {
 		for (const document of getDocuments(query)) {
 			const primaryType = resolveDocumentEventType(document)
 
-			if (document.issue_date) {
+			if (document.category_id === 'identity' && !document.issue_date) {
+				const added = documentEvent(
+					document,
+					'document_issued',
+					document.uploaded_at,
+					'medium',
+				)
+
+				if (added) {
+					events.push(added)
+				}
+			} else if (document.issue_date) {
 				const issued = documentEvent(
 					document,
 					primaryType === 'document_uploaded' ? 'document_issued' : primaryType,

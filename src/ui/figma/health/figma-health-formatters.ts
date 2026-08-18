@@ -18,9 +18,9 @@ export function figmaHealthStatusHeadline(
 		case 'Monitoring Required':
 			return 'A few markers need watching.'
 		case 'Partial Results':
-			return 'Results are still being classified.'
+			return 'Your results are still being organized.'
 		case 'Awaiting Data':
-			return 'Waiting for laboratory metrics.'
+			return 'Your health picture will fill in as more reports are added.'
 		default:
 			return 'Some results need your attention.'
 	}

@@ -16,8 +16,9 @@ import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
 import { describeImportJourneyResult } from '@/features/health-import/services/import-journey-summary'
 import type { ImportJourneyResult } from '@/features/health-import/types/health-import-journey.types'
-import { reprocessStuckHealthReports } from '@/features/health/services/health-processing.service'
+import { MODULE_UX_COPY } from '@/features/modules/contracts/module-ux.contract'
 import { useHealthMemberSetup } from '@/features/health/hooks/useHealthMemberSetup'
+import { reprocessStuckHealthReports } from '@/features/health/services/health-processing.service'
 import { FigmaCard, FigmaSectionLabel } from '@/ui/figma/components/primitives'
 import { scrollToSectionElement } from '@/lib/scroll-to-section'
 
@@ -164,7 +165,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 					setScanError(
 						error instanceof Error
 							? error.message
-							: 'Import failed. Please try again.',
+							: `${MODULE_UX_COPY.errorGeneric.body} Please try again.`,
 					)
 				} finally {
 					setIsScanning(false)
@@ -186,7 +187,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 		setIsScanning(true)
 		setScanError(null)
 		setJourneyResult(null)
-		setScanDetail('Reprocessing reports with latest parser…')
+		setScanDetail('Organizing your reports…')
 
 		try {
 			const reprocess = await reprocessStuckHealthReports(user.id, {
@@ -324,7 +325,7 @@ export function HealthSetupGuide({ compact = false }: HealthSetupGuideProps) {
 				>
 					<Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
 					{setup.processingReportsCount} report
-					{setup.processingReportsCount === 1 ? '' : 's'} still processing…
+					{setup.processingReportsCount === 1 ? '' : 's'} still organizing…
 				</div>
 			) : null}
 

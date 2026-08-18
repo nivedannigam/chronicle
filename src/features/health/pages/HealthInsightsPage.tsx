@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
+import { MODULE_UX_COPY } from '@/features/modules/contracts/module-ux.contract'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import {
 	DashboardEmptyState,
@@ -77,7 +78,7 @@ export function HealthInsightsPage() {
 		return (
 			<DashboardEmptyState
 				title="Insights are on the way"
-				message="Reports are still being parsed. Guidance will appear here once lab numbers are extracted."
+				message={MODULE_UX_COPY.organizingReports.body}
 				emoji="⏳"
 			/>
 		)
@@ -87,7 +88,7 @@ export function HealthInsightsPage() {
 		return (
 			<DashboardEmptyState
 				title="No insights yet"
-				message="Your reports are imported, but Chronicle needs structured lab numbers to generate guidance. Try reprocessing from Health Setup."
+				message="Your reports are here, but Chronicle needs clearer lab results to offer guidance. Try again from Health Settings."
 				emoji="✨"
 				actionLabel={HEALTH_COPY.goToSetup}
 				onAction={() => navigate(ROUTES.healthSettings)}

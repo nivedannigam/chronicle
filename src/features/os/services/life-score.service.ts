@@ -176,7 +176,7 @@ export function buildLifeScore(input: {
 			score: identityScore,
 			displayValue: formatScoreDisplay(identityScore, identityStatus),
 			status: identityStatus,
-			path: ROUTES.documentsLibrary,
+			path: ROUTES.identity,
 			enabled: true,
 			color: DIMENSION_COLORS.identity,
 		},

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useInsuranceContext } from '@/features/insurance/context/InsuranceContext'
 import { INSURANCE_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
+import { MODULE_UX_COPY } from '@/features/modules/contracts/module-ux.contract'
 import { FigmaInsuranceHomeView } from '@/ui/figma/insurance/FigmaInsuranceHomeView'
 import {
 	InsuranceHomeEmptyState,
@@ -27,8 +28,8 @@ function resolveHomeEmptyState(setupStatus: string) {
 		case 'partial':
 			return {
 				title: 'Insurance documents found',
-				body: 'Your policies are being organized. Check back shortly or rescan from settings.',
-				primaryLabel: 'Open settings',
+				body: 'Chronicle is still organizing your policies. Check back shortly.',
+				primaryLabel: MODULE_UX_COPY.viewSettings,
 			}
 		case 'empty_folder':
 			return {

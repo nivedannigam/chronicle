@@ -1,13 +1,15 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
-import { getActiveLifeModules } from '@/constants/modules'
 import type { AttentionItem } from '@/features/command-center/types/command-center.types'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { HomePageSkeleton } from '@/features/home/components/HomePageSkeleton'
 import { useChronicleOs } from '@/features/os/hooks/useChronicleOs'
 import { OnboardingFlow, useOnboarding } from '@/features/onboarding'
+import { useModuleHubCards } from '@/features/modules/hooks/useModuleHubCards'
+import { resolveModuleHubCardAction } from '@/features/modules/services/module-hub-status.service'
 import { memberFirstName, memberInitial } from '@/ui/figma/home/home-ui'
+import { HomeModuleSnapshotRow } from '@/ui/figma/modules/module-ui'
 import {
 	DailyBriefCard,
 	LifeScoreHero,
@@ -18,7 +20,6 @@ import {
 	UpcomingList,
 } from '@/ui/figma/os/os-ui'
 import { FigmaHeaderSearchButton } from '@/ui/figma/shell/FigmaScreenHeader'
-import { HomeModuleCard } from '@/ui/figma/modules/module-ui'
 import {
 	FC,
 	MEMBER_COLORS,
@@ -172,7 +173,7 @@ export function FigmaHomeScreen() {
 
 	const actionableItems = memberItems.filter((item) => item.tone !== 'info')
 	const statusOk = actionableItems.length === 0
-	const activeModules = useMemo(() => getActiveLifeModules(), [])
+	const { primaryCards: moduleCards } = useModuleHubCards()
 
 	if (showSkeleton) {
 		return <HomePageSkeleton />
@@ -272,18 +273,20 @@ export function FigmaHomeScreen() {
 					action="See all"
 					onAction={() => navigate(ROUTES.modules)}
 				>
-					Your modules
+					Your life
 				</OsSectionLabel>
-				<div style={{ display: 'flex', gap: 10 }}>
-					{activeModules.map((module) => (
-						<HomeModuleCard
-							key={module.id}
-							module={module}
-							onClick={() => {
-								if (module.route) {
-									navigate(module.route)
-								}
-							}}
+				<div
+					style={{
+						...figmaCardStyle,
+						borderRadius: 20,
+						padding: '4px 16px',
+					}}
+				>
+					{moduleCards.map((card) => (
+						<HomeModuleSnapshotRow
+							key={card.id}
+							card={card}
+							onClick={() => navigate(resolveModuleHubCardAction(card).path)}
 						/>
 					))}
 				</div>

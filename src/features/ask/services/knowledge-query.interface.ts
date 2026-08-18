@@ -23,6 +23,9 @@ export interface AskScopeContext {
 	categoryId?: string
 	reportId?: string
 	reportIds?: string[]
+	/** Module context from deep links (e.g. identity Ask chips). */
+	contextModule?: 'identity'
+	documentId?: string
 }
 
 export interface AskReasoningEngine {

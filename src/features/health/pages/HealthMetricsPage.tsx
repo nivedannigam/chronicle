@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HEALTH_COPY } from '@/constants/product-copy'
 import { ROUTES } from '@/constants/routes'
+import { MODULE_UX_COPY } from '@/features/modules/contracts/module-ux.contract'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
@@ -79,8 +80,8 @@ export function HealthMetricsPage() {
 		if (pipelineState.processingCount > 0) {
 			return (
 				<DashboardEmptyState
-					title="Reports are still processing"
-					message={`${pipelineState.processingCount} report${pipelineState.processingCount === 1 ? '' : 's'} are being read and parsed. Metrics will appear here automatically when extraction finishes.`}
+					title={MODULE_UX_COPY.organizingReports.title}
+					message={MODULE_UX_COPY.organizingReports.body}
 					emoji="⏳"
 				/>
 			)
@@ -90,7 +91,7 @@ export function HealthMetricsPage() {
 			return (
 				<DashboardEmptyState
 					title="Some reports need attention"
-					message={`${pipelineState.failedCount} report${pipelineState.failedCount === 1 ? '' : 's'} could not be parsed. Retry or reprocess from Health Setup.`}
+					message={`${pipelineState.failedCount} report${pipelineState.failedCount === 1 ? '' : 's'} could not be read clearly. Try again from Health Settings.`}
 					emoji="⚠️"
 					actionLabel={HEALTH_COPY.goToSetup}
 					onAction={() => navigate(ROUTES.healthSettings)}
@@ -100,8 +101,8 @@ export function HealthMetricsPage() {
 
 		return (
 			<DashboardEmptyState
-				title="No lab numbers extracted yet"
-				message="Your reports are imported, but Chronicle did not find structured metrics. Try reprocessing from Health Setup, or upload a clearer lab PDF."
+				title="No lab numbers yet"
+				message="Your reports are here, but Chronicle needs clearer lab results to show trends. Try uploading a clearer PDF from Health Settings."
 				emoji="📊"
 				actionLabel={HEALTH_COPY.goToSetup}
 				onAction={() => navigate(ROUTES.healthSettings)}

@@ -89,6 +89,16 @@ export function FigmaAskScreen({
 		const reportId = searchParams.get('reportId')?.trim()
 		const visitId = searchParams.get('visitId')?.trim()
 		const categoryId = searchParams.get('categoryId')?.trim()
+		const contextModule = searchParams.get('context')?.trim()
+		const documentId = searchParams.get('documentId')?.trim()
+
+		if (contextModule === 'identity') {
+			return {
+				contextModule: 'identity',
+				categoryId: 'identity',
+				documentId: documentId || undefined,
+			}
+		}
 
 		if (visitId) {
 			const visit = visits.find((entry) => entry.id === visitId)

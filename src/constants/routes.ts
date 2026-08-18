@@ -20,6 +20,7 @@ export const ROUTES = {
 	tasks: '/tasks',
 	more: '/more',
 	modules: '/modules',
+	personal: '/personal',
 	setup: '/setup',
 	reviewDocuments: '/health/review-documents',
 	health: '/health',
@@ -84,6 +85,10 @@ export const ROUTES = {
 	vehiclesSettings: '/vehicles/settings',
 	vehiclesAsk: '/vehicles/ask',
 	vehiclesDetail: '/vehicles/:vehicleSlug',
+	identity: '/identity',
+	identitySettings: '/identity/settings',
+	identityMember: '/identity/members/:memberId',
+	identityDocument: '/identity/documents/:documentId',
 	notifications: '/notifications',
 } as const
 
@@ -209,4 +214,28 @@ export function insuranceAskPath(input?: {
 
 export function vehicleDetailPath(vehicleSlug: string) {
 	return `/vehicles/${vehicleSlug}`
+}
+
+export function identityMemberPath(memberId: string) {
+	return `/identity/members/${memberId}`
+}
+
+export function identityDocumentPath(documentId: string) {
+	return `/identity/documents/${documentId}`
+}
+
+export function identityAskPath(input?: { q?: string; documentId?: string }) {
+	const params = new URLSearchParams()
+	params.set('context', 'identity')
+
+	if (input?.q) {
+		params.set('q', input.q)
+	}
+
+	if (input?.documentId) {
+		params.set('documentId', input.documentId)
+	}
+
+	const query = params.toString()
+	return query ? `${ROUTES.ask}?${query}` : ROUTES.ask
 }

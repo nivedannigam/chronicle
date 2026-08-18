@@ -10,7 +10,7 @@ export interface DocumentModuleLink {
 const MODULE_ROUTES: Record<string, string | null> = {
 	health: '/health',
 	insurance: '/insurance',
-	identity: null,
+	identity: '/identity',
 	vehicles: '/vehicles',
 	property: null,
 	finance: null,

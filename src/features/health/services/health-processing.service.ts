@@ -1555,11 +1555,11 @@ export function getHealthReportStatusLabel(status: HealthReportStatus): string {
 		case 'queued':
 		case 'processing':
 		case 'parsed':
-			return 'Importing…'
+			return 'Still organizing'
 		case 'completed':
 			return 'Ready'
 		case 'failed':
-			return 'Import failed'
+			return 'Needs a clearer copy'
 	}
 }
 

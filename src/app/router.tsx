@@ -78,6 +78,14 @@ import {
 	VehicleSettingsPage,
 	VehicleAskPage,
 } from '@/features/vehicles'
+import { PersonalModulePage } from '@/features/personal'
+import {
+	IdentityLayout,
+	IdentityHomePage,
+	IdentityMemberDetailPage,
+	IdentityDocumentDetailPage,
+	IdentitySettingsPage,
+} from '@/features/identity'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
@@ -302,6 +310,21 @@ export function AppRouter() {
 						<Route path="ask" element={<VehicleAskPage />} />
 						<Route path="settings" element={<VehicleSettingsPage />} />
 						<Route path=":vehicleSlug" element={<VehicleDetailPage />} />
+					</Route>
+
+					<Route path={ROUTES.personal} element={<PersonalModulePage />} />
+
+					<Route path={ROUTES.identity} element={<IdentityLayout />}>
+						<Route index element={<IdentityHomePage />} />
+						<Route path="settings" element={<IdentitySettingsPage />} />
+						<Route
+							path="members/:memberId"
+							element={<IdentityMemberDetailPage />}
+						/>
+						<Route
+							path="documents/:documentId"
+							element={<IdentityDocumentDetailPage />}
+						/>
 					</Route>
 
 					<Route
