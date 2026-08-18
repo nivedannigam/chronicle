@@ -213,6 +213,7 @@ export function buildInsuranceHomeViewModel(input: {
 			)
 			const status = deriveCategoryCoverageStatus({
 				activePolicyCount: snapshot?.activePolicyCount ?? 0,
+				policyCount: snapshot?.policyCount ?? 0,
 				totalSumInsured: snapshot?.totalSumInsured ?? null,
 				categoryId,
 				hasGap: gapCategoryIds.has(categoryId),

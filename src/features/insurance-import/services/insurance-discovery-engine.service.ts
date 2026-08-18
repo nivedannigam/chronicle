@@ -6,7 +6,7 @@ import {
 } from '@/features/connectors/services/connector-store.service'
 import { resolveModuleFolderAssignmentForFile } from '@/features/connectors/services/module-folder-assignment-resolver'
 import { listInsuranceSourceAssignments } from '@/features/family/services/insurance-sources.service'
-import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
+import { inferCategoryFromFolderPath } from '@/features/insurance/services/insurance-folder-discovery.service'
 import type { InsuranceDiscoveryRunSummary } from '@/features/insurance-import/types/insurance-import.types'
 
 const PDF_MIME = 'application/pdf'
@@ -69,14 +69,7 @@ async function completeDiscoveryRun(
 }
 
 function inferCategoryFromPath(folderPath: string | null | undefined): string {
-	if (!folderPath) {
-		return 'other'
-	}
-
-	const segments = folderPath.split('/').filter(Boolean)
-	const discovered = discoverInsuranceCategoriesFromFolderNames(segments)
-
-	return discovered[0]?.id ?? 'other'
+	return inferCategoryFromFolderPath(folderPath) ?? 'other'
 }
 
 export async function runInsuranceDiscovery(input: {

@@ -39,9 +39,9 @@ export async function assignDiscoveredModuleFolders(input: {
 					folderName: folder.folderName,
 					folderPath: folder.folderPath,
 					familyMemberId: input.familyMemberId,
-					discoveredCategories: discoverInsuranceCategoriesFromFolderNames([
-						folder.folderName,
-					]).map((category) => category.id),
+					discoveredCategories: discoverInsuranceCategoriesFromFolderNames(
+						folder.folderPath.split('/').filter(Boolean),
+					).map((category) => category.id),
 					mode: 'add',
 				})
 				break

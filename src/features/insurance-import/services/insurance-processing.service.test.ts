@@ -89,6 +89,61 @@ describe('processInsuranceDocument', () => {
 		expect(mockExtract).not.toHaveBeenCalled()
 	})
 
+	it('uses folder path to classify health policies without an explicit hint', async () => {
+		mockExtract.mockResolvedValue({
+			download: { storagePath: 'users/user-1/docs/doc-1.pdf' },
+			extraction: buildInsuranceMetadataExtraction({
+				fileName: 'Policy.pdf',
+				categoryHint: 'health',
+			}),
+		})
+
+		const updateChain = createQueryChain({ data: null, error: null })
+		const insertChain = createQueryChain({
+			data: { id: 'policy-health' },
+			error: null,
+		})
+		const selectChain = createQueryChain({ data: [], error: null })
+
+		mockFrom.mockImplementation((table: string) => {
+			if (table === 'insurance_policies') {
+				return {
+					select: vi.fn(() => selectChain),
+					insert: vi.fn(() => insertChain),
+					update: vi.fn(() => updateChain),
+				}
+			}
+
+			if (table === 'insurance_documents') {
+				return {
+					update: vi.fn(() => updateChain),
+				}
+			}
+
+			return updateChain
+		})
+
+		const { processInsuranceDocument } =
+			await import('@/features/insurance-import/services/insurance-processing.service')
+
+		await processInsuranceDocument({
+			userId: 'user-1',
+			documentId: 'doc-health',
+			fileName: 'Policy.pdf',
+			familyMemberId: null,
+			folderPath: 'Insurance/Health/Policy.pdf',
+			registryId: 'registry-1',
+			externalFileId: 'file-1',
+		})
+
+		expect(mockExtract).toHaveBeenCalledWith(
+			expect.objectContaining({
+				categoryHint: 'health',
+				folderPath: 'Insurance/Health/Policy.pdf',
+			}),
+		)
+	})
+
 	it('dedupes policies by normalized insurer and policy number on LLM extraction', async () => {
 		mockExtract.mockResolvedValue({
 			download: { storagePath: 'users/user-1/docs/doc-1.pdf' },
@@ -186,7 +241,7 @@ describe('buildInsuranceMetadataExtraction', () => {
 			categoryHint: 'motor',
 		})
 
-		expect(extraction.method).toBe('metadata_fallback')
+		expect(extraction.method).toBe('deterministic_fallback')
 		expect(extraction.insurance?.productName).toBe('motor-policy')
 		expect(extraction.insurance?.policyType).toBe('motor')
 	})

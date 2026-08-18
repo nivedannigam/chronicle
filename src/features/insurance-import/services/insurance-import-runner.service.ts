@@ -9,6 +9,11 @@ import {
 	processInsuranceDocument,
 	reprocessStuckInsuranceDocuments,
 } from '@/features/insurance-import/services/insurance-processing.service'
+import { resolveInsuranceCategoryHint } from '@/features/insurance/services/insurance-folder-discovery.service'
+import {
+	logInsuranceScanDiagnostics,
+	buildInsuranceScanDiagnostics,
+} from '@/features/insurance-import/services/insurance-scan-diagnostics.service'
 import type { InsuranceImportStatusSnapshot } from '@/features/insurance-import/types/insurance-import.types'
 import { invalidateInsuranceImportQueries } from '@/lib/query-invalidation'
 
@@ -54,7 +59,11 @@ async function importDiscoveredInsuranceFiles(userId: string): Promise<number> {
 			})
 			.eq('id', row.id)
 
-		const categoryHint = assignment?.discoveredCategories[0] ?? null
+		const categoryHint = resolveInsuranceCategoryHint({
+			categoryHint: assignment?.discoveredCategories[0] ?? null,
+			folderPath: row.folderPath,
+			fileName: row.fileName,
+		})
 
 		await processInsuranceDocument({
 			userId,
@@ -79,9 +88,10 @@ export async function runInsuranceImportSync(userId: string): Promise<{
 }> {
 	await runInsuranceDiscovery({ userId })
 	const imported = await importDiscoveredInsuranceFiles(userId)
+	await reprocessStuckInsuranceDocuments(userId)
 
-	if (imported === 0) {
-		await reprocessStuckInsuranceDocuments(userId)
+	if (import.meta.env.DEV) {
+		logInsuranceScanDiagnostics(await buildInsuranceScanDiagnostics(userId))
 	}
 
 	invalidateInsuranceKnowledgeCache(userId)

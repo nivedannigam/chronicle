@@ -31,9 +31,20 @@ const POLICY_TYPE_TO_CATEGORY: Record<InsurancePolicyType, PolicyCategoryId> = {
 
 const FOLDER_HINTS: Record<string, PolicyCategoryId> = {
 	'health insurance': 'health',
+	'medical insurance': 'health',
+	mediclaim: 'health',
 	'term insurance': 'life_term',
+	'life insurance': 'life_term',
+	'term life': 'life_term',
+	'life policy': 'life_term',
 	'vehicle insurance': 'motor',
+	'motor insurance': 'motor',
+	'car insurance': 'motor',
+	'motor policy': 'motor',
 	'home insurance': 'home',
+	'property insurance': 'home',
+	'home protection': 'home',
+	'house insurance': 'home',
 	'travel insurance': 'travel',
 }
 

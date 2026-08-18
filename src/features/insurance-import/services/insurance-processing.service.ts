@@ -14,6 +14,11 @@ import {
 import { isPolicyDisplayReady } from '@/features/insurance-knowledge/services/insurance-knowledge-builder'
 import type { InsuranceDocumentRecord } from '@/features/insurance-knowledge/types/insurance-record.types'
 import { invalidateInsuranceKnowledgeCache } from '@/features/insurance-knowledge/services/insurance-knowledge-cache'
+import {
+	inferCategoryFromFolderPath,
+	resolveInsuranceCategoryHint,
+} from '@/features/insurance/services/insurance-folder-discovery.service'
+import type { PolicyCategoryId } from '@/features/insurance-knowledge/types/insurance-knowledge.types'
 
 function slugifyInsurer(name: string): string {
 	const slug = name
@@ -86,6 +91,11 @@ export async function processInsuranceDocument(input: {
 	storagePath?: string | null
 }): Promise<{ policyId: string | null }> {
 	const now = new Date().toISOString()
+	const categoryHint = resolveInsuranceCategoryHint({
+		categoryHint: input.categoryHint,
+		folderPath: input.folderPath,
+		fileName: input.fileName,
+	})
 	let extractionResult = null
 	let storagePath = input.storagePath ?? null
 
@@ -98,7 +108,7 @@ export async function processInsuranceDocument(input: {
 			fileName: input.fileName,
 			folderPath: input.folderPath,
 			documentId: input.documentId,
-			categoryHint: input.categoryHint ?? null,
+			categoryHint,
 			storagePath: input.storagePath ?? null,
 		})
 
@@ -107,7 +117,7 @@ export async function processInsuranceDocument(input: {
 	} else {
 		extractionResult = buildInsuranceMetadataExtraction({
 			fileName: input.fileName,
-			categoryHint: input.categoryHint ?? null,
+			categoryHint,
 		})
 	}
 
@@ -117,12 +127,15 @@ export async function processInsuranceDocument(input: {
 	const policyNumber =
 		extracted?.policyNumber?.trim() ||
 		normalizePolicyNumber(input.fileName.replace(/\.[^.]+$/, ''))
-	const policyType =
-		extracted?.policyType ?? inferPolicyType(input.categoryHint ?? null)
+	const policyType = extracted?.policyType ?? inferPolicyType(categoryHint)
 	const productName =
 		extracted?.productName?.trim() || input.fileName.replace(/\.[^.]+$/, '')
 	const extractionMethod =
-		extractionResult.method === 'llm' ? 'llm' : 'deterministic'
+		extractionResult.method === 'ai_direct' ||
+		extractionResult.method === 'ocr_fallback' ||
+		extractionResult.method === 'llm'
+			? 'llm'
+			: 'deterministic'
 	const confidence = extracted?.confidence ?? 0.35
 
 	let policyId = await findExistingPolicy({
@@ -194,7 +207,7 @@ export async function processInsuranceDocument(input: {
 
 	const documentKind =
 		(extracted?.documentKind as InsuranceDocumentKind | null) ??
-		inferDocumentKind(input.fileName, input.categoryHint ?? null)
+		inferDocumentKind(input.fileName, categoryHint)
 
 	const { error: documentError } = await supabase
 		.from('insurance_documents')
@@ -221,7 +234,9 @@ export async function processInsuranceDocument(input: {
 	return { policyId: policyId ?? null }
 }
 
-function inferPolicyType(categoryHint: string | null): InsurancePolicyType {
+function inferPolicyType(
+	categoryHint: PolicyCategoryId | null,
+): InsurancePolicyType {
 	switch (categoryHint) {
 		case 'health':
 			return 'health'
@@ -236,6 +251,17 @@ function inferPolicyType(categoryHint: string | null): InsurancePolicyType {
 		default:
 			return 'other'
 	}
+}
+
+export function insurancePolicyNeedsCategoryReprocess(input: {
+	policyType: InsurancePolicyType
+	folderPath: string | null
+}): boolean {
+	if (input.policyType !== 'other') {
+		return false
+	}
+
+	return inferCategoryFromFolderPath(input.folderPath) != null
 }
 
 export async function createInsuranceDocumentFromRegistry(input: {
@@ -328,7 +354,7 @@ export async function reprocessStuckInsuranceDocuments(
 		supabase
 			.from('insurance_policies')
 			.select(
-				'id, policy_number, insurer_id, sum_insured, expiry_date, extraction_method, confidence, source_document_ids',
+				'id, policy_number, policy_type, insurer_id, sum_insured, expiry_date, extraction_method, confidence, source_document_ids',
 			)
 			.eq('user_id', userId),
 	])
@@ -375,6 +401,9 @@ export async function reprocessStuckInsuranceDocuments(
 			) ??
 			null
 
+		const registryId = row.registry_id as string | null
+		const registry = registryId ? registryById.get(registryId) : null
+
 		if (
 			!insuranceDocumentNeedsReprocess({
 				document: {
@@ -394,13 +423,17 @@ export async function reprocessStuckInsuranceDocuments(
 							confidence: Number(policyRow.confidence ?? 0),
 						}
 					: null,
-			})
+			}) &&
+			!(
+				policyRow &&
+				insurancePolicyNeedsCategoryReprocess({
+					policyType: policyRow.policy_type as InsurancePolicyType,
+					folderPath: (registry?.folder_path as string | null) ?? null,
+				})
+			)
 		) {
 			continue
 		}
-
-		const registryId = row.registry_id as string | null
-		const registry = registryId ? registryById.get(registryId) : null
 
 		if (!registry?.external_file_id) {
 			continue

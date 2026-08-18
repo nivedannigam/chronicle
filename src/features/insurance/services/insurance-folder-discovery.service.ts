@@ -12,14 +12,71 @@ export interface DiscoveredInsuranceCategory {
 
 const SHORT_FOLDER_HINTS: Record<string, PolicyCategoryId> = {
 	health: 'health',
+	mediclaim: 'health',
+	medical: 'health',
 	vehicle: 'motor',
 	motor: 'motor',
 	car: 'motor',
 	home: 'home',
+	house: 'home',
 	property: 'home',
 	life: 'life_term',
 	term: 'life_term',
 	travel: 'travel',
+}
+
+export function inferCategoryFromFolderPath(
+	folderPath: string | null | undefined,
+): PolicyCategoryId | null {
+	if (!folderPath?.trim()) {
+		return null
+	}
+
+	const segments = folderPath.split('/').filter(Boolean)
+	const discovered = discoverInsuranceCategoriesFromFolderNames(segments)
+
+	return discovered[0]?.id ?? null
+}
+
+const VALID_CATEGORY_HINTS = new Set<PolicyCategoryId>([
+	'health',
+	'life_term',
+	'motor',
+	'home',
+	'travel',
+])
+
+export function resolveInsuranceCategoryHint(input: {
+	categoryHint?: string | null
+	folderPath?: string | null
+	fileName?: string | null
+}): PolicyCategoryId | null {
+	const explicitHint = input.categoryHint?.trim()
+
+	if (
+		explicitHint &&
+		VALID_CATEGORY_HINTS.has(explicitHint as PolicyCategoryId)
+	) {
+		return explicitHint as PolicyCategoryId
+	}
+
+	const fromPath = inferCategoryFromFolderPath(input.folderPath)
+
+	if (fromPath) {
+		return fromPath
+	}
+
+	if (input.fileName?.trim()) {
+		const fromFileName = discoverInsuranceCategoriesFromFolderNames([
+			input.fileName.replace(/\.[^.]+$/, ''),
+		])[0]?.id
+
+		if (fromFileName) {
+			return fromFileName
+		}
+	}
+
+	return null
 }
 
 export function discoverInsuranceCategoriesFromFolderNames(

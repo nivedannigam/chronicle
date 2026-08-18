@@ -78,10 +78,15 @@ export function consumerProtectionSummary(
 
 export function deriveCategoryCoverageStatus(input: {
 	activePolicyCount: number
+	policyCount: number
 	totalSumInsured: number | null
 	categoryId: PolicyCategoryId
 	hasGap: boolean
 }): ConsumerCoverageStatus {
+	if (input.policyCount > 0 && input.activePolicyCount === 0) {
+		return 'Partial'
+	}
+
 	if (input.activePolicyCount === 0 || input.hasGap) {
 		return input.activePolicyCount > 0 ? 'Partial' : 'Missing'
 	}
@@ -183,7 +188,7 @@ export function deriveProtectionAreaStatus(input: {
 	}
 
 	if (input.activePolicyCount === 0) {
-		return 'Missing'
+		return input.policyCount > 0 ? 'Partial' : 'Missing'
 	}
 
 	if (input.hasGap || input.totalSumInsured == null) {

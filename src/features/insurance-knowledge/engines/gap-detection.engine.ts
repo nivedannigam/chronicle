@@ -40,6 +40,10 @@ export function detectCoverageGaps(input: {
 		)
 
 		if (!snapshot || snapshot.activePolicyCount === 0) {
+			if (snapshot && snapshot.policyCount > 0) {
+				continue
+			}
+
 			gaps.push({
 				id: `gap-${core.categoryId}`,
 				categoryId: core.categoryId,
