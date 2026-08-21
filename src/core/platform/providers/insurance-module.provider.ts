@@ -1,64 +1,102 @@
-import { ROUTES, insurancePolicyDetailPath } from '@/constants/routes'
+import { insurancePolicyDetailPath, ROUTES } from '@/constants/routes'
 import type {
 	ChronicleModuleProvider,
 	ModuleDocumentSection,
 	ModuleProviderQuery,
 	ModuleSummary,
 } from '@/core/platform/contracts/module-provider.contract'
+import {
+	buildLibraryStableKey,
+	formatLibraryDisplayDate,
+	matchesLibraryMember,
+	resolveOwnerLabel,
+	toModuleLibrarySummary,
+} from '@/core/platform/providers/module-document-provider.utils'
+import { resolveConsumerPolicyNumberLabel } from '@/features/insurance-knowledge/utils/policy-number-provenance'
 import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 import { getCategoryMeta } from '@/features/insurance-knowledge/graph/policy-categories'
 import type { PolicyCategoryId } from '@/features/insurance-knowledge/types/insurance-knowledge.types'
+import type {
+	InsuranceKnowledgeDocumentRef,
+	InsuranceKnowledgePolicy,
+} from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 
 function isInsuranceLibraryDocument(document: ChronicleDocument): boolean {
-	return document.category_id === 'insurance'
+	return document.category_id === 'insurance' && document.status !== 'failed'
 }
 
-function insuranceKnowledgeDocToSummary(
-	document: {
-		id: string
-		fileName: string
-		documentKind: string
-		uploadedAt: string
-		isDisplayReady?: boolean
-	},
+function insuranceDocumentToSummary(
+	document: InsuranceKnowledgeDocumentRef,
 	memberNames: Record<string, string>,
-	memberId: string | null | undefined,
+	familyMemberId: string | null | undefined,
 ): ChronicleDocumentSummary {
-	return {
-		id: document.id,
-		title: document.fileName,
+	const linkedPolicyId = document.linkedPolicyIds[0] ?? null
+
+	return toModuleLibrarySummary({
+		canonicalId: document.id,
+		moduleId: 'insurance',
 		categoryId: 'insurance',
 		categoryLabel: 'Insurance',
-		subCategoryLabel: document.documentKind.replace(/_/g, ' '),
-		ownerLabel: memberId
-			? (memberNames[memberId] ?? 'Family member')
-			: 'Account owner',
+		title: document.fileName,
+		documentType: document.documentKind.replace(/_/g, ' '),
 		sourceLabel: 'Insurance folder',
+		displayDate: formatLibraryDisplayDate(document.uploadedAt),
 		summary: document.documentKind.replace(/_/g, ' '),
-		displayDate: new Date(document.uploadedAt).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-		}),
-		expiresLabel: null,
-		isExpiringSoon: false,
-		isExpired: false,
-		fileType: 'PDF',
+		familyMemberId: familyMemberId ?? null,
+		ownerLabel: resolveOwnerLabel(memberNames, familyMemberId),
+		moduleDetailPath: linkedPolicyId
+			? insurancePolicyDetailPath(linkedPolicyId)
+			: ROUTES.insurancePolicies,
+		moduleDetailLabel: linkedPolicyId ? 'View policy' : 'View in Insurance',
+		sourceKey: buildLibraryStableKey('insurance', document.id),
 		hasAiSummary: true,
 		tags: ['insurance'],
-		relatedModules: [
-			{
-				moduleId: 'insurance',
-				label: 'Insurance',
-				route: ROUTES.insurancePolicies,
-			},
-		],
 		consumerStatus: document.isDisplayReady ? 'Ready' : 'Still Organizing',
-		aiDiscoveryLabel: null,
-		year: new Date(document.uploadedAt).getFullYear(),
+		year: resolveLibraryYear(document.uploadedAt),
+	})
+}
+
+function insurancePolicyToSummary(
+	policy: InsuranceKnowledgePolicy,
+	memberNames: Record<string, string>,
+	familyMemberId: string | null | undefined,
+): ChronicleDocumentSummary {
+	return toModuleLibrarySummary({
+		canonicalId: `insurance-policy-${policy.id}`,
+		moduleId: 'insurance',
+		categoryId: 'insurance',
+		categoryLabel: 'Insurance',
+		title: policy.productName ?? resolveConsumerPolicyNumberLabel(policy),
+		documentType: getCategoryMeta(policy.categoryId as PolicyCategoryId).name,
+		sourceLabel: 'Insurance policy',
+		displayDate: formatLibraryDisplayDate(
+			policy.inceptionDate ?? policy.expiryDate,
+		),
+		summary: resolveConsumerPolicyNumberLabel(policy),
+		familyMemberId: familyMemberId ?? null,
+		ownerLabel: resolveOwnerLabel(memberNames, familyMemberId),
+		moduleDetailPath: insurancePolicyDetailPath(policy.id),
+		moduleDetailLabel: 'View policy',
+		sourceKey: buildLibraryStableKey('insurance', `policy:${policy.id}`),
+		expiresLabel: policy.expiryDate,
+		isExpired: policy.status === 'expired',
+		fileType: 'POLICY',
+		hasAiSummary: true,
+		tags: ['insurance', policy.categoryId],
+		consumerStatus: 'Ready',
+		year: resolveLibraryYear(policy.inceptionDate),
+	})
+}
+
+function resolveLibraryYear(value: string | null | undefined): number | null {
+	if (!value) {
+		return null
 	}
+
+	const parsed = Date.parse(value)
+	return Number.isNaN(parsed) ? null : new Date(parsed).getFullYear()
 }
 
 export const insuranceModuleProvider: ChronicleModuleProvider = {
@@ -70,17 +108,29 @@ export const insuranceModuleProvider: ChronicleModuleProvider = {
 	getDocumentSection(query: ModuleProviderQuery): ModuleDocumentSection | null {
 		const knowledge = query.sources.insurance?.knowledge
 		const memberNames = query.memberNames ?? {}
+		const familyMemberId = knowledge?.familyMember.id
+		const memberScope = {
+			memberId: query.memberId ?? null,
+			accountOwnerMemberId: query.accountOwnerMemberId ?? null,
+		}
 		const documents: ChronicleDocumentSummary[] = []
+		const seen = new Set<string>()
 		const categoryCounts = new Map<string, number>()
 
 		for (const document of knowledge?.documents ?? []) {
-			documents.push(
-				insuranceKnowledgeDocToSummary(
-					document,
-					memberNames,
-					knowledge?.familyMember.id,
-				),
+			const summary = insuranceDocumentToSummary(
+				document,
+				memberNames,
+				familyMemberId,
 			)
+			const key = summary.sourceKey ?? summary.id
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
+			documents.push(summary)
 		}
 
 		for (const document of query.sources.documents?.uploadedDocuments ?? []) {
@@ -88,6 +138,17 @@ export const insuranceModuleProvider: ChronicleModuleProvider = {
 				continue
 			}
 
+			if (!matchesLibraryMember(document.family_member_id, memberScope)) {
+				continue
+			}
+
+			const key = buildLibraryStableKey('insurance', document.id)
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
 			documents.push(toDocumentSummary(document, memberNames))
 		}
 
@@ -97,57 +158,27 @@ export const insuranceModuleProvider: ChronicleModuleProvider = {
 				(categoryCounts.get(policy.categoryId) ?? 0) + 1,
 			)
 
-			const alreadyListed = documents.some(
-				(document) =>
-					document.id === policy.id ||
-					document.title === policy.productName ||
-					document.title === policy.policyNumber,
+			const summary = insurancePolicyToSummary(
+				policy,
+				memberNames,
+				familyMemberId,
 			)
 
-			if (!alreadyListed) {
-				documents.push({
-					id: `insurance-policy-${policy.id}`,
-					title: policy.productName ?? policy.policyNumber,
-					categoryId: 'insurance',
-					categoryLabel: 'Insurance',
-					subCategoryLabel: getCategoryMeta(
-						policy.categoryId as PolicyCategoryId,
-					).name,
-					ownerLabel: knowledge?.familyMember.id
-						? (memberNames[knowledge.familyMember.id] ?? 'Family member')
-						: 'Account owner',
-					sourceLabel: 'Insurance policy',
-					summary: policy.policyNumber,
-					displayDate: policy.inceptionDate
-						? new Date(policy.inceptionDate).toLocaleDateString('en-US', {
-								month: 'short',
-								day: 'numeric',
-								year: 'numeric',
-							})
-						: '—',
-					expiresLabel: policy.expiryDate ?? null,
-					isExpiringSoon: false,
-					isExpired: policy.status === 'expired',
-					fileType: 'POLICY',
-					hasAiSummary: true,
-					tags: ['insurance', policy.categoryId],
-					relatedModules: [
-						{
-							moduleId: 'insurance',
-							label: 'Insurance',
-							route: insurancePolicyDetailPath(policy.id),
-						},
-					],
-					consumerStatus: 'Ready',
-					aiDiscoveryLabel: null,
-					year: policy.inceptionDate
-						? new Date(policy.inceptionDate).getFullYear()
-						: null,
-				})
+			if (!matchesLibraryMember(summary.familyMemberId, memberScope)) {
+				continue
 			}
+
+			const key = summary.sourceKey ?? summary.id
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
+			documents.push(summary)
 		}
 
-		if (documents.length === 0 && (knowledge?.policies.length ?? 0) === 0) {
+		if (documents.length === 0) {
 			return null
 		}
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Clock, FileText, Search, Sparkles, X } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
@@ -10,6 +10,10 @@ import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthR
 import { groupSearchResults } from '@/features/os/services/grouped-search.service'
 import { domainColor } from '@/features/search/services/global-search.service'
 import { useGlobalSearch } from '@/features/search/hooks/useGlobalSearch'
+import {
+	parseSearchContextModule,
+	resolveSearchScopeCopy,
+} from '@/features/search/services/search-context.service'
 import { FigmaScreenHeader } from '@/ui/figma/shell/FigmaScreenHeader'
 import { FC, FigmaIconBox, FigmaLbl, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
@@ -22,8 +26,17 @@ const BROWSE_CATEGORIES = [
 
 export function FigmaSearchScreen() {
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
+	const searchContext = useMemo(
+		() => parseSearchContextModule(searchParams.get('context')),
+		[searchParams],
+	)
+	const scopeCopy = useMemo(
+		() => resolveSearchScopeCopy(searchContext),
+		[searchContext],
+	)
 	const [query, setQuery] = useState('')
-	const { results, isLoading } = useGlobalSearch(query)
+	const { results, isLoading } = useGlobalSearch(query, searchContext)
 	const { members } = useFamilyContext()
 	const { data: documents = [] } = useMemberDocuments()
 	const { data: reports = [] } = useMemberHealthReports()
@@ -78,7 +91,8 @@ export function FigmaSearchScreen() {
 			}}
 		>
 			<FigmaScreenHeader
-				title="Search"
+				title={scopeCopy.title}
+				subtitle={scopeCopy.subtitle ?? undefined}
 				onBack={() => navigate(-1)}
 				backLabel="Back"
 				paddingBottom={12}
@@ -101,7 +115,7 @@ export function FigmaSearchScreen() {
 					<input
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Search everything…"
+						placeholder={scopeCopy.placeholder}
 						autoFocus
 						style={{
 							flex: 1,
@@ -252,8 +266,7 @@ export function FigmaSearchScreen() {
 								margin: '0 0 16px',
 							}}
 						>
-							Try different keywords, or ask Chronicle to interpret your
-							question.
+							{scopeCopy.emptyMessage}
 						</p>
 						<button
 							type="button"

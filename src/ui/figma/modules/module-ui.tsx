@@ -6,7 +6,7 @@ import type {
 	ModuleHubStatusTone,
 } from '@/features/modules/types/module-hub.types'
 import { resolveModuleHubCardAction } from '@/features/modules/services/module-hub-status.service'
-import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
+import { FC, figmaCardStyle, figmaListRowBorder } from '@/ui/figma/v2/atoms'
 
 function statusToneColor(tone: ModuleHubStatusTone): string {
 	switch (tone) {
@@ -205,9 +205,11 @@ export function ModuleFutureCard({ module }: { module: ModuleDefinition }) {
 
 export function HomeModuleSnapshotRow({
 	card,
+	isLast = false,
 	onClick,
 }: {
 	card: ModuleHubCardViewModel
+	isLast?: boolean
 	onClick: () => void
 }) {
 	const statusColor = statusToneColor(card.statusTone)
@@ -224,11 +226,10 @@ export function HomeModuleSnapshotRow({
 				gap: 12,
 				padding: '13px 0',
 				background: 'none',
-				border: 'none',
-				borderBottom: `1px solid ${FC.line}`,
 				cursor: 'pointer',
 				fontFamily: 'inherit',
 				textAlign: 'left',
+				...figmaListRowBorder(isLast, FC.line),
 			}}
 		>
 			<div style={{ minWidth: 0 }}>

@@ -40,6 +40,7 @@ export function useDocumentIntelligence() {
 			userId: userId ?? '',
 			memberId: selectedMemberId,
 			memberNames,
+			accountOwnerMemberId: null,
 			healthReports: reportsQuery.data ?? [],
 			chronicleDocuments: memberDocuments.data ?? [],
 			insuranceKnowledge: insuranceQuery.knowledge,

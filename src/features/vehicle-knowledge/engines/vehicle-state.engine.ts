@@ -298,6 +298,11 @@ export function computeVehicleCurrentState(input: {
 	registrationNumber: string | null
 	documents: VehicleDocumentRecord[]
 	facts: VehicleFactRecord[]
+	linkedMotorPolicy?: {
+		policyId: string
+		productName: string
+		expiryDate: string | null
+	} | null
 }): VehicleCurrentState {
 	const hasRegistrationDoc = input.documents.some(
 		(document) =>
@@ -345,13 +350,23 @@ export function computeVehicleCurrentState(input: {
 				expiredLabel: 'Insurance expired',
 				unknownLabel: 'Insurance status unknown',
 			})
-		: {
-				status: 'unknown' as const,
-				label: 'Insurance information not found',
-				effectiveDate: null,
-				sourceDocumentId: null,
-				sourceDocumentName: null,
-			}
+		: input.linkedMotorPolicy?.expiryDate
+			? expiryState({
+					expiryDate: input.linkedMotorPolicy.expiryDate,
+					sourceDocumentId: `insurance-policy-${input.linkedMotorPolicy.policyId}`,
+					sourceDocumentName: input.linkedMotorPolicy.productName,
+					validLabel: 'Insurance valid until',
+					expiringLabel: 'Insurance expiring',
+					expiredLabel: 'Insurance expired',
+					unknownLabel: 'Insurance status unknown',
+				})
+			: {
+					status: 'unknown' as const,
+					label: 'Insurance information not found',
+					effectiveDate: null,
+					sourceDocumentId: null,
+					sourceDocumentName: null,
+				}
 
 	const latestPuc = rankPucDocuments(input)
 	const pucSource = latestPuc

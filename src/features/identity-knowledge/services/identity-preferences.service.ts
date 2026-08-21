@@ -1,3 +1,5 @@
+import { maskDocumentNumber } from '@/features/identity-knowledge/services/identity-mask.service'
+
 const STORAGE_PREFIX = 'chronicle:identity-preferences:'
 
 export interface IdentityPreferences {
@@ -45,4 +47,55 @@ export function writeIdentityPreferences(
 	}
 
 	return next
+}
+
+const SENSITIVE_FIELD_LABELS = new Set([
+	'Document number',
+	'Passport number',
+	'PAN',
+	'Aadhaar number',
+])
+
+export function maskIdentityDisplayFieldValue(
+	label: string,
+	value: string,
+	preferences: IdentityPreferences,
+): string {
+	if (!preferences.maskDocumentNumbers) {
+		return value
+	}
+
+	if (!SENSITIVE_FIELD_LABELS.has(label)) {
+		return value
+	}
+
+	return maskDocumentNumber(value) ?? '••••'
+}
+
+export function applyIdentityTimelinePrivacy(
+	summary: string,
+	event: { tags?: string[]; metadata?: Record<string, unknown> },
+	preferences: IdentityPreferences,
+): string {
+	if (!preferences.hideSensitiveTimelinePreviews) {
+		return summary
+	}
+
+	if (!event.tags?.includes('identity')) {
+		return summary
+	}
+
+	const documentNumber =
+		typeof event.metadata?.documentNumber === 'string'
+			? event.metadata.documentNumber
+			: null
+
+	if (documentNumber) {
+		const masked = maskDocumentNumber(documentNumber)
+		if (masked) {
+			return summary.replace(documentNumber, masked)
+		}
+	}
+
+	return summary.replace(/No\.\s*[\w-]+/gi, 'No. ••••')
 }

@@ -1,5 +1,5 @@
 import { DOCUMENTS_BUCKET } from '@/features/documents/types/document.types'
-import { extractTextFromStoredPdf } from '@/features/document-import/services/domain-document-text.service'
+import { resolveDocumentContent } from '@/features/document-intelligence/content/resolve-document-content.service'
 import {
 	extractDomainDocumentWithAi,
 	extractDomainDocumentWithAiDirect,
@@ -13,6 +13,7 @@ import {
 	AskAiEdgeInvokeError,
 	isAskAiEdgeConfigured,
 } from '@/shared/ai/transport/ask-ai-edge.client'
+import { resolveExtractionStatus } from '@/features/document-intelligence/extraction/extraction-status.contract'
 
 export class DocumentExtractionOrchestratorError extends Error {
 	constructor(message: string) {
@@ -30,6 +31,8 @@ function buildObservability(input: {
 	startedAt: number
 	fallbackReason?: string | null
 	model?: string | null
+	contentSource?: string | null
+	extractionStatus?: DocumentExtractionObservability['extractionStatus']
 }): DocumentExtractionObservability {
 	return {
 		extractionMethod: input.method,
@@ -39,40 +42,52 @@ function buildObservability(input: {
 		processingDurationMs: Math.round(performance.now() - input.startedAt),
 		provider: 'gemini',
 		model: input.model ?? null,
+		contentSource: input.contentSource ?? null,
+		extractionStatus: input.extractionStatus ?? null,
 	}
 }
 
-async function extractDomainDocumentFromOcrText(input: {
-	target: 'insurance' | 'vehicles'
+async function extractDomainDocumentFromResolvedContent(input: {
+	target: DomainDocumentExtractionResult['target']
 	userId: string
 	documentId: string
 	fileName: string
 	folderPath?: string | null
+	categoryHint?: string | null
 	storagePath: string
-}): Promise<DomainDocumentExtractionResult> {
-	const { text } = await extractTextFromStoredPdf({
+}): Promise<{
+	extraction: DomainDocumentExtractionResult
+	contentSource: string | null
+}> {
+	const resolved = await resolveDocumentContent({
 		userId: input.userId,
 		documentId: input.documentId,
 		fileName: input.fileName,
 		storagePath: input.storagePath,
 	})
 
-	if (text.trim().length < 80) {
+	if (resolved.content.trim().length < 80) {
 		throw new DocumentExtractionOrchestratorError(
-			'OCR text was too short for structured extraction.',
+			'Document text was too short for structured extraction.',
 		)
 	}
 
-	return extractDomainDocumentWithAi({
+	const extraction = await extractDomainDocumentWithAi({
 		target: input.target,
 		fileName: input.fileName,
 		folderPath: input.folderPath,
-		extractedText: text,
+		categoryHint: input.categoryHint,
+		extractedText: resolved.content,
 	})
+
+	return {
+		extraction,
+		contentSource: resolved.source,
+	}
 }
 
 export interface OrchestrateDomainDocumentExtractionInput {
-	target: 'insurance' | 'vehicles'
+	target: DomainDocumentExtractionResult['target']
 	userId: string
 	documentId: string
 	fileName: string
@@ -122,16 +137,35 @@ export async function orchestrateDomainDocumentExtraction(
 			attemptCount += 1
 
 			try {
-				const ocrExtraction = await extractDomainDocumentFromOcrText(input)
+				const resolvedExtraction =
+					await extractDomainDocumentFromResolvedContent(input)
+				const ocrExtraction = resolvedExtraction.extraction
+				const contentSource = resolvedExtraction.contentSource
 
 				return {
 					...ocrExtraction,
+					method: 'ocr_fallback',
 					observability: buildObservability({
 						method: 'ocr_fallback',
 						success: true,
 						attemptCount,
 						startedAt,
 						fallbackReason,
+						contentSource,
+						extractionStatus: resolveExtractionStatus({
+							method: 'ocr_fallback',
+							hasStructuredFacts: Boolean(
+								ocrExtraction.insurance ||
+								ocrExtraction.vehicle ||
+								ocrExtraction.finance,
+							),
+							hasImportantFacts: true,
+							confidence:
+								ocrExtraction.insurance?.confidence ??
+								ocrExtraction.vehicle?.confidence ??
+								ocrExtraction.finance?.confidence ??
+								0.5,
+						}),
 					}),
 				}
 			} catch {
@@ -149,6 +183,7 @@ export async function orchestrateDomainDocumentExtraction(
 					attemptCount,
 					startedAt,
 					fallbackReason,
+					extractionStatus: 'NEEDS_REVIEW',
 				}),
 			}
 		}
@@ -165,6 +200,7 @@ export async function orchestrateDomainDocumentExtraction(
 			attemptCount,
 			startedAt,
 			fallbackReason: 'ask_ai_not_configured',
+			extractionStatus: 'NEEDS_REVIEW',
 		}),
 	}
 }

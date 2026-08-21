@@ -16,6 +16,7 @@ function emptyKnowledge(userId: string): VehicleKnowledge {
 			documents: [],
 			facts: [],
 			timeline: [],
+			linkedMotorPolicies: [],
 			familyMembers: [],
 			importRegistry: [],
 		},

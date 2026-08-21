@@ -17,7 +17,9 @@ import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthR
 import { useHealthMetrics } from '@/features/health/hooks/useHealthMetrics'
 import { useHealthContextOptional } from '@/features/health/context/HealthContext'
 import { buildHealthVisits } from '@/features/health/services/health-visit.mapper'
+import { useFinanceSources } from '@/features/finance/hooks/useFinanceSources'
 import { usePersonalPreferences } from '@/features/personalization/hooks/usePersonalPreferences'
+import { resolveAskContextCopy } from '@/features/ask/constants/ask-context-copy'
 import { AskPremiumEmptyState } from '@/ui/figma/ask/AskPremiumEmptyState'
 import { resolveAskEmptyReportCount } from '@/ui/figma/ask/resolve-ask-empty-report-count'
 import { FigmaAskComposer, FC } from '@/ui/figma/v2/atoms'
@@ -51,6 +53,7 @@ export function FigmaAskScreen({
 	const metricsQuery = useHealthMetrics()
 	const documentsQuery = useMemberDocuments()
 	const driveConnector = useGoogleDriveConnector(userId)
+	const financeSources = useFinanceSources(userId)
 	const [input, setInput] = useState('')
 	const [historyOpen, setHistoryOpen] = useState(false)
 	const taRef = useRef<HTMLTextAreaElement>(null)
@@ -89,14 +92,78 @@ export function FigmaAskScreen({
 		const reportId = searchParams.get('reportId')?.trim()
 		const visitId = searchParams.get('visitId')?.trim()
 		const categoryId = searchParams.get('categoryId')?.trim()
-		const contextModule = searchParams.get('context')?.trim()
+		const contextModule = searchParams.get('context')?.trim() as
+			AskScopeContext['contextModule'] | undefined
 		const documentId = searchParams.get('documentId')?.trim()
+		const policyId = searchParams.get('policyId')?.trim()
+		const claimId = searchParams.get('claimId')?.trim()
+		const vehicleSlug = searchParams.get('vehicleSlug')?.trim()
 
 		if (contextModule === 'identity') {
 			return {
 				contextModule: 'identity',
 				categoryId: 'identity',
 				documentId: documentId || undefined,
+			}
+		}
+
+		if (contextModule === 'insurance') {
+			return {
+				contextModule: 'insurance',
+				categoryId: categoryId || 'insurance',
+				policyId: policyId || undefined,
+				claimId: claimId || undefined,
+			}
+		}
+
+		if (contextModule === 'vehicles') {
+			return {
+				contextModule: 'vehicles',
+				categoryId: categoryId || 'vehicles',
+				vehicleSlug: vehicleSlug || undefined,
+			}
+		}
+
+		if (contextModule === 'finance') {
+			return {
+				contextModule: 'finance',
+				categoryId: categoryId || 'financial',
+				documentId: documentId || undefined,
+				entityId: searchParams.get('entity')?.trim() || undefined,
+				hasFinanceFolderAssigned: financeSources.assignments.length > 0,
+			}
+		}
+
+		if (contextModule === 'property') {
+			const propertyDocuments = (documentsQuery.data ?? []).filter(
+				(document) => document.category_id === 'property',
+			)
+			return {
+				contextModule: 'property',
+				categoryId: categoryId || 'property',
+				documentId: documentId || undefined,
+				entityId: searchParams.get('entity')?.trim() || undefined,
+				hasPropertyFolderAssigned: propertyDocuments.length > 0,
+			}
+		}
+
+		if (contextModule === 'health') {
+			if (visitId) {
+				const visit = visits.find((entry) => entry.id === visitId)
+
+				if (visit?.reportIds.length) {
+					return {
+						contextModule: 'health',
+						reportIds: visit.reportIds,
+						categoryId: categoryId || undefined,
+					}
+				}
+			}
+
+			return {
+				contextModule: 'health',
+				reportId: reportId || undefined,
+				categoryId: categoryId || undefined,
 			}
 		}
 
@@ -119,7 +186,12 @@ export function FigmaAskScreen({
 		}
 
 		return undefined
-	}, [visits, searchParams])
+	}, [
+		visits,
+		searchParams,
+		financeSources.assignments.length,
+		documentsQuery.data,
+	])
 
 	const {
 		ask,
@@ -184,6 +256,11 @@ export function FigmaAskScreen({
 		void ask(initialQuery)
 	}, [ask, isLoading, searchParams, setSearchParams])
 
+	const askContextCopy = useMemo(
+		() => resolveAskContextCopy(askScope?.contextModule),
+		[askScope?.contextModule],
+	)
+
 	const hasConversation = turns.length > 0 || Boolean(pendingTurn)
 	const reportCount = resolveAskEmptyReportCount(reports)
 
@@ -199,13 +276,7 @@ export function FigmaAskScreen({
 		>
 			<FigmaScreenHeader
 				title="Ask Chronicle"
-				subtitle={
-					hasConversation
-						? undefined
-						: consumerMode
-							? 'Your health companion'
-							: 'Your health companion'
-				}
+				subtitle={hasConversation ? undefined : askContextCopy.subtitle}
 				leading={
 					<FigmaHeaderIconButton
 						onClick={() => setHistoryOpen(true)}
@@ -261,6 +332,7 @@ export function FigmaAskScreen({
 						onSelectQuestion={send}
 						consumerMode={consumerMode}
 						reportCount={reportCount}
+						headline={askContextCopy.emptyHeadline}
 						healthSummary={
 							consumerMode && healthContext ? healthContext.snapshot : undefined
 						}

@@ -11,6 +11,7 @@ import type {
 } from '@/features/insurance-knowledge/types/insurance-record.types'
 import { deriveInsuranceRecordsFromDocuments } from '@/features/insurance-knowledge/services/derive-insurance-records-from-documents'
 import { supabase } from '@/lib/supabase'
+import { qaShouldBypassRemoteTables } from '@/qa/qa-boundary'
 
 const GOOGLE_DRIVE = 'google-drive'
 
@@ -71,6 +72,10 @@ function mapDocument(row: Record<string, unknown>): InsuranceDocumentRecord {
 async function fetchInsurancePolicies(
 	userId: string,
 ): Promise<InsurancePolicyRecord[]> {
+	if (qaShouldBypassRemoteTables(userId)) {
+		return []
+	}
+
 	const { data, error } = await supabase
 		.from('insurance_policies')
 		.select('*')
@@ -91,6 +96,10 @@ async function fetchInsurancePolicies(
 async function fetchInsuranceDocuments(
 	userId: string,
 ): Promise<InsuranceDocumentRecord[]> {
+	if (qaShouldBypassRemoteTables(userId)) {
+		return []
+	}
+
 	const { data, error } = await supabase
 		.from('insurance_documents')
 		.select('*')

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	buildAiDiscoveryLabel,
 	resolveConsumerDocumentStatus,
+	resolveDocumentModuleDetailPath,
 	resolveDocumentModuleLinks,
 } from '@/features/documents/services/document-module-links.service'
 import {
@@ -83,6 +84,37 @@ describe('resolveDocumentModuleLinks', () => {
 		)
 
 		expect(links[0]?.label).toBe('Insurance')
+	})
+})
+
+describe('resolveDocumentModuleDetailPath', () => {
+	it('links identity documents to Identity detail', () => {
+		const link = resolveDocumentModuleDetailPath(
+			createDocument({
+				category_id: 'identity',
+				sub_category_id: 'passport',
+			}),
+		)
+
+		expect(link).toEqual({
+			label: 'View in Identity',
+			path: '/identity/documents/doc-1',
+		})
+	})
+
+	it('links insurance knowledge refs to policy detail', () => {
+		const link = resolveDocumentModuleDetailPath(
+			createDocument({
+				knowledge_refs: [
+					{ domain: 'insurance', entityId: 'policy-9', label: 'Insurance' },
+				],
+			}),
+		)
+
+		expect(link).toEqual({
+			label: 'View policy',
+			path: '/insurance/policies/policy-9',
+		})
 	})
 })
 

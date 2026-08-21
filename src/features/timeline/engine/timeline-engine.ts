@@ -59,11 +59,21 @@ export function filterTimelineEvents(
 	let filtered = events
 
 	if (filters.memberId) {
-		filtered = filtered.filter(
-			(event) =>
-				event.familyMemberId === filters.memberId ||
-				event.familyMemberId == null,
-		)
+		filtered = filtered.filter((event) => {
+			if (event.metadata.privacyScope === 'shared') {
+				return true
+			}
+
+			if (event.familyMemberId === filters.memberId) {
+				return true
+			}
+
+			if (event.familyMemberId == null) {
+				return filters.memberId === (filters.accountOwnerMemberId ?? null)
+			}
+
+			return false
+		})
 	}
 
 	if (filters.modules?.length) {

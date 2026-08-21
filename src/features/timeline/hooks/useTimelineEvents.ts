@@ -6,6 +6,12 @@ import { useHealthKnowledge } from '@/features/health-knowledge/hooks/useHealthK
 import { useMemberHealthReports } from '@/features/health/hooks/useMemberHealthReports'
 import { useHealthImportStatus } from '@/features/health-import/hooks/useHealthImportStatus'
 import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
+import { useFinanceKnowledge } from '@/features/finance/hooks/useFinanceKnowledge'
+import { useFinanceSources } from '@/features/finance/hooks/useFinanceSources'
+import { useIdentityKnowledge } from '@/features/identity/hooks/useIdentityKnowledge'
+import { usePropertyKnowledge } from '@/features/property/hooks/usePropertyKnowledge'
+import { usePropertySources } from '@/features/property/hooks/usePropertySources'
+import { useVehicleKnowledge } from '@/features/vehicles/hooks/useVehicleKnowledge'
 import {
 	buildTimelineEvents,
 	buildTimelinePreview,
@@ -24,6 +30,13 @@ function buildTimelineSources(input: {
 	>['graph']['profile']['metricHistories']
 	importStatus: ReturnType<typeof useHealthImportStatus>['data']
 	insuranceKnowledge: ReturnType<typeof useInsuranceKnowledge>['knowledge']
+	financeKnowledge: ReturnType<typeof useFinanceKnowledge>['knowledge']
+	hasFinanceFolderAssigned: boolean
+	vehicleKnowledge: ReturnType<typeof useVehicleKnowledge>['knowledge']
+	identityKnowledge: ReturnType<typeof useIdentityKnowledge>['knowledge']
+	propertyKnowledge: ReturnType<typeof usePropertyKnowledge>['knowledge']
+	hasPropertyFolderAssigned: boolean
+	propertyRootFolderPath: string | null
 	userId?: string
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
@@ -42,6 +55,39 @@ function buildTimelineSources(input: {
 					userId: input.userId,
 					familyMemberId: input.familyMemberId ?? null,
 					accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+				}
+			: undefined,
+		finance: input.financeKnowledge
+			? {
+					knowledge: input.financeKnowledge,
+					userId: input.userId,
+					hasFolderAssigned: input.hasFinanceFolderAssigned,
+					familyMemberId: input.familyMemberId ?? null,
+				}
+			: undefined,
+		vehicles: input.vehicleKnowledge
+			? {
+					knowledge: input.vehicleKnowledge,
+					userId: input.userId,
+					familyMemberId: input.familyMemberId ?? null,
+					accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+				}
+			: undefined,
+		identity: input.identityKnowledge
+			? {
+					knowledge: input.identityKnowledge,
+					userId: input.userId,
+					familyMemberId: input.familyMemberId ?? null,
+					accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+				}
+			: undefined,
+		property: input.propertyKnowledge
+			? {
+					knowledge: input.propertyKnowledge,
+					userId: input.userId,
+					hasFolderAssigned: input.hasPropertyFolderAssigned,
+					rootFolderPath: input.propertyRootFolderPath,
+					familyMemberId: input.familyMemberId ?? null,
 				}
 			: undefined,
 		system: {
@@ -64,6 +110,17 @@ export function useTimelineSources(): {
 	const { graph } = useHealthKnowledge(user?.id, reportsQuery.data ?? [])
 	const importStatus = useHealthImportStatus(user?.id)
 	const insuranceQuery = useInsuranceKnowledge()
+	const financeSources = useFinanceSources(user?.id)
+	const financeQuery = useFinanceKnowledge({
+		hasFolderAssigned: financeSources.hasFolderAssigned,
+	})
+	const vehicleQuery = useVehicleKnowledge()
+	const identityQuery = useIdentityKnowledge()
+	const propertySources = usePropertySources(user?.id)
+	const propertyQuery = usePropertyKnowledge({
+		hasFolderAssigned: propertySources.hasFolderAssigned,
+		rootFolderPath: propertySources.rootFolderPath,
+	})
 
 	const sources = useMemo(
 		() =>
@@ -73,6 +130,13 @@ export function useTimelineSources(): {
 				metricHistories: graph.profile.metricHistories,
 				importStatus: importStatus.data,
 				insuranceKnowledge: insuranceQuery.knowledge,
+				financeKnowledge: financeQuery.knowledge,
+				hasFinanceFolderAssigned: financeSources.hasFolderAssigned,
+				vehicleKnowledge: vehicleQuery.knowledge,
+				identityKnowledge: identityQuery.knowledge,
+				propertyKnowledge: propertyQuery.knowledge,
+				hasPropertyFolderAssigned: propertySources.hasFolderAssigned,
+				propertyRootFolderPath: propertySources.rootFolderPath,
 				userId: user?.id,
 				familyMemberId: selectedMemberId,
 				accountOwnerMemberId,
@@ -83,6 +147,13 @@ export function useTimelineSources(): {
 			graph.profile.metricHistories,
 			importStatus.data,
 			insuranceQuery.knowledge,
+			financeQuery.knowledge,
+			financeSources.hasFolderAssigned,
+			vehicleQuery.knowledge,
+			identityQuery.knowledge,
+			propertyQuery.knowledge,
+			propertySources.hasFolderAssigned,
+			propertySources.rootFolderPath,
 			user?.id,
 			selectedMemberId,
 			accountOwnerMemberId,
@@ -93,7 +164,13 @@ export function useTimelineSources(): {
 		reportsQuery.isLoading ||
 		documentsQuery.isLoading ||
 		importStatus.isLoading ||
-		insuranceQuery.isLoading
+		insuranceQuery.isLoading ||
+		financeQuery.isLoading ||
+		financeSources.isLoading ||
+		vehicleQuery.isLoading ||
+		identityQuery.isLoading ||
+		propertyQuery.isLoading ||
+		propertySources.isLoading
 
 	const isError =
 		reportsQuery.isError || documentsQuery.isError || importStatus.isError
@@ -109,7 +186,8 @@ export function useTimelineSources(): {
 
 export function useTimelineEvents(filters: TimelineFilters = {}) {
 	const { user } = useAuth()
-	const { selectedMemberId, selectedMember } = useFamilyContext()
+	const { selectedMemberId, selectedMember, accountOwnerMemberId } =
+		useFamilyContext()
 	const { sources, isLoading, isError, refetch } = useTimelineSources()
 
 	const timeline = useMemo(
@@ -122,9 +200,17 @@ export function useTimelineEvents(filters: TimelineFilters = {}) {
 				filters: {
 					...filters,
 					memberId: filters.memberId ?? selectedMemberId,
+					accountOwnerMemberId,
 				},
 			}),
-		[user?.id, selectedMemberId, selectedMember?.displayName, sources, filters],
+		[
+			user?.id,
+			selectedMemberId,
+			selectedMember?.displayName,
+			accountOwnerMemberId,
+			sources,
+			filters,
+		],
 	)
 
 	return { ...timeline, isLoading, isError, refetch }

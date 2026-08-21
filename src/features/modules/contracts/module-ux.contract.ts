@@ -93,3 +93,23 @@ export function moduleAttentionCountMessage(
 ): string {
 	return `${count} ${entityLabel}${count === 1 ? '' : 's'} need attention`
 }
+
+/** Consumer-facing document status labels for Library surfaces. */
+export const DOCUMENT_CONSUMER_STATUS_LABELS = {
+	ready: 'Ready',
+	needsReview: 'Needs review',
+	organizing: 'Still organizing',
+} as const
+
+export function resolveConsumerDocumentStatusLabel(
+	status: 'Ready' | 'Needs Help' | 'Still Organizing',
+): string {
+	switch (status) {
+		case 'Needs Help':
+			return DOCUMENT_CONSUMER_STATUS_LABELS.needsReview
+		case 'Still Organizing':
+			return DOCUMENT_CONSUMER_STATUS_LABELS.organizing
+		default:
+			return DOCUMENT_CONSUMER_STATUS_LABELS.ready
+	}
+}

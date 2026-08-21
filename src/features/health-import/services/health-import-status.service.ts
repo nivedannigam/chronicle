@@ -52,6 +52,13 @@ function countWorkflowByCategory(
 export async function fetchHealthImportStatus(
 	userId: string,
 ): Promise<HealthImportStatus> {
+	const { qaInterceptHealthImportStatus } = await import('@/qa/qa-interceptors')
+	const qaStatus = qaInterceptHealthImportStatus(userId)
+
+	if (qaStatus !== null) {
+		return qaStatus
+	}
+
 	const [
 		assignments,
 		workflowProjection,

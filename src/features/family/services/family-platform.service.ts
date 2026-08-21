@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase'
+import { qaInterceptFamily } from '@/qa/qa-interceptors'
+import { qaShouldBypassRemoteTables } from '@/qa/qa-boundary'
 import type {
 	Family,
 	FamilyInvitation,
@@ -70,6 +72,12 @@ export async function listFamilyRoles(): Promise<FamilyRole[]> {
 }
 
 export async function getOrCreateFamily(userId: string): Promise<Family> {
+	const qaFamily = qaInterceptFamily(userId)
+
+	if (qaFamily) {
+		return qaFamily
+	}
+
 	const { data: existing, error: fetchError } = await supabase
 		.from('families')
 		.select('*')
@@ -118,6 +126,10 @@ export async function getMemberPreferences(
 	userId: string,
 	familyId: string,
 ): Promise<MemberPreferences | null> {
+	if (qaShouldBypassRemoteTables(userId)) {
+		return null
+	}
+
 	const { data, error } = await supabase
 		.from('member_preferences')
 		.select('*')

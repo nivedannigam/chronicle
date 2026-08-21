@@ -9,10 +9,10 @@ import {
 import { mergeInsuranceRecords } from '@/features/insurance-knowledge/services/merge-insurance-records'
 import type { KnowledgeGraphBuilder } from '@chronicle/core-knowledge'
 import type {
-	BuildInsuranceKnowledgeInput,
 	CategorySnapshot,
 	InsuranceAlert,
 	InsuranceKnowledgeGraph,
+	BuildInsuranceKnowledgeInput,
 	PersonInsuranceProfile,
 	PolicyHistory,
 	PolicyCategoryId,
@@ -21,6 +21,7 @@ import type {
 	InsurancePolicyRecord,
 	InsurancePolicyStatus,
 } from '@/features/insurance-knowledge/types/insurance-record.types'
+import { resolveConsumerPolicyNumber } from '@/features/insurance-knowledge/utils/policy-number-provenance'
 
 const CACHE_VERSION = '1'
 const EXPIRING_SOON_DAYS = 30
@@ -317,19 +318,25 @@ export function buildInsuranceKnowledgeSourceKey(
 export function isPolicyDisplayReady(policy: InsurancePolicyRecord): boolean {
 	const hasRealInsurer =
 		policy.insurerId.trim().length > 0 && policy.insurerId !== 'unknown-insurer'
-	const hasPolicyNumber = policy.policyNumber.trim().length > 0
+	const consumerPolicyNumber = resolveConsumerPolicyNumber(policy)
+	const hasPolicyNumber = Boolean(consumerPolicyNumber)
 	const hasMeaningfulCoverage =
 		(policy.sumInsured != null && policy.sumInsured > 0) ||
 		Boolean(policy.expiryDate)
 	const hasAiExtraction =
 		policy.extractionMethod === 'llm' ||
 		policy.extractionMethod === 'layout+llm'
+	const folderClassified =
+		policy.policyType !== 'other' &&
+		policy.extractionMethod === 'deterministic' &&
+		policy.confidence >= 0.5 &&
+		hasRealInsurer
 
 	return (
 		hasPolicyNumber &&
 		hasRealInsurer &&
-		hasMeaningfulCoverage &&
-		(hasAiExtraction || policy.confidence >= 0.65)
+		(hasMeaningfulCoverage || folderClassified) &&
+		(hasAiExtraction || policy.confidence >= 0.65 || folderClassified)
 	)
 }
 

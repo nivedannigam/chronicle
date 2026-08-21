@@ -1,8 +1,10 @@
 import type { DomainDocumentExtractionResult } from '@/shared/ai/types/domain-document-extraction.types'
+import { inferInsurerFromFileName } from '@/features/insurance/services/insurance-folder-discovery.service'
 import { downloadRegistryDocumentToStorage } from '@/features/document-import/services/domain-document-text.service'
 import { orchestrateDomainDocumentExtraction } from '@/features/document-import/services/document-extraction-orchestrator.service'
 import { extractVehicleDocument } from '@/features/vehicle-knowledge/extraction/vehicle-document-extraction.service'
 import type { InsurancePolicyType } from '@/features/insurance-knowledge/types/insurance-record.types'
+import type { FinanceExtractableDocumentType } from '@/features/finance-knowledge/types/finance-extraction.types'
 import { DOCUMENTS_BUCKET } from '@/features/documents/types/document.types'
 
 function inferPolicyTypeFromHint(
@@ -28,12 +30,15 @@ function buildInsuranceMetadataFallback(input: {
 	fileName: string
 	categoryHint?: string | null
 }): DomainDocumentExtractionResult {
+	const insurerFromFile = inferInsurerFromFileName(input.fileName)
+	const hasCategoryHint = Boolean(input.categoryHint)
+
 	return {
 		target: 'insurance',
 		method: 'deterministic_fallback',
 		extractedText: null,
 		insurance: {
-			insurer: null,
+			insurer: insurerFromFile,
 			policyNumber: null,
 			policyType: inferPolicyTypeFromHint(input.categoryHint ?? null),
 			productName: input.fileName.replace(/\.[^.]+$/, ''),
@@ -45,8 +50,11 @@ function buildInsuranceMetadataFallback(input: {
 			currency: 'INR',
 			insuredMembers: [],
 			documentKind: null,
-			confidence: 0.35,
-			rawFields: {},
+			confidence: hasCategoryHint && insurerFromFile ? 0.55 : 0.35,
+			rawFields: {
+				categoryHint: input.categoryHint ?? null,
+				insurerFromFileName: insurerFromFile,
+			},
 		},
 	}
 }
@@ -102,8 +110,65 @@ export function buildVehicleMetadataExtraction(input: {
 	return buildVehicleMetadataFallback(input)
 }
 
+function buildFinanceMetadataFallback(input: {
+	fileName: string
+	categoryHint?: string | null
+}): DomainDocumentExtractionResult {
+	return {
+		target: 'finance',
+		method: 'deterministic_fallback',
+		extractedText: null,
+		finance: {
+			documentType:
+				(input.categoryHint as FinanceExtractableDocumentType) ??
+				'bank-statement',
+			institution: null,
+			accountType: null,
+			cardName: null,
+			loanType: null,
+			investmentType: null,
+			maskedAccountIdentifier: null,
+			accountHolder: null,
+			jointHolder: null,
+			statementDate: null,
+			statementPeriodStart: null,
+			statementPeriodEnd: null,
+			currency: 'INR',
+			openingBalance: null,
+			closingBalance: null,
+			totalAmountDue: null,
+			minimumAmountDue: null,
+			paymentDueDate: null,
+			creditLimit: null,
+			availableCredit: null,
+			outstandingPrincipal: null,
+			originalLoanAmount: null,
+			interestRate: null,
+			emi: null,
+			nextPaymentDate: null,
+			loanStartDate: null,
+			loanEndDate: null,
+			folioNumber: null,
+			schemeName: null,
+			units: null,
+			nav: null,
+			marketValue: null,
+			investedValue: null,
+			confidence: 0.2,
+			rawFields: {},
+		},
+	}
+}
+
+export function buildFinanceMetadataExtraction(input: {
+	fileName: string
+	categoryHint?: string | null
+}): DomainDocumentExtractionResult {
+	return buildFinanceMetadataFallback(input)
+}
+
 export async function extractRegistryDocumentForDomain(input: {
-	target: 'insurance' | 'vehicles'
+	target: DomainDocumentExtractionResult['target']
 	userId: string
 	registryId: string
 	externalFileId: string
@@ -137,6 +202,13 @@ export async function extractRegistryDocumentForDomain(input: {
 				}
 			}
 
+			if (input.target === 'finance') {
+				return {
+					download: null,
+					extraction: buildFinanceMetadataFallback(input),
+				}
+			}
+
 			return {
 				download: null,
 				extraction: buildVehicleMetadataFallback(input),
@@ -154,10 +226,15 @@ export async function extractRegistryDocumentForDomain(input: {
 			categoryHint: input.categoryHint,
 			storagePath,
 			bucket: DOCUMENTS_BUCKET,
-			buildMetadataFallback: () =>
-				input.target === 'insurance'
-					? buildInsuranceMetadataFallback(input)
-					: buildVehicleMetadataFallback(input),
+			buildMetadataFallback: () => {
+				if (input.target === 'insurance') {
+					return buildInsuranceMetadataFallback(input)
+				}
+				if (input.target === 'finance') {
+					return buildFinanceMetadataFallback(input)
+				}
+				return buildVehicleMetadataFallback(input)
+			},
 		})
 
 		if (
@@ -208,6 +285,13 @@ export async function extractRegistryDocumentForDomain(input: {
 			return {
 				download,
 				extraction: buildInsuranceMetadataFallback(input),
+			}
+		}
+
+		if (input.target === 'finance') {
+			return {
+				download,
+				extraction: buildFinanceMetadataFallback(input),
 			}
 		}
 

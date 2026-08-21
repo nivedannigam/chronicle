@@ -5,6 +5,11 @@ import { listInsuranceSourceAssignments } from '@/features/family/services/insur
 import { invalidateInsuranceKnowledgeCache } from '@/features/insurance-knowledge/services/insurance-knowledge-cache'
 import { runInsuranceDiscovery } from '@/features/insurance-import/services/insurance-discovery-engine.service'
 import {
+	buildInsuranceMaterializationPlan,
+	summarizeMaterializationPlan,
+	type InsuranceMaterializationPlanRow,
+} from '@/features/insurance-import/services/insurance-materialization.service'
+import {
 	createInsuranceDocumentFromRegistry,
 	processInsuranceDocument,
 	reprocessStuckInsuranceDocuments,
@@ -17,17 +22,78 @@ import {
 import type { InsuranceImportStatusSnapshot } from '@/features/insurance-import/types/insurance-import.types'
 import { invalidateInsuranceImportQueries } from '@/lib/query-invalidation'
 
-async function importDiscoveredInsuranceFiles(userId: string): Promise<number> {
-	const assignments = await listInsuranceSourceAssignments(userId)
-	const assignmentFolderIds = new Set(assignments.map((a) => a.folderId))
-	const registry = await listRegistryRecords(userId, 'google-drive')
+export interface InsuranceMaterializationRunResult {
+	plan: InsuranceMaterializationPlanRow[]
+	summary: ReturnType<typeof summarizeMaterializationPlan>
+	imported: number
+	reprocessed: number
+	failed: number
+}
 
+async function loadMaterializationPlan(userId: string) {
+	const registry = await listRegistryRecords(userId, 'google-drive')
 	const insuranceRows = registry.filter((row) => isInsuranceRegistryRow(row))
 
-	let imported = 0
+	const { data: documents } = await supabase
+		.from('insurance_documents')
+		.select('id, status, registry_id')
+		.eq('user_id', userId)
 
-	for (const row of insuranceRows) {
-		if (row.insuranceDocumentId) {
+	const documentsById = new Map<string, { status: string }>()
+
+	for (const document of documents ?? []) {
+		documentsById.set(document.id as string, {
+			status: document.status as string,
+		})
+	}
+
+	const plan = buildInsuranceMaterializationPlan({
+		registryRows: insuranceRows,
+		documentsById,
+	})
+
+	return {
+		plan,
+		summary: summarizeMaterializationPlan(plan),
+		registryRows: insuranceRows,
+		assignments: await listInsuranceSourceAssignments(userId),
+	}
+}
+
+export async function planInsuranceMaterialization(
+	userId: string,
+): Promise<InsuranceMaterializationRunResult> {
+	const { plan, summary } = await loadMaterializationPlan(userId)
+
+	return {
+		plan,
+		summary,
+		imported: 0,
+		reprocessed: 0,
+		failed: 0,
+	}
+}
+
+async function importDiscoveredInsuranceFiles(userId: string): Promise<{
+	imported: number
+	failed: number
+}> {
+	const { plan, registryRows, assignments } =
+		await loadMaterializationPlan(userId)
+	const assignmentFolderIds = new Set(assignments.map((a) => a.folderId))
+	const registryById = new Map(registryRows.map((row) => [row.id, row]))
+
+	let imported = 0
+	let failed = 0
+
+	for (const planned of plan) {
+		if (planned.action !== 'import_and_process') {
+			continue
+		}
+
+		const row = registryById.get(planned.registryId)
+
+		if (!row) {
 			continue
 		}
 
@@ -40,55 +106,78 @@ async function importDiscoveredInsuranceFiles(userId: string): Promise<number> {
 			assignments[0] ??
 			null
 
-		const documentId = await createInsuranceDocumentFromRegistry({
-			userId,
-			registryId: row.id,
-			fileName: row.fileName,
-			familyMemberId: row.familyMemberId ?? assignment?.familyMemberId ?? null,
-			folderAssignmentId: assignment?.id ?? null,
-		})
-
-		await supabase
-			.from('connector_document_registry')
-			.update({
-				insurance_document_id: documentId,
-				target_module: 'insurance',
-				import_status: 'completed',
-				imported_at: new Date().toISOString(),
-				updated_at: new Date().toISOString(),
+		try {
+			const documentId = await createInsuranceDocumentFromRegistry({
+				userId,
+				registryId: row.id,
+				fileName: row.fileName,
+				familyMemberId:
+					row.familyMemberId ?? assignment?.familyMemberId ?? null,
+				folderAssignmentId: assignment?.id ?? null,
 			})
-			.eq('id', row.id)
 
-		const categoryHint = resolveInsuranceCategoryHint({
-			categoryHint: assignment?.discoveredCategories[0] ?? null,
-			folderPath: row.folderPath,
-			fileName: row.fileName,
-		})
+			await supabase
+				.from('connector_document_registry')
+				.update({
+					insurance_document_id: documentId,
+					target_module: 'insurance',
+					import_status: 'completed',
+					imported_at: new Date().toISOString(),
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', row.id)
 
-		await processInsuranceDocument({
-			userId,
-			documentId,
-			fileName: row.fileName,
-			familyMemberId: row.familyMemberId ?? assignment?.familyMemberId ?? null,
-			categoryHint,
-			folderPath: row.folderPath,
-			registryId: row.id,
-			externalFileId: row.externalFileId,
-		})
+			const categoryHint = resolveInsuranceCategoryHint({
+				folderPath: row.folderPath,
+				fileName: row.fileName,
+			})
 
-		imported += 1
+			await processInsuranceDocument({
+				userId,
+				documentId,
+				fileName: row.fileName,
+				familyMemberId:
+					row.familyMemberId ?? assignment?.familyMemberId ?? null,
+				categoryHint,
+				folderPath: row.folderPath,
+				registryId: row.id,
+				externalFileId: row.externalFileId,
+			})
+
+			imported += 1
+		} catch (error) {
+			failed += 1
+
+			await supabase
+				.from('connector_document_registry')
+				.update({
+					import_status: 'failed',
+					discovery_reason:
+						error instanceof Error ? error.message : 'Insurance import failed',
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', row.id)
+		}
 	}
 
-	return imported
+	return { imported, failed }
 }
 
-export async function runInsuranceImportSync(userId: string): Promise<{
+export async function runInsuranceImportSync(
+	userId: string,
+	options?: { skipDiscovery?: boolean },
+): Promise<{
 	discovered: number
 	imported: number
+	failed: number
+	plan: InsuranceMaterializationPlanRow[]
 }> {
-	await runInsuranceDiscovery({ userId })
-	const imported = await importDiscoveredInsuranceFiles(userId)
-	await reprocessStuckInsuranceDocuments(userId)
+	if (!options?.skipDiscovery) {
+		await runInsuranceDiscovery({ userId })
+	}
+	const { imported, failed } = await importDiscoveredInsuranceFiles(userId)
+	const reprocess = await reprocessStuckInsuranceDocuments(userId)
+	const { plan } = await loadMaterializationPlan(userId)
 
 	if (import.meta.env.DEV) {
 		logInsuranceScanDiagnostics(await buildInsuranceScanDiagnostics(userId))
@@ -100,6 +189,8 @@ export async function runInsuranceImportSync(userId: string): Promise<{
 	return {
 		discovered: imported,
 		imported,
+		failed: failed + reprocess.failed,
+		plan,
 	}
 }
 
@@ -134,7 +225,9 @@ export async function getInsuranceImportStatus(
 	const completedDocumentCount = rows.filter(
 		(row) => row.status === 'completed',
 	).length
-	const failedCount = rows.filter((row) => row.status === 'failed').length
+	const failedCount = rows.filter(
+		(row) => row.status === 'failed' || row.status === 'needs_review',
+	).length
 
 	const { data: latestRun } = await supabase
 		.from('insurance_discovery_runs')

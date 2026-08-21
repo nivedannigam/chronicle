@@ -42,7 +42,7 @@ export function VehicleDetailPage() {
 	}
 
 	return (
-		<div className="space-y-5 px-1 pb-8 pt-2">
+		<div className="space-y-5 px-1 pb-8 pt-2" data-testid="vehicle-detail-view">
 			<div
 				className="rounded-3xl border border-white/10 bg-white/[0.03] p-5"
 				style={figmaCardStyle}
@@ -50,7 +50,10 @@ export function VehicleDetailPage() {
 				<p className="text-sm uppercase tracking-wide text-white/45">
 					{detail.categoryLabel}
 				</p>
-				<h1 className="mt-1 text-2xl font-semibold text-white">
+				<h1
+					className="mt-1 text-2xl font-semibold text-white"
+					data-testid="vehicle-detail-heading"
+				>
 					{detail.displayName}
 				</h1>
 				<p className="mt-2 text-sm text-white/60">{detail.statusLabel}</p>

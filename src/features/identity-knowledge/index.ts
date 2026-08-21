@@ -31,7 +31,10 @@ export { maskDocumentNumber } from '@/features/identity-knowledge/services/ident
 export {
 	readIdentityPreferences,
 	writeIdentityPreferences,
+	maskIdentityDisplayFieldValue,
+	applyIdentityTimelinePrivacy,
 } from '@/features/identity-knowledge/services/identity-preferences.service'
+export { useIdentityPreferences } from '@/features/identity-knowledge/hooks/useIdentityPreferences'
 export {
 	readIdentityVersionOverrides,
 	setIdentityVersionOverride,

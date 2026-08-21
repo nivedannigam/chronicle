@@ -11,22 +11,24 @@ export function VehicleHomeEmptyState({
 	emoji: string
 	title: string
 	body: string
-	primaryLabel: string
-	onPrimary: () => void
+	primaryLabel?: string
+	onPrimary?: () => void
 }) {
 	return (
 		<div className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center px-6 text-center">
 			<div className="mb-4 text-5xl">{emoji}</div>
 			<h1 className="mb-3 text-2xl font-semibold text-white">{title}</h1>
 			<p className="mb-8 text-base leading-relaxed text-white/65">{body}</p>
-			<button
-				type="button"
-				onClick={onPrimary}
-				className="rounded-2xl px-6 py-3 text-sm font-semibold text-white"
-				style={{ backgroundColor: C.accentBlue }}
-			>
-				{primaryLabel}
-			</button>
+			{primaryLabel && onPrimary ? (
+				<button
+					type="button"
+					onClick={onPrimary}
+					className="rounded-2xl px-6 py-3 text-sm font-semibold text-white"
+					style={{ backgroundColor: C.accentBlue }}
+				>
+					{primaryLabel}
+				</button>
+			) : null}
 		</div>
 	)
 }

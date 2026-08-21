@@ -14,6 +14,7 @@ describe('discoverModuleFoldersFromRoot', () => {
 				{ id: 'health-1', name: 'Health' },
 				{ id: 'insurance-1', name: 'Insurance' },
 				{ id: 'vehicles-1', name: 'Vehicles' },
+				{ id: 'finance-1', name: 'Finance' },
 				{ id: 'misc-1', name: 'Misc' },
 			],
 		})
@@ -22,6 +23,7 @@ describe('discoverModuleFoldersFromRoot', () => {
 			'health',
 			'insurance',
 			'vehicles',
+			'finance',
 		])
 		expect(result.recognized.every((entry) => entry.active)).toBe(true)
 		expect(result.unrecognized.map((entry) => entry.name)).toEqual(['Misc'])

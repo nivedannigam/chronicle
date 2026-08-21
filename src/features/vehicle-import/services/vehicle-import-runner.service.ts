@@ -16,13 +16,47 @@ import type {
 	VehicleImportStatusSnapshot,
 } from '@/features/vehicle-import/types/vehicle-import.types'
 
-async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
+async function markVehicleRegistryImportFailed(
+	registryId: string,
+	reason: string,
+): Promise<void> {
+	await supabase
+		.from('connector_document_registry')
+		.update({
+			import_status: 'failed',
+			import_error: reason.slice(0, 500),
+			updated_at: new Date().toISOString(),
+		})
+		.eq('id', registryId)
+}
+
+async function markVehicleDocumentFailed(
+	documentId: string,
+	reason: string,
+): Promise<void> {
+	await supabase
+		.from('vehicle_documents')
+		.update({
+			status: 'failed',
+			updated_at: new Date().toISOString(),
+			parsed_data: {
+				error: reason.slice(0, 500),
+			},
+		})
+		.eq('id', documentId)
+}
+
+async function importDiscoveredVehicleFiles(userId: string): Promise<{
+	imported: number
+	failed: number
+}> {
 	const assignments = await listVehicleSourceAssignments(userId)
 	const assignmentFolderIds = new Set(assignments.map((a) => a.folderId))
 	const registry = await listRegistryRecords(userId, 'google-drive')
 	const vehicleRows = registry.filter((row) => isVehicleRegistryRow(row))
 
 	let imported = 0
+	let failed = 0
 
 	for (const row of vehicleRows) {
 		if (row.vehicleDocumentId) {
@@ -42,64 +76,93 @@ async function importDiscoveredVehicleFiles(userId: string): Promise<number> {
 			continue
 		}
 
-		const classification = classifyVehicleDocument({
-			fileName: row.fileName,
-			folderPath: row.folderPath,
-		})
-		const vehicleId = await resolveProvisionalVehicleId({
-			userId,
-			fileName: row.fileName,
-			folderPath: row.folderPath,
-			assignment,
-			familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
-		})
+		let documentId: string | null = null
 
-		const documentId = await createVehicleDocumentFromRegistry({
-			userId,
-			registryId: row.id,
-			fileName: row.fileName,
-			familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
-			folderAssignmentId: assignment.id,
-			vehicleId,
-			documentType: classification.documentType,
-			documentSubtype: classification.documentSubtype,
-		})
-
-		await supabase
-			.from('connector_document_registry')
-			.update({
-				vehicle_document_id: documentId,
-				target_module: 'vehicles',
-				import_status: 'completed',
-				imported_at: new Date().toISOString(),
-				updated_at: new Date().toISOString(),
+		try {
+			const classification = classifyVehicleDocument({
+				fileName: row.fileName,
+				folderPath: row.folderPath,
 			})
-			.eq('id', row.id)
+			const vehicleId = await resolveProvisionalVehicleId({
+				userId,
+				fileName: row.fileName,
+				folderPath: row.folderPath,
+				assignment,
+				familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
+			})
 
-		await processVehicleDocument({
-			userId,
-			documentId,
-			fileName: row.fileName,
-			folderPath: row.folderPath,
-			assignment,
-			registryId: row.id,
-			externalFileId: row.externalFileId,
-		})
+			documentId = await createVehicleDocumentFromRegistry({
+				userId,
+				registryId: row.id,
+				fileName: row.fileName,
+				familyMemberId: row.familyMemberId ?? assignment.familyMemberId,
+				folderAssignmentId: assignment.id,
+				vehicleId,
+				documentType: classification.documentType,
+				documentSubtype: classification.documentSubtype,
+			})
 
-		imported += 1
+			await supabase
+				.from('connector_document_registry')
+				.update({
+					vehicle_document_id: documentId,
+					target_module: 'vehicles',
+					import_status: 'processing',
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', row.id)
+
+			await processVehicleDocument({
+				userId,
+				documentId,
+				fileName: row.fileName,
+				folderPath: row.folderPath,
+				assignment,
+				registryId: row.id,
+				externalFileId: row.externalFileId,
+			})
+
+			await supabase
+				.from('connector_document_registry')
+				.update({
+					import_status: 'completed',
+					imported_at: new Date().toISOString(),
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', row.id)
+
+			imported += 1
+		} catch (error) {
+			failed += 1
+			const reason =
+				error instanceof Error ? error.message : 'Vehicle import failed'
+
+			if (documentId) {
+				await markVehicleDocumentFailed(documentId, reason)
+			}
+
+			await markVehicleRegistryImportFailed(row.id, reason)
+		}
 	}
 
-	return imported
+	return { imported, failed }
 }
 
-export async function runVehicleImportSync(userId: string): Promise<{
+export async function runVehicleImportSync(
+	userId: string,
+	options?: { skipDiscovery?: boolean },
+): Promise<{
 	discovered: number
 	imported: number
+	failed: number
 }> {
-	await runVehicleDiscovery({ userId })
-	const imported = await importDiscoveredVehicleFiles(userId)
+	if (!options?.skipDiscovery) {
+		await runVehicleDiscovery({ userId })
+	}
 
-	if (imported === 0) {
+	const { imported, failed } = await importDiscoveredVehicleFiles(userId)
+
+	if (imported === 0 && failed === 0) {
 		await reprocessStuckVehicleDocuments(userId)
 	}
 
@@ -108,6 +171,7 @@ export async function runVehicleImportSync(userId: string): Promise<{
 	return {
 		discovered: imported,
 		imported,
+		failed,
 	}
 }
 

@@ -2,6 +2,11 @@ import { useMemo, useState } from 'react'
 import { C } from '@/constants/colors'
 import { InlineErrorBanner } from '@/components/common/InlineErrorBanner'
 import { ListSkeleton } from '@/components/common/ListSkeleton'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import {
+	applyIdentityTimelinePrivacy,
+	useIdentityPreferences,
+} from '@/features/identity-knowledge'
 import { TimelineEventRow } from '@/features/timeline/components/TimelineEventRow'
 import { TimelineGroupHeader } from '@/features/timeline/components/TimelineGroupHeader'
 import { useTimelineEvents } from '@/features/timeline/hooks/useTimelineEvents'
@@ -22,6 +27,10 @@ const MODULE_OPTIONS: Array<{ id: TimelineModule | 'all'; label: string }> = [
 	{ id: 'all', label: 'All events' },
 	{ id: 'health', label: 'Health' },
 	{ id: 'insurance', label: 'Insurance' },
+	{ id: 'vehicles', label: 'Vehicles' },
+	{ id: 'identity', label: 'Identity' },
+	{ id: 'finance', label: 'Finance' },
+	{ id: 'property', label: 'Property' },
 	{ id: 'documents', label: 'Documents' },
 ]
 
@@ -119,6 +128,8 @@ export function TimelineFeed() {
 	)
 
 	const timeline = useTimelineEvents(filters)
+	const { user } = useAuth()
+	const preferences = useIdentityPreferences(user?.id)
 	const visibleGroups = useMemo(() => {
 		let remaining = visibleCount
 		const groups = []
@@ -192,7 +203,16 @@ export function TimelineFeed() {
 													: `1px solid ${C.border}`,
 										}}
 									>
-										<TimelineEventRow event={event} />
+										<TimelineEventRow
+											event={{
+												...event,
+												summary: applyIdentityTimelinePrivacy(
+													event.summary,
+													event,
+													preferences,
+												),
+											}}
+										/>
 									</div>
 								))}
 							</FigmaCard>

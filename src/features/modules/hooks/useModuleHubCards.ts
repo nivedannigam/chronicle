@@ -12,6 +12,15 @@ import {
 	deriveConsumerOverallStatus,
 } from '@/features/health/services/health-consumer-status.service'
 import { countProcessingReports } from '@/features/health/services/report-readiness.service'
+import { useFinanceKnowledge } from '@/features/finance/hooks/useFinanceKnowledge'
+import { useFinanceSources } from '@/features/finance/hooks/useFinanceSources'
+import { usePropertySources } from '@/features/property/hooks/usePropertySources'
+import { buildFinanceContextValue } from '@/features/finance/services/finance-context.builder'
+import { buildFinanceKnowledge } from '@/features/finance-knowledge'
+import {
+	buildPropertyKnowledge,
+	filterPropertyKnowledgeForMember,
+} from '@/features/property-knowledge'
 import { useIdentityKnowledge } from '@/features/identity/hooks/useIdentityKnowledge'
 import { useIdentitySources } from '@/features/identity/hooks/useIdentitySources'
 import { buildIdentityContextValue } from '@/features/identity/services/identity-context.builder'
@@ -19,10 +28,12 @@ import { buildIdentityKnowledge } from '@/features/identity-knowledge'
 import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
 import { useInsuranceMemberSetup } from '@/features/insurance/hooks/useInsuranceMemberSetup'
 import {
+	buildFinanceHubCard,
 	buildHealthHubCard,
 	buildIdentityHubCard,
 	buildInsuranceHubCard,
 	buildPersonalHubCard,
+	buildPropertyHubCard,
 	buildVehiclesHubCard,
 } from '@/features/modules/services/module-hub-status.service'
 import type { ModuleHubCardViewModel } from '@/features/modules/types/module-hub.types'
@@ -37,7 +48,7 @@ export function useModuleHubCards(): {
 } {
 	const { user } = useAuth()
 	const userId = user?.id
-	const { members, accountOwnerMemberId } = useFamilyContext()
+	const { members, accountOwnerMemberId, selectedMemberId } = useFamilyContext()
 	const documentsQuery = useDocuments()
 
 	const reportsQuery = useUploadedHealthReports(userId)
@@ -56,6 +67,9 @@ export function useModuleHubCards(): {
 
 	const identityQuery = useIdentityKnowledge()
 	const identitySources = useIdentitySources(userId)
+	const financeQuery = useFinanceKnowledge()
+	const financeSources = useFinanceSources(userId)
+	const propertySources = usePropertySources(userId)
 
 	const cards = useMemo(() => {
 		const companion = buildHealthCompanionView({
@@ -92,9 +106,36 @@ export function useModuleHubCards(): {
 			refetch: identityQuery.refetch,
 		})
 
+		const financeKnowledge =
+			financeQuery.knowledge ??
+			buildFinanceKnowledge({
+				userId: userId ?? '',
+				documents: [],
+				members,
+				hasFolderAssigned: financeSources.hasFolderAssigned,
+			})
+		const financeContext = buildFinanceContextValue({
+			knowledge: financeKnowledge,
+			hasFolderAssigned: financeSources.hasFolderAssigned,
+			isLoading: financeQuery.isLoading || financeSources.isLoading,
+			isError: financeQuery.isError,
+			refetch: financeQuery.refetch,
+		})
+
 		const personalCount = (documentsQuery.data ?? []).filter(
 			(document) => document.category_id === 'personal',
 		).length
+		const propertyKnowledge = filterPropertyKnowledgeForMember(
+			buildPropertyKnowledge({
+				userId: userId ?? '',
+				documents: documentsQuery.data ?? [],
+				members,
+				hasFolderAssigned: propertySources.hasFolderAssigned,
+				rootFolderPath: propertySources.rootFolderPath,
+				selectedMemberId,
+			}),
+			selectedMemberId,
+		)
 
 		return [
 			buildHealthHubCard({
@@ -111,12 +152,27 @@ export function useModuleHubCards(): {
 			buildVehiclesHubCard({
 				knowledge: vehicleQuery.knowledge,
 				hasFolderAssigned: vehicleSources.assignments.length > 0,
-				isProcessing: false,
+				isProcessing: (vehicleQuery.knowledge?.documents ?? []).some(
+					(document) => !document.isDisplayReady,
+				),
 			}),
 			buildIdentityHubCard({
 				setupStatus: identityContext.setupStatus,
 				attentionCount: identityContext.home.attentionItems.length,
 				statusHeadline: identityContext.home.statusHeadline,
+			}),
+			buildFinanceHubCard({
+				setupStatus: financeContext.setupStatus,
+				documentCount: financeContext.knowledge.documentCount,
+				attentionCount: financeContext.home.attentionItems.length,
+				statusHeadline: financeContext.home.statusHeadline,
+			}),
+			buildPropertyHubCard({
+				setupStatus: propertyKnowledge.setupStatus,
+				documentCount: propertyKnowledge.summary.documentCount,
+				propertyCount: propertyKnowledge.summary.propertyCount,
+				attentionCount: propertyKnowledge.attention.length,
+				statusHeadline: propertyKnowledge.summary.headline,
 			}),
 			buildPersonalHubCard({ documentCount: personalCount }),
 		]
@@ -137,8 +193,17 @@ export function useModuleHubCards(): {
 		identityQuery.refetch,
 		identitySources.hasFolderAssigned,
 		identitySources.isLoading,
+		financeQuery.knowledge,
+		financeQuery.isLoading,
+		financeQuery.isError,
+		financeQuery.refetch,
+		financeSources.hasFolderAssigned,
+		financeSources.isLoading,
+		propertySources.hasFolderAssigned,
+		propertySources.isLoading,
 		members,
 		accountOwnerMemberId,
+		selectedMemberId,
 		userId,
 		documentsQuery.data,
 	])
@@ -146,7 +211,9 @@ export function useModuleHubCards(): {
 	const primaryCards = cards.filter((card) =>
 		['health', 'insurance', 'vehicles', 'identity'].includes(card.id),
 	)
-	const secondaryCards = cards.filter((card) => card.id === 'personal')
+	const secondaryCards = cards.filter((card) =>
+		['personal', 'finance', 'property'].includes(card.id),
+	)
 
 	const isLoading =
 		reportsQuery.isLoading ||
@@ -157,6 +224,8 @@ export function useModuleHubCards(): {
 		vehicleSources.isLoading ||
 		identityQuery.isLoading ||
 		identitySources.isLoading ||
+		financeQuery.isLoading ||
+		financeSources.isLoading ||
 		documentsQuery.isLoading
 
 	return {

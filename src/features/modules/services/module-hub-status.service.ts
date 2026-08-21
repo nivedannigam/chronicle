@@ -1,9 +1,12 @@
 import { ROUTES } from '@/constants/routes'
 import { getLifeModuleById } from '@/constants/modules'
 import type { ConsumerOverallStatus } from '@/features/health/services/health-consumer-status.service'
+import { deriveConsumerProtectionStatus } from '@/features/insurance/services/insurance-consumer-status.service'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { InsuranceSetupStatus } from '@/features/insurance/hooks/useInsuranceMemberSetup'
 import type { IdentitySetupStatus } from '@/features/identity-knowledge/types/identity-knowledge.types'
+import type { FinanceSetupStatus } from '@/features/finance-knowledge/types/finance-knowledge.types'
+import type { PropertySetupStatus } from '@/features/property-knowledge/types/property-knowledge.types'
 import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
 import type {
 	ModuleHubCardState,
@@ -17,6 +20,8 @@ export const MODULE_SETUP_ROUTES: Record<string, string> = {
 	insurance: ROUTES.insuranceSettings,
 	vehicles: ROUTES.vehiclesSettings,
 	identity: ROUTES.identitySettings,
+	finance: ROUTES.financeSettings,
+	property: ROUTES.propertySettings,
 }
 
 function cardFromModule(
@@ -162,10 +167,32 @@ export function buildInsuranceHubCard(input: {
 		})
 	}
 
-	if (expiringCount > 0) {
+	const protectionStatus = deriveConsumerProtectionStatus(knowledge!)
+	const lapsedCount = knowledge?.lapsedPolicies.length ?? 0
+	const attentionCount = expiringCount + lapsedCount
+
+	if (protectionStatus === 'Needs Attention' || attentionCount > 0) {
+		const headline = knowledge?.summary.headline?.trim()
+		const statusLine =
+			headline &&
+			headline.length <= 48 &&
+			/need|renew|attention|expir/i.test(headline)
+				? headline
+				: attentionCount > 0
+					? `${policyCount} polic${policyCount === 1 ? 'y' : 'ies'} · ${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+					: `${policyCount} polic${policyCount === 1 ? 'y' : 'ies'} · Needs attention`
+
 		return cardFromModule(module, {
 			state: 'attention',
-			statusLine: `${policyCount} polic${policyCount === 1 ? 'y' : 'ies'} · ${expiringCount} renewal${expiringCount === 1 ? '' : 's'} coming up`,
+			statusLine,
+			statusTone: 'attention',
+		})
+	}
+
+	if (protectionStatus === 'Some Gaps Found') {
+		return cardFromModule(module, {
+			state: 'attention',
+			statusLine: `${policyCount} polic${policyCount === 1 ? 'y' : 'ies'} · Some gaps to review`,
 			statusTone: 'attention',
 		})
 	}
@@ -198,10 +225,18 @@ export function buildVehiclesHubCard(input: {
 		})
 	}
 
-	if (input.isProcessing || (input.knowledge && !input.knowledge.hasVehicles)) {
+	if (input.isProcessing) {
 		return cardFromModule(module, {
 			state: 'organizing',
-			statusLine: 'Organizing your vehicle documents…',
+			statusLine: 'Looking through your vehicle records',
+			statusTone: 'muted',
+		})
+	}
+
+	if (input.knowledge && !input.knowledge.hasVehicles) {
+		return cardFromModule(module, {
+			state: 'empty',
+			statusLine: "We haven't found a vehicle record yet.",
 			statusTone: 'muted',
 		})
 	}
@@ -304,6 +339,133 @@ export function buildIdentityHubCard(input: {
 			headline && !headline.includes('Connect')
 				? headline
 				: 'All set for your family',
+		statusTone: 'positive',
+	})
+}
+
+export function buildFinanceHubCard(input: {
+	setupStatus: FinanceSetupStatus
+	documentCount: number
+	attentionCount?: number
+	statusHeadline?: string | null
+}): ModuleHubCardViewModel {
+	const module = getLifeModuleById('finance')!
+
+	switch (input.setupStatus) {
+		case 'not_connected':
+			return cardFromModule(module, {
+				state: 'setup_required',
+				statusLine: 'Connect your Finance folder',
+				actionLabel: 'Set up',
+				statusTone: 'muted',
+			})
+		case 'scanning':
+			return cardFromModule(module, {
+				state: 'organizing',
+				statusLine: 'Looking for financial documents…',
+				statusTone: 'muted',
+			})
+		case 'organizing':
+			return cardFromModule(module, {
+				state: 'organizing',
+				statusLine: 'Still organizing your documents',
+				statusTone: 'muted',
+			})
+		case 'empty':
+			return cardFromModule(module, {
+				state: 'empty',
+				statusLine: 'Keep your financial life organized',
+				statusTone: 'muted',
+			})
+		default:
+			break
+	}
+
+	const attentionCount = input.attentionCount ?? 0
+
+	if (attentionCount > 0) {
+		return cardFromModule(module, {
+			state: 'attention',
+			statusLine: `${attentionCount} item${attentionCount === 1 ? '' : 's'} need attention`,
+			statusTone: 'attention',
+		})
+	}
+
+	const headline = input.statusHeadline?.trim()
+
+	return cardFromModule(module, {
+		state: 'active',
+		statusLine:
+			headline && !headline.includes('Connect')
+				? headline
+				: input.documentCount > 0
+					? `${input.documentCount} financial document${input.documentCount === 1 ? '' : 's'} organized`
+					: 'Keep your financial life organized',
+		statusTone: 'positive',
+	})
+}
+
+export function buildPropertyHubCard(input: {
+	setupStatus: PropertySetupStatus
+	documentCount: number
+	propertyCount: number
+	attentionCount?: number
+	statusHeadline?: string | null
+}): ModuleHubCardViewModel {
+	const module = getLifeModuleById('property')!
+
+	switch (input.setupStatus) {
+		case 'not_connected':
+			return cardFromModule(module, {
+				state: 'setup_required',
+				statusLine: 'Connect your Home folder',
+				actionLabel: 'Set up',
+				statusTone: 'muted',
+			})
+		case 'scanning':
+			return cardFromModule(module, {
+				state: 'organizing',
+				statusLine: 'Looking for property documents…',
+				statusTone: 'muted',
+			})
+		case 'organizing':
+			return cardFromModule(module, {
+				state: 'organizing',
+				statusLine: 'Still organizing your documents',
+				statusTone: 'muted',
+			})
+		case 'empty':
+			return cardFromModule(module, {
+				state: 'empty',
+				statusLine: 'Your property documents will appear here',
+				statusTone: 'muted',
+			})
+		default:
+			break
+	}
+
+	const attentionCount = input.attentionCount ?? 0
+
+	if (attentionCount > 0) {
+		return cardFromModule(module, {
+			state: 'attention',
+			statusLine: `${attentionCount} item${attentionCount === 1 ? '' : 's'} need attention`,
+			statusTone: 'attention',
+		})
+	}
+
+	const headline = input.statusHeadline?.trim()
+
+	return cardFromModule(module, {
+		state: 'active',
+		statusLine:
+			headline && !headline.includes('Connect')
+				? headline
+				: input.propertyCount > 0
+					? `${input.propertyCount} propert${input.propertyCount === 1 ? 'y' : 'ies'} · ${input.documentCount} document${input.documentCount === 1 ? '' : 's'}`
+					: input.documentCount > 0
+						? `${input.documentCount} property document${input.documentCount === 1 ? '' : 's'} organized`
+						: 'Your homes and property documents',
 		statusTone: 'positive',
 	})
 }

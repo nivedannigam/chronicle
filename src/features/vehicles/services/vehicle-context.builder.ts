@@ -6,7 +6,7 @@ export interface VehicleContextValue {
 	knowledge: VehicleKnowledge
 	home: VehicleHomeViewModel
 	hasVehicles: boolean
-	setupStatus: 'connect_folder' | 'scanning' | 'ready'
+	setupStatus: 'connect_folder' | 'scanning' | 'no_vehicle_found' | 'ready'
 	isLoading: boolean
 	isError: boolean
 	refetch: () => void
@@ -26,8 +26,10 @@ export function buildVehicleContextValue(input: {
 
 	if (!input.hasFolderAssigned) {
 		setupStatus = 'connect_folder'
-	} else if (input.isProcessing || !input.knowledge.hasVehicles) {
+	} else if (input.isProcessing) {
 		setupStatus = 'scanning'
+	} else if (!input.knowledge.hasVehicles) {
+		setupStatus = 'no_vehicle_found'
 	}
 
 	return {

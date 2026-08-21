@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useGoogleDriveConnector } from '@/features/connectors/google-drive/hooks/useGoogleDriveConnector'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
@@ -12,9 +14,16 @@ import {
 } from '@/core/platform/services/federated-library.service'
 import { DashboardEmptyState } from '@/features/health/components/dashboard/DashboardEmptyState'
 import { runVehicleImportSync } from '@/features/vehicle-import/services/vehicle-import-runner.service'
+import { formatLastScannedLabel } from '@/features/settings/services/module-folder-assignments.service'
+import {
+	ModuleSettingsAdvancedSection,
+	ModuleSettingsConnectedFolderCard,
+	ModuleSettingsSection,
+} from '@/ui/figma/settings/module-settings-ui'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function VehicleSettingsPage() {
+	const navigate = useNavigate()
 	const { user } = useAuth()
 	const userId = user?.id
 	const { selectedMember, selectedMemberId } = useFamilyContext()
@@ -83,41 +92,77 @@ export function VehicleSettingsPage() {
 		}
 	}
 
-	return (
-		<div className="space-y-4 px-1 pb-8 pt-2">
-			<div className="rounded-3xl p-5" style={figmaCardStyle}>
-				<p className="text-sm text-white/55">Connected folder</p>
-				<p className="mt-1 text-lg font-semibold text-white">
-					{memberAssignment?.folderName ?? 'No folder connected'}
-				</p>
-				<p className="mt-2 text-sm text-white/60">
-					{vehicleDocumentCount} document
-					{vehicleDocumentCount === 1 ? '' : 's'} in Library
-				</p>
-				<div className="mt-4 flex flex-wrap gap-2">
-					<button
-						type="button"
-						onClick={() => setFolderPickerOpen(true)}
-						className="rounded-2xl px-4 py-2 text-sm font-semibold text-white"
-						style={{ background: FC.orange }}
-					>
-						{memberAssignment ? 'Change folder' : 'Connect Vehicles folder'}
-					</button>
-					<button
-						type="button"
-						disabled={!memberAssignment || isScanning}
-						onClick={() => void handleForceRescan()}
-						className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 disabled:opacity-50"
-					>
-						{isScanning ? 'Checking…' : 'Check for new documents'}
-					</button>
-				</div>
-			</div>
+	const lastScanned = formatLastScannedLabel(memberAssignment?.assignedAt)
 
-			<p className="text-sm text-white/50">
-				Managed for {formatMemberLabel(selectedMember)}. Vehicle settings stay
-				minimal — connect your folder and Chronicle handles the rest.
-			</p>
+	return (
+		<div style={{ paddingBottom: 28 }}>
+			<ModuleSettingsSection label="Connected folder">
+				<ModuleSettingsConnectedFolderCard
+					moduleLabel="Vehicles"
+					setupHeadline="Connect your Vehicles folder"
+					setupMessage="Chronicle will organize vehicle records and documents found inside this folder."
+					setupActionLabel="Connect Vehicles folder"
+					driveDisconnectedMessage="Connect Google Drive, then connect your Vehicles folder. Chronicle will organize vehicle records and documents found inside this folder."
+					driveConnected={driveConnector.connectionStatus === 'connected'}
+					driveLabel={
+						driveConnector.connectionStatus === 'connected'
+							? 'Google Drive connected'
+							: 'Reconnect Google Drive to continue'
+					}
+					folderName={memberAssignment?.folderName ?? null}
+					folderPath={memberAssignment?.folderPath ?? null}
+					documentCount={vehicleDocumentCount}
+					lastScannedLabel={lastScanned}
+					onConnectDrive={() => navigate(ROUTES.profileConnectionsDrive)}
+					onChangeFolder={() => setFolderPickerOpen(true)}
+					onOpenFolder={() => setFolderPickerOpen(true)}
+					isLoading={isScanning}
+				/>
+			</ModuleSettingsSection>
+
+			<ModuleSettingsSection label="Privacy">
+				<div
+					style={{ ...figmaCardStyle, borderRadius: 20, padding: '16px 18px' }}
+				>
+					<p style={{ color: FC.fg, fontSize: 14, margin: '0 0 6px' }}>
+						Vehicle documents stay in your connected folder.
+					</p>
+					<p
+						style={{ color: FC.mid, fontSize: 13, lineHeight: 1.5, margin: 0 }}
+					>
+						Chronicle does not share registration numbers, insurance details, or
+						service records outside your account.
+					</p>
+				</div>
+			</ModuleSettingsSection>
+
+			<ModuleSettingsAdvancedSection label="Advanced">
+				<button
+					type="button"
+					disabled={!memberAssignment || isScanning}
+					onClick={() => void handleForceRescan()}
+					style={{
+						width: '100%',
+						...figmaCardStyle,
+						borderRadius: 18,
+						padding: '14px 16px',
+						color: FC.fg,
+						fontSize: 14,
+						fontWeight: 600,
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+						opacity: !memberAssignment || isScanning ? 0.6 : 1,
+					}}
+				>
+					{isScanning ? 'Checking…' : 'Check for new documents'}
+				</button>
+			</ModuleSettingsAdvancedSection>
+
+			{selectedMember ? (
+				<p style={{ color: FC.dim, fontSize: 12, marginTop: 8 }}>
+					Managed for {formatMemberLabel(selectedMember)}.
+				</p>
+			) : null}
 
 			<VehicleModuleFolderPicker
 				userId={userId}

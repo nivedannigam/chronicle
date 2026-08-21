@@ -29,7 +29,7 @@ const VEHICLE_TABS: {
 	},
 	{
 		id: 'timeline',
-		label: 'Timeline',
+		label: 'History',
 		path: ROUTES.vehiclesTimeline,
 		Icon: Clock,
 		color: FC.blue,

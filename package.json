@@ -16,7 +16,9 @@
 		"prepare": "husky",
 		"db:connectors": "node scripts/apply-connector-migration.mjs",
 		"db:health-metrics": "node scripts/apply-health-metrics-migration.mjs",
-		"test:drive-connector": "node scripts/test-drive-connector.mjs"
+		"test:drive-connector": "node scripts/test-drive-connector.mjs",
+		"test:chronicle": "node scripts/run-chronicle-qa.mjs",
+		"test:chronicle:reset": "node scripts/reset-chronicle-qa.mjs"
 	},
 	"dependencies": {
 		"@chronicle/core-ai": "workspace:*",
@@ -46,6 +48,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.55.0",
 		"@eslint/js": "^9.39.2",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^22.19.3",

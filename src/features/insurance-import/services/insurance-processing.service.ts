@@ -14,11 +14,13 @@ import {
 import { isPolicyDisplayReady } from '@/features/insurance-knowledge/services/insurance-knowledge-builder'
 import type { InsuranceDocumentRecord } from '@/features/insurance-knowledge/types/insurance-record.types'
 import { invalidateInsuranceKnowledgeCache } from '@/features/insurance-knowledge/services/insurance-knowledge-cache'
+import { inferInsurerFromFileName } from '@/features/insurance/services/insurance-folder-discovery.service'
+import { isLikelyNonPolicyInsuranceDocument } from '@/features/insurance-import/services/insurance-materialization.service'
 import {
 	inferCategoryFromFolderPath,
 	resolveInsuranceCategoryHint,
 } from '@/features/insurance/services/insurance-folder-discovery.service'
-import type { PolicyCategoryId } from '@/features/insurance-knowledge/types/insurance-knowledge.types'
+import { resolveInsurancePolicyClassification } from '@/features/document-intelligence/classification/resolve-domain-classification.service'
 
 function slugifyInsurer(name: string): string {
 	const slug = name
@@ -79,7 +81,70 @@ async function findExistingPolicy(input: {
 	return null
 }
 
+function buildFallbackPolicyNumber(input: {
+	fileName: string
+	insurerId: string
+	policyType: InsurancePolicyType
+}): string {
+	const stem = input.fileName.replace(/\.[^.]+$/i, '').trim()
+
+	return normalizePolicyNumber(`${input.insurerId}:${input.policyType}:${stem}`)
+}
+
 export async function processInsuranceDocument(input: {
+	userId: string
+	documentId: string
+	fileName: string
+	familyMemberId: string | null
+	categoryHint?: string | null
+	folderPath?: string | null
+	registryId?: string | null
+	externalFileId?: string | null
+	storagePath?: string | null
+}): Promise<{ policyId: string | null }> {
+	const now = new Date().toISOString()
+
+	if (isLikelyNonPolicyInsuranceDocument(input.fileName)) {
+		await supabase
+			.from('insurance_documents')
+			.update({
+				status: 'needs_review',
+				document_kind: 'unknown',
+				processed_at: now,
+				parsed_data: {
+					reviewReason:
+						'This file looks informational rather than a policy document.',
+				},
+				updated_at: now,
+			})
+			.eq('id', input.documentId)
+
+		return { policyId: null }
+	}
+
+	try {
+		return await processInsuranceDocumentInternal(input)
+	} catch (error) {
+		await supabase
+			.from('insurance_documents')
+			.update({
+				status: 'failed',
+				processed_at: now,
+				parsed_data: {
+					error:
+						error instanceof Error
+							? error.message
+							: 'Insurance processing failed',
+				},
+				updated_at: now,
+			})
+			.eq('id', input.documentId)
+
+		throw error
+	}
+}
+
+async function processInsuranceDocumentInternal(input: {
 	userId: string
 	documentId: string
 	fileName: string
@@ -122,14 +187,31 @@ export async function processInsuranceDocument(input: {
 	}
 
 	const extracted = extractionResult.insurance
-	const insurerName = extracted?.insurer?.trim() || 'Unknown insurer'
+	const insurerName =
+		extracted?.insurer?.trim() ||
+		inferInsurerFromFileName(input.fileName) ||
+		'Unknown insurer'
 	const insurerId = slugifyInsurer(insurerName)
-	const policyNumber =
-		extracted?.policyNumber?.trim() ||
-		normalizePolicyNumber(input.fileName.replace(/\.[^.]+$/, ''))
-	const policyType = extracted?.policyType ?? inferPolicyType(categoryHint)
+	const policyClassification = resolveInsurancePolicyClassification({
+		aiPolicyType: extracted?.policyType ?? null,
+		aiConfidence: extracted?.confidence ?? 0,
+		categoryHint,
+		fileName: input.fileName,
+		folderPath: input.folderPath,
+	})
+	const policyType = policyClassification.policyType
 	const productName =
 		extracted?.productName?.trim() || input.fileName.replace(/\.[^.]+$/, '')
+	const policyNumber =
+		extracted?.policyNumber?.trim() ||
+		buildFallbackPolicyNumber({
+			fileName: input.fileName,
+			insurerId,
+			policyType,
+		})
+	const policyNumberProvenance = extracted?.policyNumber?.trim()
+		? 'AI_EXTRACTED'
+		: 'INFERRED'
 	const extractionMethod =
 		extractionResult.method === 'ai_direct' ||
 		extractionResult.method === 'ocr_fallback' ||
@@ -138,11 +220,16 @@ export async function processInsuranceDocument(input: {
 			: 'deterministic'
 	const confidence = extracted?.confidence ?? 0.35
 
-	let policyId = await findExistingPolicy({
-		userId: input.userId,
-		insurerId,
-		policyNumber,
-	})
+	let policyId =
+		(await findExistingPolicy({
+			userId: input.userId,
+			insurerId,
+			policyNumber,
+		})) ??
+		(await findExistingPolicyForDocument({
+			userId: input.userId,
+			documentId: input.documentId,
+		}))
 
 	if (!policyId) {
 		const { data: policy, error: policyError } = await supabase
@@ -176,7 +263,7 @@ export async function processInsuranceDocument(input: {
 	} else {
 		const { data: existing } = await supabase
 			.from('insurance_policies')
-			.select('source_document_ids, sum_insured, expiry_date')
+			.select('source_document_ids, sum_insured, expiry_date, policy_number')
 			.eq('id', policyId)
 			.single()
 
@@ -187,6 +274,7 @@ export async function processInsuranceDocument(input: {
 		await supabase
 			.from('insurance_policies')
 			.update({
+				policy_number: normalizePolicyNumber(policyNumber),
 				policy_type: policyType,
 				product_name: productName,
 				insurer_id: insurerId,
@@ -221,6 +309,7 @@ export async function processInsuranceDocument(input: {
 				extraction: extractionResult,
 				insurerName,
 				policyNumber: normalizePolicyNumber(policyNumber),
+				policyNumberProvenance,
 				extractedText: extractionResult.extractedText,
 			},
 			updated_at: now,
@@ -234,10 +323,49 @@ export async function processInsuranceDocument(input: {
 	return { policyId: policyId ?? null }
 }
 
-function inferPolicyType(
-	categoryHint: PolicyCategoryId | null,
-): InsurancePolicyType {
-	switch (categoryHint) {
+async function findExistingPolicyForDocument(input: {
+	userId: string
+	documentId: string
+}): Promise<string | null> {
+	const { data } = await supabase
+		.from('insurance_policies')
+		.select('id, source_document_ids')
+		.eq('user_id', input.userId)
+
+	for (const row of data ?? []) {
+		if (
+			((row.source_document_ids as string[] | null) ?? []).includes(
+				input.documentId,
+			)
+		) {
+			return row.id as string
+		}
+	}
+
+	return null
+}
+
+export function insurancePolicyNeedsCategoryReprocess(input: {
+	policyType: InsurancePolicyType
+	folderPath: string | null
+}): boolean {
+	const folderCategory = inferCategoryFromFolderPath(input.folderPath)
+
+	if (!folderCategory) {
+		return false
+	}
+
+	if (input.policyType === 'other') {
+		return true
+	}
+
+	return mapPolicyTypeToFolderCategory(input.policyType) !== folderCategory
+}
+
+function mapPolicyTypeToFolderCategory(
+	policyType: InsurancePolicyType,
+): PolicyCategoryId | null {
+	switch (policyType) {
 		case 'health':
 			return 'health'
 		case 'motor':
@@ -249,19 +377,8 @@ function inferPolicyType(
 		case 'travel':
 			return 'travel'
 		default:
-			return 'other'
+			return null
 	}
-}
-
-export function insurancePolicyNeedsCategoryReprocess(input: {
-	policyType: InsurancePolicyType
-	folderPath: string | null
-}): boolean {
-	if (input.policyType !== 'other') {
-		return false
-	}
-
-	return inferCategoryFromFolderPath(input.folderPath) != null
 }
 
 export async function createInsuranceDocumentFromRegistry(input: {
@@ -309,6 +426,14 @@ export function insuranceDocumentNeedsReprocess(input: {
 }): boolean {
 	if (input.document.status === 'failed') {
 		return true
+	}
+
+	if (input.document.status === 'processing') {
+		return true
+	}
+
+	if (input.document.status === 'needs_review') {
+		return false
 	}
 
 	if (!input.policy) {

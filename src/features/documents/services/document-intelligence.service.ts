@@ -6,6 +6,7 @@ import {
 import {
 	buildAiDiscoveryLabel,
 	resolveConsumerDocumentStatus,
+	resolveDocumentModuleDetailPath,
 	resolveDocumentModuleLinks,
 } from '@/features/documents/services/document-module-links.service'
 import {
@@ -373,6 +374,7 @@ export function toDocumentSummary(
 		hasAiSummary: true,
 		tags: document.tags,
 		relatedModules: resolveDocumentModuleLinks(document),
+		moduleDetailLink: resolveDocumentModuleDetailPath(document),
 		consumerStatus: resolveConsumerDocumentStatus(document),
 		aiDiscoveryLabel: buildAiDiscoveryLabel(document),
 		year: Number.isNaN(parsedYear) ? null : new Date(parsedYear).getFullYear(),

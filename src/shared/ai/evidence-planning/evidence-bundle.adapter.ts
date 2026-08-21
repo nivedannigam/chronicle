@@ -4,6 +4,7 @@ import type {
 	SelectedEvidence,
 } from '@/shared/ai/evidence/evidence.types'
 import type { ClassifiedIntent } from '@/shared/ai/intent/intent.types'
+import type { KnowledgeDomainId } from '@/shared/ai/types/ai-platform.types'
 import type { EvidenceBundle } from '@/shared/ai/evidence-planning/types'
 
 export function evidenceBundleToSelectedEvidence(input: {
@@ -11,6 +12,7 @@ export function evidenceBundleToSelectedEvidence(input: {
 	classifiedIntent: ClassifiedIntent
 	question: string
 	memberName?: string | null
+	domain?: KnowledgeDomainId
 }): SelectedEvidence {
 	const items: EvidenceItem[] = []
 
@@ -60,7 +62,7 @@ export function evidenceBundleToSelectedEvidence(input: {
 	const contextSizeChars = JSON.stringify(payload).length
 
 	return {
-		domain: 'health',
+		domain: input.domain ?? 'health',
 		intent: input.classifiedIntent.intent,
 		question: input.question,
 		memberName: input.memberName,

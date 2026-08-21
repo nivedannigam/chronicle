@@ -11,6 +11,7 @@ import {
 	updateVehicleIdentityFromExtraction,
 } from '@/features/vehicle-knowledge/services/vehicle-identity.service'
 import { resolveVehicleNameFromPath } from '@/features/vehicle-knowledge/utils/vehicle-folder-resolver'
+import { resolveVehicleDocumentClassification } from '@/features/document-intelligence/classification/resolve-domain-classification.service'
 import type { VehicleDocumentTypeId } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
 import type { VehicleFactKey } from '@/features/vehicle-knowledge/types/vehicle-knowledge.types'
 import {
@@ -54,7 +55,13 @@ function mergeDomainVehicleExtraction(input: {
 
 	return {
 		...base,
-		documentType: ai.documentType ?? base.documentType,
+		documentType:
+			resolveVehicleDocumentClassification({
+				fileName: input.fileName,
+				folderPath: input.folderPath,
+				aiDocumentType: ai.documentType,
+				aiConfidence: ai.confidence,
+			}).documentType ?? base.documentType,
 		documentSubtype: ai.documentSubtype ?? base.documentSubtype,
 		documentDate: ai.documentDate ?? base.documentDate,
 		expiryDate: ai.expiryDate ?? base.expiryDate,

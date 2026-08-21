@@ -5,6 +5,8 @@ export {
 	buildInsuranceHubCard,
 	buildVehiclesHubCard,
 	buildIdentityHubCard,
+	buildFinanceHubCard,
+	buildPropertyHubCard,
 	MODULE_SETUP_ROUTES,
 	resolveModuleHubCardAction,
 } from '@/features/modules/services/module-hub-status.service'

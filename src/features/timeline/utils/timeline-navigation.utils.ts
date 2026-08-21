@@ -1,4 +1,11 @@
-import { documentPath, healthReportPath, ROUTES } from '@/constants/routes'
+import {
+	documentPath,
+	financeHistoryEventPath,
+	healthReportPath,
+	identityDocumentPath,
+	propertyHistoryEventPath,
+	ROUTES,
+} from '@/constants/routes'
 import type {
 	ChronicleTimelineEvent,
 	TimelineModule,
@@ -8,8 +15,10 @@ const MODULE_EMOJI: Record<TimelineModule, string> = {
 	health: '❤️',
 	insurance: '🛡️',
 	vehicles: '🚗',
+	identity: '🪪',
 	documents: '📄',
 	finance: '💰',
+	property: '🏠',
 	travel: '✈️',
 	family: '👨‍👩‍👧',
 	system: '⚙️',
@@ -51,6 +60,21 @@ export function resolveTimelineEventPath(
 			return ROUTES.health
 		case 'insurance':
 			return ROUTES.insuranceTimeline
+		case 'finance':
+			if (event.metadata.financeEventId) {
+				return financeHistoryEventPath(event.metadata.financeEventId)
+			}
+			return ROUTES.financeHistory
+		case 'identity':
+			if (event.metadata.documentId) {
+				return identityDocumentPath(event.metadata.documentId)
+			}
+			return ROUTES.identity
+		case 'property':
+			if (event.metadata.propertyEventId) {
+				return propertyHistoryEventPath(event.metadata.propertyEventId)
+			}
+			return ROUTES.propertyHistory
 		case 'documents':
 			return ROUTES.documents
 		default:

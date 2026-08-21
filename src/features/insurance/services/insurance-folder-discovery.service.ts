@@ -25,6 +25,23 @@ const SHORT_FOLDER_HINTS: Record<string, PolicyCategoryId> = {
 	travel: 'travel',
 }
 
+export function inferInsurerFromFileName(fileName: string): string | null {
+	const base = fileName.replace(/\.[^.]+$/i, '').trim()
+	const match = base.match(/^(.+?)\s[-–—]\s/)
+
+	if (match?.[1]?.trim()) {
+		return match[1].trim()
+	}
+
+	const firstToken = base.split(/\s+/)[0]
+
+	if (firstToken && firstToken.length >= 3) {
+		return firstToken
+	}
+
+	return null
+}
+
 export function inferCategoryFromFolderPath(
 	folderPath: string | null | undefined,
 ): PolicyCategoryId | null {
@@ -51,6 +68,12 @@ export function resolveInsuranceCategoryHint(input: {
 	folderPath?: string | null
 	fileName?: string | null
 }): PolicyCategoryId | null {
+	const fromPath = inferCategoryFromFolderPath(input.folderPath)
+
+	if (fromPath) {
+		return fromPath
+	}
+
 	const explicitHint = input.categoryHint?.trim()
 
 	if (
@@ -58,12 +81,6 @@ export function resolveInsuranceCategoryHint(input: {
 		VALID_CATEGORY_HINTS.has(explicitHint as PolicyCategoryId)
 	) {
 		return explicitHint as PolicyCategoryId
-	}
-
-	const fromPath = inferCategoryFromFolderPath(input.folderPath)
-
-	if (fromPath) {
-		return fromPath
 	}
 
 	if (input.fileName?.trim()) {

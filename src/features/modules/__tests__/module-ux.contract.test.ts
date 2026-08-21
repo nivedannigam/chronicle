@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
 	MODULE_LIFECYCLE_ALIASES,
 	MODULE_UX_COPY,
+	DOCUMENT_CONSUMER_STATUS_LABELS,
+	resolveConsumerDocumentStatusLabel,
 	moduleAttentionCountMessage,
 	moduleEmptyMessage,
 	moduleOrganizingMessage,
@@ -32,6 +34,18 @@ describe('module-ux.contract', () => {
 		)
 		expect(moduleAttentionCountMessage(2, 'document')).toBe(
 			'2 documents need attention',
+		)
+	})
+
+	it('maps library status labels to consumer-friendly copy', () => {
+		expect(resolveConsumerDocumentStatusLabel('Needs Help')).toBe(
+			DOCUMENT_CONSUMER_STATUS_LABELS.needsReview,
+		)
+		expect(resolveConsumerDocumentStatusLabel('Still Organizing')).toBe(
+			DOCUMENT_CONSUMER_STATUS_LABELS.organizing,
+		)
+		expect(DOCUMENT_CONSUMER_STATUS_LABELS.organizing).not.toMatch(
+			/OCR|pipeline|processing/i,
 		)
 	})
 })

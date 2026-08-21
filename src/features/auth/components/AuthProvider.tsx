@@ -9,6 +9,15 @@ import { buildUserProfile } from '@/features/user/services/user-profile'
 import { syncUserProfile } from '@/features/user/services/user.service'
 import type { UserProfile } from '@/features/user/types'
 import { supabase } from '@/lib/supabase'
+import { getQaSessionUser, isQaModeEnabled } from '@/qa/qa-mode'
+import { getQaDataset } from '@/qa/qa-repository'
+
+interface AuthState {
+	session: Session | null
+	user: User | null
+	profile: UserProfile | null
+	isLoading: boolean
+}
 
 async function resolveUser(session: Session | null) {
 	const currentUser = session?.user ?? null
@@ -25,30 +34,65 @@ async function resolveUser(session: Session | null) {
 	}
 }
 
+function createInitialAuthState(): AuthState {
+	if (isQaModeEnabled()) {
+		getQaDataset()
+		const qaUser = getQaSessionUser()
+		const qaSession = {
+			access_token: 'qa-access-token',
+			refresh_token: 'qa-refresh-token',
+			expires_in: 3600,
+			expires_at: Math.floor(Date.now() / 1000) + 3600,
+			token_type: 'bearer',
+			user: qaUser,
+		} as Session
+
+		return {
+			session: qaSession,
+			user: qaUser as User,
+			profile: buildUserProfile(qaUser as User),
+			isLoading: false,
+		}
+	}
+
+	return {
+		session: null,
+		user: null,
+		profile: null,
+		isLoading: true,
+	}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [session, setSession] = useState<Session | null>(null)
-	const [user, setUser] = useState<User | null>(null)
-	const [profile, setProfile] = useState<UserProfile | null>(null)
-	const [isLoading, setIsLoading] = useState(true)
+	const [authState, setAuthState] = useState(createInitialAuthState)
+	const { session, user, profile, isLoading } = authState
 
 	useEffect(() => {
+		if (isQaModeEnabled()) {
+			return
+		}
+
 		let cancelled = false
 
 		const applySession = async (nextSession: Session | null) => {
-			setSession(nextSession)
-
 			const currentUser = nextSession?.user ?? null
 
 			if (!currentUser) {
-				setUser(null)
-				setProfile(null)
-				setIsLoading(false)
+				setAuthState({
+					session: nextSession,
+					user: null,
+					profile: null,
+					isLoading: false,
+				})
 				return
 			}
 
-			setUser(currentUser)
-			setProfile(buildUserProfile(currentUser))
-			setIsLoading(false)
+			setAuthState({
+				session: nextSession,
+				user: currentUser,
+				profile: buildUserProfile(currentUser),
+				isLoading: false,
+			})
 
 			const resolved = await resolveUser(nextSession)
 
@@ -56,8 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				return
 			}
 
-			setUser(resolved.user)
-			setProfile(resolved.profile)
+			setAuthState({
+				session: nextSession,
+				user: resolved.user,
+				profile: resolved.profile,
+				isLoading: false,
+			})
 		}
 
 		supabase.auth.getSession().then(({ data: { session } }) => {

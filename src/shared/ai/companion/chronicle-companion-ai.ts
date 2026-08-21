@@ -9,6 +9,8 @@ import {
 } from '@/shared/ai/pipeline/ai-platform.pipeline'
 import type { AIPlatformResult } from '@/shared/ai/types/pipeline.types'
 import type { KnowledgeDomainId } from '@/shared/ai/types/ai-platform.types'
+import type { FinanceAskScope } from '@/features/finance/types/finance-ask.types'
+import type { FinanceKnowledge } from '@/features/finance-knowledge/types/finance-knowledge.types'
 import type { InsuranceAskScope } from '@/features/insurance/types/insurance-ask.types'
 
 export interface ChronicleCompanionAskInput {
@@ -19,6 +21,8 @@ export interface ChronicleCompanionAskInput {
 	accountOwnerMemberId?: string | null
 	memberName?: string | null
 	insuranceScope?: InsuranceAskScope
+	financeScope?: FinanceAskScope
+	financeKnowledge?: FinanceKnowledge
 	categoryId?: string
 	reportId?: string
 	reportIds?: string[]
@@ -94,6 +98,24 @@ export class ChronicleCompanionAI {
 				accountOwnerMemberId: input.accountOwnerMemberId,
 				memberName: input.memberName,
 				memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
+			})
+
+			return {
+				...result,
+				memoryContext,
+			}
+		}
+
+		if (domain === 'finance') {
+			const result = await this.pipeline.runFinanceQuestion({
+				userId: input.userId,
+				question: input.question,
+				familyMemberId: input.familyMemberId,
+				accountOwnerMemberId: input.accountOwnerMemberId,
+				memberName: input.memberName,
+				memoryContextPrompt: formatMemoryContextForPrompt(memoryContext),
+				financeKnowledge: input.financeKnowledge,
+				financeScope: input.financeScope,
 			})
 
 			return {

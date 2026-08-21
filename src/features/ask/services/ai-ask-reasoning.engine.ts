@@ -1,5 +1,9 @@
 import { buildAskHealthContext } from '@/features/ask/context/ask-health-context.builder'
 import { resolveAnswerStrategy } from '@/features/ask/routing/answer-strategy.router'
+import {
+	classifyUniversalQuery,
+	isHealthOnlyQuestion,
+} from '@/features/ask/routing/universal-query-router'
 import { attachTrustToTurn } from '@/features/ask/services/grounded-response.builder'
 import {
 	buildFactLookupTurn,
@@ -10,6 +14,7 @@ import {
 	platformResponseToAskTurn,
 } from '@/features/ask/services/platform-response.adapter'
 import { runProductionHealthAi } from '@/features/ask/services/summarize-latest-report.service'
+import { resolveUniversalAskTurn } from '@/features/ask/services/universal-ask.service'
 import { buildExplainabilityTurn } from '@/features/ask/trust/explainability-response.builder'
 import type { AskReasoningEngine } from '@/features/ask/services/knowledge-query.interface'
 import { loadConversationTurns } from '@/features/ask/services/conversation-persistence.service'
@@ -26,6 +31,9 @@ import {
 	buildMemorySessionKey,
 	resolveMemberFromQuestion,
 } from '@/features/intelligence/services/member-context.service'
+import { resolveAskAuthorization } from '@/core/platform/services/privacy-authorization.service'
+import { getAccountOwnerMemberId } from '@/features/family/utils/member-display'
+import { buildGatedAskTurn } from '@/features/ask/trust/ask-gated-turn.builder'
 import {
 	buildConversationContext,
 	buildPersonalContext,
@@ -45,6 +53,10 @@ let lastDebugInfo: AskDebugInfo | null = null
 
 export function getLastAskDebugInfo(): AskDebugInfo | null {
 	return lastDebugInfo
+}
+
+export function setLastAskDebugInfo(info: AskDebugInfo | null): void {
+	lastDebugInfo = info
 }
 
 const STREAM_REVIEW_MESSAGE = 'Chronicle is reviewing your health records…'
@@ -92,43 +104,59 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 			sessionKey,
 		})
 
-		const pipeline = runIntelligencePipeline({
-			userId: input.userId,
-			question: input.question,
-			member: personalContext.activeMember,
-			sources: buildIntelligenceSources({
-				uploadedReports: input.uploadedReports,
-				storedMetrics: input.storedMetrics,
-				connectorDocuments: input.connectorDocuments,
-				documents: input.documents,
-			}),
-		})
-
-		const knowledge = pipeline.mergedKnowledge
 		const memberForTurn = {
-			...personalContext.activeMember,
+			memberId: input.memberId ?? personalContext.activeMember.memberId ?? null,
 			memberName:
 				input.memberName ?? personalContext.activeMember.memberName ?? null,
+			familyMemberNames:
+				input.familyMembers?.map((entry) => entry.displayName) ?? [],
 		}
 
-		const coverage = buildHealthCoverageSnapshot({
-			uploadedReports: (input.uploadedReports ?? []) as UploadedHealthReport[],
-			importRegistry: input.connectorDocuments ?? [],
-			storedMetrics: (input.storedMetrics ?? []) as StoredHealthMetric[],
-			memberId: memberForTurn.memberId,
-		})
-
-		const strategyResult = resolveAnswerStrategy({
+		const accountOwnerMemberId = getAccountOwnerMemberId(
+			input.familyMembers ?? [],
+		)
+		const authorization = resolveAskAuthorization({
 			question: input.question,
-			legacyIntent: pipeline.detection.intent,
+			viewerMemberId: input.memberId ?? null,
+			viewerMemberName: input.memberName ?? null,
+			members: input.familyMembers ?? [],
+			accountOwnerMemberId,
 		})
 
-		let turn: import('@/features/ask/types').AskConversationTurn
-		let usedProvider = 'structured'
-		let routing: AskRoutingLabel = 'grounded'
+		if (authorization.status === 'RESTRICTED') {
+			const restrictedTurn = buildGatedAskTurn({
+				question: input.question,
+				status: 'RESTRICTED',
+				memberId: memberForTurn.memberId,
+				memberName: memberForTurn.memberName,
+				domains: ['health'],
+				restrictedMemberName: memberForTurn.memberName,
+			})
 
-		// ── META: explain prior turn ─────────────────────────────────────
-		if (strategyResult.strategy === 'META') {
+			if (input.onStream) {
+				input.onStream(restrictedTurn.answer)
+			}
+
+			conversationMemory.addTurn(sessionKey, restrictedTurn, {
+				intent: 'privacy_restricted',
+			})
+
+			return {
+				turn: restrictedTurn,
+				intent: 'privacy_restricted',
+				implementation: 'grounded-only',
+				routing: 'grounded',
+			}
+		}
+
+		const retrievalMemberId = authorization.retrievalMemberId
+
+		const metaStrategy = resolveAnswerStrategy({
+			question: input.question,
+			legacyIntent: 'general_health',
+		})
+
+		if (metaStrategy.strategy === 'META') {
 			const priorTurns = loadConversationTurns(sessionKey)
 			const explainTurn = buildExplainabilityTurn({
 				question: input.question,
@@ -154,6 +182,67 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 				}
 			}
 		}
+
+		const classification = classifyUniversalQuery({
+			question: input.question,
+			contextModule: input.scope?.contextModule,
+		})
+
+		const propertyDocuments = (input.documents ?? []).filter(
+			(document) => document.category_id === 'property',
+		)
+
+		if (!isHealthOnlyQuestion(classification)) {
+			return resolveUniversalAskTurn({
+				userId: input.userId,
+				question: input.question,
+				memberId: memberForTurn.memberId,
+				memberName: memberForTurn.memberName,
+				familyMembers: input.familyMembers ?? [],
+				sessionKey,
+				documents: input.documents ?? [],
+				scope: input.scope,
+				hasFinanceFolderAssigned: input.scope?.hasFinanceFolderAssigned,
+				hasPropertyFolderAssigned:
+					input.scope?.hasPropertyFolderAssigned ??
+					propertyDocuments.length > 0,
+				onStream: input.onStream,
+			})
+		}
+
+		const pipeline = runIntelligencePipeline({
+			userId: input.userId,
+			question: input.question,
+			member: {
+				memberId: retrievalMemberId,
+				memberName: memberForTurn.memberName,
+				familyMemberNames: memberForTurn.familyMemberNames,
+			},
+			sources: buildIntelligenceSources({
+				uploadedReports: input.uploadedReports,
+				storedMetrics: input.storedMetrics,
+				connectorDocuments: input.connectorDocuments,
+				documents: input.documents,
+			}),
+		})
+
+		const knowledge = pipeline.mergedKnowledge
+
+		const coverage = buildHealthCoverageSnapshot({
+			uploadedReports: (input.uploadedReports ?? []) as UploadedHealthReport[],
+			importRegistry: input.connectorDocuments ?? [],
+			storedMetrics: (input.storedMetrics ?? []) as StoredHealthMetric[],
+			memberId: retrievalMemberId,
+		})
+
+		const strategyResult = resolveAnswerStrategy({
+			question: input.question,
+			legacyIntent: pipeline.detection.intent,
+		})
+
+		let turn: import('@/features/ask/types').AskConversationTurn
+		let usedProvider = 'structured'
+		let routing: AskRoutingLabel = 'grounded'
 
 		if (!knowledge || !pipeline.dataAvailable) {
 			turn = buildNoRecordsTurn({
@@ -210,10 +299,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 						const platformResult = await runProductionHealthAi({
 							userId: input.userId,
 							question: input.question,
-							familyMemberId: memberForTurn.memberId,
-							accountOwnerMemberId: input.familyMembers?.find(
-								(item) => item.isAccountOwner,
-							)?.id,
+							familyMemberId: retrievalMemberId,
+							accountOwnerMemberId,
 							memberName: memberForTurn.memberName,
 							categoryId: input.scope?.categoryId,
 							reportId: input.scope?.reportId,
@@ -300,6 +387,8 @@ export class AiAskReasoningEngine implements AskReasoningEngine {
 				provider: usedProvider,
 				providerResponse: turn.answer,
 				turn,
+				timingMs: performance.now() - startedAt,
+				routing,
 			}
 		}
 

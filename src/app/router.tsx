@@ -86,6 +86,23 @@ import {
 	IdentityDocumentDetailPage,
 	IdentitySettingsPage,
 } from '@/features/identity'
+import {
+	FinanceLayout,
+	FinanceHomePage,
+	FinanceDocumentDetailPage,
+	FinanceHistoryPage,
+	FinanceHistoryEventDetailPage,
+	FinanceSettingsPage,
+} from '@/features/finance'
+import {
+	PropertyLayout,
+	PropertyHomePage,
+	PropertyDetailPage,
+	PropertyHistoryPage,
+	PropertyHistoryEventDetailPage,
+	PropertyDocumentDetailPage,
+	PropertySettingsPage,
+} from '@/features/property'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DEFAULT_AUTHENTICATED_ROUTE, ROUTES } from '@/constants/routes'
 import { FigmaNotFoundScreen } from '@/ui/figma/screens/FigmaNotFoundScreen'
@@ -325,6 +342,35 @@ export function AppRouter() {
 							path="documents/:documentId"
 							element={<IdentityDocumentDetailPage />}
 						/>
+					</Route>
+
+					<Route path={ROUTES.finance} element={<FinanceLayout />}>
+						<Route index element={<FinanceHomePage />} />
+						<Route path="history" element={<FinanceHistoryPage />} />
+						<Route
+							path="history/events/:eventId"
+							element={<FinanceHistoryEventDetailPage />}
+						/>
+						<Route path="settings" element={<FinanceSettingsPage />} />
+						<Route
+							path="documents/:documentId"
+							element={<FinanceDocumentDetailPage />}
+						/>
+					</Route>
+
+					<Route path={ROUTES.property} element={<PropertyLayout />}>
+						<Route index element={<PropertyHomePage />} />
+						<Route path="history" element={<PropertyHistoryPage />} />
+						<Route
+							path="history/events/:eventId"
+							element={<PropertyHistoryEventDetailPage />}
+						/>
+						<Route path="settings" element={<PropertySettingsPage />} />
+						<Route
+							path="documents/:documentId"
+							element={<PropertyDocumentDetailPage />}
+						/>
+						<Route path=":propertySlug" element={<PropertyDetailPage />} />
 					</Route>
 
 					<Route

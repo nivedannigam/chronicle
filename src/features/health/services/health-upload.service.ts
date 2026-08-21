@@ -24,6 +24,13 @@ import {
 export async function fetchUploadedHealthReports(): Promise<
 	UploadedHealthReport[]
 > {
+	const { qaInterceptHealthReports } = await import('@/qa/qa-interceptors')
+	const qaReports = await qaInterceptHealthReports()
+
+	if (qaReports) {
+		return qaReports
+	}
+
 	const { data, error } = await supabase
 		.from('health_reports')
 		.select('*')

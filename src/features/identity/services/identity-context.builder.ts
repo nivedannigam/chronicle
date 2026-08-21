@@ -147,6 +147,12 @@ export function buildIdentityContextValue(input: {
 		memberName: input.selectedMemberName ?? null,
 	})
 
+	const scopeSubline = input.selectedMemberId
+		? input.selectedMemberName
+			? `Showing ${input.selectedMemberName}'s documents · ${filteredDocuments.length} current`
+			: `Showing selected member · ${filteredDocuments.length} current`
+		: status.subline
+
 	return {
 		knowledge: input.knowledge,
 		setupStatus,
@@ -157,7 +163,7 @@ export function buildIdentityContextValue(input: {
 		home: {
 			setupStatus,
 			statusHeadline: status.headline,
-			statusSubline: status.subline,
+			statusSubline: scopeSubline,
 			attentionItems,
 			memberWallets,
 			askSuggestions: ASK_SUGGESTIONS,

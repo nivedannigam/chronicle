@@ -1,11 +1,9 @@
+import { resolveDocumentContent } from '@/features/document-intelligence/content/resolve-document-content.service'
 import type { Document } from '@/features/document-intelligence/domain'
-import { defaultOCRProvider } from '@/features/document-intelligence/ocr'
-import type { DocumentOCRProvider } from '@/features/document-intelligence/ocr'
 import {
 	getOcrErrorMessage,
 	OcrProviderError,
 } from '@/features/document-intelligence/ocr'
-import { runOcrWithRetry } from '@/features/document-intelligence/ocr'
 import type { HealthReport } from '@/features/health/domain/health-report.domain'
 import { ensurePlatformParsersRegistered } from '@/features/document-intelligence/parsers/platform-parser.bootstrap'
 import type {
@@ -19,7 +17,6 @@ import {
 } from '@chronicle/core-parser'
 
 export interface DocumentIntelligencePipelineDeps {
-	ocrProvider: DocumentOCRProvider
 	parserRegistry?: ParserRegistry
 }
 
@@ -29,7 +26,6 @@ export interface RunDocumentIntelligencePipelineInput {
 }
 
 const defaultDeps: DocumentIntelligencePipelineDeps = {
-	ocrProvider: defaultOCRProvider,
 	parserRegistry: defaultParserRegistry,
 }
 
@@ -57,14 +53,27 @@ export async function runDocumentIntelligencePipeline(
 			message: 'Extracting text and document structure',
 		})
 
-		const { result: ocrDocument, attempts } = await runOcrWithRetry(
-			deps.ocrProvider,
-			document,
-		)
+		const resolved = await resolveDocumentContent({
+			userId: document.userId,
+			documentId: document.id,
+			fileName: document.fileName,
+			storagePath: document.storagePath,
+			uploadedAt: document.uploadedAt,
+			mimeType: document.mimeType,
+		})
+
+		const ocrDocument = resolved.ocrDocument
+
+		if (!ocrDocument) {
+			throw new Error('Document content resolution did not return OCR payload.')
+		}
 
 		await onProgress?.({
 			stage: 'ocr_complete',
-			message: 'OCR extraction complete',
+			message:
+				resolved.source === 'NATIVE_TEXT'
+					? 'Document text extracted'
+					: 'OCR extraction complete',
 		})
 
 		await onProgress?.({
@@ -94,8 +103,11 @@ export async function runDocumentIntelligencePipeline(
 			confidence: ocrDocument.confidence,
 			processingTimeMs: ocrDocument.processingTimeMs,
 			ocrProvider: ocrDocument.metadata.provider,
-			ocrMetadata: ocrDocument.metadata,
-			ocrAttempts: attempts,
+			ocrMetadata: {
+				...ocrDocument.metadata,
+				contentSource: resolved.source,
+			},
+			ocrAttempts: resolved.ocrAttempts ?? 1,
 			ocrDocument,
 			parsedDocument,
 			healthReport:

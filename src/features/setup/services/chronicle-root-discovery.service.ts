@@ -28,14 +28,18 @@ export interface ChronicleRootDiscoveryResult {
 }
 
 const COMING_SOON_PATTERNS: Record<
-	Exclude<DiscoverableModuleId, 'health' | 'insurance' | 'vehicles'>,
+	Exclude<
+		DiscoverableModuleId,
+		'health' | 'insurance' | 'vehicles' | 'finance'
+	>,
 	RegExp[]
 > = {
 	identity: [/^identity$/i, /^passports?$/i, /^ids?$/i],
 	property: [/^property$/i, /^real estate$/i, /^home$/i],
-	finance: [/^finance$/i, /^banking$/i, /^money$/i],
 	travel: [/^travel$/i, /^trips?$/i],
 }
+
+const FINANCE_FOLDER_PATTERNS = [/^finance$/i, /^banking$/i, /^money$/i]
 
 const HEALTH_FOLDER_PATTERNS = [
 	/^health$/i,
@@ -50,11 +54,15 @@ function matchesAnyPattern(name: string, patterns: RegExp[]): boolean {
 
 function resolveActiveModuleFolder(
 	folderName: string,
-): 'health' | 'insurance' | 'vehicles' | null {
+): 'health' | 'insurance' | 'vehicles' | 'finance' | null {
 	const moduleId = resolveFolderAssignmentModule(folderName)
 
 	if (moduleId === 'insurance' || moduleId === 'vehicles') {
 		return moduleId
+	}
+
+	if (matchesAnyPattern(folderName, FINANCE_FOLDER_PATTERNS)) {
+		return 'finance'
 	}
 
 	return matchesAnyPattern(folderName, HEALTH_FOLDER_PATTERNS) ? 'health' : null
@@ -62,9 +70,15 @@ function resolveActiveModuleFolder(
 
 function resolveComingSoonModule(
 	folderName: string,
-): Exclude<DiscoverableModuleId, 'health' | 'insurance' | 'vehicles'> | null {
+): Exclude<
+	DiscoverableModuleId,
+	'health' | 'insurance' | 'vehicles' | 'finance'
+> | null {
 	for (const [moduleId, patterns] of Object.entries(COMING_SOON_PATTERNS) as [
-		Exclude<DiscoverableModuleId, 'health' | 'insurance' | 'vehicles'>,
+		Exclude<
+			DiscoverableModuleId,
+			'health' | 'insurance' | 'vehicles' | 'finance'
+		>,
 		RegExp[],
 	][]) {
 		if (matchesAnyPattern(folderName, patterns)) {

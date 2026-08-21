@@ -1,9 +1,5 @@
-import {
-	createDocumentFromUpload,
-	defaultOCRProvider,
-	runOcrWithRetry,
-} from '@/features/document-intelligence'
 import { downloadDriveFile } from '@/features/connectors/google-drive/services/google-drive-api.service'
+import { resolveDocumentContent } from '@/features/document-intelligence/content/resolve-document-content.service'
 
 export interface DownloadedRegistryDocument {
 	storagePath: string
@@ -37,21 +33,16 @@ export async function extractTextFromStoredPdf(input: {
 	fileName: string
 	storagePath: string
 	uploadedAt?: string
-}): Promise<{ text: string; confidence: number | null }> {
-	const document = createDocumentFromUpload({
-		id: input.documentId,
-		userId: input.userId,
-		fileName: input.fileName,
-		storagePath: input.storagePath,
-		uploadedAt: input.uploadedAt ?? new Date().toISOString(),
-	})
-
-	const { result } = await runOcrWithRetry(defaultOCRProvider, document, {
-		maxRetries: 1,
-	})
+}): Promise<{
+	text: string
+	confidence: number | null
+	contentSource?: string | null
+}> {
+	const resolved = await resolveDocumentContent(input)
 
 	return {
-		text: result.rawText ?? '',
-		confidence: result.confidence ?? null,
+		text: resolved.content,
+		confidence: resolved.confidence,
+		contentSource: resolved.source,
 	}
 }

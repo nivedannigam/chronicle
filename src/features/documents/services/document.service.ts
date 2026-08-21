@@ -1,8 +1,11 @@
 import { supabase } from '@/lib/supabase'
+import { qaInterceptDocument, qaInterceptDocuments } from '@/qa/qa-interceptors'
+import { isQaModeEnabled } from '@/qa/qa-mode'
 import type {
 	ChronicleDocument,
 	CreateDocumentInput,
 	DocumentAuditEntry,
+	DocumentKnowledgeRef,
 } from '@/features/documents/types/document.types'
 
 function mapDocument(row: Record<string, unknown>): ChronicleDocument {
@@ -43,6 +46,12 @@ function mapDocument(row: Record<string, unknown>): ChronicleDocument {
 export async function listDocuments(
 	userId: string,
 ): Promise<ChronicleDocument[]> {
+	const qaDocuments = qaInterceptDocuments(userId)
+
+	if (qaDocuments) {
+		return qaDocuments
+	}
+
 	const { data, error } = await supabase
 		.from('chronicle_documents')
 		.select('*')
@@ -59,6 +68,16 @@ export async function listDocuments(
 export async function getDocument(
 	documentId: string,
 ): Promise<ChronicleDocument | null> {
+	if (isQaModeEnabled()) {
+		return qaInterceptDocument(documentId)
+	}
+
+	const qaDocument = qaInterceptDocument(documentId)
+
+	if (qaDocument) {
+		return qaDocument
+	}
+
 	const { data, error } = await supabase
 		.from('chronicle_documents')
 		.select('*')
@@ -106,6 +125,7 @@ export async function createDocumentRecord(
 			connector_registry_id: input.connectorRegistryId ?? null,
 			extracted_text: input.extractedText ?? null,
 			extracted_metadata: input.extractedMetadata ?? {},
+			knowledge_refs: input.knowledgeRefs ?? [],
 			audit: [auditEntry],
 		})
 		.select('*')
@@ -133,6 +153,7 @@ export async function updateDocumentRecord(
 		status: ChronicleDocument['status']
 		extracted_text: string | null
 		extracted_metadata: Record<string, unknown>
+		knowledge_refs: DocumentKnowledgeRef[]
 	}>,
 ): Promise<ChronicleDocument> {
 	const { data, error } = await supabase
@@ -172,11 +193,19 @@ export function filterDocumentsForMember(
 		return documents
 	}
 
-	return documents.filter(
-		(document) =>
+	return documents.filter((document) => {
+		const metadata = document.extracted_metadata as
+			{ privacyScope?: string } | null | undefined
+
+		if (metadata?.privacyScope === 'shared') {
+			return true
+		}
+
+		return (
 			document.family_member_id === memberId ||
-			(document.family_member_id == null && memberId === accountOwnerMemberId),
-	)
+			(document.family_member_id == null && memberId === accountOwnerMemberId)
+		)
+	})
 }
 
 export function documentsExpiringWithin(

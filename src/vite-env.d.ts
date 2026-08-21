@@ -18,6 +18,7 @@ interface ImportMetaEnv {
 	readonly VITE_ASK_API_KEY?: string
 	readonly VITE_ASK_AZURE_ENDPOINT?: string
 	readonly VITE_ASK_AZURE_DEPLOYMENT?: string
+	readonly VITE_CHRONICLE_QA_MODE?: 'true' | 'false'
 }
 
 interface ImportMeta {

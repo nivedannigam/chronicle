@@ -16,6 +16,7 @@ describe('Chronicle OS life score', () => {
 			'health',
 			'protection',
 			'identity',
+			'vehicles',
 		])
 		expect(score.overallLabel).toBeTruthy()
 	})

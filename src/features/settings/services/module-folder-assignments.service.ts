@@ -1,4 +1,5 @@
 import type { ModuleFolderAssignment } from '@/features/settings/types/chronicle-module.types'
+import { qaInterceptFolderAssignments } from '@/qa/qa-interceptors'
 
 const STORAGE_PREFIX = 'chronicle:module-folder-assignments:'
 
@@ -41,6 +42,12 @@ export async function listModuleFolderAssignments(
 	userId: string,
 	moduleId: ModuleFolderAssignment['moduleId'],
 ): Promise<ModuleFolderAssignment[]> {
+	const qaAssignments = qaInterceptFolderAssignments(userId, moduleId)
+
+	if (qaAssignments) {
+		return qaAssignments
+	}
+
 	return readAssignments(userId, moduleId)
 }
 

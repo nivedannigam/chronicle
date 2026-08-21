@@ -55,7 +55,7 @@ function reportBadge(report: HealthReportSummary): {
 		case 'partial':
 			return { label: 'Partial', color: FC.amber }
 		case 'needs_reprocess':
-			return { label: 'Needs reprocess', color: FC.orange }
+			return { label: 'Needs review', color: FC.orange }
 		case 'review':
 			return { label: 'Review', color: FC.amber }
 		case 'normal':
@@ -123,7 +123,7 @@ function CoverageBanner({
 						fontFamily: 'inherit',
 					}}
 				>
-					Reprocess reports
+					Review reports in Setup
 				</button>
 			) : null}
 		</div>
@@ -544,7 +544,7 @@ export function FigmaHealthOverviewView({
 							}}
 						>
 							{isPartialData
-								? 'Finish reprocessing reports in Setup before comparing changes.'
+								? 'Finish reviewing reports in Setup before comparing changes.'
 								: 'No significant changes detected since your previous report.'}
 						</p>
 					</div>
@@ -793,13 +793,12 @@ export function FigmaHealthReportsView({
 						}}
 					>
 						{partialReportCount} report{partialReportCount === 1 ? '' : 's'}{' '}
-						still processing
+						still being organized
 					</p>
 					<p
 						style={{ color: FC.mid, fontSize: 13, margin: 0, lineHeight: 1.5 }}
 					>
-						Only fully extracted reports appear here. Reprocess partial imports
-						in Setup.
+						Only complete reports appear here. Finish partial imports in Setup.
 					</p>
 					{onOpenSetup ? (
 						<button

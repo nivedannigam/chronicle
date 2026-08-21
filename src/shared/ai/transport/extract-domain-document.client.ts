@@ -1,16 +1,19 @@
-import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
-import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
 import {
+	buildFinanceDirectExtractionPrompt,
+	buildFinanceExtractionPrompt,
 	buildInsuranceDirectExtractionPrompt,
 	buildInsuranceExtractionPrompt,
 	buildVehicleDirectExtractionPrompt,
 	buildVehicleExtractionPrompt,
 } from '@/shared/ai/prompt/extract-domain-document.prompt'
 import {
+	isFinanceExtractionSufficient,
 	isInsuranceExtractionSufficient,
 	isVehicleExtractionSufficient,
+	parseFinanceExtractionJson,
 	parseInsuranceExtractionJson,
 	parseVehicleExtractionJson,
+	validateFinanceExtractionJson,
 	validateInsuranceExtractionJson,
 	validateVehicleExtractionJson,
 } from '@/shared/ai/prompt/extract-domain-document.parser'
@@ -21,6 +24,8 @@ import {
 	invokeAskAiEdgeFunction,
 	isAskAiEdgeConfigured,
 } from '@/shared/ai/transport/ask-ai-edge.client'
+import { loadAIPlatformConfig } from '@/shared/ai/config/ai-platform.config'
+import { GEMINI_MODEL } from '@/shared/ai/constants/gemini-model'
 
 export class DomainDocumentExtractionError extends Error {
 	constructor(message: string) {
@@ -39,8 +44,117 @@ function stripJsonFence(content: string): string {
 	return trimmed
 }
 
+function buildDirectMessages(
+	target: DomainDocumentExtractionResult['target'],
+	input: {
+		fileName: string
+		folderPath?: string | null
+		categoryHint?: string | null
+	},
+) {
+	if (target === 'insurance') {
+		return buildInsuranceDirectExtractionPrompt(input)
+	}
+
+	if (target === 'finance') {
+		return buildFinanceDirectExtractionPrompt({
+			...input,
+			documentType: input.categoryHint ?? 'bank-statement',
+		})
+	}
+
+	return buildVehicleDirectExtractionPrompt(input)
+}
+
+function buildTextMessages(
+	target: DomainDocumentExtractionResult['target'],
+	input: {
+		fileName: string
+		folderPath?: string | null
+		categoryHint?: string | null
+		extractedText: string
+	},
+) {
+	if (target === 'insurance') {
+		return buildInsuranceExtractionPrompt(input)
+	}
+
+	if (target === 'finance') {
+		return buildFinanceExtractionPrompt({
+			...input,
+			documentType: input.categoryHint ?? 'bank-statement',
+		})
+	}
+
+	return buildVehicleExtractionPrompt(input)
+}
+
+function wrapDirectResult(
+	target: DomainDocumentExtractionResult['target'],
+	json: string,
+): DomainDocumentExtractionResult {
+	if (target === 'insurance') {
+		return {
+			target,
+			method: 'ai_direct',
+			extractedText: null,
+			insurance: validateInsuranceExtractionJson(json),
+		}
+	}
+
+	if (target === 'finance') {
+		return {
+			target,
+			method: 'ai_direct',
+			extractedText: null,
+			finance: validateFinanceExtractionJson(json),
+		}
+	}
+
+	return {
+		target,
+		method: 'ai_direct',
+		extractedText: null,
+		vehicle: validateVehicleExtractionJson(json),
+	}
+}
+
+function wrapOcrResult(
+	target: DomainDocumentExtractionResult['target'],
+	json: string,
+	extractedText: string,
+): DomainDocumentExtractionResult {
+	if (target === 'insurance') {
+		const insurance = parseInsuranceExtractionJson(json)
+		if (!isInsuranceExtractionSufficient(insurance)) {
+			throw new DomainDocumentExtractionError(
+				'Insurance extraction returned insufficient structured data.',
+			)
+		}
+		return { target, method: 'ocr_fallback', extractedText, insurance }
+	}
+
+	if (target === 'finance') {
+		const finance = parseFinanceExtractionJson(json)
+		if (!isFinanceExtractionSufficient(finance)) {
+			throw new DomainDocumentExtractionError(
+				'Finance extraction returned insufficient structured data.',
+			)
+		}
+		return { target, method: 'ocr_fallback', extractedText, finance }
+	}
+
+	const vehicle = parseVehicleExtractionJson(json)
+	if (!isVehicleExtractionSufficient(vehicle)) {
+		throw new DomainDocumentExtractionError(
+			'Vehicle extraction returned insufficient structured data.',
+		)
+	}
+	return { target, method: 'ocr_fallback', extractedText, vehicle }
+}
+
 export async function extractDomainDocumentWithAiDirect(input: {
-	target: 'insurance' | 'vehicles'
+	target: DomainDocumentExtractionResult['target']
 	fileName: string
 	folderPath?: string | null
 	categoryHint?: string | null
@@ -55,10 +169,7 @@ export async function extractDomainDocumentWithAiDirect(input: {
 
 	assertAskAiEdgeConfigured()
 	const config = loadAIPlatformConfig()
-	const messages =
-		input.target === 'insurance'
-			? buildInsuranceDirectExtractionPrompt(input)
-			: buildVehicleDirectExtractionPrompt(input)
+	const messages = buildDirectMessages(input.target, input)
 
 	try {
 		const result = await invokeAskAiEdgeFunction({
@@ -76,23 +187,7 @@ export async function extractDomainDocumentWithAiDirect(input: {
 			maxTokens: 4096,
 		})
 
-		const json = stripJsonFence(result.content)
-
-		if (input.target === 'insurance') {
-			return {
-				target: 'insurance',
-				method: 'ai_direct',
-				extractedText: null,
-				insurance: validateInsuranceExtractionJson(json),
-			}
-		}
-
-		return {
-			target: 'vehicles',
-			method: 'ai_direct',
-			extractedText: null,
-			vehicle: validateVehicleExtractionJson(json),
-		}
+		return wrapDirectResult(input.target, stripJsonFence(result.content))
 	} catch (error) {
 		if (error instanceof AskAiEdgeInvokeError) {
 			throw new DomainDocumentExtractionError(error.message)
@@ -103,9 +198,10 @@ export async function extractDomainDocumentWithAiDirect(input: {
 }
 
 export async function extractDomainDocumentWithAi(input: {
-	target: 'insurance' | 'vehicles'
+	target: DomainDocumentExtractionResult['target']
 	fileName: string
 	folderPath?: string | null
+	categoryHint?: string | null
 	extractedText: string
 }): Promise<DomainDocumentExtractionResult> {
 	if (!input.extractedText.trim()) {
@@ -122,10 +218,7 @@ export async function extractDomainDocumentWithAi(input: {
 
 	assertAskAiEdgeConfigured()
 	const config = loadAIPlatformConfig()
-	const messages =
-		input.target === 'insurance'
-			? buildInsuranceExtractionPrompt(input)
-			: buildVehicleExtractionPrompt(input)
+	const messages = buildTextMessages(input.target, input)
 
 	try {
 		const result = await invokeAskAiEdgeFunction({
@@ -137,39 +230,11 @@ export async function extractDomainDocumentWithAi(input: {
 			maxTokens: 4096,
 		})
 
-		const json = stripJsonFence(result.content)
-
-		if (input.target === 'insurance') {
-			const insurance = parseInsuranceExtractionJson(json)
-
-			if (!isInsuranceExtractionSufficient(insurance)) {
-				throw new DomainDocumentExtractionError(
-					'Insurance extraction returned insufficient structured data.',
-				)
-			}
-
-			return {
-				target: 'insurance',
-				method: 'ocr_fallback',
-				extractedText: input.extractedText,
-				insurance,
-			}
-		}
-
-		const vehicle = parseVehicleExtractionJson(json)
-
-		if (!isVehicleExtractionSufficient(vehicle)) {
-			throw new DomainDocumentExtractionError(
-				'Vehicle extraction returned insufficient structured data.',
-			)
-		}
-
-		return {
-			target: 'vehicles',
-			method: 'ocr_fallback',
-			extractedText: input.extractedText,
-			vehicle,
-		}
+		return wrapOcrResult(
+			input.target,
+			stripJsonFence(result.content),
+			input.extractedText,
+		)
 	} catch (error) {
 		if (error instanceof AskAiEdgeInvokeError) {
 			throw new DomainDocumentExtractionError(error.message)

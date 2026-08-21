@@ -12,6 +12,10 @@ import type {
 	VehicleTimelineRecord,
 } from '@/features/vehicle-knowledge/types/vehicle-record.types'
 import type { VehicleKnowledgeRawData } from '@/features/vehicle-knowledge/providers/vehicle-knowledge-data-source'
+import {
+	matchMotorPoliciesToVehicle,
+	pickLatestLinkedMotorPolicy,
+} from '@/features/vehicle-knowledge/services/vehicle-insurance-linkage.service'
 import { buildVehicleAttention } from '@/features/vehicle-knowledge/engines/vehicle-attention.engine'
 import { buildVehicleCompleteness } from '@/features/vehicle-knowledge/engines/vehicle-completeness.engine'
 import {
@@ -89,15 +93,20 @@ function buildVehicle(
 	record: VehicleRecord,
 	documents: VehicleDocumentRecord[],
 	facts: VehicleFactRecord[],
+	linkedMotorPolicies: VehicleKnowledgeRawData['linkedMotorPolicies'],
 ): VehicleKnowledgeVehicle {
 	const vehicleDocuments = documents.filter(
 		(document) => document.vehicleId === record.id,
+	)
+	const linkedMotorPolicy = pickLatestLinkedMotorPolicy(
+		matchMotorPoliciesToVehicle(record, linkedMotorPolicies),
 	)
 	const currentState = computeVehicleCurrentState({
 		vehicleId: record.id,
 		registrationNumber: record.registrationNumber,
 		documents,
 		facts,
+		linkedMotorPolicy,
 	})
 	const completeness = buildVehicleCompleteness({
 		vehicleId: record.id,
@@ -179,7 +188,14 @@ export function buildVehicleKnowledgeFromRawData(
 			}
 			return vehicle.familyMemberId === input.familyMemberId
 		})
-		.map((vehicle) => buildVehicle(vehicle, raw.documents, raw.facts))
+		.map((vehicle) =>
+			buildVehicle(
+				vehicle,
+				raw.documents,
+				raw.facts,
+				raw.linkedMotorPolicies ?? [],
+			),
+		)
 
 	const documents: VehicleKnowledgeDocument[] = raw.documents
 		.filter((document) =>

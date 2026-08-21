@@ -15,6 +15,7 @@ const MODULE_ROUTE_PREFIXES = [
 	ROUTES.vehicles,
 	ROUTES.personal,
 	ROUTES.identity,
+	ROUTES.finance,
 ] as const
 
 export function tabFromPath(pathname: string): Tab {

@@ -153,3 +153,100 @@ Folder: ${input.folderPath ?? 'unknown'}`,
 		},
 	]
 }
+
+const FINANCE_EXTRACTION_JSON_SHAPE = `{
+  "documentType": "bank-statement" | "credit-card-statement" | "loan-statement" | "investment-statement",
+  "institution": string | null,
+  "accountType": string | null,
+  "cardName": string | null,
+  "loanType": string | null,
+  "investmentType": string | null,
+  "maskedAccountIdentifier": string | null,
+  "accountHolder": string | null,
+  "jointHolder": string | null,
+  "statementDate": "YYYY-MM-DD" | null,
+  "statementPeriodStart": "YYYY-MM-DD" | null,
+  "statementPeriodEnd": "YYYY-MM-DD" | null,
+  "currency": "INR" | null,
+  "openingBalance": number | null,
+  "closingBalance": number | null,
+  "totalAmountDue": number | null,
+  "minimumAmountDue": number | null,
+  "paymentDueDate": "YYYY-MM-DD" | null,
+  "creditLimit": number | null,
+  "availableCredit": number | null,
+  "outstandingPrincipal": number | null,
+  "originalLoanAmount": number | null,
+  "interestRate": number | null,
+  "emi": number | null,
+  "nextPaymentDate": "YYYY-MM-DD" | null,
+  "loanStartDate": "YYYY-MM-DD" | null,
+  "loanEndDate": "YYYY-MM-DD" | null,
+  "folioNumber": string | null,
+  "schemeName": string | null,
+  "units": number | null,
+  "nav": number | null,
+  "marketValue": number | null,
+  "investedValue": number | null,
+  "confidence": number
+}`
+
+export function buildFinanceExtractionPrompt(input: {
+	fileName: string
+	folderPath?: string | null
+	documentType: string
+	extractedText: string
+}): Array<{ role: string; content: string }> {
+	return [
+		{
+			role: 'system',
+			content: `You extract structured financial statement data from Indian financial documents.
+Return ONLY valid JSON with this shape:
+${FINANCE_EXTRACTION_JSON_SHAPE}
+Rules:
+- Extract ONLY values explicitly present in the document.
+- Use null when unknown. Do not infer net worth, spending categories, or portfolio totals.
+- Mask account/card identifiers — return only last 4 digits if full number appears.
+- Dates must be ISO YYYY-MM-DD.
+- currency should be INR unless clearly otherwise.
+- confidence is 0..1 based on extraction certainty.`,
+		},
+		{
+			role: 'user',
+			content: `Document type hint: ${input.documentType}
+File: ${input.fileName}
+Folder: ${input.folderPath ?? 'unknown'}
+
+Document text:
+${input.extractedText.slice(0, 120_000)}`,
+		},
+	]
+}
+
+export function buildFinanceDirectExtractionPrompt(input: {
+	fileName: string
+	folderPath?: string | null
+	documentType: string
+}): Array<{ role: string; content: string }> {
+	return [
+		{
+			role: 'system',
+			content: `You extract structured financial statement data from the attached Indian financial document.
+Return ONLY valid JSON with this shape:
+${FINANCE_EXTRACTION_JSON_SHAPE}
+Rules:
+- Extract ONLY values explicitly present in the document.
+- Use null when unknown. Do not invent balances or totals.
+- Mask account/card identifiers — return only last 4 digits if full number appears.
+- Dates must be ISO YYYY-MM-DD.`,
+		},
+		{
+			role: 'user',
+			content: `Read the attached financial document.
+
+Document type hint: ${input.documentType}
+File: ${input.fileName}
+Folder: ${input.folderPath ?? 'unknown'}`,
+		},
+	]
+}

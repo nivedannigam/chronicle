@@ -3,6 +3,8 @@ export type KnowledgeDomain =
 	| 'insurance'
 	| 'vehicles'
 	| 'finance'
+	| 'identity'
+	| 'property'
 	| 'travel'
 	| 'mail'
 	| 'documents'

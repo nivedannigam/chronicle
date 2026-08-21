@@ -16,6 +16,12 @@ import type {
 	ConnectorSyncRun,
 	ImportQueueStatus,
 } from '@/core/connectors'
+import {
+	qaInterceptConnectorConnection,
+	qaInterceptConnectorFolders,
+	qaInterceptLatestSyncRun,
+	qaInterceptRegistryRecords,
+} from '@/qa/qa-boundary'
 
 function mapFolder(row: Record<string, unknown>): ConnectorFolder {
 	return {
@@ -96,6 +102,12 @@ export async function getConnectorConnection(
 	userId: string,
 	connectorId: ConnectorId,
 ) {
+	const qaConnection = qaInterceptConnectorConnection(userId, connectorId)
+
+	if (qaConnection !== undefined) {
+		return qaConnection
+	}
+
 	let session
 
 	try {
@@ -188,6 +200,12 @@ export async function listConnectorFolders(
 	userId: string,
 	connectorId: ConnectorId,
 ) {
+	const qaFolders = qaInterceptConnectorFolders(userId)
+
+	if (qaFolders !== undefined) {
+		return qaFolders
+	}
+
 	const { data, error } = await supabase
 		.from('connector_folders')
 		.select('*')
@@ -378,6 +396,12 @@ export async function listRegistryRecords(
 	userId: string,
 	connectorId: ConnectorId,
 ) {
+	const qaRegistry = qaInterceptRegistryRecords(userId)
+
+	if (qaRegistry !== undefined) {
+		return qaRegistry
+	}
+
 	const { data, error } = await supabase
 		.from('connector_document_registry')
 		.select('*')
@@ -489,6 +513,12 @@ export async function getLatestSyncRun(
 	userId: string,
 	connectorId: ConnectorId,
 ) {
+	const qaSyncRun = qaInterceptLatestSyncRun(userId)
+
+	if (qaSyncRun !== undefined) {
+		return qaSyncRun
+	}
+
 	const { data, error } = await supabase
 		.from('connector_sync_runs')
 		.select('*')

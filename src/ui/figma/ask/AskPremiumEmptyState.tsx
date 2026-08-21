@@ -1,4 +1,4 @@
-import { ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
+import { UNIVERSAL_ASK_EMPTY_SUGGESTIONS } from '@/features/ask/constants/ask-empty-state'
 import { buildHealthCompanionSuggestions } from '@/features/ask/services/health-companion-suggestions.service'
 import type { HealthCanonicalSnapshot } from '@/features/health/types/health-context.types'
 import {
@@ -12,6 +12,7 @@ export function AskPremiumEmptyState({
 	consumerMode = false,
 	reportCount = 0,
 	healthSummary,
+	headline,
 }: {
 	onSelectQuestion: (question: string) => void
 	consumerMode?: boolean
@@ -20,16 +21,21 @@ export function AskPremiumEmptyState({
 		HealthCanonicalSnapshot,
 		'overallStatus' | 'overallSummary' | 'score'
 	>
+	headline?: string
 }) {
 	const suggestions = consumerMode
 		? buildHealthCompanionSuggestions({ reportCount }).map(
 				(item) => item.question,
 			)
-		: [...ASK_EMPTY_SUGGESTIONS]
+		: [...UNIVERSAL_ASK_EMPTY_SUGGESTIONS]
 
-	const headline = consumerMode
-		? 'Ask anything about your health records.'
-		: 'Ask anything about your health.'
+	const resolvedHeadline =
+		headline ??
+		(consumerMode
+			? 'Ask anything about your health records.'
+			: 'Ask anything about your health.')
+
+	const headlineText = resolvedHeadline
 
 	return (
 		<div
@@ -54,7 +60,7 @@ export function AskPremiumEmptyState({
 					maxWidth: 360,
 				}}
 			>
-				{headline}
+				{headlineText}
 			</h2>
 
 			{consumerMode ? (

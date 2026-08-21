@@ -1,8 +1,12 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { Mic, Search, Send } from 'lucide-react'
-import { FC, figmaCardStyle } from '@/ui/figma/tokens/figma-v2-tokens'
+import {
+	FC,
+	figmaCardStyle,
+	figmaListRowBorder,
+} from '@/ui/figma/tokens/figma-v2-tokens'
 
-export { FC, figmaCardStyle }
+export { FC, figmaCardStyle, figmaListRowBorder }
 
 export function FigmaLbl({ children }: { children: ReactNode }) {
 	return (
@@ -80,6 +84,7 @@ export function FigmaAskComposer({
 				ref={taRef}
 				value={input}
 				rows={1}
+				aria-label="Ask a question"
 				onChange={(event) => {
 					setInput(event.target.value)
 					resize()

@@ -1,0 +1,1071 @@
+{
+	"config": {
+		"argv": [
+			"C:\\Program Files\\nodejs\\node.exe",
+			"C:\\Projects\\Chronicle\\node_modules\\@playwright\\test\\cli.js",
+			"test",
+			"e2e/chronicle/trust-privacy.spec.ts",
+			"e2e/chronicle/ask-states.spec.ts",
+			"--project=chronicle-desktop"
+		],
+		"configFile": "C:\\Projects\\Chronicle\\playwright.config.ts",
+		"rootDir": "C:/Projects/Chronicle/e2e/chronicle",
+		"failOnFlakyTests": false,
+		"forbidOnly": false,
+		"fullyParallel": false,
+		"globalSetup": null,
+		"globalTeardown": null,
+		"globalTimeout": 0,
+		"grep": {},
+		"grepInvert": null,
+		"maxFailures": 0,
+		"metadata": {
+			"actualWorkers": 1
+		},
+		"preserveOutput": "always",
+		"projects": [
+			{
+				"outputDir": "C:/Projects/Chronicle/test-results",
+				"repeatEach": 1,
+				"retries": 0,
+				"metadata": {
+					"actualWorkers": 1
+				},
+				"id": "chronicle-desktop",
+				"name": "chronicle-desktop",
+				"testDir": "C:/Projects/Chronicle/e2e/chronicle",
+				"testIgnore": [],
+				"testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+				"timeout": 120000
+			},
+			{
+				"outputDir": "C:/Projects/Chronicle/test-results",
+				"repeatEach": 1,
+				"retries": 0,
+				"metadata": {
+					"actualWorkers": 1
+				},
+				"id": "chronicle-tablet",
+				"name": "chronicle-tablet",
+				"testDir": "C:/Projects/Chronicle/e2e/chronicle",
+				"testIgnore": [],
+				"testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+				"timeout": 120000
+			},
+			{
+				"outputDir": "C:/Projects/Chronicle/test-results",
+				"repeatEach": 1,
+				"retries": 0,
+				"metadata": {
+					"actualWorkers": 1
+				},
+				"id": "chronicle-mobile",
+				"name": "chronicle-mobile",
+				"testDir": "C:/Projects/Chronicle/e2e/chronicle",
+				"testIgnore": [],
+				"testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+				"timeout": 120000
+			}
+		],
+		"quiet": false,
+		"reporter": [
+			["list", null],
+			[
+				"json",
+				{
+					"outputFile": "test-results/chronicle-qa/results.json"
+				}
+			],
+			[
+				"html",
+				{
+					"outputFolder": "playwright-report/chronicle-qa",
+					"open": "never"
+				}
+			]
+		],
+		"reportSlowTests": {
+			"max": 5,
+			"threshold": 300000
+		},
+		"shard": null,
+		"tags": [],
+		"updateSnapshots": "missing",
+		"updateSourceMethod": "patch",
+		"version": "1.62.1",
+		"workers": 1,
+		"webServer": {
+			"command": "pnpm exec vite --host 127.0.0.1 --port 5210",
+			"url": "http://127.0.0.1:5210",
+			"reuseExistingServer": false,
+			"timeout": 120000,
+			"env": {
+				"AGENT_TRANSCRIPTS": "C:\\Users\\nived\\.cursor\\projects\\c-Projects-Chronicle\\agent-transcripts",
+				"ALLUSERSPROFILE": "C:\\ProgramData",
+				"APPDATA": "C:\\Users\\nived\\AppData\\Roaming",
+				"BUNDLE_PATH": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\bundle",
+				"BUN_INSTALL_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\bun",
+				"CARGO_TARGET_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\cargo-target",
+				"CCACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\ccache",
+				"CHROME_CRASHPAD_PIPE_NAME": "\\\\.\\pipe\\crashpad_19356_BJXSSHCLBJZIEAEB",
+				"CHRONICLE_QA_PORT": "5210",
+				"CommonProgramFiles": "C:\\Program Files\\Common Files",
+				"CommonProgramFiles(x86)": "C:\\Program Files (x86)\\Common Files",
+				"CommonProgramW6432": "C:\\Program Files\\Common Files",
+				"COMPOSER_HOME": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\composer",
+				"COMPUTERNAME": "ADVIKA-LAPTOP",
+				"ComSpec": "C:\\WINDOWS\\system32\\cmd.exe",
+				"CONDA_PKGS_DIRS": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\conda",
+				"CP_HOME_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\cocoapods",
+				"CURSOR_AGENT": "1",
+				"CURSOR_CONVERSATION_ID": "7ce2dbe0-1e88-455e-80b7-401345181f49",
+				"CURSOR_LAYOUT": "glass",
+				"CURSOR_RIPGREP_PATH": "c:\\Users\\nived\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin\\rg.exe",
+				"CURSOR_WORKSPACE_LABEL": "Chronicle",
+				"CYPRESS_CACHE_FOLDER": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\cypress",
+				"DriverData": "C:\\Windows\\System32\\Drivers\\DriverData",
+				"EFC_12916_1592913036": "1",
+				"FORCE_COLOR": "0",
+				"GEM_SPEC_CACHE": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\gem-specs",
+				"GOCACHE": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\go-build",
+				"GOMODCACHE": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\go-mod",
+				"GRADLE_USER_HOME": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\gradle",
+				"HOMEBREW_CACHE": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\homebrew",
+				"HOMEDRIVE": "C:",
+				"HOMEPATH": "\\Users\\nived",
+				"IGCCSVC_DB": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAtEvzNhgP2k6qfwT6n/jVHgQAAAACAAAAAAAQZgAAAAEAACAAAABzqX8yR68LpHSk8zap1FD+ChH7eH4jhf94ugS+XFgBbQAAAAAOgAAAAAIAACAAAADlun+2xLP93/cTLXP2Qu4hqCSOpjBK41LTO4oLl6GIn2AAAAC28C7Fnw1Qky9+3uA8olPglMKToGizmexs1Iq93CUujUYJZIhcUievLy6q1cLklfEuIdSFnq4gCvK+pPc3yVMN3FRfzdQL2zTgUNVIX9EKgz1cjLpSnHdsEpMkHKms7ExAAAAAbzeBdnYpDOITVbL8KaG7p7eYhiEGwbxAdaSiIrStmtJds9KJCFDLK6BVbP1ppmIS37bTDD07NwQt1fWfuVmAmg==",
+				"LOCALAPPDATA": "C:\\Users\\nived\\AppData\\Local",
+				"LOGONSERVER": "\\\\ADVIKA-LAPTOP",
+				"NODE_PATH": "C:\\Projects\\Chronicle\\node_modules\\.pnpm\\@playwright+test@1.62.1\\node_modules\\@playwright\\test\\node_modules;C:\\Projects\\Chronicle\\node_modules\\.pnpm\\@playwright+test@1.62.1\\node_modules;C:\\Projects\\Chronicle\\node_modules\\.pnpm\\node_modules",
+				"NO_COLOR": "1",
+				"npm_command": "exec",
+				"NPM_CONFIG_CACHE": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\npm",
+				"npm_config_devdir": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\node-gyp",
+				"npm_config_user_agent": "pnpm/11.15.1 npm/? node/v24.18.0 win32 x64",
+				"NUGET_PACKAGES": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\nuget",
+				"NUMBER_OF_PROCESSORS": "12",
+				"NX_CACHE_DIRECTORY": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\nx",
+				"OneDrive": "C:\\Users\\nived\\OneDrive",
+				"OneDriveConsumer": "C:\\Users\\nived\\OneDrive",
+				"OS": "Windows_NT",
+				"Path": "./node_modules/.bin;C:\\Projects\\Chronicle\\node_modules\\.bin;c:\\Users\\nived\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\nodejs\\;C:\\Program Files\\Git\\cmd;C:\\Users\\nived\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\nived\\AppData\\Roaming\\npm;C:\\Users\\nived\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\Users\\nived\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin;C:\\Users\\nived\\.deno\\bin",
+				"PATHEXT": ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JSE;.WSF;.WSH;.MSC;.CPL",
+				"PIP_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\pip",
+				"PLAYWRIGHT_BROWSERS_PATH": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\playwright",
+				"pnpm_config_verify_deps_before_run": "false",
+				"PNPM_PACKAGE_NAME": "chronicle",
+				"PNPM_STORE_PATH": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\pnpm-store",
+				"POETRY_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\poetry",
+				"PROCESSOR_ARCHITECTURE": "AMD64",
+				"PROCESSOR_IDENTIFIER": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+				"PROCESSOR_LEVEL": "6",
+				"PROCESSOR_REVISION": "9a04",
+				"ProgramData": "C:\\ProgramData",
+				"ProgramFiles": "C:\\Program Files",
+				"ProgramFiles(x86)": "C:\\Program Files (x86)",
+				"ProgramW6432": "C:\\Program Files",
+				"PROMPT": "$P$G",
+				"PSExecutionPolicyPreference": "Bypass",
+				"PSModulePath": "C:\\Users\\nived\\OneDrive\\Documents\\WindowsPowerShell\\Modules;C:\\Program Files\\WindowsPowerShell\\Modules;C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules",
+				"PUBLIC": "C:\\Users\\Public",
+				"PUPPETEER_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\puppeteer",
+				"RUN_INSURANCE_MATERIALIZE": "1",
+				"RUN_VEHICLE_E2E": "1",
+				"SESSIONNAME": "Console",
+				"SystemDrive": "C:",
+				"SystemRoot": "C:\\WINDOWS",
+				"TEMP": "C:\\Users\\nived\\AppData\\Local\\Temp",
+				"TERM": "dumb",
+				"TMP": "C:\\Users\\nived\\AppData\\Local\\Temp",
+				"TURBO_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\turbo",
+				"USERDOMAIN": "ADVIKA-LAPTOP",
+				"USERDOMAIN_ROAMINGPROFILE": "ADVIKA-LAPTOP",
+				"USERNAME": "nived",
+				"USERPROFILE": "C:\\Users\\nived",
+				"UV_CACHE_DIR": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\uv",
+				"VITE_CHRONICLE_QA_MODE": "true",
+				"VSCODE_CODE_CACHE_PATH": "C:\\Users\\nived\\AppData\\Roaming\\Cursor\\CachedData\\de07bee81cefe43461ebf4f40c3d2d78d15052a0",
+				"VSCODE_CRASH_REPORTER_PROCESS_TYPE": "extensionHost",
+				"VSCODE_CWD": "C:\\Users\\nived\\AppData\\Local\\Programs\\cursor",
+				"VSCODE_ESM_ENTRYPOINT": "vs/workbench/api/node/extensionHostProcess",
+				"VSCODE_HANDLES_UNCAUGHT_ERRORS": "true",
+				"VSCODE_IPC_HOOK": "\\\\.\\pipe\\b37a0bbe-3.15.19-main-sock",
+				"VSCODE_NLS_CONFIG": "{\"userLocale\":\"en-us\",\"osLocale\":\"en-us\",\"resolvedLanguage\":\"en\",\"defaultMessagesFile\":\"C:\\\\Users\\\\nived\\\\AppData\\\\Local\\\\Programs\\\\cursor\\\\resources\\\\app\\\\out\\\\nls.messages.json\",\"locale\":\"en-us\",\"availableLanguages\":{}}",
+				"VSCODE_PID": "19356",
+				"VSCODE_PROCESS_TITLE": "extension-host Chronicle [1-2]",
+				"windir": "C:\\WINDOWS",
+				"YARN_CACHE_FOLDER": "C:\\Users\\nived\\AppData\\Local\\Temp\\cursor-sandbox-cache\\ba9f4e2323ab2fed4d05ddbaf5e9a63b\\yarn",
+				"ZES_ENABLE_SYSMAN": "1",
+				"_ZO_DOCTOR": "0",
+				"__CURSOR_SANDBOX_ENV_RESTORE": "builtin unset CURSOR_CONVERSATION_ID CURSOR_AGENT_STORE_FILES_DIR CURSOR_AGENT_STORE_SHARED_PATHS 2>/dev/null || true; builtin export CURSOR_CONVERSATION_ID='7ce2dbe0-1e88-455e-80b7-401345181f49'"
+			}
+		}
+	},
+	"suites": [
+		{
+			"title": "ask-states.spec.ts",
+			"file": "ask-states.spec.ts",
+			"column": 0,
+			"line": 0,
+			"specs": [],
+			"suites": [
+				{
+					"title": "Ask",
+					"file": "ask-states.spec.ts",
+					"line": 15,
+					"column": 6,
+					"specs": [
+						{
+							"title": "ask page loads with reachable composer",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 35484,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:04:05.748Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-349633fcfeda04c85447",
+							"file": "ask-states.spec.ts",
+							"line": 22,
+							"column": 2
+						},
+						{
+							"title": "ask: What is my LDL?",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11344,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:04:41.579Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-fa49015b4998016d4e76",
+							"file": "ask-states.spec.ts",
+							"line": 38,
+							"column": 3
+						},
+						{
+							"title": "ask: When does my car insurance expire?",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 12071,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:04:52.950Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-4d295c4ba81072ad9433",
+							"file": "ask-states.spec.ts",
+							"line": 38,
+							"column": 3
+						},
+						{
+							"title": "ask: What is my home loan balance?",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11247,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:05:05.072Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-9fe68de3c66249e535b9",
+							"file": "ask-states.spec.ts",
+							"line": 38,
+							"column": 3
+						},
+						{
+							"title": "ask: When does my passport expire?",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11149,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:05:16.358Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-d0d274dbb6aa73c0faa5",
+							"file": "ask-states.spec.ts",
+							"line": 38,
+							"column": 3
+						},
+						{
+							"title": "ask: What insurance do I have?",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 13147,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:05:27.536Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-5ecce337f6ca122b3d8a",
+							"file": "ask-states.spec.ts",
+							"line": 38,
+							"column": 3
+						},
+						{
+							"title": "negative ask returns honest missing-data response",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 33055,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:05:40.748Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-54f72a47de2e9e35d543",
+							"file": "ask-states.spec.ts",
+							"line": 49,
+							"column": 2
+						},
+						{
+							"title": "ambiguous balance question scopes safely",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 22405,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:06:13.889Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-12ef6f7d04aafa9e117c",
+							"file": "ask-states.spec.ts",
+							"line": 59,
+							"column": 2
+						}
+					]
+				},
+				{
+					"title": "Family privacy",
+					"file": "ask-states.spec.ts",
+					"line": 67,
+					"column": 6,
+					"specs": [
+						{
+							"title": "daughter context does not reveal parent passport number in ask",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 26294,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:06:36.448Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-fcabcfbd9decfb20bcc2",
+							"file": "ask-states.spec.ts",
+							"line": 74,
+							"column": 2
+						}
+					]
+				},
+				{
+					"title": "Empty user scenario",
+					"file": "ask-states.spec.ts",
+					"line": 83,
+					"column": 6,
+					"specs": [
+						{
+							"title": "EMPTY dataset has zero documents",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11513,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:07:02.809Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-450dad94386d0610ac94",
+							"file": "ask-states.spec.ts",
+							"line": 88,
+							"column": 2
+						},
+						{
+							"title": "empty state /health",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11365,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:07:14.358Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-7bb39f6388f3d0aa9423",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						},
+						{
+							"title": "empty state /insurance",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11072,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:07:25.762Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-3623294d9b3d8fa66a03",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						},
+						{
+							"title": "empty state /vehicles",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 13512,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:07:36.864Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-2fb40bef280039ade616",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						},
+						{
+							"title": "empty state /identity",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 17470,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:07:50.440Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-f8e5a4a55398e2b432e1",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						},
+						{
+							"title": "empty state /finance",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 10548,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:08:07.964Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-8335210b69bfd7b74fb8",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						},
+						{
+							"title": "empty state /property",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 10929,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:08:18.546Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-8f50163704dad2d6a5c5",
+							"file": "ask-states.spec.ts",
+							"line": 103,
+							"column": 3
+						}
+					]
+				},
+				{
+					"title": "Error scenario",
+					"file": "ask-states.spec.ts",
+					"line": 114,
+					"column": 6,
+					"specs": [
+						{
+							"title": "consumer-safe errors on modules home",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 16101,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:08:29.503Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-7a5a38679e71c53f5d6d",
+							"file": "ask-states.spec.ts",
+							"line": 119,
+							"column": 2
+						}
+					]
+				},
+				{
+					"title": "Loading scenario",
+					"file": "ask-states.spec.ts",
+					"line": 130,
+					"column": 6,
+					"specs": [
+						{
+							"title": "shows loading/skeleton instead of blank page",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 12343,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:08:45.633Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-f2b37e1e8de1be7451fb",
+							"file": "ask-states.spec.ts",
+							"line": 135,
+							"column": 2
+						}
+					]
+				},
+				{
+					"title": "Scenario isolation",
+					"file": "ask-states.spec.ts",
+					"line": 143,
+					"column": 6,
+					"specs": [
+						{
+							"title": "FULL after EMPTY restores seeded records",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 13057,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:08:58.029Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "d1c8baf8f531273a50fe-254f62f2f24d327158dc",
+							"file": "ask-states.spec.ts",
+							"line": 144,
+							"column": 2
+						}
+					]
+				}
+			]
+		},
+		{
+			"title": "trust-privacy.spec.ts",
+			"file": "trust-privacy.spec.ts",
+			"column": 0,
+			"line": 0,
+			"specs": [],
+			"suites": [
+				{
+					"title": "Gate 0 trust privacy",
+					"file": "trust-privacy.spec.ts",
+					"line": 10,
+					"column": 6,
+					"specs": [
+						{
+							"title": "Ask blocks cross-member health question in default member view",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 15842,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:09:11.132Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "692e9459954dd1215043-de80ddb22d9348fb135b",
+							"file": "trust-privacy.spec.ts",
+							"line": 17,
+							"column": 2
+						},
+						{
+							"title": "Ask does not reveal Ravi passport for cross-member question",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 17219,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:09:26.996Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "692e9459954dd1215043-ead1f8fe3faddeefa184",
+							"file": "trust-privacy.spec.ts",
+							"line": 31,
+							"column": 2
+						},
+						{
+							"title": "Library browse does not list Priya private insurance title",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 11007,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:09:44.240Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "692e9459954dd1215043-f95b9959507db0090f7c",
+							"file": "trust-privacy.spec.ts",
+							"line": 44,
+							"column": 2
+						},
+						{
+							"title": "Search does not surface Priya private policy number",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [],
+									"expectedStatus": "passed",
+									"projectId": "chronicle-desktop",
+									"projectName": "chronicle-desktop",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 12034,
+											"errors": [],
+											"stdout": [],
+											"stderr": [],
+											"retry": 0,
+											"startTime": "2026-08-21T08:09:55.275Z",
+											"annotations": [],
+											"attachments": []
+										}
+									],
+									"status": "expected"
+								}
+							],
+							"id": "692e9459954dd1215043-06afceb8949f1923cf00",
+							"file": "trust-privacy.spec.ts",
+							"line": 54,
+							"column": 2
+						}
+					]
+				}
+			]
+		}
+	],
+	"errors": [],
+	"stats": {
+		"startTime": "2026-08-21T08:03:59.387Z",
+		"duration": 368686.24399999995,
+		"expected": 23,
+		"skipped": 0,
+		"unexpected": 0,
+		"flaky": 0
+	}
+}

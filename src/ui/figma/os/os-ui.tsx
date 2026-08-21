@@ -8,7 +8,11 @@ import type {
 	OsQuickAction,
 	UpcomingItem,
 } from '@/features/os/types/os.types'
-import { FC, figmaCardStyle } from '@/ui/figma/tokens/figma-v2-tokens'
+import {
+	FC,
+	figmaCardStyle,
+	figmaListRowBorder,
+} from '@/ui/figma/tokens/figma-v2-tokens'
 
 export function OsSectionLabel({
 	children,
@@ -300,18 +304,11 @@ export function UpcomingList({
 							alignItems: 'center',
 							gap: 13,
 							padding: '15px 18px',
-							borderBottom:
-								index < items.length - 1
-									? '1px solid rgba(255,255,255,0.05)'
-									: 'none',
 							background: 'none',
-							border: 'none',
-							borderBottomWidth: index < items.length - 1 ? 1 : 0,
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'rgba(255,255,255,0.05)',
 							cursor: 'pointer',
 							textAlign: 'left',
 							fontFamily: 'inherit',
+							...figmaListRowBorder(index === items.length - 1),
 						}}
 					>
 						<span style={{ fontSize: 20, flexShrink: 0 }}>{item.emoji}</span>
@@ -376,14 +373,10 @@ export function LifeFeedList({
 							gap: 13,
 							padding: '14px 18px',
 							background: 'none',
-							border: 'none',
-							borderBottom:
-								index < Math.min(items.length, 5) - 1
-									? '1px solid rgba(255,255,255,0.05)'
-									: 'none',
 							cursor: 'pointer',
 							textAlign: 'left',
 							fontFamily: 'inherit',
+							...figmaListRowBorder(index >= Math.min(items.length, 5) - 1),
 						}}
 					>
 						<span style={{ fontSize: 18, flexShrink: 0 }}>{item.emoji}</span>

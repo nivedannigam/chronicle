@@ -53,12 +53,8 @@ export function VehicleModuleFolderPicker({
 			await runVehicleImportSync(userId)
 			onAssigned?.()
 			onClose()
-		} catch (caught) {
-			setError(
-				caught instanceof Error
-					? caught.message
-					: 'Could not assign this folder.',
-			)
+		} catch {
+			setError('We could not connect this folder yet. Try again.')
 		} finally {
 			setIsSaving(false)
 		}
@@ -87,11 +83,11 @@ export function VehicleModuleFolderPicker({
 				<div className="mb-3 flex items-start justify-between gap-3">
 					<div>
 						<p className="text-lg font-bold text-white">
-							Choose Vehicles folder
+							Connect your root Vehicles folder
 						</p>
 						<p className="mt-1 text-sm text-white/55">
-							Connect your root Vehicles folder for {memberLabel}. Chronicle
-							scans nested vehicle folders recursively.
+							Select the Vehicles folder for {memberLabel}. Chronicle scans
+							nested vehicle folders automatically.
 						</p>
 					</div>
 					<button type="button" onClick={onClose} aria-label="Close">
@@ -151,7 +147,7 @@ export function VehicleModuleFolderPicker({
 					className="mt-4 rounded-2xl py-3 text-sm font-semibold text-white disabled:opacity-50"
 					style={{ background: FC.orange }}
 				>
-					{isSaving ? 'Connecting…' : 'Use this folder'}
+					{isSaving ? 'Connecting…' : 'Connect Vehicles folder'}
 				</button>
 			</div>
 		</div>

@@ -9,6 +9,7 @@ import {
 	missingHealthMetricsMessage,
 } from '@/features/connectors/services/connector-schema.utils'
 import { supabase } from '@/lib/supabase'
+import { qaInterceptHealthMetrics } from '@/qa/qa-interceptors'
 
 function mapStoredHealthMetric(
 	row: Record<string, unknown>,
@@ -49,6 +50,12 @@ export async function fetchHealthMetricsForUser(
 		reportIds?: string[]
 	} = {},
 ): Promise<StoredHealthMetric[]> {
+	const qaMetrics = await qaInterceptHealthMetrics(userId)
+
+	if (qaMetrics) {
+		return qaMetrics
+	}
+
 	let query = supabase
 		.from('health_metrics')
 		.select('*')

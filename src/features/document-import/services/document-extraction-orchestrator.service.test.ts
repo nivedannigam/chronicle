@@ -7,7 +7,7 @@ import {
 	validateInsuranceExtractionJson,
 } from '@/shared/ai/prompt/extract-domain-document.parser'
 import { orchestrateDomainDocumentExtraction } from '@/features/document-import/services/document-extraction-orchestrator.service'
-import { extractTextFromStoredPdf } from '@/features/document-import/services/domain-document-text.service'
+import { resolveDocumentContent } from '@/features/document-intelligence/content/resolve-document-content.service'
 import {
 	extractDomainDocumentWithAi,
 	extractDomainDocumentWithAiDirect,
@@ -28,9 +28,9 @@ vi.mock('@/shared/ai/config/ai-platform.config', () => ({
 }))
 
 vi.mock(
-	'@/features/document-import/services/domain-document-text.service',
+	'@/features/document-intelligence/content/resolve-document-content.service',
 	() => ({
-		extractTextFromStoredPdf: vi.fn(),
+		resolveDocumentContent: vi.fn(),
 	}),
 )
 
@@ -128,16 +128,18 @@ describe('orchestrateDomainDocumentExtraction', () => {
 		})
 
 		expect(result.method).toBe('ai_direct')
-		expect(extractTextFromStoredPdf).not.toHaveBeenCalled()
+		expect(resolveDocumentContent).not.toHaveBeenCalled()
 	})
 
-	it('B. falls back to OCR when AI direct is insufficient', async () => {
+	it('B. uses native text content without OCR provider when AI direct fails', async () => {
 		vi.mocked(extractDomainDocumentWithAiDirect).mockRejectedValueOnce(
 			new Error('insufficient structured data'),
 		)
-		vi.mocked(extractTextFromStoredPdf).mockResolvedValueOnce({
-			text: `${'Policy Number POL 123456\nInsurer ICICI Lombard\n'.repeat(12)}`,
-			confidence: 0.9,
+		vi.mocked(resolveDocumentContent).mockResolvedValueOnce({
+			content: `${'Policy Number POL 123456\nInsurer ICICI Lombard\n'.repeat(12)}`,
+			source: 'NATIVE_TEXT',
+			confidence: 0.95,
+			metadata: { provider: 'native-pdf-text', pageCount: 1, tableCount: 0 },
 		})
 		vi.mocked(extractDomainDocumentWithAi).mockResolvedValueOnce({
 			target: 'insurance',
@@ -167,15 +169,57 @@ describe('orchestrateDomainDocumentExtraction', () => {
 		})
 
 		expect(result.method).toBe('ocr_fallback')
-		expect(extractTextFromStoredPdf).toHaveBeenCalledTimes(1)
+		expect(resolveDocumentContent).toHaveBeenCalledTimes(1)
+		expect(result.observability?.contentSource).toBe('NATIVE_TEXT')
+	})
+
+	it('C. falls back to OCR content when native text is unavailable', async () => {
+		vi.mocked(extractDomainDocumentWithAiDirect).mockRejectedValueOnce(
+			new Error('insufficient structured data'),
+		)
+		vi.mocked(resolveDocumentContent).mockResolvedValueOnce({
+			content: `${'Policy Number POL 123456\nInsurer ICICI Lombard\n'.repeat(12)}`,
+			source: 'OCR',
+			confidence: 0.9,
+			metadata: { provider: 'google-document-ai', pageCount: 1, tableCount: 0 },
+		})
+		vi.mocked(extractDomainDocumentWithAi).mockResolvedValueOnce({
+			target: 'insurance',
+			method: 'ocr_fallback',
+			extractedText: 'Policy Number POL 123456',
+			insurance: parseInsuranceExtractionJson(
+				JSON.stringify({
+					insurer: 'ICICI Lombard',
+					policyNumber: 'POL 123456',
+					policyType: 'health',
+					sumInsured: 2500000,
+				}),
+			),
+		})
+
+		const result = await orchestrateDomainDocumentExtraction({
+			target: 'insurance',
+			userId: 'user-1',
+			documentId: 'doc-1',
+			fileName: 'scan.pdf',
+			storagePath: 'users/user-1/scan.pdf',
+			buildMetadataFallback: () => ({
+				target: 'insurance',
+				method: 'deterministic_fallback',
+				extractedText: null,
+			}),
+		})
+
+		expect(result.method).toBe('ocr_fallback')
+		expect(result.observability?.contentSource).toBe('OCR')
 	})
 
 	it('J. uses deterministic fallback when AI and OCR fail', async () => {
 		vi.mocked(extractDomainDocumentWithAiDirect).mockRejectedValueOnce(
 			new Error('cannot read document'),
 		)
-		vi.mocked(extractTextFromStoredPdf).mockRejectedValueOnce(
-			new Error('ocr failed'),
+		vi.mocked(resolveDocumentContent).mockRejectedValueOnce(
+			new Error('content resolution failed'),
 		)
 
 		const result = await orchestrateDomainDocumentExtraction({
@@ -201,6 +245,7 @@ describe('orchestrateDomainDocumentExtraction', () => {
 
 		expect(result.method).toBe('deterministic_fallback')
 		expect(result.observability?.extractionSuccess).toBe(false)
+		expect(result.observability?.extractionStatus).toBe('NEEDS_REVIEW')
 	})
 })
 

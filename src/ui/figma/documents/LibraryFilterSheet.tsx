@@ -4,6 +4,7 @@ import { DOCUMENT_HOME_CATEGORIES } from '@/features/documents/constants/documen
 import type { DocumentLibraryFilters } from '@/features/documents/types/document-intelligence.types'
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import type { ModuleSummary } from '@/core/platform/contracts/module-provider.contract'
+import { resolveConsumerDocumentStatusLabel } from '@/features/modules/contracts/module-ux.contract'
 import { DocumentFilterChip } from '@/ui/figma/documents/document-ui'
 import { FC } from '@/ui/figma/v2/atoms'
 
@@ -199,7 +200,7 @@ export function LibraryFilterSheet({
 					{STATUS_FILTERS.map((status) => (
 						<DocumentFilterChip
 							key={status}
-							label={status}
+							label={resolveConsumerDocumentStatusLabel(status)}
 							active={filters.consumerStatus === status}
 							onClick={() =>
 								onChange({

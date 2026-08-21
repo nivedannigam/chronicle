@@ -9,6 +9,7 @@ import type {
 	DocumentAttentionItem,
 	DocumentConsumerStatus,
 } from '@/features/documents/types/document-intelligence.types'
+import { resolveConsumerDocumentStatusLabel } from '@/features/modules/contracts/module-ux.contract'
 import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function DocumentSectionLabel({ children }: { children: ReactNode }) {
@@ -107,7 +108,7 @@ export function DocumentStatusBadge({
 				fontWeight: 700,
 			}}
 		>
-			{status}
+			{resolveConsumerDocumentStatusLabel(status)}
 		</span>
 	)
 }
@@ -128,17 +129,35 @@ export function DocumentModuleChip({
 			? `${emoji ? `${emoji} ` : ''}${label} ${count}`
 			: `${emoji ? `${emoji} ` : ''}${label}`
 
+	if (!onClick) {
+		return (
+			<span
+				style={{
+					background: FC.ghost,
+					border: `1px solid ${FC.line}`,
+					borderRadius: 100,
+					padding: '8px 12px',
+					color: FC.mid,
+					fontSize: 12,
+					fontWeight: 600,
+					display: 'inline-flex',
+				}}
+			>
+				{displayLabel}
+			</span>
+		)
+	}
+
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			disabled={!onClick}
 			style={{
 				background: FC.ghost,
 				border: `1px solid ${FC.line}`,
 				borderRadius: 100,
 				padding: '8px 12px',
-				cursor: onClick ? 'pointer' : 'default',
+				cursor: 'pointer',
 				fontFamily: 'inherit',
 				color: FC.mid,
 				fontSize: 12,
@@ -457,11 +476,19 @@ export function DocumentSummaryCard({
 						}
 					/>
 					<DocumentActionChip
-						label="Ask"
+						label="Ask Chronicle"
 						onClick={() =>
-							navigate(`${ROUTES.ask}?q=${encodeURIComponent(document.title)}`)
+							navigate(
+								`${ROUTES.ask}?q=${encodeURIComponent(`Tell me about ${document.title}`)}`,
+							)
 						}
 					/>
+					{document.moduleDetailLink ? (
+						<DocumentActionChip
+							label={document.moduleDetailLink.label}
+							onClick={() => navigate(document.moduleDetailLink!.path)}
+						/>
+					) : null}
 				</div>
 			) : null}
 		</div>

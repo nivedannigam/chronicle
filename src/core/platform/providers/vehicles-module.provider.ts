@@ -5,13 +5,20 @@ import type {
 	ModuleProviderQuery,
 	ModuleSummary,
 } from '@/core/platform/contracts/module-provider.contract'
+import {
+	buildLibraryStableKey,
+	formatLibraryDisplayDate,
+	matchesLibraryMember,
+	resolveOwnerLabel,
+	toModuleLibrarySummary,
+} from '@/core/platform/providers/module-document-provider.utils'
 import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 import { getVehicleDocumentTypeMeta } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
 
 function isVehicleLibraryDocument(document: ChronicleDocument): boolean {
-	return document.category_id === 'vehicles'
+	return document.category_id === 'vehicles' && document.status !== 'failed'
 }
 
 function vehicleKnowledgeDocToSummary(
@@ -22,6 +29,7 @@ function vehicleKnowledgeDocToSummary(
 		uploadedAt: string
 		isDisplayReady?: boolean
 		expiryDate?: string | null
+		vehicleId: string
 	},
 	vehicleName: string,
 	memberNames: Record<string, string>,
@@ -37,45 +45,31 @@ function vehicleKnowledgeDocToSummary(
 		!isExpired &&
 		expiry - Date.now() <= 1000 * 60 * 60 * 24 * 30
 
-	return {
-		id: document.id,
-		title: document.fileName,
+	return toModuleLibrarySummary({
+		canonicalId: document.id,
+		moduleId: 'vehicles',
 		categoryId: 'vehicles',
 		categoryLabel: 'Vehicles',
-		subCategoryLabel: meta.label,
-		ownerLabel: memberId
-			? (memberNames[memberId] ?? 'Family member')
-			: 'Account owner',
+		title: document.fileName,
+		documentType: meta.label,
 		sourceLabel: 'Vehicles folder',
+		displayDate: formatLibraryDisplayDate(document.uploadedAt),
 		summary: `${vehicleName} · ${meta.label}`,
-		displayDate: new Date(document.uploadedAt).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-		}),
+		familyMemberId: memberId ?? null,
+		ownerLabel: resolveOwnerLabel(memberNames, memberId),
+		moduleDetailPath: ROUTES.vehicles,
+		moduleDetailLabel: 'View in Vehicles',
+		sourceKey: buildLibraryStableKey('vehicles', document.id),
 		expiresLabel: document.expiryDate
-			? new Date(document.expiryDate).toLocaleDateString('en-US', {
-					month: 'short',
-					day: 'numeric',
-					year: 'numeric',
-				})
+			? formatLibraryDisplayDate(document.expiryDate)
 			: null,
 		isExpiringSoon,
 		isExpired,
-		fileType: 'PDF',
 		hasAiSummary: true,
 		tags: ['vehicles', document.documentType],
-		relatedModules: [
-			{
-				moduleId: 'vehicles',
-				label: 'Vehicles',
-				route: ROUTES.vehicles,
-			},
-		],
 		consumerStatus: document.isDisplayReady ? 'Ready' : 'Still Organizing',
-		aiDiscoveryLabel: null,
 		year: new Date(document.uploadedAt).getFullYear(),
-	}
+	})
 }
 
 export const vehiclesModuleProvider: ChronicleModuleProvider = {
@@ -87,22 +81,38 @@ export const vehiclesModuleProvider: ChronicleModuleProvider = {
 	getDocumentSection(query: ModuleProviderQuery): ModuleDocumentSection | null {
 		const knowledge = query.sources.vehicles?.knowledge
 		const memberNames = query.memberNames ?? {}
+		const scope = {
+			memberId: query.memberId,
+			accountOwnerMemberId: query.accountOwnerMemberId,
+		}
+		const familyMemberId = knowledge?.familyMember.id
 		const documents: ChronicleDocumentSummary[] = []
+		const seen = new Set<string>()
 		const categoryCounts = new Map<string, number>()
+
+		if (!matchesLibraryMember(familyMemberId, scope) && scope.memberId) {
+			return null
+		}
 
 		for (const document of knowledge?.documents ?? []) {
 			const vehicle =
 				knowledge?.vehicles.find((entry) => entry.id === document.vehicleId)
 					?.displayName ?? 'Vehicle'
 
-			documents.push(
-				vehicleKnowledgeDocToSummary(
-					document,
-					vehicle,
-					memberNames,
-					knowledge?.familyMember.id,
-				),
+			const summary = vehicleKnowledgeDocToSummary(
+				document,
+				vehicle,
+				memberNames,
+				familyMemberId,
 			)
+			const key = summary.sourceKey ?? summary.id
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
+			documents.push(summary)
 			categoryCounts.set(
 				document.documentType,
 				(categoryCounts.get(document.documentType) ?? 0) + 1,
@@ -114,6 +124,17 @@ export const vehiclesModuleProvider: ChronicleModuleProvider = {
 				continue
 			}
 
+			if (!matchesLibraryMember(document.family_member_id, scope)) {
+				continue
+			}
+
+			const key = buildLibraryStableKey('vehicles', document.id)
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
 			documents.push(toDocumentSummary(document, memberNames))
 		}
 

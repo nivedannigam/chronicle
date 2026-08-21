@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ROUTES, documentsCategoryPath } from '@/constants/routes'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useDocumentIntelligence } from '@/features/documents/hooks/useDocumentIntelligence'
+import { resolveDocumentModuleDetailPath } from '@/features/documents/services/document-module-links.service'
 import {
 	buildDocumentIntelligenceView,
 	toDocumentSummary,
@@ -11,6 +13,10 @@ import {
 import { getDocumentSignedUrl } from '@/features/documents/services/document-upload.service'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import { getCategoryDisplayMeta } from '@/features/documents/constants/document-category-display'
+import {
+	useIdentityPreferences,
+	maskIdentityDisplayFieldValue,
+} from '@/features/identity-knowledge'
 import {
 	DocumentActionChip,
 	DocumentActivityRow,
@@ -26,7 +32,7 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 
 function formatSource(document: ChronicleDocument): string {
 	if (document.source === 'google-drive') {
-		return 'Synced from Google Drive · Chronicle intelligence layer'
+		return 'Synced from Google Drive · Organized by Chronicle'
 	}
 	return 'Stored in Chronicle · Original in secure vault'
 }
@@ -37,6 +43,8 @@ export function FigmaDocumentDetailScreen({
 	document: ChronicleDocument
 }) {
 	const navigate = useNavigate()
+	const { user } = useAuth()
+	const preferences = useIdentityPreferences(user?.id)
 	const { allDocuments, memberNames } = useDocumentIntelligence()
 
 	const intelligence = useMemo(
@@ -47,6 +55,26 @@ export function FigmaDocumentDetailScreen({
 			}),
 		[allDocuments, document],
 	)
+
+	const moduleDetailLink = useMemo(
+		() => resolveDocumentModuleDetailPath(document),
+		[document],
+	)
+
+	const displayFields = useMemo(() => {
+		if (document.category_id !== 'identity') {
+			return intelligence.displayFields
+		}
+
+		return intelligence.displayFields.map((field) => ({
+			...field,
+			value: maskIdentityDisplayFieldValue(
+				field.label,
+				field.value,
+				preferences,
+			),
+		}))
+	}, [document.category_id, intelligence.displayFields, preferences])
 
 	const summary = useMemo(
 		() => toDocumentSummary(document, memberNames),
@@ -81,6 +109,7 @@ export function FigmaDocumentDetailScreen({
 					consumerStatus: 'Ready' as const,
 					aiDiscoveryLabel: null,
 					year: null,
+					moduleDetailLink: null,
 				}
 			}
 
@@ -276,7 +305,7 @@ export function FigmaDocumentDetailScreen({
 							marginTop: 10,
 						}}
 					>
-						{intelligence.displayFields.map((field, index) => (
+						{displayFields.map((field, index) => (
 							<div
 								key={field.label}
 								style={{
@@ -285,7 +314,7 @@ export function FigmaDocumentDetailScreen({
 									gap: 12,
 									padding: '13px 16px',
 									borderBottom:
-										index < intelligence.displayFields.length - 1
+										index < displayFields.length - 1
 											? `1px solid ${FC.line}`
 											: 'none',
 									fontSize: 14,
@@ -305,6 +334,30 @@ export function FigmaDocumentDetailScreen({
 						))}
 					</div>
 				</div>
+			) : null}
+
+			{moduleDetailLink ? (
+				<button
+					type="button"
+					onClick={() => navigate(moduleDetailLink.path)}
+					style={{
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: 6,
+						background: 'none',
+						border: 'none',
+						padding: 0,
+						marginBottom: 18,
+						cursor: 'pointer',
+						fontFamily: 'inherit',
+						color: FC.blue,
+						fontSize: 13,
+						fontWeight: 600,
+					}}
+				>
+					{moduleDetailLink.label}
+					<ExternalLink size={14} />
+				</button>
 			) : null}
 
 			{intelligence.relatedDocuments.length > 0 ? (

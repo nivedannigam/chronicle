@@ -1,11 +1,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
-import { filterReportsForMember } from '@/features/family/utils/member-display'
 import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
 import { useUploadedHealthReports } from '@/features/health/hooks/useUploadedHealthReports'
 import { useInsuranceKnowledge } from '@/features/insurance/hooks/useInsuranceKnowledge'
 import { useVehicleKnowledge } from '@/features/vehicles/hooks/useVehicleKnowledge'
+import { buildIdentityKnowledge } from '@/features/identity-knowledge'
+import { buildFinanceKnowledge } from '@/features/finance-knowledge'
+import { buildPropertyKnowledge } from '@/features/property-knowledge'
 import type { FederatedLibraryView } from '@/core/platform/contracts/module-provider.contract'
 import {
 	buildLibraryHubView,
@@ -53,19 +55,50 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 		return map
 	}, [members])
 
-	const healthReports = useMemo(() => {
-		const allReports = reportsQuery.data ?? []
+	const healthReports = reportsQuery.data ?? []
 
-		if (!selectedMemberId) {
-			return allReports
+	const identityKnowledge = useMemo(() => {
+		if (!userId) {
+			return null
 		}
 
-		return filterReportsForMember(
-			allReports,
-			selectedMemberId,
+		return buildIdentityKnowledge({
+			userId,
+			documents: allDocuments,
+			members,
 			accountOwnerMemberId,
-		)
-	}, [reportsQuery.data, selectedMemberId, accountOwnerMemberId])
+		})
+	}, [userId, allDocuments, members, accountOwnerMemberId])
+
+	const financeKnowledge = useMemo(() => {
+		if (!userId) {
+			return null
+		}
+
+		return buildFinanceKnowledge({
+			userId,
+			documents: allDocuments,
+			members,
+			hasFolderAssigned: false,
+			isLoading: documentsLoading,
+			selectedMemberId,
+		})
+	}, [userId, allDocuments, members, documentsLoading, selectedMemberId])
+
+	const propertyKnowledge = useMemo(() => {
+		if (!userId) {
+			return null
+		}
+
+		return buildPropertyKnowledge({
+			userId,
+			documents: allDocuments,
+			members,
+			hasFolderAssigned: false,
+			rootFolderPath: null,
+			selectedMemberId,
+		})
+	}, [userId, allDocuments, members, selectedMemberId])
 
 	const chronicleDocumentsForQuery = useMemo(() => {
 		if (!selectedMemberId) {
@@ -80,10 +113,14 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 			userId: userId ?? '',
 			memberId: selectedMemberId,
 			memberNames,
+			accountOwnerMemberId,
 			healthReports,
 			chronicleDocuments: chronicleDocumentsForQuery,
 			insuranceKnowledge: insuranceQuery.knowledge,
 			vehicleKnowledge: vehicleQuery.knowledge,
+			identityKnowledge,
+			financeKnowledge,
+			propertyKnowledge,
 		})
 
 		return buildLibraryHubView({
@@ -98,6 +135,10 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
 		selectedMemberId,
 		insuranceQuery.knowledge,
 		vehicleQuery.knowledge,
+		identityKnowledge,
+		financeKnowledge,
+		propertyKnowledge,
+		accountOwnerMemberId,
 	])
 
 	const availableYears = useMemo(

@@ -72,6 +72,14 @@ function mapAssignment(row: Record<string, unknown>): HealthSourceAssignment {
 export async function listHealthSourceAssignments(
 	userId: string,
 ): Promise<HealthSourceAssignment[]> {
+	const { qaInterceptHealthSourceAssignments } =
+		await import('@/qa/qa-interceptors')
+	const qaAssignments = qaInterceptHealthSourceAssignments(userId)
+
+	if (qaAssignments !== null) {
+		return qaAssignments
+	}
+
 	const { data, error } = await supabase
 		.from('health_folder_assignments')
 		.select(

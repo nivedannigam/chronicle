@@ -3,6 +3,8 @@ import { formatMemberLabel } from '@/features/family/services/folder-match.servi
 import type { FamilyMemberWithAliases } from '@/features/family/types/family.types'
 import { listModuleFolderAssignments } from '@/features/settings/services/module-folder-assignments.service'
 import type { ModuleFolderAssignment } from '@/features/settings/types/chronicle-module.types'
+import { qaInterceptFolderAssignments } from '@/qa/qa-interceptors'
+import { assertQaUserId } from '@/qa/qa-repository'
 
 export interface VehicleSourceAssignment {
 	id: string
@@ -104,9 +106,37 @@ async function upsertConnectorFolder(input: {
 	return data.id as string
 }
 
+function mapModuleFolderAssignmentToVehicleSource(
+	assignment: ModuleFolderAssignment,
+): VehicleSourceAssignment {
+	return {
+		id: assignment.id,
+		userId: assignment.userId,
+		connectorId: assignment.connectorId,
+		folderId: assignment.folderId,
+		familyMemberId: assignment.familyMemberId,
+		familyMemberName: assignment.familyMemberName,
+		memberLabel: assignment.memberLabel,
+		externalFolderId: assignment.externalFolderId,
+		folderName: assignment.folderName,
+		folderPath: assignment.folderPath,
+		discoveredVehicleNames: ['XEV 9e', 'City Compact'],
+		assignedAt: assignment.assignedAt,
+		enabled: assignment.enabled,
+	}
+}
+
 export async function listVehicleSourceAssignments(
 	userId: string,
 ): Promise<VehicleSourceAssignment[]> {
+	if (assertQaUserId(userId)) {
+		const qaFolderAssignments = qaInterceptFolderAssignments(userId, 'vehicles')
+
+		if (qaFolderAssignments !== null) {
+			return qaFolderAssignments.map(mapModuleFolderAssignmentToVehicleSource)
+		}
+	}
+
 	const { data, error } = await supabase
 		.from('vehicle_folder_assignments')
 		.select(

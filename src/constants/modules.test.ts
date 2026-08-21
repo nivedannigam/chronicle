@@ -43,7 +43,7 @@ describe('Modules hub sections', () => {
 		expect(comingSoon.map((module) => module.id)).toEqual([
 			...COMING_SOON_MODULE_IDS,
 		])
-		expect(comingSoon).toHaveLength(5)
+		expect(comingSoon).toHaveLength(3)
 	})
 })
 
@@ -56,6 +56,8 @@ describe('isModuleNavigable', () => {
 			'vehicles',
 			'identity',
 			'personal',
+			'property',
+			'finance',
 		])
 
 		for (const module of navigable) {
@@ -93,6 +95,9 @@ describe('isModuleNavigable', () => {
 		)
 		expect(LIFE_MODULE_REGISTRY.find((m) => m.id === 'identity')?.route).toBe(
 			ROUTES.identity,
+		)
+		expect(LIFE_MODULE_REGISTRY.find((m) => m.id === 'property')?.route).toBe(
+			ROUTES.property,
 		)
 	})
 })

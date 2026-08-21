@@ -2,6 +2,9 @@ import type { PlatformModuleId } from '@/core/platform/contracts/platform-module
 import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
+import type { IdentityKnowledge } from '@/features/identity-knowledge/types/identity-knowledge.types'
+import type { FinanceKnowledge } from '@/features/finance-knowledge/types/finance-knowledge.types'
+import type { PropertyKnowledge } from '@/features/property-knowledge/types/property-knowledge.types'
 import type { UploadedHealthReport } from '@/features/health/types'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 import type { ChronicleTimelineEvent } from '@/features/timeline/types/timeline.types'
@@ -20,6 +23,17 @@ export interface ModuleProviderSources {
 	vehicles?: {
 		knowledge?: VehicleKnowledge | null
 	}
+	identity?: {
+		knowledge?: IdentityKnowledge | null
+	}
+	finance?: {
+		knowledge?: FinanceKnowledge | null
+	}
+	property?: {
+		knowledge?: PropertyKnowledge | null
+		hasFolderAssigned?: boolean
+		rootFolderPath?: string | null
+	}
 }
 
 export interface ModuleProviderQuery {
@@ -27,6 +41,7 @@ export interface ModuleProviderQuery {
 	memberId?: string | null
 	memberName?: string | null
 	memberNames?: Record<string, string>
+	accountOwnerMemberId?: string | null
 	sources: ModuleProviderSources
 }
 

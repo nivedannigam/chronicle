@@ -1,13 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import {
-	Clock,
-	FileText,
-	Home,
-	MessageCircle,
-	Receipt,
-	Settings,
-	Shield,
-} from 'lucide-react'
+import { Clock, FileText, Home, Receipt, Settings, Shield } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { INSURANCE_COPY } from '@/constants/product-copy'
@@ -59,17 +51,10 @@ const INSURANCE_TABS: {
 	},
 	{
 		id: 'timeline',
-		label: INSURANCE_COPY.timelineTab,
+		label: 'History',
 		path: ROUTES.insuranceTimeline,
 		Icon: Clock,
 		color: FC.teal,
-	},
-	{
-		id: 'ask',
-		label: INSURANCE_COPY.askTab,
-		path: ROUTES.insuranceAsk,
-		Icon: MessageCircle,
-		color: FC.blue,
 	},
 	{
 		id: 'settings',

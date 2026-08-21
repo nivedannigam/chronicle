@@ -24,6 +24,7 @@ import {
 	FC,
 	MEMBER_COLORS,
 	figmaCardStyle,
+	figmaListRowBorder,
 } from '@/ui/figma/tokens/figma-v2-tokens'
 import type { LifeScoreDimension } from '@/features/os/types/os.types'
 
@@ -282,10 +283,11 @@ export function FigmaHomeScreen() {
 						padding: '4px 16px',
 					}}
 				>
-					{moduleCards.map((card) => (
+					{moduleCards.map((card, index) => (
 						<HomeModuleSnapshotRow
 							key={card.id}
 							card={card}
+							isLast={index === moduleCards.length - 1}
 							onClick={() => navigate(resolveModuleHubCardAction(card).path)}
 						/>
 					))}
@@ -342,15 +344,11 @@ export function FigmaHomeScreen() {
 										alignItems: 'center',
 										gap: 13,
 										padding: '15px 18px',
-										borderBottom:
-											index < actionableItems.length - 1
-												? '1px solid rgba(255,255,255,0.05)'
-												: 'none',
 										background: 'none',
-										border: 'none',
 										cursor: 'pointer',
 										textAlign: 'left',
 										fontFamily: 'inherit',
+										...figmaListRowBorder(index === actionableItems.length - 1),
 									}}
 								>
 									<span style={{ fontSize: 19 }}>{attentionIcon(item)}</span>

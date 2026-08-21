@@ -254,11 +254,12 @@ export function filterFederatedLibrarySummaries(
 	}
 
 	if (filters.familyMemberId) {
-		const memberName = memberNames[filters.familyMemberId]
-
-		if (memberName) {
-			results = results.filter((summary) => summary.ownerLabel === memberName)
-		}
+		results = results.filter(
+			(summary) =>
+				summary.familyMemberId === filters.familyMemberId ||
+				(!summary.familyMemberId &&
+					summary.ownerLabel === memberNames[filters.familyMemberId!]),
+		)
 	}
 
 	if (filters.year) {

@@ -1,8 +1,14 @@
 import type { User } from '@supabase/supabase-js'
 import { buildUserProfile } from '@/features/user/services/user-profile'
 import { supabase } from '@/lib/supabase'
+import { QA_USER_ID } from '@/qa/qa-constants'
+import { isQaModeEnabled } from '@/qa/qa-mode'
 
 export async function syncUserProfile(user: User): Promise<User> {
+	if (isQaModeEnabled() && user.id === QA_USER_ID) {
+		return user
+	}
+
 	const profile = buildUserProfile(user)
 	const metadata = user.user_metadata ?? {}
 

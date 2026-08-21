@@ -1,3 +1,4 @@
+import type { FinanceKnowledge } from '@/features/finance-knowledge/types/finance-knowledge.types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
 import type { EvidenceBundle } from '@/shared/ai/evidence-planning/types'
@@ -11,6 +12,7 @@ export function domainEvidenceToNormalized(input: {
 	bundle: EvidenceBundle
 	insuranceKnowledge?: InsuranceKnowledge
 	vehicleKnowledge?: VehicleKnowledge
+	financeKnowledge?: FinanceKnowledge
 }): NormalizedKnowledge {
 	const reports = input.bundle.reports.map((report) => ({
 		id: report.id,
@@ -35,7 +37,15 @@ export function domainEvidenceToNormalized(input: {
 			? Boolean(input.insuranceKnowledge?.policies.length)
 			: input.domain === 'vehicles'
 				? Boolean(input.vehicleKnowledge?.hasVehicles)
-				: reports.length > 0 || metrics.length > 0
+				: input.domain === 'finance'
+					? Boolean(
+							input.financeKnowledge?.hasDocuments ||
+							input.financeKnowledge?.bankAccounts.length ||
+							input.financeKnowledge?.loans.length ||
+							input.financeKnowledge?.investmentAccounts.length ||
+							input.financeKnowledge?.creditCards.length,
+						)
+					: reports.length > 0 || metrics.length > 0
 
 	return {
 		domain: input.domain,

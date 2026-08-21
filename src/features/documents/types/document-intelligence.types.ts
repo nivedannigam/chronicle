@@ -78,9 +78,16 @@ export interface ChronicleDocumentSummary {
 	hasAiSummary: boolean
 	tags: string[]
 	relatedModules: DocumentModuleLinkView[]
+	moduleDetailLink: { label: string; path: string } | null
 	consumerStatus: DocumentConsumerStatus
 	aiDiscoveryLabel: string | null
 	year: number | null
+	/** Canonical family member when known — used for Library scope filtering. */
+	familyMemberId?: string | null
+	/** Stable federated dedupe key — module:canonicalId or registry:externalFileId. */
+	sourceKey?: string
+	/** When true, Library search/cards avoid echoing raw identifiers. */
+	privacySensitive?: boolean
 }
 
 export interface DocumentsHubView {

@@ -1,6 +1,12 @@
 /** Chronicle modules that share the connected-folder + settings architecture. */
 export type ChronicleModuleId =
-	'health' | 'insurance' | 'vehicles' | 'identity' | 'finance' | 'documents'
+	| 'health'
+	| 'insurance'
+	| 'vehicles'
+	| 'identity'
+	| 'finance'
+	| 'property'
+	| 'documents'
 
 export interface ModuleFolderAssignment {
 	id: string

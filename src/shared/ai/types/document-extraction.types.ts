@@ -16,6 +16,8 @@ export interface DocumentExtractionObservability {
 	processingDurationMs: number
 	provider?: string | null
 	model?: string | null
+	contentSource?: string | null
+	extractionStatus?: string | null
 }
 
 export interface AskAiDocumentAttachment {

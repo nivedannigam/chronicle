@@ -6,16 +6,20 @@ import type {
 	ModuleSummary,
 } from '@/core/platform/contracts/module-provider.contract'
 import {
+	buildLibraryStableKey,
+	formatLibraryDisplayDate,
+	matchesLibraryMember,
+	resolveOwnerLabel,
+	toModuleLibrarySummary,
+} from '@/core/platform/providers/module-document-provider.utils'
+import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
+import {
 	getReportDisplayTitle,
 	getParsedHealthReport,
 } from '@/features/health/services/health-parsed-report.service'
 import { mapProductReportStatus } from '@/features/health/services/health-product.mapper'
-import { toDocumentSummary } from '@/features/documents/services/document-intelligence.service'
 import type { UploadedHealthReport } from '@/features/health/types'
-import type {
-	ChronicleDocumentSummary,
-	DocumentConsumerStatus,
-} from '@/features/documents/types/document-intelligence.types'
+import type { ChronicleDocumentSummary } from '@/features/documents/types/document-intelligence.types'
 
 function isLibraryHealthReport(report: UploadedHealthReport): boolean {
 	return report.status !== 'failed'
@@ -23,7 +27,7 @@ function isLibraryHealthReport(report: UploadedHealthReport): boolean {
 
 function mapHealthReportConsumerStatus(
 	report: UploadedHealthReport,
-): DocumentConsumerStatus {
+): ChronicleDocumentSummary['consumerStatus'] {
 	switch (mapProductReportStatus(report)) {
 		case 'ready':
 			return 'Ready'
@@ -34,19 +38,6 @@ function mapHealthReportConsumerStatus(
 	}
 }
 
-function formatDisplayDate(value: string): string {
-	const date = new Date(value)
-	if (Number.isNaN(date.getTime())) {
-		return '—'
-	}
-
-	return date.toLocaleDateString('en-US', {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	})
-}
-
 function healthReportToSummary(
 	report: UploadedHealthReport,
 	memberNames: Record<string, string>,
@@ -55,37 +46,33 @@ function healthReportToSummary(
 	const title = getReportDisplayTitle(report)
 	const reportDate = report.report_date ?? report.uploaded_at
 
-	return {
-		id: report.id,
-		title,
+	return toModuleLibrarySummary({
+		canonicalId: report.id,
+		moduleId: 'health',
 		categoryId: 'medical',
 		categoryLabel: 'Health',
-		subCategoryLabel: parsed?.metadata.reportType ?? report.report_type ?? null,
-		ownerLabel: report.family_member_id
-			? (memberNames[report.family_member_id] ?? 'Family member')
-			: 'Account owner',
+		title,
+		documentType: parsed?.metadata.reportType ?? report.report_type ?? null,
 		sourceLabel: report.source === 'google_drive' ? 'Google Drive' : 'Upload',
+		displayDate: formatLibraryDisplayDate(reportDate),
 		summary: parsed?.metadata.laboratory
-			? `${parsed.metadata.laboratory} · ${formatDisplayDate(reportDate)}`
-			: formatDisplayDate(reportDate),
-		displayDate: formatDisplayDate(reportDate),
-		expiresLabel: null,
-		isExpiringSoon: false,
-		isExpired: false,
-		fileType: 'PDF',
+			? `${parsed.metadata.laboratory} · ${formatLibraryDisplayDate(reportDate)}`
+			: formatLibraryDisplayDate(reportDate),
+		familyMemberId: report.family_member_id,
+		ownerLabel: resolveOwnerLabel(memberNames, report.family_member_id),
+		moduleDetailPath: healthReportPath(report.id),
+		moduleDetailLabel: 'View health record',
+		sourceKey: buildLibraryStableKey('health', report.id),
 		hasAiSummary: Boolean(parsed?.metrics.length),
 		tags: ['health'],
-		relatedModules: [
-			{
-				moduleId: 'health',
-				label: 'Health',
-				route: healthReportPath(report.id),
-			},
-		],
 		consumerStatus: mapHealthReportConsumerStatus(report),
-		aiDiscoveryLabel: null,
-		year: new Date(reportDate).getFullYear(),
-	}
+		year: resolveLibraryYear(reportDate),
+	})
+}
+
+function resolveLibraryYear(value: string): number | null {
+	const parsed = Date.parse(value)
+	return Number.isNaN(parsed) ? null : new Date(parsed).getFullYear()
 }
 
 export const healthModuleProvider: ChronicleModuleProvider = {
@@ -96,33 +83,49 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 
 	getDocumentSection(query: ModuleProviderQuery): ModuleDocumentSection | null {
 		const memberNames = query.memberNames ?? {}
-		const reports = (query.sources.health?.uploadedReports ?? []).filter(
-			isLibraryHealthReport,
-		)
-		const medicalChronicleDocs = (
-			query.sources.documents?.uploadedDocuments ?? []
-		).filter(
-			(document) =>
-				document.category_id === 'medical' && document.status !== 'failed',
-		)
-
-		const documents: ChronicleDocumentSummary[] = []
-		const seenIds = new Set<string>()
-
-		for (const report of reports) {
-			const summary = healthReportToSummary(report, memberNames)
-			if (!seenIds.has(summary.id)) {
-				seenIds.add(summary.id)
-				documents.push(summary)
-			}
+		const scope = {
+			memberId: query.memberId,
+			accountOwnerMemberId: query.accountOwnerMemberId,
 		}
+		const documents: ChronicleDocumentSummary[] = []
+		const seen = new Set<string>()
 
-		for (const document of medicalChronicleDocs) {
-			if (seenIds.has(document.id)) {
+		for (const report of query.sources.health?.uploadedReports ?? []) {
+			if (!isLibraryHealthReport(report)) {
 				continue
 			}
 
-			seenIds.add(document.id)
+			if (!matchesLibraryMember(report.family_member_id, scope)) {
+				continue
+			}
+
+			const summary = healthReportToSummary(report, memberNames)
+			const key = summary.sourceKey ?? summary.id
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
+			documents.push(summary)
+		}
+
+		for (const document of query.sources.documents?.uploadedDocuments ?? []) {
+			if (document.category_id !== 'medical' || document.status === 'failed') {
+				continue
+			}
+
+			if (!matchesLibraryMember(document.family_member_id, scope)) {
+				continue
+			}
+
+			const key = buildLibraryStableKey('health', document.id)
+
+			if (seen.has(key)) {
+				continue
+			}
+
+			seen.add(key)
 			documents.push(toDocumentSummary(document, memberNames))
 		}
 
@@ -143,18 +146,9 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 	},
 
 	getSummary(query: ModuleProviderQuery): ModuleSummary | null {
-		const reportCount = (query.sources.health?.uploadedReports ?? []).filter(
-			isLibraryHealthReport,
-		).length
-		const medicalChronicleCount = (
-			query.sources.documents?.uploadedDocuments ?? []
-		).filter(
-			(document) =>
-				document.category_id === 'medical' && document.status !== 'failed',
-		).length
-		const count = reportCount + medicalChronicleCount
+		const section = this.getDocumentSection(query)
 
-		if (count === 0) {
+		if (!section) {
 			return null
 		}
 
@@ -162,8 +156,8 @@ export const healthModuleProvider: ChronicleModuleProvider = {
 			moduleId: 'health',
 			label: 'Health',
 			emoji: '❤️',
-			documentCount: count,
-			headline: `${count} health report${count === 1 ? '' : 's'}`,
+			documentCount: section.totalCount,
+			headline: `${section.totalCount} health report${section.totalCount === 1 ? '' : 's'}`,
 		}
 	},
 }

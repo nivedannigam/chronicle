@@ -8,6 +8,7 @@ import {
 	filterFederatedLibrarySummaries,
 } from '@/features/documents/services/document-library.service'
 import type { DocumentLibraryFilters } from '@/features/documents/types/document-intelligence.types'
+import { getLifeModuleById } from '@/constants/modules'
 import { ROUTES } from '@/constants/routes'
 import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import {
@@ -25,17 +26,11 @@ import { FC } from '@/ui/figma/v2/atoms'
 function resolveActiveFilterLabel(
 	filters: ReturnType<typeof defaultLibraryFilters>,
 ): string | null {
-	if (filters.moduleId) {
-		return filters.moduleId === 'health'
-			? 'Health'
-			: filters.moduleId === 'insurance'
-				? 'Insurance'
-				: filters.moduleId === 'vehicles'
-					? 'Vehicles'
-					: 'Library'
+	if (!filters.moduleId) {
+		return null
 	}
 
-	return null
+	return getLifeModuleById(filters.moduleId)?.name ?? 'Library'
 }
 
 export function FigmaDocumentsLibraryScreen() {

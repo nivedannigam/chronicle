@@ -7,8 +7,16 @@ import {
 	logStructured,
 	resolveDocumentAiAccessToken,
 } from './google-auth.ts'
+import {
+	extractNativePdfText,
+	isNativeTextSufficient,
+} from './native-pdf-text.ts'
 import { orchestrateDocumentOcr } from './ocr-orchestrator.ts'
 import { readImagelessModeEnabled } from './page-chunk-plan.ts'
+import {
+	isPdfMimeType,
+	normalizeHealthReportMimeType,
+} from '../_shared/health-report-mime.ts'
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
@@ -60,6 +68,41 @@ async function assertStorageOwnership(
 	if (!report && !document) {
 		throw new Error('Forbidden: storage object does not belong to this user.')
 	}
+}
+
+async function processWithNativePdfText(
+	nativeText: string,
+	body: OcrRequestBody,
+	startedAt: number,
+	correlationId: string,
+): Promise<Response> {
+	logStructured('native_pdf_text_used', {
+		correlationId,
+		fileName: body.fileName,
+		textLength: nativeText.length,
+	})
+
+	return new Response(
+		JSON.stringify({
+			rawText: nativeText,
+			pages: [{ pageNumber: 1, text: nativeText, confidence: 0.95 }],
+			tables: [],
+			confidence: 0.95,
+			metadata: {
+				provider: 'native-pdf-text',
+				mimeType: body.mimeType,
+				fileName: body.fileName,
+				pageCount: 1,
+				tableCount: 0,
+				correlationId,
+				contentSource: 'NATIVE_TEXT',
+			},
+			processingTimeMs: Date.now() - startedAt,
+		}),
+		{
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		},
+	)
 }
 
 async function processWithGoogleDocumentAI(
@@ -179,6 +222,20 @@ Deno.serve(async (request) => {
 		}
 
 		const documentBytes = new Uint8Array(await fileData.arrayBuffer())
+		const normalizedMimeType = normalizeHealthReportMimeType(body.mimeType)
+
+		if (isPdfMimeType(normalizedMimeType)) {
+			const nativeText = await extractNativePdfText(documentBytes)
+
+			if (nativeText && isNativeTextSufficient(nativeText)) {
+				return await processWithNativePdfText(
+					nativeText,
+					body,
+					startedAt,
+					correlationId,
+				)
+			}
+		}
 
 		return await processWithGoogleDocumentAI(
 			documentBytes,

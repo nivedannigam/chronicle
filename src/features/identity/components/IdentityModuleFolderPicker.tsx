@@ -48,12 +48,8 @@ export function IdentityModuleFolderPicker({
 			await runIdentityImportSync(userId)
 			onAssigned?.()
 			onClose()
-		} catch (caught) {
-			setError(
-				caught instanceof Error
-					? caught.message
-					: 'Could not assign this folder.',
-			)
+		} catch {
+			setError('We could not connect this folder yet. Try again.')
 		} finally {
 			setIsSaving(false)
 		}

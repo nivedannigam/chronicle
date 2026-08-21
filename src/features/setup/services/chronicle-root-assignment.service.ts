@@ -1,9 +1,11 @@
 import { assignHealthSourceFolders } from '@/features/family/services/health-sources.service'
 import { assignInsuranceSourceFolder } from '@/features/family/services/insurance-sources.service'
 import { assignVehicleSourceFolder } from '@/features/family/services/vehicle-sources.service'
+import { assignFinanceSourceFolder } from '@/features/finance/services/finance-sources.service'
 import { discoverInsuranceCategoriesFromFolderNames } from '@/features/insurance/services/insurance-folder-discovery.service'
 import { runInsuranceImportSync } from '@/features/insurance-import/services/insurance-import-runner.service'
 import { runVehicleImportSync } from '@/features/vehicle-import/services/vehicle-import-runner.service'
+import { runFinanceImportSync } from '@/features/finance-import/services/finance-import-runner.service'
 import { runHealthImportJourney } from '@/features/health-import/services/health-import-journey.service'
 import type { DiscoveredModuleFolder } from '@/features/setup/services/chronicle-root-discovery.service'
 import {
@@ -55,6 +57,18 @@ export async function assignDiscoveredModuleFolders(input: {
 					mode: 'add',
 				})
 				break
+			case 'finance':
+				await assignFinanceSourceFolder({
+					userId: input.userId,
+					externalFolderId: folder.folderId,
+					folderName: folder.folderName,
+					folderPath: folder.folderPath,
+					familyMemberId: input.familyMemberId,
+					familyMemberName: 'Account owner',
+					memberLabel: 'Owner',
+					mode: 'add',
+				})
+				break
 		}
 	}
 
@@ -75,5 +89,6 @@ export async function assignDiscoveredModuleFolders(input: {
 		).catch(() => undefined),
 		runInsuranceImportSync(input.userId).catch(() => undefined),
 		runVehicleImportSync(input.userId).catch(() => undefined),
+		runFinanceImportSync(input.userId).catch(() => undefined),
 	])
 }

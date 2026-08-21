@@ -1,4 +1,5 @@
-import { Cloud, Download, Eye, Folder, Unplug } from 'lucide-react'
+import { Cloud, Download, Eye, Folder, Unplug, Users } from 'lucide-react'
+import { MODULE_SETTINGS_SECTIONS } from '@/features/modules/contracts/module-ux.contract'
 import { USER_VOCAB } from '@/constants/user-vocabulary'
 import {
 	ModuleSettingsAdvancedSection,
@@ -44,7 +45,7 @@ export function FigmaHealthSettingsView({
 }) {
 	return (
 		<div style={{ paddingBottom: 32 }}>
-			<ModuleSettingsSection label={USER_VOCAB.sections.dataSource}>
+			<ModuleSettingsSection label={MODULE_SETTINGS_SECTIONS.connectedFolder}>
 				<ModuleSettingsRow
 					icon={Cloud}
 					color={driveConnected ? FC.green : FC.amber}
@@ -80,9 +81,9 @@ export function FigmaHealthSettingsView({
 				)}
 			</ModuleSettingsSection>
 
-			<ModuleSettingsSection label={USER_VOCAB.sections.importPreferences}>
+			<ModuleSettingsSection label={MODULE_SETTINGS_SECTIONS.family}>
 				<ModuleSettingsRow
-					icon={Eye}
+					icon={Users}
 					color={FC.purple}
 					title="Family member handling"
 					subtitle={`Currently managing records for ${memberLabel}`}
@@ -91,7 +92,7 @@ export function FigmaHealthSettingsView({
 				/>
 			</ModuleSettingsSection>
 
-			<ModuleSettingsSection label="Privacy">
+			<ModuleSettingsSection label={MODULE_SETTINGS_SECTIONS.privacy}>
 				<ModuleSettingsRow
 					icon={Eye}
 					color={FC.purple}
@@ -123,7 +124,7 @@ export function FigmaHealthSettingsView({
 				</ModuleSettingsSection>
 			) : null}
 
-			<ModuleSettingsAdvancedSection label={USER_VOCAB.sections.advanced}>
+			<ModuleSettingsAdvancedSection label={MODULE_SETTINGS_SECTIONS.advanced}>
 				<ModuleSettingsRow
 					icon={Folder}
 					color={FC.teal}

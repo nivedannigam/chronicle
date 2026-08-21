@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase'
+import { QA_USER_ID } from '@/qa/qa-constants'
+import { qaInterceptFamilyMembers } from '@/qa/qa-interceptors'
+import { isQaModeEnabled } from '@/qa/qa-mode'
 import { dedupeFamilyMembers } from '@/features/family/utils/dedupe-family-members'
 import { getOrCreateFamily } from '@/features/family/services/family-platform.service'
 import type {
@@ -61,6 +64,12 @@ export async function listFamilyMembers(
 export async function listFamilyMembersWithAliases(
 	userId: string,
 ): Promise<FamilyMemberWithAliases[]> {
+	const qaMembers = qaInterceptFamilyMembers(userId)
+
+	if (qaMembers) {
+		return qaMembers
+	}
+
 	const { data, error } = await supabase
 		.from('family_members')
 		.select('*, family_member_aliases(alias)')
@@ -82,6 +91,15 @@ export async function listFamilyMembersWithAliases(
 export async function getFamilyMemberById(
 	memberId: string,
 ): Promise<FamilyMemberWithAliases | null> {
+	if (isQaModeEnabled()) {
+		const qaMembers = qaInterceptFamilyMembers(QA_USER_ID)
+		const qaMember = qaMembers?.find((member) => member.id === memberId) ?? null
+
+		if (qaMember) {
+			return qaMember
+		}
+	}
+
 	const { data, error } = await supabase
 		.from('family_members')
 		.select('*, family_member_aliases(alias)')

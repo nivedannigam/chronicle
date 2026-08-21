@@ -83,18 +83,20 @@ export const LIFE_MODULE_REGISTRY: ModuleDefinition[] = [
 		name: 'Property',
 		description: 'Your homes and property documents',
 		icon: Home,
-		status: 'coming_soon',
+		status: 'available',
 		category: 'life',
 		color: C.greenAlt,
+		route: ROUTES.property,
 	}),
 	withLegacyFlags({
 		id: 'finance',
 		name: 'Finance',
-		description: 'Your financial life',
+		description: 'Keep your financial life organized',
 		icon: Landmark,
-		status: 'coming_soon',
+		status: 'available',
 		category: 'life',
 		color: C.greenAlt,
+		route: ROUTES.finance,
 	}),
 	withLegacyFlags({
 		id: 'travel',
@@ -191,6 +193,8 @@ export const HUB_PRIMARY_MODULE_IDS = [
 export const HUB_AVAILABLE_MODULE_IDS = [
 	...HUB_PRIMARY_MODULE_IDS,
 	'personal',
+	'finance',
+	'property',
 ] as const
 
 export const ACTIVE_LIFE_MODULE_IDS = [
@@ -198,11 +202,11 @@ export const ACTIVE_LIFE_MODULE_IDS = [
 	'insurance',
 	'vehicles',
 	'identity',
+	'finance',
+	'property',
 ] as const
 
 export const COMING_SOON_MODULE_IDS = [
-	'property',
-	'finance',
 	'travel',
 	'education',
 	'employment',
@@ -220,6 +224,8 @@ export const MODULE_ROUTES: Partial<Record<string, string>> = {
 	vehicles: ROUTES.vehicles,
 	personal: ROUTES.personal,
 	identity: ROUTES.identity,
+	finance: ROUTES.finance,
+	property: ROUTES.property,
 	documents: ROUTES.documents,
 	modules: ROUTES.modules,
 	family: ROUTES.profileFamily,

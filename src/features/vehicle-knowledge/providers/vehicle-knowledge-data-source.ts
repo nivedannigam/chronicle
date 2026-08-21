@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { listRegistryRecords } from '@/features/connectors/services/connector-store.service'
+import { qaShouldBypassRemoteTables } from '@/qa/qa-boundary'
+import {
+	qaInterceptFamilyMembers,
+	qaInterceptVehicleKnowledgeRawData,
+} from '@/qa/qa-interceptors'
 import type {
 	VehicleDocumentRecord,
 	VehicleFactRecord,
@@ -13,6 +18,13 @@ export interface VehicleKnowledgeRawData {
 	documents: VehicleDocumentRecord[]
 	facts: VehicleFactRecord[]
 	timeline: VehicleTimelineRecord[]
+	linkedMotorPolicies: Array<{
+		policyId: string
+		productName: string
+		expiryDate: string | null
+		insurerId: string
+		sourceLabels: string[]
+	}>
 	familyMembers: Array<{
 		id: string
 		displayName: string
@@ -104,12 +116,48 @@ function mapTimeline(row: Record<string, unknown>): VehicleTimelineRecord {
 export async function fetchVehicleKnowledgeRawData(
 	userId: string,
 ): Promise<VehicleKnowledgeRawData> {
+	if (qaShouldBypassRemoteTables(userId)) {
+		const qaData = qaInterceptVehicleKnowledgeRawData(userId)
+		const members = qaInterceptFamilyMembers(userId) ?? []
+
+		if (qaData) {
+			return {
+				...qaData,
+				familyMembers:
+					qaData.familyMembers.length > 0
+						? qaData.familyMembers
+						: members.map((member) => ({
+								id: member.id,
+								displayName: member.displayName,
+								relationship: member.relationship,
+								isAccountOwner: member.isAccountOwner,
+							})),
+			}
+		}
+
+		return {
+			vehicles: [],
+			documents: [],
+			facts: [],
+			timeline: [],
+			linkedMotorPolicies: [],
+			familyMembers: members.map((member) => ({
+				id: member.id,
+				displayName: member.displayName,
+				relationship: member.relationship,
+				isAccountOwner: member.isAccountOwner,
+			})),
+			importRegistry: [],
+		}
+	}
+
 	const [
 		vehiclesResult,
 		documentsResult,
 		factsResult,
 		timelineResult,
 		membersResult,
+		motorPoliciesResult,
 		importRegistry,
 	] = await Promise.all([
 		supabase.from('vehicles').select('*').eq('user_id', userId),
@@ -124,6 +172,13 @@ export async function fetchVehicleKnowledgeRawData(
 			.from('family_members')
 			.select('id, display_name, relationship, is_account_owner')
 			.eq('user_id', userId),
+		supabase
+			.from('insurance_policies')
+			.select(
+				'id, product_name, expiry_date, insurer_id, policy_type, source_document_ids',
+			)
+			.eq('user_id', userId)
+			.eq('policy_type', 'motor'),
 		listRegistryRecords(userId, 'google-drive'),
 	])
 
@@ -132,6 +187,33 @@ export async function fetchVehicleKnowledgeRawData(
 	if (factsResult.error) throw new Error(factsResult.error.message)
 	if (timelineResult.error) throw new Error(timelineResult.error.message)
 	if (membersResult.error) throw new Error(membersResult.error.message)
+	if (motorPoliciesResult.error) {
+		throw new Error(motorPoliciesResult.error.message)
+	}
+
+	const sourceDocumentIds = [
+		...new Set(
+			(motorPoliciesResult.data ?? []).flatMap((row) =>
+				Array.isArray(row.source_document_ids)
+					? (row.source_document_ids as string[])
+					: [],
+			),
+		),
+	]
+
+	const insuranceDocumentNames = new Map<string, string>()
+
+	if (sourceDocumentIds.length > 0) {
+		const { data: insuranceDocuments } = await supabase
+			.from('insurance_documents')
+			.select('id, file_name')
+			.eq('user_id', userId)
+			.in('id', sourceDocumentIds)
+
+		for (const row of insuranceDocuments ?? []) {
+			insuranceDocumentNames.set(row.id as string, row.file_name as string)
+		}
+	}
 
 	return {
 		vehicles: (vehiclesResult.data ?? []).map((row) =>
@@ -146,6 +228,21 @@ export async function fetchVehicleKnowledgeRawData(
 		timeline: (timelineResult.data ?? []).map((row) =>
 			mapTimeline(row as Record<string, unknown>),
 		),
+		linkedMotorPolicies: (motorPoliciesResult.data ?? []).map((row) => {
+			const sourceDocumentIds = Array.isArray(row.source_document_ids)
+				? (row.source_document_ids as string[])
+				: []
+
+			return {
+				policyId: row.id as string,
+				productName: (row.product_name as string | null) ?? 'Motor policy',
+				expiryDate: (row.expiry_date as string | null) ?? null,
+				insurerId: (row.insurer_id as string) ?? 'unknown-insurer',
+				sourceLabels: sourceDocumentIds
+					.map((documentId) => insuranceDocumentNames.get(documentId))
+					.filter((label): label is string => Boolean(label)),
+			}
+		}),
 		familyMembers: (membersResult.data ?? []).map((row) => ({
 			id: row.id as string,
 			displayName: row.display_name as string,

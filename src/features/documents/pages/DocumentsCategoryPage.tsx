@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
+import { useFamilyContext } from '@/features/family/context/FamilyContext'
 import { getCategoryDisplayMeta } from '@/features/documents/constants/document-category-display'
 import { useDocumentsContext } from '@/features/documents/context/DocumentsContext'
 import {
@@ -14,7 +15,8 @@ import { ListSkeleton } from '@/components/common/ListSkeleton'
 export function DocumentsCategoryPage() {
 	const navigate = useNavigate()
 	const { categoryId = '' } = useParams()
-	const { hub, isLoading } = useDocumentsContext()
+	const { selectedMember } = useFamilyContext()
+	const { hub, allDocuments, isLoading } = useDocumentsContext()
 	const meta = getCategoryDisplayMeta(categoryId)
 
 	const items = useMemo(() => {
@@ -22,6 +24,21 @@ export function DocumentsCategoryPage() {
 			(document) => document.categoryId === categoryId,
 		)
 	}, [categoryId, hub.allDocuments])
+
+	const totalInCategory = useMemo(
+		() =>
+			allDocuments.filter((document) => document.category_id === categoryId)
+				.length,
+		[allDocuments, categoryId],
+	)
+
+	const subtitle = useMemo(() => {
+		if (selectedMember && totalInCategory !== items.length) {
+			return `${items.length} for ${selectedMember.displayName} · ${totalInCategory} for all family`
+		}
+
+		return `${items.length} document${items.length === 1 ? '' : 's'} in this category`
+	}, [items.length, selectedMember, totalInCategory])
 
 	if (isLoading) {
 		return (
@@ -34,7 +51,7 @@ export function DocumentsCategoryPage() {
 	return (
 		<ProfilePageShell
 			title={meta.label}
-			subtitle={`${items.length} document${items.length === 1 ? '' : 's'} in this category`}
+			subtitle={subtitle}
 			backLabel="Documents"
 			onBack={() => navigate(ROUTES.documents)}
 		>

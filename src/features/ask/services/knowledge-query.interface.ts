@@ -24,8 +24,17 @@ export interface AskScopeContext {
 	reportId?: string
 	reportIds?: string[]
 	/** Module context from deep links (e.g. identity Ask chips). */
-	contextModule?: 'identity'
+	contextModule?:
+		'identity' | 'health' | 'insurance' | 'vehicles' | 'finance' | 'property'
+	/** When set for property Ask, reflects whether a Home folder is connected. */
+	hasPropertyFolderAssigned?: boolean
 	documentId?: string
+	entityId?: string
+	policyId?: string
+	claimId?: string
+	vehicleSlug?: string
+	/** When set for finance Ask, reflects whether a Finance folder is connected. */
+	hasFinanceFolderAssigned?: boolean
 }
 
 export interface AskReasoningEngine {

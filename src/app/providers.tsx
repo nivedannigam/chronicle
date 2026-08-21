@@ -8,6 +8,7 @@ import { bootstrapHealthImportNotifications } from '@/features/health-import/ser
 import { AppRouter } from '@/app/router'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { queryClient } from '@/lib/query-client'
+import { QaModeIndicator } from '@/qa/components/QaModeIndicator'
 
 initializePlatform()
 
@@ -21,6 +22,7 @@ export function AppProviders() {
 				<ErrorBoundary>
 					<AuthProvider>
 						<FamilyProvider>
+							<QaModeIndicator />
 							<AppRouter />
 						</FamilyProvider>
 					</AuthProvider>

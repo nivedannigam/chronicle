@@ -1,3 +1,4 @@
+import type { FinanceExtractableDocumentType } from '@/features/finance-knowledge/types/finance-extraction.types'
 import type { InsurancePolicyType } from '@/features/insurance-knowledge/types/insurance-record.types'
 import type { VehicleDocumentTypeId } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
 import type {
@@ -5,7 +6,8 @@ import type {
 	DocumentExtractionObservability,
 } from '@/shared/ai/types/document-extraction.types'
 
-export type DomainDocumentExtractionTarget = 'insurance' | 'vehicles'
+export type DomainDocumentExtractionTarget =
+	'insurance' | 'vehicles' | 'finance'
 
 export interface InsuranceDocumentExtraction {
 	insurer: string | null
@@ -46,11 +48,50 @@ export interface VehicleDocumentAiExtraction {
 	rawFields: Record<string, string | number | null>
 }
 
+export interface FinanceDocumentAiExtraction {
+	documentType: FinanceExtractableDocumentType
+	institution: string | null
+	accountType: string | null
+	cardName: string | null
+	loanType: string | null
+	investmentType: string | null
+	maskedAccountIdentifier: string | null
+	accountHolder: string | null
+	jointHolder: string | null
+	statementDate: string | null
+	statementPeriodStart: string | null
+	statementPeriodEnd: string | null
+	currency: string | null
+	openingBalance: number | null
+	closingBalance: number | null
+	totalAmountDue: number | null
+	minimumAmountDue: number | null
+	paymentDueDate: string | null
+	creditLimit: number | null
+	availableCredit: number | null
+	outstandingPrincipal: number | null
+	originalLoanAmount: number | null
+	interestRate: number | null
+	emi: number | null
+	nextPaymentDate: string | null
+	loanStartDate: string | null
+	loanEndDate: string | null
+	folioNumber: string | null
+	schemeName: string | null
+	units: number | null
+	nav: number | null
+	marketValue: number | null
+	investedValue: number | null
+	confidence: number
+	rawFields: Record<string, string | number | null>
+}
+
 export interface DomainDocumentExtractionResult {
 	target: DomainDocumentExtractionTarget
 	method: DocumentExtractionMethod
 	extractedText: string | null
 	insurance?: InsuranceDocumentExtraction
 	vehicle?: VehicleDocumentAiExtraction
+	finance?: FinanceDocumentAiExtraction
 	observability?: DocumentExtractionObservability
 }

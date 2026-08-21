@@ -1,12 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import {
-	History,
-	Home,
-	MessageCircle,
-	ScrollText,
-	Settings,
-	TrendingUp,
-} from 'lucide-react'
+import { History, Home, ScrollText, Settings, TrendingUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { HEALTH_COPY } from '@/constants/product-copy'
@@ -55,13 +48,6 @@ const HEALTH_TABS: {
 		path: ROUTES.healthReports,
 		Icon: ScrollText,
 		color: FC.blue,
-	},
-	{
-		id: 'ask',
-		label: HEALTH_COPY.askTab,
-		path: ROUTES.healthAsk,
-		Icon: MessageCircle,
-		color: FC.teal,
 	},
 	{
 		id: 'settings',

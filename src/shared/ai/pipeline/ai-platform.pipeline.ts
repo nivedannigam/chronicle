@@ -24,9 +24,12 @@ import type { ChronicleIntent } from '@/shared/ai/intent/intent.types'
 import { healthKnowledgeProvider } from '@/features/health-knowledge/providers/health-knowledge.provider'
 import { insuranceKnowledgeProvider } from '@/features/insurance-knowledge'
 import { vehicleKnowledgeProvider } from '@/features/vehicle-knowledge'
+import { planAndResolveFinanceEvidence } from '@/shared/ai/evidence-planning/plan-finance-evidence'
 import { planAndResolveInsuranceEvidence } from '@/shared/ai/evidence-planning/plan-insurance-evidence'
 import { planAndResolveVehicleEvidence } from '@/shared/ai/evidence-planning/plan-vehicle-evidence'
 import { domainEvidenceToNormalized } from '@/shared/ai/knowledge/domain-knowledge-normalizer'
+import type { FinanceAskScope } from '@/features/finance/types/finance-ask.types'
+import type { FinanceKnowledge } from '@/features/finance-knowledge/types/finance-knowledge.types'
 import type { InsuranceAskScope } from '@/features/insurance/types/insurance-ask.types'
 import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/insurance-knowledge-object.types'
 import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
@@ -70,6 +73,8 @@ export interface RunHealthQuestionInput {
 	}>
 	memoryContextPrompt?: string | null
 	insuranceScope?: InsuranceAskScope
+	financeScope?: FinanceAskScope
+	financeKnowledge?: FinanceKnowledge
 }
 
 const CHRONICLE_TO_LEGACY_INTENT: Partial<Record<ChronicleIntent, IntentId>> = {
@@ -187,15 +192,35 @@ export class AIPlatformPipeline {
 		})
 	}
 
+	async runFinanceQuestion(
+		input: RunHealthQuestionInput,
+	): Promise<AIPlatformResult> {
+		if (!input.financeKnowledge) {
+			throw new Error('Finance knowledge is required for finance Ask.')
+		}
+
+		return this.runDomainQuestion({
+			question: input.question,
+			domain: 'finance',
+			userId: input.userId,
+			memberName: input.memberName,
+			memoryContextPrompt: input.memoryContextPrompt,
+			financeKnowledge: input.financeKnowledge,
+			financeScope: input.financeScope,
+		})
+	}
+
 	private async runDomainQuestion(input: {
 		question: string
-		domain: Extract<KnowledgeDomainId, 'insurance' | 'vehicles'>
+		domain: Extract<KnowledgeDomainId, 'insurance' | 'vehicles' | 'finance'>
 		userId: string
 		memberName?: string | null
 		memoryContextPrompt?: string | null
 		insuranceKnowledge?: InsuranceKnowledge
 		vehicleKnowledge?: VehicleKnowledge
+		financeKnowledge?: FinanceKnowledge
 		insuranceScope?: InsuranceAskScope
+		financeScope?: FinanceAskScope
 	}): Promise<AIPlatformResult> {
 		const requestId = crypto.randomUUID()
 		const config = loadAIPlatformConfig()
@@ -206,16 +231,19 @@ export class AIPlatformPipeline {
 						knowledge: input.insuranceKnowledge!,
 						scope: input.insuranceScope,
 					})
-				: planAndResolveVehicleEvidence({
-						question: input.question,
-						knowledge: input.vehicleKnowledge!,
-					})
+				: input.domain === 'finance'
+					? planAndResolveFinanceEvidence({
+							question: input.question,
+							knowledge: input.financeKnowledge!,
+							scope: input.financeScope,
+						})
+					: planAndResolveVehicleEvidence({
+							question: input.question,
+							knowledge: input.vehicleKnowledge!,
+						})
 
 		const { classifiedIntent, evidence, evidenceBundle } = prepared
-		const selectedTool =
-			input.domain === 'insurance'
-				? 'insurance.evidence_resolver.v1'
-				: 'vehicles.evidence_resolver.v1'
+		const selectedTool = `${input.domain}.evidence_resolver.v1`
 		const toolResult: ToolResult<HealthToolPayload> = {
 			success: true,
 			tool: `${input.domain}.evidence_resolver.v1`,
@@ -246,6 +274,7 @@ export class AIPlatformPipeline {
 			bundle: evidenceBundle,
 			insuranceKnowledge: input.insuranceKnowledge,
 			vehicleKnowledge: input.vehicleKnowledge,
+			financeKnowledge: input.financeKnowledge,
 		})
 
 		const prompt = buildEvidencePrompt({

@@ -2,8 +2,10 @@ export type TimelineModule =
 	| 'health'
 	| 'insurance'
 	| 'vehicles'
+	| 'identity'
 	| 'documents'
 	| 'finance'
+	| 'property'
 	| 'travel'
 	| 'family'
 	| 'system'
@@ -65,6 +67,7 @@ export interface ChronicleTimelineEvent {
 export interface TimelineFilters {
 	searchQuery?: string
 	memberId?: string | null
+	accountOwnerMemberId?: string | null
 	modules?: TimelineModule[]
 	importance?: TimelineImportance[]
 	fromDate?: string
@@ -101,6 +104,34 @@ export interface TimelineSources {
 		userId?: string
 		familyMemberId?: string | null
 		accountOwnerMemberId?: string | null
+	}
+	finance?: {
+		knowledge?: import('@/features/finance-knowledge/types/finance-knowledge.types').FinanceKnowledge
+		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
+		userId?: string
+		hasFolderAssigned?: boolean
+		familyMemberId?: string | null
+	}
+	vehicles?: {
+		knowledge?: import('@/features/vehicle-knowledge/types/vehicle-knowledge-object.types').VehicleKnowledge
+		userId?: string
+		familyMemberId?: string | null
+		accountOwnerMemberId?: string | null
+	}
+	identity?: {
+		knowledge?: import('@/features/identity-knowledge/types/identity-knowledge.types').IdentityKnowledge
+		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
+		userId?: string
+		accountOwnerMemberId?: string | null
+		familyMemberId?: string | null
+	}
+	property?: {
+		knowledge?: import('@/features/property-knowledge/types/property-knowledge.types').PropertyKnowledge
+		documents?: import('@/features/documents/types/document.types').ChronicleDocument[]
+		userId?: string
+		hasFolderAssigned?: boolean
+		rootFolderPath?: string | null
+		familyMemberId?: string | null
 	}
 	system?: {
 		lastDriveScanAt?: string | null

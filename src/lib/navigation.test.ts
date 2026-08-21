@@ -17,6 +17,8 @@ describe('tabFromPath', () => {
 		expect(tabFromPath(ROUTES.vehicles)).toBe('modules')
 		expect(tabFromPath(ROUTES.personal)).toBe('modules')
 		expect(tabFromPath(ROUTES.identity)).toBe('modules')
+		expect(tabFromPath(ROUTES.finance)).toBe('modules')
+		expect(tabFromPath(`${ROUTES.finance}/settings`)).toBe('modules')
 		expect(tabFromPath(`${ROUTES.health}/reports`)).toBe('modules')
 	})
 

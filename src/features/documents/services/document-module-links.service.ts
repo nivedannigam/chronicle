@@ -1,4 +1,19 @@
 import { getSubCategoryLabel } from '@/features/documents/constants/document-category-display'
+import {
+	financeDocumentPath,
+	healthReportPath,
+	identityDocumentPath,
+	insurancePolicyDetailPath,
+	propertyDetailPath,
+	propertyDocumentPath,
+	ROUTES,
+	vehicleDetailPath,
+} from '@/constants/routes'
+import { slugifyVehicleName } from '@/features/vehicle-knowledge/utils/vehicle-folder-resolver'
+import {
+	resolvePropertyNameFromPath,
+	slugifyPropertyName,
+} from '@/features/property-knowledge'
 import type { ChronicleDocument } from '@/features/documents/types/document.types'
 
 export interface DocumentModuleLink {
@@ -12,8 +27,8 @@ const MODULE_ROUTES: Record<string, string | null> = {
 	insurance: '/insurance',
 	identity: '/identity',
 	vehicles: '/vehicles',
-	property: null,
-	finance: null,
+	property: ROUTES.property,
+	finance: ROUTES.finance,
 	travel: null,
 	employment: null,
 	documents: '/documents',
@@ -194,4 +209,141 @@ export function resolveConsumerDocumentStatus(
 	}
 
 	return 'Ready'
+}
+
+export interface DocumentModuleDetailLink {
+	label: string
+	path: string
+}
+
+function readMetadataString(
+	metadata: Record<string, unknown>,
+	key: string,
+): string | null {
+	const value = metadata[key]
+	return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function resolveKnowledgeRefDetailLink(
+	ref: ChronicleDocument['knowledge_refs'][number],
+	document: ChronicleDocument,
+): DocumentModuleDetailLink | null {
+	switch (ref.domain) {
+		case 'identity':
+			return {
+				label: 'View in Identity',
+				path: identityDocumentPath(document.id),
+			}
+		case 'health':
+			return {
+				label: 'View health record',
+				path: healthReportPath(ref.entityId),
+			}
+		case 'insurance':
+			return {
+				label: 'View policy',
+				path: insurancePolicyDetailPath(ref.entityId),
+			}
+		case 'vehicles':
+			return {
+				label: 'View vehicle',
+				path: vehicleDetailPath(ref.entityId),
+			}
+		case 'property':
+			return {
+				label: 'View property',
+				path: propertyDetailPath(ref.entityId),
+			}
+		default:
+			return null
+	}
+}
+
+export function resolveDocumentModuleDetailPath(
+	document: ChronicleDocument,
+): DocumentModuleDetailLink | null {
+	for (const ref of document.knowledge_refs) {
+		const link = resolveKnowledgeRefDetailLink(ref, document)
+		if (link) {
+			return link
+		}
+	}
+
+	if (document.sub_category_id === 'vehicle-insurance') {
+		const policyId = readMetadataString(document.extracted_metadata, 'policyId')
+		if (policyId) {
+			return {
+				label: 'View policy',
+				path: insurancePolicyDetailPath(policyId),
+			}
+		}
+	}
+
+	switch (document.category_id) {
+		case 'identity':
+			return {
+				label: 'View in Identity',
+				path: identityDocumentPath(document.id),
+			}
+		case 'medical':
+			return {
+				label: 'View health record',
+				path: healthReportPath(document.id),
+			}
+		case 'insurance': {
+			const policyId = readMetadataString(
+				document.extracted_metadata,
+				'policyId',
+			)
+			return policyId
+				? {
+						label: 'View policy',
+						path: insurancePolicyDetailPath(policyId),
+					}
+				: {
+						label: 'View in Insurance',
+						path: ROUTES.insurancePolicies,
+					}
+		}
+		case 'vehicles': {
+			const vehicleName =
+				readMetadataString(document.extracted_metadata, 'vehicleName') ??
+				readMetadataString(document.extracted_metadata, 'vehicle') ??
+				document.title.split('·')[0]?.trim()
+			if (vehicleName) {
+				return {
+					label: 'View vehicle',
+					path: vehicleDetailPath(slugifyVehicleName(vehicleName)),
+				}
+			}
+			return {
+				label: 'View in Vehicles',
+				path: ROUTES.vehicles,
+			}
+		}
+		case 'financial':
+			return {
+				label: 'View in Finance',
+				path: financeDocumentPath(document.id),
+			}
+		case 'property': {
+			const folderPath = readMetadataString(
+				document.extracted_metadata,
+				'folderPath',
+			)
+			const propertyName = resolvePropertyNameFromPath({ folderPath })
+			if (propertyName) {
+				return {
+					label: 'View property',
+					path: propertyDetailPath(slugifyPropertyName(propertyName)),
+				}
+			}
+			return {
+				label: 'View in Property',
+				path: propertyDocumentPath(document.id),
+			}
+		}
+		default:
+			return null
+	}
 }

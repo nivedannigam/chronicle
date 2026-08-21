@@ -73,9 +73,19 @@ export const DOCUMENT_CATEGORY_REGISTRY: DocumentCategoryDefinition[] = [
 		keywords: ['sale', 'lease', 'registration', 'property', 'tax receipt'],
 		subCategories: [
 			{
+				id: 'purchase-sale',
+				label: 'Purchase / Sale',
+				keywords: ['sale', 'purchase', 'sale deed'],
+			},
+			{
 				id: 'sale-agreement',
 				label: 'Sale Agreement',
-				keywords: ['sale', 'purchase'],
+				keywords: ['sale agreement', 'purchase agreement'],
+			},
+			{
+				id: 'agreement',
+				label: 'Agreement',
+				keywords: ['agreement', 'mou'],
 			},
 			{ id: 'lease', label: 'Lease', keywords: ['lease', 'rental'] },
 			{
@@ -84,10 +94,56 @@ export const DOCUMENT_CATEGORY_REGISTRY: DocumentCategoryDefinition[] = [
 				keywords: ['registration', 'registered'],
 			},
 			{
+				id: 'possession',
+				label: 'Possession',
+				keywords: ['possession', 'handover', 'occupancy certificate'],
+			},
+			{
+				id: 'property-tax',
+				label: 'Property Tax',
+				keywords: ['property tax', 'tax receipt'],
+			},
+			{
 				id: 'tax-receipt',
 				label: 'Tax Receipt',
-				keywords: ['tax', 'property tax'],
+				keywords: ['tax', 'municipal tax'],
 			},
+			{
+				id: 'society-maintenance',
+				label: 'Society / Maintenance',
+				keywords: ['society', 'maintenance', 'hoa'],
+			},
+			{
+				id: 'home-loan',
+				label: 'Home Loan',
+				keywords: ['home loan', 'housing loan', 'sanction letter'],
+			},
+			{
+				id: 'utility',
+				label: 'Electricity / Utility',
+				keywords: ['electricity', 'utility', 'power bill'],
+			},
+			{
+				id: 'property-insurance',
+				label: 'Property Insurance',
+				keywords: ['home insurance', 'property insurance'],
+			},
+			{
+				id: 'warranty',
+				label: 'Warranty',
+				keywords: ['warranty', 'guarantee'],
+			},
+			{
+				id: 'renovation',
+				label: 'Renovation',
+				keywords: ['renovation', 'interior', 'contractor'],
+			},
+			{
+				id: 'legal',
+				label: 'Legal',
+				keywords: ['legal', 'notice', 'affidavit', 'noc'],
+			},
+			{ id: 'other', label: 'Other', keywords: [] },
 		],
 	},
 	{
@@ -153,14 +209,59 @@ export const DOCUMENT_CATEGORY_REGISTRY: DocumentCategoryDefinition[] = [
 				keywords: ['bank statement', 'account statement'],
 			},
 			{
-				id: 'tax-return',
-				label: 'Tax Return',
-				keywords: ['tax return', 'itr', 'income tax'],
+				id: 'credit-card-statement',
+				label: 'Credit Card Statement',
+				keywords: ['credit card', 'card statement'],
+			},
+			{
+				id: 'loan-statement',
+				label: 'Loan Statement',
+				keywords: ['loan', 'emi', 'home loan'],
 			},
 			{
 				id: 'investment-statement',
 				label: 'Investment Statement',
 				keywords: ['investment', 'portfolio', 'mutual fund'],
+			},
+			{
+				id: 'tax-record',
+				label: 'Tax Record',
+				keywords: ['tax return', 'itr', 'income tax'],
+			},
+			{
+				id: 'nps-statement',
+				label: 'NPS Statement',
+				keywords: ['nps', 'national pension'],
+			},
+			{
+				id: 'epf-statement',
+				label: 'EPF Statement',
+				keywords: ['epf', 'provident fund'],
+			},
+			{
+				id: 'ppf-statement',
+				label: 'PPF Statement',
+				keywords: ['ppf', 'public provident fund'],
+			},
+			{
+				id: 'fd-statement',
+				label: 'Fixed Deposit Statement',
+				keywords: ['fixed deposit', 'fd statement'],
+			},
+			{
+				id: 'salary-slip',
+				label: 'Salary Slip',
+				keywords: ['salary slip', 'payslip'],
+			},
+			{
+				id: 'insurance-financial',
+				label: 'Insurance Financial Record',
+				keywords: ['insurance premium', 'lic premium'],
+			},
+			{
+				id: 'other',
+				label: 'Other Financial',
+				keywords: ['finance', 'statement'],
 			},
 		],
 	},

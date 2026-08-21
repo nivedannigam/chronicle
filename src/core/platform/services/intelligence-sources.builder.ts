@@ -2,6 +2,9 @@ import type { InsuranceKnowledge } from '@/features/insurance-knowledge/types/in
 import type { InsuranceKnowledgeRawData } from '@/features/insurance-knowledge/providers/insurance-knowledge-data-source'
 import type { VehicleKnowledge } from '@/features/vehicle-knowledge/types/vehicle-knowledge-object.types'
 import type { VehicleKnowledgeRawData } from '@/features/vehicle-knowledge/providers/vehicle-knowledge-data-source'
+import type { FinanceKnowledge } from '@/features/finance-knowledge/types/finance-knowledge.types'
+import type { IdentityKnowledge } from '@/features/identity-knowledge/types/identity-knowledge.types'
+import type { PropertyKnowledge } from '@/features/property-knowledge/types/property-knowledge.types'
 import { buildIntelligenceSources } from '@chronicle/core-search'
 
 export function buildPlatformIntelligenceSources(input: {
@@ -13,6 +16,9 @@ export function buildPlatformIntelligenceSources(input: {
 	insuranceRawData?: InsuranceKnowledgeRawData
 	vehicleKnowledge?: VehicleKnowledge | null
 	vehicleRawData?: VehicleKnowledgeRawData
+	financeKnowledge?: FinanceKnowledge | null
+	identityKnowledge?: IdentityKnowledge | null
+	propertyKnowledge?: PropertyKnowledge | null
 	userId?: string
 	familyMemberId?: string | null
 	accountOwnerMemberId?: string | null
@@ -47,6 +53,30 @@ export function buildPlatformIntelligenceSources(input: {
 			userId: input.userId,
 			familyMemberId: input.familyMemberId ?? null,
 			accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+		}
+	}
+
+	if (input.financeKnowledge) {
+		sources.finance = {
+			knowledge: input.financeKnowledge,
+		}
+	}
+
+	if (input.identityKnowledge) {
+		sources.identity = {
+			knowledge: input.identityKnowledge,
+			userId: input.userId,
+			familyMemberId: input.familyMemberId ?? null,
+			accountOwnerMemberId: input.accountOwnerMemberId ?? null,
+		}
+	}
+
+	if (input.propertyKnowledge) {
+		sources.property = {
+			knowledge: input.propertyKnowledge,
+			userId: input.userId,
+			hasFolderAssigned: input.propertyKnowledge.hasFolderAssigned,
+			rootFolderPath: null,
 		}
 	}
 

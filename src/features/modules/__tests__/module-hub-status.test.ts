@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+	buildFinanceHubCard,
 	buildHealthHubCard,
 	buildIdentityHubCard,
 	buildInsuranceHubCard,
@@ -34,6 +35,19 @@ describe('buildInsuranceHubCard', () => {
 					totalSumInsured: null,
 					currency: 'INR',
 				},
+				policies: [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }],
+				activePolicies: [
+					{ id: 'p1' },
+					{ id: 'p2' },
+					{ id: 'p3' },
+					{ id: 'p4' },
+				],
+				expiringPolicies: [],
+				lapsedPolicies: [],
+				coverageGaps: [],
+				claims: [],
+				documents: [],
+				protectionScore: 85,
 			} as never,
 			setupStatus: 'ready',
 		})
@@ -46,7 +60,7 @@ describe('buildInsuranceHubCard', () => {
 		const card = buildInsuranceHubCard({
 			knowledge: {
 				summary: {
-					headline: '',
+					headline: '1 policy needs renewal soon.',
 					lines: [],
 					policyCount: 2,
 					activePolicyCount: 2,
@@ -55,12 +69,74 @@ describe('buildInsuranceHubCard', () => {
 					totalSumInsured: null,
 					currency: 'INR',
 				},
+				policies: [{ id: 'p1' }, { id: 'p2' }],
+				activePolicies: [{ id: 'p1' }, { id: 'p2' }],
+				expiringPolicies: [{ id: 'p1' }],
+				lapsedPolicies: [],
+				coverageGaps: [],
+				claims: [],
+				documents: [],
 			} as never,
 			setupStatus: 'ready',
 		})
 
 		expect(card.state).toBe('attention')
 		expect(card.statusLine).toContain('renewal')
+	})
+
+	it('shows attention when protection status needs attention from lapsed policies', () => {
+		const card = buildInsuranceHubCard({
+			knowledge: {
+				summary: {
+					headline: '2 active policies — protection knowledge assembled.',
+					lines: [],
+					policyCount: 2,
+					activePolicyCount: 2,
+					expiringCount: 0,
+					claimCount: 0,
+					totalSumInsured: null,
+					currency: 'INR',
+				},
+				policies: [{ id: 'p1' }, { id: 'p2' }],
+				activePolicies: [{ id: 'p1' }],
+				expiringPolicies: [],
+				lapsedPolicies: [{ id: 'p2' }],
+				coverageGaps: [],
+				claims: [],
+				documents: [],
+				protectionScore: 80,
+			} as never,
+			setupStatus: 'ready',
+		})
+
+		expect(card.state).toBe('attention')
+		expect(card.statusLine).toContain('attention')
+	})
+})
+
+describe('buildFinanceHubCard', () => {
+	it('shows attention when finance home has attention items', () => {
+		const card = buildFinanceHubCard({
+			setupStatus: 'ready',
+			documentCount: 4,
+			attentionCount: 2,
+			statusHeadline: 'Your financial picture is taking shape',
+		})
+
+		expect(card.state).toBe('attention')
+		expect(card.statusLine).toBe('2 items need attention')
+	})
+
+	it('uses finance home headline when no attention items remain', () => {
+		const card = buildFinanceHubCard({
+			setupStatus: 'ready',
+			documentCount: 4,
+			attentionCount: 0,
+			statusHeadline: 'Your financial picture is taking shape',
+		})
+
+		expect(card.state).toBe('active')
+		expect(card.statusLine).toBe('Your financial picture is taking shape')
 	})
 })
 

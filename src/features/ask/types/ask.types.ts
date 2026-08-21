@@ -173,11 +173,14 @@ export interface AskQuestionResult {
 export interface AskDebugInfo {
 	intent: string
 	resolvedQuestion: string
-	retrievedKnowledge: import('@/features/knowledge/retrieval/knowledge-retriever.types').RetrievedKnowledge
+	retrievedKnowledge?: import('@/features/knowledge/retrieval/knowledge-retriever.types').RetrievedKnowledge
 	prompt?: import('@/features/ask/prompt/prompt-builder').BuiltPrompt
 	provider: string
 	providerResponse: string
 	turn: AskConversationTurn
+	/** DEV-only wall-clock timing for QA diagnostics */
+	timingMs?: number
+	routing?: AskRoutingLabel
 }
 
 export interface ReportSearchCriteria {

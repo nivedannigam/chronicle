@@ -1,7 +1,9 @@
 import type {
+	FinanceDocumentAiExtraction,
 	InsuranceDocumentExtraction,
 	VehicleDocumentAiExtraction,
 } from '@/shared/ai/types/domain-document-extraction.types'
+import type { FinanceExtractableDocumentType } from '@/features/finance-knowledge/types/finance-extraction.types'
 import type { InsurancePolicyType } from '@/features/insurance-knowledge/types/insurance-record.types'
 import type { VehicleDocumentTypeId } from '@/features/vehicle-knowledge/graph/vehicle-document-types'
 
@@ -188,6 +190,96 @@ export function validateInsuranceExtractionJson(
 		throw new Error(
 			'Insurance extraction returned insufficient structured data.',
 		)
+	}
+
+	return parsed
+}
+
+const FINANCE_TYPES = new Set<FinanceExtractableDocumentType>([
+	'bank-statement',
+	'credit-card-statement',
+	'loan-statement',
+	'investment-statement',
+])
+
+export function parseFinanceExtractionJson(
+	content: string,
+): FinanceDocumentAiExtraction {
+	const parsed = JSON.parse(content) as Record<string, unknown>
+	const documentTypeRaw = readString(parsed.documentType)
+	const documentType =
+		documentTypeRaw &&
+		FINANCE_TYPES.has(documentTypeRaw as FinanceExtractableDocumentType)
+			? (documentTypeRaw as FinanceExtractableDocumentType)
+			: 'bank-statement'
+
+	return {
+		documentType,
+		institution: readString(parsed.institution),
+		accountType: readString(parsed.accountType),
+		cardName: readString(parsed.cardName),
+		loanType: readString(parsed.loanType),
+		investmentType: readString(parsed.investmentType),
+		maskedAccountIdentifier: readString(parsed.maskedAccountIdentifier),
+		accountHolder: readString(parsed.accountHolder),
+		jointHolder: readString(parsed.jointHolder),
+		statementDate: readDate(parsed.statementDate),
+		statementPeriodStart: readDate(parsed.statementPeriodStart),
+		statementPeriodEnd: readDate(parsed.statementPeriodEnd),
+		currency: readString(parsed.currency) ?? 'INR',
+		openingBalance: readNumber(parsed.openingBalance),
+		closingBalance: readNumber(parsed.closingBalance),
+		totalAmountDue: readNumber(parsed.totalAmountDue),
+		minimumAmountDue: readNumber(parsed.minimumAmountDue),
+		paymentDueDate: readDate(parsed.paymentDueDate),
+		creditLimit: readNumber(parsed.creditLimit),
+		availableCredit: readNumber(parsed.availableCredit),
+		outstandingPrincipal: readNumber(parsed.outstandingPrincipal),
+		originalLoanAmount: readNumber(parsed.originalLoanAmount),
+		interestRate: readNumber(parsed.interestRate),
+		emi: readNumber(parsed.emi),
+		nextPaymentDate: readDate(parsed.nextPaymentDate),
+		loanStartDate: readDate(parsed.loanStartDate),
+		loanEndDate: readDate(parsed.loanEndDate),
+		folioNumber: readString(parsed.folioNumber),
+		schemeName: readString(parsed.schemeName),
+		units: readNumber(parsed.units),
+		nav: readNumber(parsed.nav),
+		marketValue: readNumber(parsed.marketValue),
+		investedValue: readNumber(parsed.investedValue),
+		confidence: readNumber(parsed.confidence) ?? 0.7,
+		rawFields: parsed as Record<string, string | number | null>,
+	}
+}
+
+export function isFinanceExtractionSufficient(
+	extraction: FinanceDocumentAiExtraction,
+): boolean {
+	const institution = extraction.institution?.trim()
+	const identifier = extraction.maskedAccountIdentifier?.trim()
+	const statementDate = extraction.statementDate
+
+	const numericFields =
+		(extraction.openingBalance != null ? 1 : 0) +
+		(extraction.closingBalance != null ? 1 : 0) +
+		(extraction.totalAmountDue != null ? 1 : 0) +
+		(extraction.outstandingPrincipal != null ? 1 : 0) +
+		(extraction.marketValue != null ? 1 : 0)
+
+	if (institution && (identifier || statementDate || numericFields >= 1)) {
+		return true
+	}
+
+	return Boolean(institution && numericFields >= 1)
+}
+
+export function validateFinanceExtractionJson(
+	content: string,
+): FinanceDocumentAiExtraction {
+	const parsed = parseFinanceExtractionJson(content)
+
+	if (!isFinanceExtractionSufficient(parsed)) {
+		throw new Error('Finance extraction returned insufficient structured data.')
 	}
 
 	return parsed

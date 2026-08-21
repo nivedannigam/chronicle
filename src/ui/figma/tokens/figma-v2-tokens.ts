@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 /** Visual tokens from `_figma-import-new/src/app/App.tsx` */
 export const FC = {
 	bg: '#09090B',
@@ -35,3 +37,16 @@ export const figmaCardStyle = {
 	boxShadow:
 		'0 4px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.045)',
 } as const
+
+/** Row divider without mixing `border` shorthand and `borderBottom`. */
+export function figmaListRowBorder(
+	isLast: boolean,
+	color: string = 'rgba(255,255,255,0.05)',
+): CSSProperties {
+	return {
+		borderTop: 'none',
+		borderLeft: 'none',
+		borderRight: 'none',
+		borderBottom: isLast ? 'none' : `1px solid ${color}`,
+	}
+}

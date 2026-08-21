@@ -29,7 +29,7 @@ export function FigmaProfileSecurityScreen() {
 		}
 
 		const confirmed = window.confirm(
-			'Reset ALL imported health data for your account?\n\nThis permanently deletes health reports, registry entries, storage files, and knowledge graph data. Folder assignments are kept.\n\nThis cannot be undone.',
+			'Reset ALL imported health data for your account?\n\nThis permanently deletes health reports, import history, stored files, and organized health records. Folder assignments are kept.\n\nThis cannot be undone.',
 		)
 
 		if (!confirmed) {
@@ -51,7 +51,7 @@ export function FigmaProfileSecurityScreen() {
 			})
 
 			setResetMessage(
-				`Removed ${result.reportsDeleted} report${result.reportsDeleted === 1 ? '' : 's'} and ${result.registryDeleted} registry row${result.registryDeleted === 1 ? '' : 's'}.`,
+				`Removed ${result.reportsDeleted} report${result.reportsDeleted === 1 ? '' : 's'} and ${result.registryDeleted} import record${result.registryDeleted === 1 ? '' : 's'}.`,
 			)
 		} catch (error) {
 			setResetError(error instanceof Error ? error.message : 'Reset failed')

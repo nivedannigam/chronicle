@@ -1,16 +1,31 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bug, FolderSync, RefreshCw, Trash2 } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useMemberDocuments } from '@/features/documents/hooks/useMemberDocuments'
+import {
+	formatPlatformIntegrityAuditReport,
+	runPlatformIntegrityAudit,
+} from '@/core/platform'
 import {
 	ProfileNavRow,
 	ProfilePageShell,
 	ProfileSectionCard,
 } from '@/ui/figma/profile/profile-ui'
-import { FC } from '@/ui/figma/v2/atoms'
+import { FC, figmaCardStyle } from '@/ui/figma/v2/atoms'
 
 export function FigmaProfileAdvancedScreen() {
 	const navigate = useNavigate()
 	const isDev = import.meta.env.DEV
+	const { user } = useAuth()
+	const documentsQuery = useMemberDocuments()
+	const [auditReport, setAuditReport] = useState<string | null>(null)
+
+	const documents = useMemo(
+		() => documentsQuery.data ?? [],
+		[documentsQuery.data],
+	)
 
 	return (
 		<ProfilePageShell
@@ -56,8 +71,49 @@ export function FigmaProfileAdvancedScreen() {
 						subtitle="Debug Google Drive connector state"
 						iconBg={FC.purple}
 						onClick={() => navigate(ROUTES.connectorsDebug)}
-						isLast
 					/>
+					<button
+						type="button"
+						onClick={() => {
+							const result = runPlatformIntegrityAudit({
+								documents,
+								userId: user?.id,
+								selectedMemberId: null,
+							})
+							setAuditReport(formatPlatformIntegrityAuditReport(result))
+						}}
+						style={{
+							width: '100%',
+							...figmaCardStyle,
+							borderRadius: 16,
+							padding: '14px 16px',
+							color: FC.fg,
+							fontSize: 14,
+							fontWeight: 600,
+							cursor: 'pointer',
+							fontFamily: 'inherit',
+							marginBottom: auditReport ? 12 : 0,
+						}}
+					>
+						Run platform integrity audit
+					</button>
+					{auditReport ? (
+						<pre
+							style={{
+								...figmaCardStyle,
+								borderRadius: 16,
+								padding: '14px 16px',
+								color: FC.dim,
+								fontSize: 11,
+								whiteSpace: 'pre-wrap',
+								margin: 0,
+								maxHeight: 280,
+								overflow: 'auto',
+							}}
+						>
+							{auditReport}
+						</pre>
+					) : null}
 				</ProfileSectionCard>
 			) : null}
 

@@ -89,6 +89,17 @@ export const ROUTES = {
 	identitySettings: '/identity/settings',
 	identityMember: '/identity/members/:memberId',
 	identityDocument: '/identity/documents/:documentId',
+	finance: '/finance',
+	financeSettings: '/finance/settings',
+	financeHistory: '/finance/history',
+	financeHistoryEvent: '/finance/history/events/:eventId',
+	financeDocument: '/finance/documents/:documentId',
+	property: '/property',
+	propertySettings: '/property/settings',
+	propertyHistory: '/property/history',
+	propertyHistoryEvent: '/property/history/events/:eventId',
+	propertyDetail: '/property/:propertySlug',
+	propertyDocument: '/property/documents/:documentId',
 	notifications: '/notifications',
 } as const
 
@@ -142,13 +153,26 @@ export function healthSettingsSection(section: HealthSettingsSection) {
 	return ROUTES.healthSettings
 }
 
-export function healthAskPath(input?: {
+export type AskContextModule =
+	'health' | 'insurance' | 'vehicles' | 'identity' | 'finance' | 'property'
+
+export function globalAskPath(input?: {
 	q?: string
+	context?: AskContextModule
 	reportId?: string
 	visitId?: string
 	categoryId?: string
+	policyId?: string
+	claimId?: string
+	documentId?: string
+	vehicleSlug?: string
+	entity?: string
 }) {
 	const params = new URLSearchParams()
+
+	if (input?.context) {
+		params.set('context', input.context)
+	}
 
 	if (input?.q) {
 		params.set('q', input.q)
@@ -166,8 +190,37 @@ export function healthAskPath(input?: {
 		params.set('categoryId', input.categoryId)
 	}
 
+	if (input?.policyId) {
+		params.set('policyId', input.policyId)
+	}
+
+	if (input?.claimId) {
+		params.set('claimId', input.claimId)
+	}
+
+	if (input?.documentId) {
+		params.set('documentId', input.documentId)
+	}
+
+	if (input?.vehicleSlug) {
+		params.set('vehicleSlug', input.vehicleSlug)
+	}
+
+	if (input?.entity) {
+		params.set('entity', input.entity)
+	}
+
 	const query = params.toString()
-	return query ? `${ROUTES.healthAsk}?${query}` : ROUTES.healthAsk
+	return query ? `${ROUTES.ask}?${query}` : ROUTES.ask
+}
+
+export function healthAskPath(input?: {
+	q?: string
+	reportId?: string
+	visitId?: string
+	categoryId?: string
+}) {
+	return globalAskPath({ ...input, context: 'health' })
 }
 
 export const isHealthCompareEnabled = import.meta.env.DEV
@@ -190,26 +243,11 @@ export function insuranceAskPath(input?: {
 	policyId?: string
 	claimId?: string
 }) {
-	const params = new URLSearchParams()
+	return globalAskPath({ ...input, context: 'insurance' })
+}
 
-	if (input?.q) {
-		params.set('q', input.q)
-	}
-
-	if (input?.categoryId) {
-		params.set('categoryId', input.categoryId)
-	}
-
-	if (input?.policyId) {
-		params.set('policyId', input.policyId)
-	}
-
-	if (input?.claimId) {
-		params.set('claimId', input.claimId)
-	}
-
-	const query = params.toString()
-	return query ? `${ROUTES.insuranceAsk}?${query}` : ROUTES.insuranceAsk
+export function vehicleAskPath(input?: { q?: string; vehicleSlug?: string }) {
+	return globalAskPath({ ...input, context: 'vehicles' })
 }
 
 export function vehicleDetailPath(vehicleSlug: string) {
@@ -225,17 +263,52 @@ export function identityDocumentPath(documentId: string) {
 }
 
 export function identityAskPath(input?: { q?: string; documentId?: string }) {
-	const params = new URLSearchParams()
-	params.set('context', 'identity')
+	return globalAskPath({ ...input, context: 'identity' })
+}
 
-	if (input?.q) {
-		params.set('q', input.q)
-	}
+export function financeAskPath(input?: {
+	q?: string
+	documentId?: string
+	entityId?: string
+}) {
+	return globalAskPath({
+		q: input?.q,
+		context: 'finance',
+		documentId: input?.documentId,
+		entity: input?.entityId,
+	})
+}
 
-	if (input?.documentId) {
-		params.set('documentId', input.documentId)
-	}
+export function financeDocumentPath(documentId: string) {
+	return `/finance/documents/${documentId}`
+}
 
-	const query = params.toString()
-	return query ? `${ROUTES.ask}?${query}` : ROUTES.ask
+export function financeHistoryEventPath(eventId: string) {
+	return `/finance/history/events/${encodeURIComponent(eventId)}`
+}
+
+export function propertyAskPath(input?: {
+	q?: string
+	documentId?: string
+	propertySlug?: string
+	entity?: string
+}) {
+	return globalAskPath({
+		q: input?.q,
+		context: 'property',
+		documentId: input?.documentId,
+		entity: input?.entity ?? input?.propertySlug,
+	})
+}
+
+export function propertyDetailPath(propertySlug: string) {
+	return `/property/${encodeURIComponent(propertySlug)}`
+}
+
+export function propertyDocumentPath(documentId: string) {
+	return `/property/documents/${documentId}`
+}
+
+export function propertyHistoryEventPath(eventId: string) {
+	return `/property/history/events/${encodeURIComponent(eventId)}`
 }

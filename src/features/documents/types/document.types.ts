@@ -68,6 +68,7 @@ export interface CreateDocumentInput {
 	extractedText?: string | null
 	extractedMetadata?: Record<string, unknown>
 	status?: DocumentStatus
+	knowledgeRefs?: DocumentKnowledgeRef[]
 }
 
 export const DOCUMENTS_BUCKET = 'personal-documents' as const

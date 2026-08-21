@@ -30,17 +30,34 @@ export function VehicleHomePage() {
 	}
 
 	if (!hasVehicles) {
+		const emptyState =
+			setupStatus === 'scanning'
+				? {
+						emoji: '🚗',
+						title: 'Looking through your vehicle records',
+						body: 'Chronicle is checking your connected folder for vehicle documents.',
+					}
+				: setupStatus === 'no_vehicle_found'
+					? {
+							emoji: '🚗',
+							title: "We haven't found a vehicle record yet.",
+							body: 'Make sure your Vehicles folder includes a folder for each vehicle.',
+						}
+					: {
+							emoji: '🚗',
+							title: 'Connect your Vehicles folder',
+							body: 'Chronicle will organize vehicle records and documents found inside this folder.',
+							primaryLabel: 'Connect Vehicles folder',
+							onPrimary: () => navigate(ROUTES.vehiclesSettings),
+						}
+
 		return (
 			<VehicleHomeEmptyState
-				emoji="🚗"
-				title="Your vehicles will appear here once Chronicle finds their documents."
-				body={
-					setupStatus === 'scanning'
-						? 'Chronicle is organizing documents from your connected folder.'
-						: 'Connect your Vehicles folder in Google Drive to get started.'
-				}
-				primaryLabel="Connect Vehicles folder"
-				onPrimary={() => navigate(ROUTES.vehiclesSettings)}
+				emoji={emptyState.emoji}
+				title={emptyState.title}
+				body={emptyState.body}
+				primaryLabel={emptyState.primaryLabel}
+				onPrimary={emptyState.onPrimary}
 			/>
 		)
 	}
@@ -82,6 +99,7 @@ export function VehicleHomePage() {
 					<button
 						key={vehicle.id}
 						type="button"
+						data-testid={`vehicle-home-card-${vehicle.slug}`}
 						onClick={() => navigate(vehicleDetailPath(vehicle.slug))}
 						className="w-full rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20"
 						style={figmaCardStyle}

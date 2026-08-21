@@ -7,6 +7,8 @@ export type QuestionType =
 	| 'COMPARE'
 	| 'LATEST_REPORT'
 	| 'EXPLAIN'
+	| 'ENTITY_LOOKUP'
+	| 'COVERAGE'
 	| 'UNKNOWN'
 
 export interface EvidenceSubject {

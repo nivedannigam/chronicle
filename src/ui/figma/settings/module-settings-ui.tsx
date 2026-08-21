@@ -148,10 +148,12 @@ export function ModuleSettingsButton({
 }
 
 export function ModuleSettingsEmptyCard({
+	headline,
 	message,
 	actionLabel,
 	onAction,
 }: {
+	headline?: string
 	message: string
 	actionLabel: string
 	onAction: () => void
@@ -164,12 +166,25 @@ export function ModuleSettingsEmptyCard({
 				padding: '16px 18px',
 			}}
 		>
+			{headline ? (
+				<p
+					style={{
+						color: FC.fg,
+						fontSize: 17,
+						fontWeight: 700,
+						margin: '0 0 8px',
+						letterSpacing: '-0.02em',
+					}}
+				>
+					{headline}
+				</p>
+			) : null}
 			<p
 				style={{
 					color: FC.mid,
 					fontSize: 14,
 					lineHeight: 1.5,
-					margin: '0 0 12px',
+					margin: headline ? '0 0 12px' : '0 0 12px',
 				}}
 			>
 				{message}
@@ -237,6 +252,10 @@ export function ModuleSettingsConnectedFolderCard({
 	onChangeFolder,
 	onConnectDrive,
 	isLoading,
+	setupHeadline,
+	setupMessage,
+	setupActionLabel,
+	driveDisconnectedMessage,
 }: {
 	moduleLabel: string
 	driveConnected: boolean
@@ -249,6 +268,10 @@ export function ModuleSettingsConnectedFolderCard({
 	onChangeFolder: () => void
 	onConnectDrive: () => void
 	isLoading?: boolean
+	setupHeadline?: string
+	setupMessage?: string
+	setupActionLabel?: string
+	driveDisconnectedMessage?: string
 }) {
 	if (isLoading) {
 		return (
@@ -267,7 +290,11 @@ export function ModuleSettingsConnectedFolderCard({
 	if (!driveConnected) {
 		return (
 			<ModuleSettingsEmptyCard
-				message={`Connect Google Drive and choose your ${moduleLabel.toLowerCase()} folder. Chronicle will automatically organize your policies.`}
+				headline={setupHeadline}
+				message={
+					driveDisconnectedMessage ??
+					`Connect Google Drive and choose your ${moduleLabel.toLowerCase()} folder. Chronicle will automatically organize your policies.`
+				}
 				actionLabel="Connect Google Drive"
 				onAction={onConnectDrive}
 			/>
@@ -277,8 +304,12 @@ export function ModuleSettingsConnectedFolderCard({
 	if (!folderName) {
 		return (
 			<ModuleSettingsEmptyCard
-				message={`Choose the Google Drive folder where your ${moduleLabel.toLowerCase()} documents are stored.`}
-				actionLabel={`Choose ${moduleLabel} folder`}
+				headline={setupHeadline}
+				message={
+					setupMessage ??
+					`Choose the Google Drive folder where your ${moduleLabel.toLowerCase()} documents are stored.`
+				}
+				actionLabel={setupActionLabel ?? `Choose ${moduleLabel} folder`}
 				onAction={onChangeFolder}
 			/>
 		)
